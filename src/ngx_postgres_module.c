@@ -1079,7 +1079,7 @@ ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     pgvar->idx = pglcf->variables->nelts - 1;
 
-    pgvar->var = ngx_http_add_variable(cf, &value[1], 0);
+    pgvar->var = ngx_http_add_variable(cf, &value[1], NGX_HTTP_VAR_CHANGEABLE);
     if (pgvar->var == NULL) {
         dd("returning NGX_CONF_ERROR");
         return NGX_CONF_ERROR;
@@ -1091,21 +1091,10 @@ ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    /*
-     * Check if "$variable" was previously defined,
-     * back-off even if it was marked as "CHANGEABLE".
-     */
-    if (pgvar->var->get_handler != NULL) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: variable \"$%V\" is duplicate"
-                           " in \"%V\" directive", &value[1], &cmd->name);
-
-        dd("returning NGX_CONF_ERROR");
-        return NGX_CONF_ERROR;
+    if (pgvar->var->get_handler == NULL) {
+        pgvar->var->get_handler = ngx_postgres_variable_get_custom;
+        pgvar->var->data = (uintptr_t) pgvar;
     }
-
-    pgvar->var->get_handler = ngx_postgres_variable_get_custom;
-    pgvar->var->data = (uintptr_t) pgvar;
 
     pgvar->value.row = ngx_atoi(value[2].data, value[2].len);
     if (pgvar->value.row == NGX_ERROR) {
