@@ -7,6 +7,24 @@ Response is generated in `rds` format, so it's compatible with `ngx_rds_json`
 and `ngx_drizzle` modules.
 
 
+FORK
+====
+
+This is an amateurish fork that adds a bunch of questionable stuff:
+
+* It adds prepared statements (bound directly to nginx variables). **Connection pool bookkeeping is buggy and needs to be fixed** 
+* It adds json output option to format rows as json arrays
+* It allows postgres_rewrite to make redirects (with interpolations)
+
+Even more questionable features:
+
+* Include substring of SQL query from JSON by key
+* Adds `errors` and `no_errors` conditions that check if response json has any `error:` or `errors:` keys in it (nested)
+* 
+
+With this i'm trying to close the gaps of building a foundation for Rails-like REST system. It got good stuff (prepared statements) mixed with weird/opinionated stuff (query substitution from json). If anybody (of ngx_postgres developers?) would like to work on incorporating parts of this into mainline - drop me a line at invizko@gmail.com
+
+
 Status
 ======
 This module is production-ready and it's compatible with following nginx
