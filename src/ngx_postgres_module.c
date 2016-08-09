@@ -216,6 +216,8 @@ ngx_postgres_rewrite_enum_t ngx_postgres_rewrite_handlers[] = {
     { ngx_string("changes"),    1, ngx_postgres_rewrite_changes },
     { ngx_string("no_rows"),    2, ngx_postgres_rewrite_rows },
     { ngx_string("rows"),       3, ngx_postgres_rewrite_rows },
+    { ngx_string("no_errors"),  4, ngx_postgres_rewrite_valid },
+    { ngx_string("errors"),     5, ngx_postgres_rewrite_valid },
     { ngx_null_string, 0, NULL }
 };
 
@@ -225,6 +227,7 @@ ngx_postgres_output_enum_t ngx_postgres_output_handlers[] = {
     { ngx_string("text") ,        0, ngx_postgres_output_text },
     { ngx_string("value"),        0, ngx_postgres_output_value },
     { ngx_string("binary_value"), 1, ngx_postgres_output_value },
+    { ngx_string("json"),         0, ngx_postgres_output_json },
     { ngx_null_string, 0, NULL }
 };
 
@@ -962,14 +965,12 @@ found:
         || (rewrite->status > NGX_HTTP_INSUFFICIENT_STORAGE)
         || ((rewrite->status >= NGX_HTTP_SPECIAL_RESPONSE)
             && (rewrite->status < NGX_HTTP_BAD_REQUEST)))
-    {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: invalid status value \"%V\" for"
-                           " condition \"%V\" in \"%V\" directive",
-                           &to, &what, &cmd->name);
+    {   
+          rewrite->location = (char *) to.data;
+          rewrite->status = 200; 
+        //dd("returning NGX_CONF_ERROR");
 
-        dd("returning NGX_CONF_ERROR");
-        return NGX_CONF_ERROR;
+        //return NGX_CONF_ERROR;
     }
 
     if (keep_body) {

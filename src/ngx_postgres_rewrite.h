@@ -34,10 +34,12 @@
 
 
 ngx_int_t  ngx_postgres_rewrite(ngx_http_request_t *,
-               ngx_postgres_rewrite_conf_t *);
+               ngx_postgres_rewrite_conf_t *, char *url);
 ngx_int_t  ngx_postgres_rewrite_changes(ngx_http_request_t *,
                ngx_postgres_rewrite_conf_t *);
 ngx_int_t  ngx_postgres_rewrite_rows(ngx_http_request_t *,
+               ngx_postgres_rewrite_conf_t *);
+ngx_int_t  ngx_postgres_rewrite_valid(ngx_http_request_t *,
                ngx_postgres_rewrite_conf_t *);
 
 #endif /* _NGX_POSTGRES_REWRITE_H_ */

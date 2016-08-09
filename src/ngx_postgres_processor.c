@@ -228,6 +228,283 @@ done:
     return ngx_postgres_upstream_send_query(r, pgxc, pgdt);
 }
 
+char * find_query_in_json(ngx_http_request_t *r, u_char *data, ngx_int_t length) {
+    //fprintf(stdout, "Looking for %s\n", data);
+
+    u_char *p = data;
+
+
+    ngx_str_t meta_variable = ngx_string("meta");
+    ngx_uint_t meta_variable_hash = ngx_hash_key(meta_variable.data, meta_variable.len);
+    ngx_http_variable_value_t *raw_meta = ngx_http_get_variable( r, &meta_variable, meta_variable_hash  );
+
+    u_char *m = raw_meta->data;
+    //fprintf(stdout, "Looking for %s\n", data);
+    //fprintf(stdout, "Looking for %s\n", raw_meta->data);
+    for (; m < raw_meta->data + raw_meta->len; m++) {
+        if (*m == '"') {
+            ngx_int_t i = 0;
+
+
+            for (; i < length - 2; i++)
+                if (*(m + 1 + i) != *(p + i + 1))
+                    break;
+
+
+            if (i == length - 2 && *(m + i + 1) == '"') {
+
+
+                u_char *j = m + i + 4;
+                while (*j != '"' && *j != '\0') {
+                    if (*j == '\\') {
+                        j++;
+                    }
+                    j++;
+                }
+
+                u_char *c = m + i + 4;
+
+                int written = 0;
+
+
+                char *query = ngx_pnalloc(r->pool, j - c + 1);
+                if (query == NULL) {
+                    dd("returning NGX_ERROR");
+                    return NULL;
+                }
+
+
+                while (c < j) {
+                    if (*c == '$') {
+                        u_char *z = c + 1;
+                        while ((*z >= 'a' && *z <= 'z') || (*z >= 'A' && *z <= 'Z') || *z == '_')
+                            z++;
+
+
+                        ngx_str_t url_variable;
+
+                        url_variable.data = c + 1;
+                        url_variable.len = z - (c + 1);
+
+//                        fprintf(stdout, "replacing variable in sql query %s \n %d \n", c + 1, z - (c + 1));
+
+                        ngx_str_t param_variable = url_variable;
+                        ngx_uint_t param_variable_hash = ngx_hash_key(param_variable.data, param_variable.len);
+                        ngx_http_variable_value_t *raw_param = ngx_http_get_variable( r, &param_variable, param_variable_hash  );
+
+
+                        for (int k = 0; k < raw_param->len; k++) {
+                            query[written++] = raw_param->data[k];
+                        }
+                        c = z;
+                        continue;
+
+                    } else if (*c == '\\' && *(c + 1) == 'u') {
+                        if (*(c + 2) == '0' && *(c + 3) == '0' && *(c + 4) == '0' && *(c + 5) == 'A') {
+                            query[written++] = '\n';
+                            c += 5;
+                        }
+                    } else {
+                        query[written++] = *c;
+                    }
+                    c++;
+                }
+                query[written] = '\0';
+
+                //fprintf(stdout, "query is now %s", query);
+                return query;
+                
+            }
+        } 
+    }
+    return NULL;
+}
+
+
+int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, int len, int paramnum, Oid *types, char **values, char **names) {
+    // compute size for placeholders
+    u_char *p = data;
+    int size = len;
+    if (query == NULL) {
+        for (p++; p < data + len; p++) {
+            if (*p == ':') {
+                // leave double colon as is
+                if (*(p + 1) == ':') {
+                    p++;
+                // :@:query denotes subquery partial
+                } else if (*(p + 2) == ':' && *(p + 1) == '@') {
+                    size -= 2; // :t
+                    p += 2;
+
+                    u_char *f = p + 1;
+                    while ((*f >= 'a' && *f <= 'z') || (*f >= 'A' && *f <= 'Z') || *f == '_')
+                        f++;
+                    size -= f - p - 1; // :name
+
+                    //fprintf(stdout, "Length is %d %s\n", f - p, p);
+                    char *subquery = find_query_in_json(r, p, f - p + 1);
+
+                    int newsize = generate_prepared_query(r, query, (u_char *) subquery, strlen(subquery) - 1, 0, types, values, names);
+                    size += newsize; // expanded :sql
+                    paramnum++;
+                } else {
+                    // typed param
+                    if (*(p + 2) == ':') {
+                        size -= 2; // :t
+                        p += 2;
+                    }
+                    u_char *f = p + 1;
+                    while ((*f >= 'a' && *f <= 'z') || (*f >= 'A' && *f <= 'Z') || *f == '_')
+                        f++;
+                    size -= f - p; // :name
+
+                    int i = 0;
+                    for (; i < paramnum; i++) {
+                        if (strncmp(names[i], (char *) p, f - p) == 0) {
+                            char *n = names[i] + (f - p) + 1;
+                            if ((*n >= 'a' && *n <= 'z') || (*n >= 'A' && *n <= 'Z') || *n == '_')
+                                continue;
+                            break;
+                        }
+                    }
+                    if (i == paramnum) {
+                        names[paramnum] = (char *) p;
+                        paramnum++;
+                    }
+                    char placeholder_name[16];
+                    sprintf(placeholder_name, "$%d", i + 1);
+                    size += strlen(placeholder_name); // $1
+
+
+                }
+
+            }
+        }
+    } else {
+        u_char *lastcut = data;
+        int counter = 0;
+        for (; p < data + len; p++) {
+            if (*p == ':') {
+                if (*(p + 1) == ':') {
+                    p++;
+                    continue;
+                }
+
+
+                // copy left side
+                memcpy(query + counter, lastcut, p - lastcut);
+                counter += p - lastcut;
+
+                // partial
+                if (*(p + 2) == ':' && *(p + 1) == '@') {
+                    p += 2;
+
+                    u_char *f = p + 1;
+                    while ((*f >= 'a' && *f <= 'z') || (*f >= 'A' && *f <= 'Z') || *f == '_')
+                        f++;
+                    
+                    //fprintf(stdout, "Length is %d %s\n", f - p, p);
+                    char *subquery = find_query_in_json(r, p, f - p + 1);
+                        
+                    // copy middle side
+                    int newsize = generate_prepared_query(r, NULL, (u_char *) subquery, strlen(subquery), 0, NULL, NULL, names);
+                    paramnum = generate_prepared_query(r, query + counter, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
+
+                    counter += newsize;
+                    
+                    //fprintf(stdout, "Query after subquery %s\n", query);
+                    lastcut = f;
+                    //fprintf(stdout, "Final TO RUN :%s %d\n", query, strlen(subquery));
+                
+                // typed param
+                } else {
+                    int type = 0;
+                    if (*(p + 2) == ':') {
+                        switch (*(p + 1)) {
+                            case 't': case 's':
+                                type = 25;
+                                break;
+                            case 'd': case 'i': case 'n':
+                                type = 23;
+                                break;
+                            case 'f':
+                                type = 701;
+                                break;
+                            case 'b':
+                                type = 16;
+                                break;
+                            case 'j':
+                                type = 114;
+                                break;
+                            default:
+                                type = 0;
+                        }
+                        p += 2;
+                    } else { // default is string
+                        type = 25;
+                    }
+
+                    u_char *f = p + 1;
+                    while ((*f >= 'a' && *f <= 'z') || (*f >= 'A' && *f <= 'Z') || *f == '_')
+                        f++;
+                    
+
+                    int i = 0;
+                    for (; i < paramnum; i++) {
+                        if (strncmp(names[i], (char *) p, f - p) == 0) {
+                            char *n = names[i] + (f - p) + 1;
+                            if ((*n >= 'a' && *n <= 'z') || (*n >= 'A' && *n <= 'Z') || *n == '_')
+                                continue;
+                            break;
+                        }
+                    }
+                    if (i == paramnum) {
+
+                        ngx_str_t param_variable;
+                        param_variable.data = p + 1;
+                        param_variable.len = f - (p + 1);
+
+                        ngx_uint_t param_hash = ngx_hash_key(param_variable.data, param_variable.len);
+                        ngx_http_variable_value_t *param_value = ngx_http_get_variable( r, &param_variable, param_hash  );
+
+                        char *final_value = ngx_palloc(r->pool, (param_value->len) + 1);
+                        strncpy(final_value, (char *) param_value->data, param_value->len);
+                        strncpy(final_value + (param_value->len), "\0", 1);
+                        //fprintf(stdout, "Finding data %s\n [%d] %s %p\n\n", p, param_value->len, final_value, final_value);
+
+                        names[paramnum] = (char *) p;
+                        values[paramnum] = final_value;
+                        types[paramnum] = type;
+                        paramnum++;
+                    }
+
+
+                    // add placeholder
+                    char placeholder_name[16];
+                    sprintf(placeholder_name, "$%d", i + 1);
+                    memcpy(query + counter, placeholder_name, strlen(placeholder_name));
+                    counter += strlen(placeholder_name);
+    
+                    lastcut = f;
+
+                    //fprintf(stdout, "Query after param %d %s\n", counter, query);
+                    
+                // untyped subquery
+                }
+            }
+        }
+        memcpy(query + counter, lastcut, data + len - lastcut + 1);
+        counter += data + len - lastcut;
+        memcpy(query + counter, "\0", 1);
+        
+        //fprintf(stdout, "Final query: [%lu] %s\n", strlen(query), query);
+
+        return paramnum;
+    }
+    //fprintf(stdout, "Paramnum is %d\n", paramnum);
+    return size;
+}
+
 ngx_int_t
 ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
     ngx_postgres_upstream_peer_data_t *pgdt)
@@ -240,23 +517,102 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
 
     pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
 
-    query = ngx_pnalloc(r->pool, pgdt->query.len + 1);
-    if (query == NULL) {
-        dd("returning NGX_ERROR");
-        return NGX_ERROR;
-    }
 
-    (void) ngx_cpystrn(query, pgdt->query.data, pgdt->query.len + 1);
 
-    dd("sending query: %s", query);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
-                   "postgres: sending query: \"%s\"", query);
+    u_char *p = pgdt->query.data;
+    // run query substitution
+    //fprintf(stdout, "running query %s\n", p);
+    if (*p == ':') {
+        // prepare param arrays
+        Oid *types[30];
+        Oid *Types = (Oid *) types;
+        
+        const char *Values[30];
+        const char *Names[30];
 
-    if (pglcf->output_binary) {
-        pgrc = PQsendQueryParams(pgdt->pgconn, (const char *) query,
-                                 0, NULL, NULL, NULL, NULL, /* binary */ 1);
+        // measure and alloc new query
+        int prepared_query_size = generate_prepared_query(r, NULL, pgdt->query.data + 1, pgdt->query.len - 1, 0, NULL, NULL, (char **) &Names);
+        //fprintf(stdout, "prepared query size: %d \n", prepared_query_size);
+        query = ngx_pnalloc(r->pool, prepared_query_size + 1);
+        
+
+        // generate prepared query
+        int paramnum = generate_prepared_query(r, (char *) query, pgdt->query.data + 1, pgdt->query.len - 1, 0, Types, (char **) &Values, (char **) &Names);
+        //fprintf(stdout, "prepared query: [%d] %s \n", paramnum, query);
+
+        //for (int i = 0; i < paramnum; i++)
+        //    fprintf(stdout, "Prepared param #%d [%d/%d] %s %p \n", i, Types[i], strlen(Values[i]), Values[i], Values[i]);
+//
+        if (pgdt->statements) {
+            // hash query
+            ngx_uint_t prepared_hash = ngx_hash_key(query, strlen((char *) query));
+            char *prepared_name = ngx_pnalloc(r->pool, 16);
+            sprintf(prepared_name, "test%lu", prepared_hash);
+
+            // find if query was prepared for this connection
+            ngx_uint_t n = 0;
+            int matched = 0;
+            for (; n < 10 && *(pgdt->statements + n); n++) {
+                if (*(pgdt->statements + n) == prepared_hash) {
+                    matched = 1;
+                    //fprintf(stdout, "Found prepared query %s %d\n", query, n);
+                    break;
+                } else {
+                    //fprintf(stdout, "%d != %d\n", *(pgdt->statements + n), prepared_hash);
+                }
+            }
+            //fprintf(stdout, "statements [%p]\n", pgdt->statements);
+
+            // prepare query synchronously the first time
+            if (matched == 0) {
+               //fprintf(stdout, "Preparing query [%d] %s\n", n, query);
+
+                PQprepare(pgdt->pgconn,
+                                    prepared_name,
+                                    (char *) query,
+                                    paramnum,
+                                    Types);
+                pgdt->statements[n] = prepared_hash;
+                //fprintf(stdout, "Preparing query [%d] %d\n",n, prepared_hash);
+
+            }
+
+            pgrc = PQsendQueryPrepared(pgdt->pgconn,
+                             prepared_name,
+                             paramnum,(const char** )Values,NULL,NULL,0);
+
+            //fprintf(stdout, "Sent query prepared [%d] \n", paramnum);
+            //if (pgrc == 0) {
+            //    fprintf(stdout, "error msg [%s] \n", PQerrorMessage(pgdt->pgconn));
+            //    
+            //}
+        } else {
+            pgrc = PQsendQueryParams(pgdt->pgconn, (const char *) query, paramnum, Types, (const char** )Values, NULL, NULL, 0);
+            //fprintf(stdout, "Sent query unprepared [%d] \n", pgrc);
+        }
     } else {
-        pgrc = PQsendQuery(pgdt->pgconn, (const char *) query);
+
+        //fprintf(stdout, "standart QUERY TO RUN : %s\n", pgdt->query.data);
+
+        query = ngx_pnalloc(r->pool, pgdt->query.len + 1);
+        if (query == NULL) {
+            dd("returning NGX_ERROR");
+            return NGX_ERROR;
+        }
+
+        (void) ngx_cpystrn(query, pgdt->query.data, pgdt->query.len + 1);
+
+
+        dd("sending query: %s", query);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+                       "postgres: sending query: \"%s\"", query);
+
+        if (pglcf->output_binary) {
+            pgrc = PQsendQueryParams(pgdt->pgconn, (const char *) query,
+                                     0, NULL, NULL, NULL, NULL, /* binary */ 1);
+        } else {
+            pgrc = PQsendQuery(pgdt->pgconn, (const char *) query);
+        }
     }
 
     if (pgrc == 0) {
@@ -392,6 +748,8 @@ ngx_postgres_process_response(ngx_http_request_t *r, PGresult *res)
     /* set $postgres_rows */
     pgctx->var_rows = PQntuples(res);
 
+    pgctx->res = res;
+
     /* set $postgres_affected */
     if (ngx_strncmp(PQcmdStatus(res), "SELECT", sizeof("SELECT") - 1)) {
         affected = PQcmdTuples(res);
@@ -410,6 +768,7 @@ ngx_postgres_process_response(ngx_http_request_t *r, PGresult *res)
                 if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
                     dd("returning NGX_DONE, status %d", (int) rc);
                     pgctx->status = rc;
+                    pgctx->res = NULL;
                     return NGX_DONE;
                 }
 
@@ -418,6 +777,8 @@ ngx_postgres_process_response(ngx_http_request_t *r, PGresult *res)
             }
         }
     }
+
+    pgctx->res = NULL;
 
     if (pglcf->variables) {
         /* set custom variables */

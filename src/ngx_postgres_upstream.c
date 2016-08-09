@@ -513,6 +513,7 @@ ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc,
         ngx_postgres_upstream_free_connection(pc->log, pc->connection,
                 pgdt->pgconn, pgscf);
 
+     
         pgdt->pgconn = NULL;
         pc->connection = NULL;
     }

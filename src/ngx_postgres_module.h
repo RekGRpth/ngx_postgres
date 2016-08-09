@@ -52,6 +52,8 @@ typedef struct {
 typedef struct {
     ngx_uint_t                          key;
     ngx_int_t                           status;
+    char                                *location;
+    char                                *url;
 } ngx_postgres_rewrite_t;
 
 typedef struct {
@@ -171,6 +173,7 @@ typedef struct {
     ngx_str_t                           var_query;
     ngx_array_t                        *variables;
     ngx_int_t                           status;
+    PGresult                           *res;
 } ngx_postgres_ctx_t;
 
 

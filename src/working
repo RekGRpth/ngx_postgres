@@ -1,0 +1,444 @@
+/*
+ * Copyright (c) 2010, FRiCKLE Piotr Sikora <info@frickle.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef DDEBUG
+#define DDEBUG 0
+#endif
+
+#include "ngx_postgres_ddebug.h"
+#include "ngx_postgres_module.h"
+#include "ngx_postgres_rewrite.h"
+
+
+ngx_int_t
+ngx_postgres_rewrite(ngx_http_request_t *r,
+    ngx_postgres_rewrite_conf_t *pgrcf, char *url)
+{
+    ngx_postgres_rewrite_t  *rewrite;
+    ngx_uint_t               i;
+
+    dd("entering");
+    //fprintf(stdout, "ngx_postgres_rewrite %s\n", url);
+
+    if (pgrcf->methods_set & r->method) {
+        /* method-specific */
+        rewrite = pgrcf->methods->elts;
+        for (i = 0; i < pgrcf->methods->nelts; i++) {
+            if (rewrite[i].key & r->method) {
+                char *p;
+                if (url == NULL || strlen(url) == 0)
+                  p = rewrite[i].location;
+                else
+                  p = url;
+
+                //fprintf(stdout, "ZEDIRECTING OUT %s %d\n", p, url && strlen(url));
+                if (p != NULL) {
+                    //fprintf(stdout, "rewrite %s\n", rewrite[i].location);
+
+                    // write to $html variable if given variable
+                    if (*p == '$') {
+                        ngx_str_t source_variable = ngx_string(p + 1);
+                        source_variable.len = strlen(p + 1);
+                        ngx_uint_t source_variable_hash = ngx_hash_key(source_variable.data, source_variable.len);
+                        ngx_http_variable_value_t *raw_source = ngx_http_get_variable( r, &source_variable, source_variable_hash  );
+
+                        ngx_str_t html_variable = ngx_string("html");
+                        ngx_uint_t html_variable_hash = ngx_hash_key(html_variable.data, html_variable.len);
+                        ngx_http_variable_value_t *raw_html = ngx_http_get_variable( r, &html_variable, html_variable_hash  );
+                        raw_html->data = raw_source->data;
+                        raw_html->len = raw_source->len;
+
+                    } else {
+                        // redirect out
+                        r->headers_out.location = ngx_list_push(&r->headers_out.headers);
+                        if (r->headers_out.location == NULL) {
+                            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+                            return NGX_OK;
+                        }
+
+                        char *m = ngx_pnalloc(r->pool, strlen(p));
+                        memcpy(m, p, strlen(p));
+                        r->headers_out.location->value.data = m;
+                        r->headers_out.location->value.len = strlen(p);
+
+                        //fprintf(stdout, "REDIRECTING OUT %s %d\n", m, strlen(p));
+                        dd("returning status:%d", (int) rewrite[i].status);
+                        return 301;
+                    }
+                }
+                return rewrite[i].status;
+            }
+        }
+    } else if (pgrcf->def) {
+        /* default */
+        dd("returning status:%d", (int) pgrcf->def->status);
+        return pgrcf->def->status;
+    }
+
+    dd("returning NGX_DECLINED");
+    return NGX_DECLINED;
+}
+
+ngx_int_t
+ngx_postgres_rewrite_changes(ngx_http_request_t *r,
+    ngx_postgres_rewrite_conf_t *pgrcf)
+{
+    ngx_postgres_ctx_t  *pgctx;
+
+    dd("entering");
+
+    pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
+
+    if ((pgrcf->key % 2 == 0) && (pgctx->var_affected == 0)) {
+        /* no_changes */
+        dd("returning");
+        return ngx_postgres_rewrite(r, pgrcf, NULL);
+    }
+
+    if ((pgrcf->key % 2 == 1) && (pgctx->var_affected > 0)) {
+        /* changes */
+        dd("returning");
+        return ngx_postgres_rewrite(r, pgrcf, NULL);
+    }
+
+    dd("returning NGX_DECLINED");
+    return NGX_DECLINED;
+}
+
+ngx_int_t
+ngx_postgres_rewrite_rows(ngx_http_request_t *r,
+    ngx_postgres_rewrite_conf_t *pgrcf)
+{
+    ngx_postgres_ctx_t  *pgctx;
+
+    dd("entering");
+
+    pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
+
+    if ((pgrcf->key % 2 == 0) && (pgctx->var_rows == 0)) {
+        /* no_rows */
+        dd("returning");
+        return ngx_postgres_rewrite(r, pgrcf, NULL);
+    }
+
+    if ((pgrcf->key % 2 == 1) && (pgctx->var_rows > 0)) {
+        /* rows */
+        dd("returning");
+        return ngx_postgres_rewrite(r, pgrcf, NULL);
+    }
+
+    dd("returning NGX_DECLINED");
+    return NGX_DECLINED;
+}
+
+ngx_find_variables(char *url) {
+
+
+  // find variables in redirect url
+      size = strlen(redirect);
+      for (char *p = redirect; p < redirect + size; p++) {
+        if (*p == ':' || *p == '$') {
+          variables[vars] = p + 1;
+          vars ++;
+        }
+      }
+      variables[vars] = NULL;
+      for (int i = 0; i < vars; i++)
+        values[i] = columned[i] = NULL;
+
+
+}
+
+char *url ngx_interpolate_url(char *url, int length) {
+
+}
+
+ngx_int_t
+ngx_postgres_rewrite_valid(ngx_http_request_t *r,
+    ngx_postgres_rewrite_conf_t *pgrcf)
+{
+    ngx_postgres_ctx_t  *pgctx;
+    ngx_int_t col, row;
+    dd("entering");
+
+    pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
+
+    PGresult *res = pgctx->res;
+
+    ngx_int_t col_count = pgctx->var_cols;
+    ngx_int_t row_count = pgctx->var_rows;
+
+    char *redirect = NULL;
+    char url[256] = "";
+    char *variables[10];
+    char *columned[10];
+    char *values[10];
+    size_t size;
+    int vars = 0;
+    ngx_postgres_rewrite_t  *rewrite;
+    ngx_uint_t               i;
+
+    ngx_memzero(url, sizeof(url));
+
+    // find callback
+    if (pgrcf->methods_set & r->method) {
+        rewrite = pgrcf->methods->elts;
+        for (i = 0; i < pgrcf->methods->nelts; i++)
+            if (rewrite[i].key & r->method)
+                if (rewrite[i].location && rewrite[i].location[0] != '$') {
+                    redirect = rewrite[i].location;
+                    break;
+                }
+    }
+
+
+
+
+    if (redirect) {
+      ngx_postgres_find_variables(variables, redirect);
+      variables[9] = "errors";
+      variables[8] = "error";
+    }
+
+    ngx_postgres_find_values(variables, res);
+
+    ngx_postgres_interpolate_url(redirect, variables, values);
+
+
+
+    // find variables in redirect url
+    if (redirect) {
+        
+        size = strlen(redirect);
+        for (char *p = redirect; p < redirect + size; p++) {
+          if (*p == ':' || *p == '$') {
+            variables[vars] = p + 1;
+            vars ++;
+          }
+        }
+        variables[vars] = NULL;
+        for (int i = 0; i < vars; i++)
+          values[i] = columned[i] = NULL;
+    }
+
+    // check if returned columns match variable
+    for (col = 0; col < col_count; col++) {
+      char *col_name = PQfname(res, col);
+      for (int i = 0; i < vars; i++) {
+        if (strncmp(variables[i], col_name, strlen(col_name)) == 0) {
+          if (!PQgetisnull(res, 0, col)) {
+            values[i] = PQgetvalue(res, 0, col);
+            columned[i] = values[i];
+            //fprintf(stdout, "Resolved variable [%s] to column %s\n", col_name, values[i]);
+          }
+        }
+      }
+    }
+          
+    // find some json in pg results
+    int failed = 0;
+    int current = -1; 
+    for (row = 0; row < row_count && !failed; row++) {
+      for (col = 0; col < col_count && !failed; col++) {
+        if (!PQgetisnull(res, row, col)) {
+          size = PQgetlength(res, row, col);
+          char *value = PQgetvalue(res, row, col);
+          size = strlen(value);
+          for (char *p = value; p < value + size; p++) {
+            //if not inside string
+            if (*p == '"') {
+              for (int i = 0; i < vars; i++) {
+                if (values[i] != NULL) continue;
+                char *s, *k;
+                if (current == i) {
+                  s = "value";
+                  k = "value";
+                } else {
+                  s = variables[i];
+                  k = variables[i];
+                }
+                for (; *k == *(p + (k - s) + 1); k++) {
+                  char *n = k + 1;
+                  if (*n == '\0' || *n == '=' || *n == '&' || *n == '-' || *n == '%' || *n == '/') {
+                    if (*(p + (k - s) + 2) != '"') break;
+                    //fprintf(stdout, "matched %s %d\n", p + (k - s) + 3, vars);
+
+                    values[i] = p + (k - s) + 3; // 2 quotes + 1 ahead
+                    // skip space & colon
+                    while (*values[i] == ' ' || *values[i] == ':' || *values[i] == '\n') values[i]++;
+
+                    // {"name": "column", "value": "something"}
+                    if (*values[i] == ',') {
+                      //fprintf(stdout, "SETTING CURRENT %s\n", s);
+                      values[i] = NULL;
+                      current = i;
+                    // {"column": "value"}
+                    } else if (current == i) {
+                      current = -1;
+                    }
+                    //fprintf(stdout, "matching %d %s\n %s\n", k - s, s, values[i]);
+                  }
+                }
+              }
+            }
+
+
+            // find a key that looks like "errors": something
+            if (*p == 'e' && *(p+1) == 'r'&& *(p+2) == 'r'&& *(p+3) == 'o'&& *(p+4) == 'r') {
+              char *ch = (p + 5);
+              if (*ch == 's')
+                ch++;
+              while (*ch == ' ' || *ch == '\t') ch++;
+              if (*ch != '"') continue;
+              ch++;
+              if (*ch != ':') continue;
+              ch++;
+              while (*ch == ' ' || *ch == '\t') ch++;
+              if (*ch == 'n') continue;
+
+              //fprintf(stdout, "found error: %s\n", p);
+
+              failed = 1;
+            }
+          }
+        }
+      }
+    }
+    if (redirect) {
+
+        size = strlen(redirect);
+        int written = 0;
+        for (char *p = redirect; p < redirect + size; p++) {
+          for (int i= 0; i < vars; i++) {
+            if (variables[i] == p +1) {
+
+              // substitute nginx variable
+              if (*p == '$') {
+                ngx_str_t url_variable;
+
+                url_variable.data = p + 1;
+                url_variable.len = 0;
+                //fprintf(stdout, "something here %s\n", p);
+                while(1) {
+                  char *n = url_variable.data + url_variable.len;
+                  if (*n == '\0' || *n == '=' || *n == '&' || *n == '-' || *n == '%' || *n == '/' || *n == '#')
+                    break;
+                  url_variable.len++;
+                }
+
+                ngx_int_t num = ngx_atoi(url_variable.data, url_variable.len);
+
+                // captures $1, $2
+                if (num != NGX_ERROR && num > 0 && num <= r->ncaptures) {
+                  
+                  int *cap = r->captures;
+                  int ncap = num * 2;
+
+                  ngx_str_t capture;
+                  capture.data = r->captures_data + cap[ncap];
+                  capture.len = cap[ncap + 1] - cap[ncap];
+                  for (int l = 0; l < capture.len; l++) {
+                    url[written] = *(capture.data + l);
+                    written++;
+                  }
+                  //fprintf(stdout, "capture %d %s\n", capture.len, url);
+                // nginx variables
+                } else {
+                  ngx_uint_t url_variable_hash = ngx_hash_key(url_variable.data, url_variable.len);
+                  ngx_http_variable_value_t *url_value = ngx_http_get_variable( r, &url_variable, url_variable_hash  );
+                  values[i] = url_value->data;
+                  for (int l = 0; l < url_value->len; l++) {
+                    url[written] = *(url_value->data + l);
+                    written++;
+                  }
+                  //fprintf(stdout, "variable %s\n", url);
+                }
+              } else {
+
+                // output value
+                if (values[i] != NULL) {
+                  //fprintf(stdout, "OUTPUT VARIABLE%s\n%s\n", values[i], variables[i]);
+                  char *n = values[i];
+                  if (*n == '"') {
+                    n++;
+                    // find string boundary
+                    while (*n != '"' || *(n - 1) == '\\') {
+                      url[written] = *n;
+                      written++;
+                      n++;
+                    }
+                    // output external string
+                  } else if (columned[i] != NULL) {
+                    strcat(url, values[i]);
+                    written += strlen(values[i]);
+                  } else {
+                    // find unquoted value boundary
+                    while (*n != ',' && *n != ' ' && *n != '\n' && *n != '}' && *n != ']') {
+                      url[written] = *n;
+                      written++;
+                      n++;
+                    }
+                  }
+                }
+              }
+              // skip variable
+              while (*p != '\0' && *p != '=' && *p != '&' && *p != '-' && *p != '%' && *p != '/' && *p != '#') {
+                p++;
+              }
+
+            }
+          }
+          url[written] = *p;
+          written++;
+
+
+        }
+        if (written)
+          url[written] = '\0';
+
+        //fprintf(stdout, "redirect%s\n", url);
+    }
+
+
+    //fprintf(stdout, "\nFAILED?: %d\n", failed);
+
+    if ((pgrcf->key % 2 == 0) && failed == 0) {
+        /* no_rows */
+        dd("returning");
+        //fprintf(stdout, "Valid: redirect1%s\n", url);
+        return ngx_postgres_rewrite(r, pgrcf, url);
+    }
+
+    if ((pgrcf->key % 2 == 1) && failed == 1) {
+        /* rows */
+        dd("returning");
+        //fprintf(stdout, "Invalid: %s\n", url);
+        return ngx_postgres_rewrite(r, pgrcf, url);
+    }
+
+    dd("returning NGX_DECLINED");
+    return NGX_DECLINED;
+}
