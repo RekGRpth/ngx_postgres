@@ -552,10 +552,10 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
             // find if query was prepared for this connection
             ngx_uint_t n = 0;
             int matched = 0;
-            for (; n < 10 && *(pgdt->statements + n); n++) {
-                if (*(pgdt->statements + n) == prepared_hash) {
+            for (; n < 10 && pgdt->statements[n]; n++) {
+                if (pgdt->statements[n] == prepared_hash) {
                     matched = 1;
-                    //fprintf(stdout, "Found prepared query %s %d\n", query, n);
+                    //fprintf(stdout, "Found prepared query %s %lu\n", query, n);
                     break;
                 } else {
                     //fprintf(stdout, "%d != %d\n", *(pgdt->statements + n), prepared_hash);

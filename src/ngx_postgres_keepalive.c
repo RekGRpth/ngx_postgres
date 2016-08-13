@@ -56,7 +56,7 @@ ngx_postgres_keepalive_init(ngx_pool_t *pool,
         ngx_queue_insert_head(&pgscf->free, &cached[i].queue);
         cached[i].srv_conf = pgscf;
         for (int j = 0; j < 10; j++)
-            cached[i].statements[j] = '\0';
+            cached[i].statements[j] = 0;
 
         fprintf(stdout, "keepalive init %p\n", cached[i].statements);
     }
@@ -111,7 +111,10 @@ ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc,
         pc->socklen = item->socklen;
 
         /* Inherit list of prepared statements */
-        pgp->statements = (ngx_uint_t *) &item->statements;
+        for (int j = 0; j < 10; j++)
+            pgp->statements[j] = item->statements[j];
+
+//            fprintf(stdout, "INHERITING STATEMENTS sss\n");
         
         dd("returning NGX_DONE");
 
@@ -166,9 +169,10 @@ ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc,
 
             /* Inherit list of prepared statements */
             
-            pgp->statements = (ngx_uint_t *) &item->statements;
+            for (int j = 0; j < 10; j++)
+                pgp->statements[j] = item->statements[j];
 
-            fprintf(stdout, "INHERITING STATEMENTS muktiu\n");
+            //fprintf(stdout, "INHERITING STATEMENTS muktiu\n");
 
             dd("returning NGX_DONE");
             return NGX_DONE;
@@ -245,11 +249,8 @@ ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc,
                                   queue);
         }
 
-        if (pgp->statements)
-            *item->statements = *pgp->statements;
-        else
-            for (int j = 0; j < 10; j++)
-                item->statements[j] = '\0';
+        for (int j = 0; j < 10; j++)
+            item->statements[j] = pgp->statements[j];
         item->connection = c;
 
         ngx_queue_insert_head(&pgscf->cache, q);
