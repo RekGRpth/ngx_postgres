@@ -37,7 +37,9 @@
    int vars = 0;
 
    // find variables in redirect url
-   for (char *p = url; p < url + size; p++)
+  
+   char *p;
+   for (*p = url; p < url + size; p++)
      if (*p == ':'/* || *p == '$'*/)
        variables[vars++] = (p + 1);
 
@@ -58,9 +60,11 @@
 
 
    // check if returned columns match variable
-   for (int col = 0; col < col_count; col++) {
+   ngx_uint_t col;
+   for (col = 0; col < col_count; col++) {
      char *col_name = PQfname(res, col);
-     for (int i = 0; i < vars; i++) {
+     ngx_uint_t i;
+     for (i = 0; i < vars; i++) {
        if (strncmp(variables[i], col_name, strlen(col_name)) == 0) {
          if (!PQgetisnull(res, 0, col)) {
            values[i] = PQgetvalue(res, 0, col);
@@ -89,15 +93,19 @@
      //fprintf(stdout, "Scanning json %d\n", vars - resolved);
 
      // find some json in pg results
-     for (int row = 0; row < row_count && !failed; row++) {
-       for (int col = 0; col < col_count && !failed; col++) {
+     ngx_uint_t row;
+     for (row = 0; row < row_count && !failed; row++) {
+       ngx_uint_t col;
+       for (col = 0; col < col_count && !failed; col++) {
          if (!PQgetisnull(res, row, col)) {
            char *value = PQgetvalue(res, row, col);
            int size = PQgetlength(res, row, col);
-           for (char *p = value; p < value + size; p++) {
+           char *p;
+           for (*p = value; p < value + size; p++) {
              //if not inside string
              if (*p == '"') {
-               for (int i = 0; i < vars; i++) {
+               ngx_uint_t i;
+               for (i = 0; i < vars; i++) {
                  if (values[i] != NULL) continue;
                  char *s, *k;
                  if (current == i) {
@@ -168,7 +176,8 @@
    ngx_memzero(url, sizeof(url));
 
    int written = 0;
-   for (char *p = redirect; p < redirect + size; p++) {
+   char *p;
+   for (*p = redirect; p < redirect + size; p++) {
 
      // substitute nginx variable
      if (*p == '$') {
@@ -195,7 +204,8 @@
          ngx_str_t capture;
          capture.data = r->captures_data + cap[ncap];
          capture.len = cap[ncap + 1] - cap[ncap];
-         for (size_t l = 0; l < capture.len; l++) {
+         size_t l;
+         for (l = 0; l < capture.len; l++) {
            url[written] = *(capture.data + l);
            written++;
          }
@@ -204,7 +214,8 @@
        } else {
          ngx_uint_t url_variable_hash = ngx_hash_key(url_variable.data, url_variable.len);
          ngx_http_variable_value_t *url_value = ngx_http_get_variable( r, &url_variable, url_variable_hash  );
-         for (int l = 0; l < url_value->len; l++) {
+         ngx_uint_t l;
+         for (l = 0; l < url_value->len; l++) {
            url[written] = *(url_value->data + l);
            written++;
          }
@@ -217,7 +228,8 @@
      } else {
 
        //fprintf(stdout, "SHOULD BE VARIABLE HERE %d %s\n", vars, p);
-       for (int i= 0; i < vars; i++) {
+       ngx_uint_t i
+       for (i= 0; i < vars; i++) {
          if (variables[i] == p +1) {
          
            // output value
@@ -344,7 +356,8 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         int written = 0;
 
                         // remove leading // and /0/
-                        for (char *c = p; c < p + len; c++) {
+                        char *c;
+                        for (*c = p; c < p + len; c++) {
                           if (*c == '/') {
                             if (*(c + 1) == '/')
                               continue;
@@ -445,8 +458,10 @@ ngx_postgres_rewrite_valid(ngx_http_request_t *r,
     ngx_postgres_rewrite_t  *rewrite;
     ngx_uint_t               i;
 
-    for (int i = 0; i < 10; i++)
+    for (i = 0; i < 10; i++)
+    {
       values[i] = columned[i] = variables[i] = NULL;
+    }
     
     // find callback
     if (pgrcf->methods_set & r->method) {
