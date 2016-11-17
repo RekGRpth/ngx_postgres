@@ -38,7 +38,7 @@
 
    // find variables in redirect url
   
-   char *p;
+   char p;
    for (*p = url; p < url + size; p++)
      if (*p == ':'/* || *p == '$'*/)
        variables[vars++] = (p + 1);
@@ -60,10 +60,10 @@
 
 
    // check if returned columns match variable
-   ngx_uint_t col;
+   ngx_int_t col;
    for (col = 0; col < col_count; col++) {
      char *col_name = PQfname(res, col);
-     ngx_uint_t i;
+     ngx_int_t i;
      for (i = 0; i < vars; i++) {
        if (strncmp(variables[i], col_name, strlen(col_name)) == 0) {
          if (!PQgetisnull(res, 0, col)) {
@@ -93,18 +93,18 @@
      //fprintf(stdout, "Scanning json %d\n", vars - resolved);
 
      // find some json in pg results
-     ngx_uint_t row;
+     ngx_int_t row;
      for (row = 0; row < row_count && !failed; row++) {
-       ngx_uint_t col;
+       ngx_int_t col;
        for (col = 0; col < col_count && !failed; col++) {
          if (!PQgetisnull(res, row, col)) {
            char *value = PQgetvalue(res, row, col);
            int size = PQgetlength(res, row, col);
-           char *p;
+           char p;
            for (*p = value; p < value + size; p++) {
              //if not inside string
              if (*p == '"') {
-               ngx_uint_t i;
+               ngx_int_t i;
                for (i = 0; i < vars; i++) {
                  if (values[i] != NULL) continue;
                  char *s, *k;
@@ -176,7 +176,7 @@
    ngx_memzero(url, sizeof(url));
 
    int written = 0;
-   char *p;
+   char p;
    for (*p = redirect; p < redirect + size; p++) {
 
      // substitute nginx variable
@@ -228,7 +228,7 @@
      } else {
 
        //fprintf(stdout, "SHOULD BE VARIABLE HERE %d %s\n", vars, p);
-       ngx_uint_t i
+       ngx_int_t i;
        for (i= 0; i < vars; i++) {
          if (variables[i] == p +1) {
          
@@ -356,7 +356,7 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         int written = 0;
 
                         // remove leading // and /0/
-                        char *c;
+                        char c;
                         for (*c = p; c < p + len; c++) {
                           if (*c == '/') {
                             if (*(c + 1) == '/')
