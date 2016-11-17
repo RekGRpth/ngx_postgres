@@ -293,7 +293,8 @@ char * find_query_in_json(ngx_http_request_t *r, u_char *data, ngx_int_t length)
                         ngx_http_variable_value_t *raw_param = ngx_http_get_variable( r, &param_variable, param_variable_hash  );
 
 
-                        for (int k = 0; k < raw_param->len; k++) {
+                        ngx_uint_t k;
+                        for (k = 0; k < raw_param->len; k++) {
                             query[written++] = raw_param->data[k];
                         }
                         c = z;
