@@ -12,7 +12,7 @@ FORK
 
 This is an amateurish fork that adds a bunch of questionable stuff:
 
-* It adds prepared statements (bound directly to nginx variables).
+* It adds prepared statements (bound directly to nginx variables). For each connection in pool it keeps its own set of prepared statements. Seemed to work decently.
 * It adds json output option to format rows as json arrays
 * It allows postgres_rewrite to make redirects (with interpolations)
 
