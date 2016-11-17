@@ -38,8 +38,8 @@
 
    // find variables in redirect url
   
-   char p;
-   for (*p = url; p < url + size; p++)
+   char *p;
+   for (p = url; p < url + size; p++)
      if (*p == ':'/* || *p == '$'*/)
        variables[vars++] = (p + 1);
 
@@ -100,8 +100,8 @@
          if (!PQgetisnull(res, row, col)) {
            char *value = PQgetvalue(res, row, col);
            int size = PQgetlength(res, row, col);
-           char p;
-           for (*p = value; p < value + size; p++) {
+           char *p;
+           for (p = value; p < value + size; p++) {
              //if not inside string
              if (*p == '"') {
                ngx_int_t i;
@@ -176,8 +176,8 @@
    ngx_memzero(url, sizeof(url));
 
    int written = 0;
-   char p;
-   for (*p = redirect; p < redirect + size; p++) {
+   char *p;
+   for (p = redirect; p < redirect + size; p++) {
 
      // substitute nginx variable
      if (*p == '$') {
@@ -356,8 +356,8 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         int written = 0;
 
                         // remove leading // and /0/
-                        char c;
-                        for (*c = p; c < p + len; c++) {
+                        char *c;
+                        for (c = p; c < p + len; c++) {
                           if (*c == '/') {
                             if (*(c + 1) == '/')
                               continue;
