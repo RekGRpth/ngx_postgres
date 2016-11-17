@@ -120,10 +120,36 @@ else
     ngx_feature_run=no
 fi
 
-lib_version=90100
-ngx_feature="libpq library version 9.1"
-ngx_feature_test="printf(\"%d\", PQlibVersion())"
-. auto/feature
+lib_version=90500
+ngx_feature="libpq library version 9.5"
+
+if [ $ngx_found = no ]; then
+    lib_version=90400
+    ngx_feature="libpq library version 9.4"
+    ngx_feature_test="printf(\"%d\", PQlibVersion())"
+    . auto/feature
+fi
+
+if [ $ngx_found = no ]; then
+    lib_version=90300
+    ngx_feature="libpq library version 9.3"
+    ngx_feature_test="printf(\"%d\", PQlibVersion())"
+    . auto/feature
+fi
+
+if [ $ngx_found = no ]; then
+    lib_version=90200
+    ngx_feature="libpq library version 9.2"
+    ngx_feature_test="printf(\"%d\", PQlibVersion())"
+    . auto/feature
+fi
+
+if [ $ngx_found = no ]; then
+    lib_version=90100
+    ngx_feature="libpq library version 9.1"
+    ngx_feature_test="printf(\"%d\", PQlibVersion())"
+    . auto/feature
+fi
 
 if [ $ngx_found = no ]; then
     lib_version=90000
