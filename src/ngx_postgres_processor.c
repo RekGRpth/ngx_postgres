@@ -328,7 +328,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
     int size = len;
     if (query == NULL) {
         for (p++; p < data + len; p++) {
-            if (*p == ':') {
+            if (*p == ':' && ((*(p + 1) >= 'a' && *(p + 1) <= 'z') || (*(p + 1) >= 'A' && *(p + 1) <= 'Z') || *(p + 1) == ':' || *(p + 1) == '@' || *(p + 1) == '_')) {
                 // leave double colon as is
                 if (*(p + 1) == ':') {
                     p++;
@@ -345,7 +345,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                     //fprintf(stdout, "Length is %d %s\n", f - p, p);
                     char *subquery = find_query_in_json(r, p, f - p + 1);
 
-                    int newsize = generate_prepared_query(r, query, (u_char *) subquery, strlen(subquery) - 1, 0, types, values, names);
+                    int newsize = generate_prepared_query(r, query, (u_char *) subquery, strlen(subquery) - 1, paramnum, types, values, names);
                     size += newsize; // expanded :sql
                     paramnum++;
                 } else {
@@ -385,7 +385,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
         u_char *lastcut = data;
         int counter = 0;
         for (; p < data + len; p++) {
-            if (*p == ':') {
+            if (*p == ':' && ((*(p + 1) >= 'a' && *(p + 1) <= 'z') || (*(p + 1) >= 'A' && *(p + 1) <= 'Z') || *(p + 1) == ':' || *(p + 1) == '@' || *(p + 1) == '_')) {
                 if (*(p + 1) == ':') {
                     p++;
                     continue;
@@ -408,7 +408,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                     char *subquery = find_query_in_json(r, p, f - p + 1);
                         
                     // copy middle side
-                    int newsize = generate_prepared_query(r, NULL, (u_char *) subquery, strlen(subquery), 0, NULL, NULL, names);
+                    int newsize = generate_prepared_query(r, NULL, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
                     paramnum = generate_prepared_query(r, query + counter, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
 
                     counter += newsize;
