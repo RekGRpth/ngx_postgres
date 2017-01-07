@@ -762,8 +762,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
         }
         b->last = ngx_copy(b->last, "}", sizeof("}") - 1);
     }
-    b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
-    *(b->last) = '\0';
+    b->last = ngx_copy(b->last, "]", sizeof("]"));
 
     //fprintf(stdout, "PRINTING %d\n", b->end - b->last);
     //fprintf(stdout, "PRINTING %s\n", b->pos);
