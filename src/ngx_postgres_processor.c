@@ -468,13 +468,13 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                         ngx_uint_t param_hash = ngx_hash_key(param_variable.data, param_variable.len);
                         ngx_http_variable_value_t *param_value = ngx_http_get_variable( r, &param_variable, param_hash  );
 
-                        char *final_value = ngx_palloc(r->pool, (param_value->len) + 1);
-                        strncpy(final_value, (char *) param_value->data, param_value->len);
-                        strncpy(final_value + (param_value->len), "\0", 1);
-                        //fprintf(stdout, "Finding data %s\n [%d] %s %p\n\n", p, param_value->len, final_value, final_value);
-
+                        if (param_value != NULL && !param_value->not_found) {
+                            char *final_value = ngx_palloc(r->pool, (param_value->len) + 1);
+                            strncpy(final_value, (char *) param_value->data, param_value->len);
+                            strncpy(final_value + (param_value->len), "\0", 1);
+                            values[paramnum] = final_value;                        
+                        }
                         names[paramnum] = (char *) p;
-                        values[paramnum] = final_value;
                         types[paramnum] = type;
                         paramnum++;
                     }
