@@ -745,7 +745,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
 
                 col_type = PQftype(res, col);
                 //not numbers or json
-                if ((col_type < 20 || col_type > 23) && (col_type != 3802 && col_type != 114)) {
+                if ((col_type < 20 || col_type > 23) && (col_type != 3802 && col_type != 114) || size == 0) {
                     b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
 
 
@@ -754,7 +754,6 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
 
                     b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
                 } else {
-
                     b->last = ngx_copy(b->last, PQgetvalue(res, row, col),
                                        size);
                 }
