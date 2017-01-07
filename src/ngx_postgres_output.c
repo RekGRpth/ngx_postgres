@@ -667,7 +667,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
     row_count = pgctx->var_rows;
 
     /* pre-calculate total length up-front for single buffer allocation */
-    size = 2;
+    size = 2 + 1; // [] + \0
 
     int col_type = 0;
 
