@@ -748,8 +748,8 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
                 if ((col_type < 20 || col_type > 23) && (col_type != 3802 && col_type != 114) || size == 0) {
                     b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
 
-
-                    b->last = (u_char *) ngx_escape_json(b->last, (u_char *) PQgetvalue(res, row, col), size);
+                    if (size > 0)
+                        b->last = (u_char *) ngx_escape_json(b->last, (u_char *) PQgetvalue(res, row, col), size);
 
 
                     b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
