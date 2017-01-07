@@ -59,7 +59,7 @@ ngx_postgres_keepalive_init(ngx_pool_t *pool,
         for (j = 0; j < 10; j++)
             cached[i].statements[j] = 0;
 
-        fprintf(stdout, "keepalive init %p\n", cached[i].statements);
+//        fprintf(stdout, "keepalive init %p\n", cached[i].statements);
     }
 
     dd("returning NGX_OK");
