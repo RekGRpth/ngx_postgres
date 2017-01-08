@@ -26,7 +26,7 @@
  */
 
 #ifndef DDEBUG
-#define DDEBUG 0
+#define DDEBUG 1
 #endif
 
 #include "ngx_postgres_ddebug.h"

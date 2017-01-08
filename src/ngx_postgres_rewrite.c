@@ -25,7 +25,7 @@
  */
 
 #ifndef DDEBUG
-#define DDEBUG 0
+#define DDEBUG 1
 #endif
 
 #include "ngx_postgres_ddebug.h"
@@ -368,6 +368,7 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                           }
                           m[written++] = *c;
                         }
+                        m[written] = '\0';
                         r->headers_out.location->value.data = (u_char *) m;
                         r->headers_out.location->value.len = written;
 
