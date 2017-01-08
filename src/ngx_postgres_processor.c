@@ -27,7 +27,7 @@
  */
 
 #ifndef DDEBUG
-#define DDEBUG 1
+#define DDEBUG 0
 #endif
 
 #include "ngx_postgres_ddebug.h"
@@ -64,23 +64,28 @@ ngx_postgres_process_events(ngx_http_request_t *r)
 
     switch (pgdt->state) {
     case state_db_connect:
-        dd("state_db_connect");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+                   "state_db_connect");
         rc = ngx_postgres_upstream_connect(r, pgxc, pgdt);
         break;
     case state_db_send_query:
-        dd("state_db_send_query");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+                   "state_db_send_query");
         rc = ngx_postgres_upstream_send_query(r, pgxc, pgdt);
         break;
     case state_db_get_result:
-        dd("state_db_get_result");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+                   "state_db_get_result");
         rc = ngx_postgres_upstream_get_result(r, pgxc, pgdt);
         break;
     case state_db_get_ack:
-        dd("state_db_get_ack");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+                   "state_db_get_ack");
         rc = ngx_postgres_upstream_get_ack(r, pgxc, pgdt);
         break;
     case state_db_idle:
-        dd("state_db_idle, re-using keepalive connection");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+                   "state_db_idle, re-using keepalive connection");
         pgxc->log->action = "sending query to PostgreSQL database";
         pgdt->state = state_db_send_query;
         rc = ngx_postgres_upstream_send_query(r, pgxc, pgdt);

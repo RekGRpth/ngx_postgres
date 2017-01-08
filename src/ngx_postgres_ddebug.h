@@ -36,9 +36,9 @@
 
 #   if (NGX_HAVE_VARIADIC_MACROS)
 
-#       define dd(...) fprintf(stdout, "postgres *** %s: ", __func__); \
-            fprintf(stdout, __VA_ARGS__); \
-            fprintf(stdout, " *** %s line %d.\n", __FILE__, __LINE__)
+#       define dd(...) fprintf(stderr, "postgres *** %s: ", __func__); \
+            fprintf(stderr, __VA_ARGS__); \
+            fprintf(stderr, " *** %s line %d.\n", __FILE__, __LINE__)
 
 #   else
 
