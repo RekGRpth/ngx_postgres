@@ -27,7 +27,7 @@
  */
 
 #ifndef DDEBUG
-#define DDEBUG 0
+#define DDEBUG 1
 #endif
 
 #include "ngx_postgres_ddebug.h"
@@ -582,11 +582,7 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
                              prepared_name,
                              paramnum,(const char** )Values,NULL,NULL,0);
 
-            //fprintf(stdout, "Sent query prepared [%d] \n", paramnum);
-            //if (pgrc == 0) {
-            //    fprintf(stdout, "error msg [%s] \n", PQerrorMessage(pgdt->pgconn));
-            //    
-            //}
+            dd("Sent query prepared");
         } else {
             pgrc = PQsendQueryParams(pgdt->pgconn, (const char *) query, paramnum, Types, (const char** )Values, NULL, NULL, 0);
             //fprintf(stdout, "Sent query unprepared [%d] \n", pgrc);
