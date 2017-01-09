@@ -25,7 +25,7 @@
  */
 
 #ifndef DDEBUG
-#define DDEBUG 1
+#define DDEBUG 0
 #endif
 
 #include "ngx_postgres_ddebug.h"
@@ -292,12 +292,10 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
     ngx_uint_t               i;
 
     dd("entering");
-    //fprintf(stdout, "ngx_postgres_rewrite %s\n", url);
 
     if (pgrcf->methods_set & r->method) {
         /* method-specific */
         rewrite = pgrcf->methods->elts;
-                //fprintf(stdout, "XEDIRECTING OUT %d\n", pgrcf->methods->nelts);
         for (i = 0; i < pgrcf->methods->nelts; i++) {
             if (rewrite[i].key & r->method) {
                 char *p = NULL;
@@ -310,10 +308,7 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                 char *columned[10];
                 char *values[10];
 
-
-                //fprintf(stdout, "ZEDIRECTING OUT %s %d\n", p, url && strlen(url));
                 if (p != NULL) {
-                    //fprintf(stdout, "rewrite %s\n", rewrite[i].location);
 
                     // write template name into $html
                     if (*p != '/' && *p != '.') {
@@ -372,7 +367,6 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         r->headers_out.location->value.data = (u_char *) m;
                         r->headers_out.location->value.len = written;
 
-                        //fprintf(stdout, "REDIRECTING OUT %s %d\n", m, written);
                         dd("returning status:%d", (int) rewrite[i].status);
                         return 301;
                     }

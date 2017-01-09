@@ -27,7 +27,7 @@
  */
 
 #ifndef DDEBUG
-#define DDEBUG 1
+#define DDEBUG 0
 #endif
 
 #include <nginx.h>
