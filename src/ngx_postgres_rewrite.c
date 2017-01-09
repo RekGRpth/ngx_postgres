@@ -352,7 +352,7 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         }
 
                         int len = strlen(p);
-                        char *m = ngx_pnalloc(r->pool, len);
+                        char *m = ngx_pnalloc(r->pool, len + 1);
                         int written = 0;
 
                         // remove leading // and /0/
