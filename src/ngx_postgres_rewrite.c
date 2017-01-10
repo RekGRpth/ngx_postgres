@@ -40,7 +40,7 @@
   
    char *p;
    for (p = url; p < url + size; p++)
-     if (*p == ':'/* || *p == '$'*/)
+     if (*p == ':' && *(p + 1) != '/')
        variables[vars++] = (p + 1);
 
    return vars;
@@ -311,7 +311,7 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                 if (p != NULL) {
 
                     // write template name into $html
-                    if (*p != '/' && *p != '.') {
+                    if (*p != '/' && *p != '$' && *p != '.' && (strlen(p) < 7 || *p != 'h' || *(p + 1) != 't' || *(p + 2) != 't' || *(p + 3) != 'p')) {
                         ngx_str_t html_variable = ngx_string("html");
                         ngx_uint_t html_variable_hash = ngx_hash_key(html_variable.data, html_variable.len);
                         ngx_http_variable_value_t *raw_html = ngx_http_get_variable( r, &html_variable, html_variable_hash  );
@@ -339,21 +339,19 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                           p = ngx_postgres_interpolate_url(p, size, variables, vars, columned, values, r);
                         }
 
+
+
                         // redirect out
                         r->headers_out.location = ngx_list_push(&r->headers_out.headers);
-                        if (r->headers_out.location == NULL) {
-                            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-                            return NGX_OK;
-                        }
 
                         int len = strlen(p);
                         char *m = ngx_pnalloc(r->pool, len + 1);
                         int written = 0;
 
-                        // remove leading // and /0/
+                        // remove double // and /0/, leave ://
                         char *c;
                         for (c = p; c < p + len; c++) {
-                          if (*c == '/') {
+                          if (*c == '/' && (c == p || *(c - 1) != ':')) {
                             if (*(c + 1) == '/')
                               continue;
                             if (*(c + 1) == '0' && *(c + 2) == '/') {
@@ -368,7 +366,7 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         r->headers_out.location->value.len = written;
 
                         dd("returning status:%d", (int) rewrite[i].status);
-                        return 301;
+                        return 303;
                     }
                 }
                 return rewrite[i].status;
@@ -463,7 +461,7 @@ ngx_postgres_rewrite_valid(ngx_http_request_t *r,
         rewrite = pgrcf->methods->elts;
         for (i = 0; i < pgrcf->methods->nelts; i++)
             if (rewrite[i].key & r->method)
-                if (rewrite[i].location && rewrite[i].location[0] != '$') {
+                if (rewrite[i].location) {
                     redirect = rewrite[i].location;
                     break;
                 }
