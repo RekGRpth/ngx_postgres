@@ -172,8 +172,8 @@
 
  char *ngx_postgres_interpolate_url(char *redirect, int size, char *variables[10], int vars, char *columned[10], char *values[10], ngx_http_request_t *r) {
 
-   char url[256] = "";
-   ngx_memzero(url, sizeof(url));
+   char url[512] = "";
+   ngx_memzero(url, 512);
 
    int written = 0;
    char *p;
@@ -186,7 +186,8 @@
        url_variable.data = (u_char *) p + 1;
        url_variable.len = 0;
        //fprintf(stdout, "something here %s\n", p);
-       while(1) {
+
+       while(url_variable.len < (redirect + size) - (p + 1)) {
          u_char *n = url_variable.data + url_variable.len;
          if (*n == '\0' || *n == '=' || *n == '&' || *n == '-' || *n == '%' || *n == '/' || *n == '#' || *n == '?' || *n == ':')
            break;
@@ -298,60 +299,39 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
         rewrite = pgrcf->methods->elts;
         for (i = 0; i < pgrcf->methods->nelts; i++) {
             if (rewrite[i].key & r->method) {
-                char *p = NULL;
-                if (url != NULL && strlen(url) > 0)
-                  p = url;
-                else
-                  p = rewrite[i].location;
 
-                char *variables[10];
-                char *columned[10];
-                char *values[10];
-
-                if (p != NULL) {
+                if (rewrite[i].location.len > 0) {
 
                     // write template name into $html
-                    if (*p != '/' && *p != '$' && *p != '.' && (strlen(p) < 7 || *p != 'h' || *(p + 1) != 't' || *(p + 2) != 't' || *(p + 3) != 'p')) {
+                    // if location had no slashes and no variables (can't read template file by variable name)
+                    if (ngx_strnstr(rewrite[i].location.data, "$", rewrite[i].location.len) == NULL &&
+                        ngx_strnstr(rewrite[i].location.data, ":", rewrite[i].location.len) == NULL &&
+                        ngx_strnstr(rewrite[i].location.data, "/", rewrite[i].location.len) == NULL) {
+
+
                         ngx_str_t html_variable = ngx_string("html");
                         ngx_uint_t html_variable_hash = ngx_hash_key(html_variable.data, html_variable.len);
                         ngx_http_variable_value_t *raw_html = ngx_http_get_variable( r, &html_variable, html_variable_hash  );
                         
-                        int l = strlen(p);
-                        raw_html->len = l;
-                        raw_html->data = ngx_pnalloc(r->pool, l + 1);
-                        memcpy(raw_html->data, p, l);
-                        raw_html->data[l] = '\0';
+                        raw_html->len = rewrite[i].location.len;
+                        raw_html->data = rewrite[i].location.data;
+
+                        return 200;
                     // redirect to outside url
                     } else {
 
-                        if (p != url) {
-                          int size = strlen(p);
-                          int vars = 0;
-                          //fprintf(stdout, "formatting url %d\n", size);
-                          vars = ngx_postgres_find_variables(variables, p, size);
-                          //fprintf(stdout, "formatting url %d\n", vars);
-
-                          ngx_postgres_ctx_t  *pgctx;
-                          pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-
-                          // when interpolating redirect url, also look for errors
-                          ngx_postgres_find_values(values, variables, vars, columned, pgctx, 0);
-                          p = ngx_postgres_interpolate_url(p, size, variables, vars, columned, values, r);
-                        }
-
-
+                        int len = strlen(url);
 
                         // redirect out
                         r->headers_out.location = ngx_list_push(&r->headers_out.headers);
 
-                        int len = strlen(p);
-                        char *m = ngx_pnalloc(r->pool, len + 1);
+                        u_char *m = ngx_pnalloc(r->pool, len + 1);
                         int written = 0;
 
                         // remove double // and /0/, leave ://
                         char *c;
-                        for (c = p; c < p + len; c++) {
-                          if (*c == '/' && (c == p || *(c - 1) != ':')) {
+                        for (c = url; c < url + len; c++) {
+                          if (*c == '/' && (c == url || *(c - 1) != ':')) {
                             if (*(c + 1) == '/')
                               continue;
                             if (*(c + 1) == '0' && *(c + 2) == '/') {
@@ -364,11 +344,13 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         m[written] = '\0';
                         r->headers_out.location->value.data = (u_char *) m;
                         r->headers_out.location->value.len = written;
+                        r->headers_out.location->hash = 1;
+                        ngx_str_set(&r->headers_out.location->key, "Location");
 
-                        dd("returning status:%d", (int) rewrite[i].status);
                         return 303;
                     }
                 }
+                dd("returning status:%d", (int) rewrite[i].status);
                 return rewrite[i].status;
             }
         }
@@ -443,7 +425,7 @@ ngx_postgres_rewrite_valid(ngx_http_request_t *r,
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
-    char *redirect = NULL;
+    ngx_str_t redirect;
     char *variables[10];
     char *columned[10];
     char *values[10];
@@ -456,34 +438,28 @@ ngx_postgres_rewrite_valid(ngx_http_request_t *r,
       values[i] = columned[i] = variables[i] = NULL;
     }
     
+    int size = 0;
     // find callback
     if (pgrcf->methods_set & r->method) {
-        rewrite = pgrcf->methods->elts;
-        for (i = 0; i < pgrcf->methods->nelts; i++)
-            if (rewrite[i].key & r->method)
-                if (rewrite[i].location) {
-                    redirect = rewrite[i].location;
-                    break;
-                }
+      rewrite = pgrcf->methods->elts;
+      for (i = 0; i < pgrcf->methods->nelts; i++)
+        if (rewrite[i].key & r->method)
+          if (rewrite[i].location.len > 0) {
+            redirect = rewrite[i].location;
+            break;
+          }
     }
 
-    int size = 0;
     int vars = 0;
-    if (redirect) {
-      size = strlen(redirect);
-      vars = ngx_postgres_find_variables(variables, redirect, size);
-
+    if (redirect.len > 0) {
+      vars = ngx_postgres_find_variables(variables, (char *) redirect.data, redirect.len);
     }
     // when interpolating redirect url, also look for errors
     char *error = ngx_postgres_find_values(values, variables, vars, columned, pgctx, 1);
     char *url = NULL;
-    if (redirect) {
-      url = ngx_postgres_interpolate_url(redirect, size, variables, vars, columned, values, r);
+    if (redirect.len > 0) {
+      url = ngx_postgres_interpolate_url((char *) redirect.data, redirect.len, variables, vars, columned, values, r);
     }
-
-    
-
-    //fprintf(stdout, "\nFAILED?: %d\n", failed);
 
     if ((pgrcf->key % 2 == 0) && error == NULL) {
         /* no_rows */

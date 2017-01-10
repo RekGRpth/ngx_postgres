@@ -558,6 +558,11 @@ ngx_postgres_output_chain(ngx_http_request_t *r, ngx_chain_t *cl)
             r->headers_out.content_type.data = (u_char *) rds_content_type;
             r->headers_out.content_type.len = rds_content_type_len;
             r->headers_out.content_type_len = rds_content_type_len;
+        //} else if (pglcf->output_handler == &ngx_postgres_output_json) {
+        //    This thing crashes nginx for some reason...
+        //    r->headers_out.content_type.data = (u_char *) json_content_type;
+        //    r->headers_out.content_type.len = json_content_type_len;
+        //    r->headers_out.content_type_len = json_content_type_len;
         } else if (pglcf->output_handler != NULL) {
             /* default type for output value|row */
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);

@@ -11,6 +11,12 @@
     (sizeof(rds_content_type) - 1)
 
 
+#define json_content_type \
+    "application/json"
+
+#define json_content_type_len \
+    (sizeof(json_content_type) - 1)
+
 typedef enum {
     rds_rough_col_type_int = 0 << 14,
     rds_rough_col_type_float = 1 << 14,

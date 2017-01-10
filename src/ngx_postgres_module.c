@@ -966,8 +966,7 @@ found:
         || ((rewrite->status >= NGX_HTTP_SPECIAL_RESPONSE)
             && (rewrite->status < NGX_HTTP_BAD_REQUEST)))
     {   
-          rewrite->location = (char *) to.data;
-          rewrite->status = 200; 
+          rewrite->location = to;
         //dd("returning NGX_CONF_ERROR");
 
         //return NGX_CONF_ERROR;
