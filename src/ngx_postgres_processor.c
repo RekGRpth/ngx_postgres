@@ -327,7 +327,7 @@ char * find_query_in_json(ngx_http_request_t *r, u_char *data, ngx_int_t length)
 }
 
 
-int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, int len, int paramnum, Oid *types, char **values, char **names) {
+int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, int len, int *paramnum, Oid *types, char **values, char **names) {
     // compute size for placeholders
     u_char *p = data;
     int size = len;
@@ -352,7 +352,6 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
 
                     int newsize = generate_prepared_query(r, query, (u_char *) subquery, strlen(subquery) - 1, paramnum, types, values, names);
                     size += newsize; // expanded :sql
-                    paramnum++;
                 } else {
                     // typed param
                     if (*(p + 2) == ':') {
@@ -365,7 +364,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                     size -= f - p; // :name
 
                     int i = 0;
-                    for (; i < paramnum; i++) {
+                    for (; i < *paramnum; i++) {
                         if (strncmp(names[i], (char *) p, f - p) == 0) {
                             char *n = names[i] + (f - p) + 1;
                             if ((*n >= 'a' && *n <= 'z') || (*n >= 'A' && *n <= 'Z') || *n == '_')
@@ -373,9 +372,9 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                             break;
                         }
                     }
-                    if (i == paramnum) {
-                        names[paramnum] = (char *) p;
-                        paramnum++;
+                    if (i == *paramnum) {
+                        names[*paramnum] = (char *) p;
+                        (*paramnum)++;
                     }
                     char placeholder_name[16];
                     sprintf(placeholder_name, "$%d", i + 1);
@@ -414,7 +413,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                         
                     // copy middle side
                     int newsize = generate_prepared_query(r, NULL, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
-                    paramnum = generate_prepared_query(r, query + counter, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
+                    generate_prepared_query(r, query + counter, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
 
                     counter += newsize;
                     
@@ -456,7 +455,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                     
 
                     int i = 0;
-                    for (; i < paramnum; i++) {
+                    for (; i < *paramnum; i++) {
                         if (strncmp(names[i], (char *) p, f - p) == 0) {
                             char *n = names[i] + (f - p) + 1;
                             if ((*n >= 'a' && *n <= 'z') || (*n >= 'A' && *n <= 'Z') || *n == '_')
@@ -464,7 +463,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                             break;
                         }
                     }
-                    if (i == paramnum) {
+                    if (i == *paramnum) {
 
                         ngx_str_t param_variable;
                         param_variable.data = p + 1;
@@ -477,13 +476,13 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                             char *final_value = ngx_palloc(r->pool, (param_value->len) + 1);
                             strncpy(final_value, (char *) param_value->data, param_value->len);
                             strncpy(final_value + (param_value->len), "\0", 1);
-                            values[paramnum] = final_value;                        
+                            values[*paramnum] = final_value;                        
                         } else {
-                            values[paramnum] = NULL;
+                            values[*paramnum] = NULL;
                         }
-                        names[paramnum] = (char *) p;
-                        types[paramnum] = type;
-                        paramnum++;
+                        names[*paramnum] = (char *) p;
+                        types[*paramnum] = type;
+                        (*paramnum)++;
                     }
 
 
@@ -506,8 +505,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
         memcpy(query + counter, "\0", 1);
         
         //fprintf(stdout, "Final query: [%lu] %s\n", strlen(query), query);
-
-        return paramnum;
+        return counter;
     }
     //fprintf(stdout, "Paramnum is %d\n", paramnum);
     return size;
@@ -539,17 +537,19 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
         const char *Names[30];
 
         // measure and alloc new query
-        int prepared_query_size = generate_prepared_query(r, NULL, pgdt->query.data + 1, pgdt->query.len - 1, 0, NULL, NULL, (char **) &Names);
+        int paramnum = 0;
+        int prepared_query_size = generate_prepared_query(r, NULL, pgdt->query.data + 1, pgdt->query.len - 1, &paramnum, NULL, NULL, (char **) &Names);
         //fprintf(stdout, "prepared query size: %d \n", prepared_query_size);
         query = ngx_pnalloc(r->pool, prepared_query_size + 1);
         
 
         // generate prepared query
-        int paramnum = generate_prepared_query(r, (char *) query, pgdt->query.data + 1, pgdt->query.len - 1, 0, Types, (char **) &Values, (char **) &Names);
+        paramnum = 0;
+        generate_prepared_query(r, (char *) query, pgdt->query.data + 1, pgdt->query.len - 1, &paramnum, Types, (char **) &Values, (char **) &Names);
         //fprintf(stdout, "prepared query: [%d] %s \n", paramnum, query);
 
-        //for (int i = 0; i < paramnum; i++)
-        //    fprintf(stdout, "Prepared param #%d [%d/%d] %s %p \n", i, Types[i], strlen(Values[i]), Values[i], Values[i]);
+        for (int i = 0; i < paramnum; i++)
+            fprintf(stdout, "Prepared param #%d [%d/%d] %s %p \n", i, Types[i], strlen(Values[i]), Values[i], Values[i]);
 //
         if (pgdt->statements) {
             // hash query
