@@ -39,7 +39,7 @@
    // find variables in redirect url
   
    char *p;
-   for (p = url; p < url + size; p++)
+   for (p = url; p < url + size - 1; p++)
      if (*p == ':' && *(p + 1) != '/')
        variables[vars++] = (p + 1);
 
@@ -306,7 +306,7 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                     // if location had no slashes and no variables (can't read template file by variable name)
                     if (ngx_strnstr(rewrite[i].location.data, "$", rewrite[i].location.len) == NULL &&
                         ngx_strnstr(rewrite[i].location.data, ":", rewrite[i].location.len) == NULL &&
-                        ngx_strnstr(rewrite[i].location.data, "/", rewrite[i].location.len) == NULL) {
+                        ngx_strnstr(rewrite[i].location.data, ".html", rewrite[i].location.len) != NULL) {
 
 
                         ngx_str_t html_variable = ngx_string("html");
@@ -319,6 +319,17 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         return 200;
                     // redirect to outside url
                     } else {
+                        // errors/no_errors rewriters already provide interpolated url, 
+                        // but others need to do it here
+                        if (url == NULL) {
+                          char *variables[10];
+                          char *columned[10];
+                          char *values[10];
+                          ngx_postgres_ctx_t  *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
+                          int vars = ngx_postgres_find_variables(variables, (char *) rewrite[i].location.data, rewrite[i].location.len);
+                          char *error = ngx_postgres_find_values(values, variables, vars, columned, pgctx, 1);
+                          url = ngx_postgres_interpolate_url((char *) rewrite[i].location.data, rewrite[i].location.len, variables, vars, columned, values, r);
+                        }
 
                         int len = strlen(url);
 
@@ -426,6 +437,8 @@ ngx_postgres_rewrite_valid(ngx_http_request_t *r,
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
     ngx_str_t redirect;
+    //redirect.len = 0;
+
     char *variables[10];
     char *columned[10];
     char *values[10];

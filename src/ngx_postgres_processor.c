@@ -478,6 +478,8 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                             strncpy(final_value, (char *) param_value->data, param_value->len);
                             strncpy(final_value + (param_value->len), "\0", 1);
                             values[paramnum] = final_value;                        
+                        } else {
+                            values[paramnum] = NULL;
                         }
                         names[paramnum] = (char *) p;
                         types[paramnum] = type;
