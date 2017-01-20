@@ -671,40 +671,46 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
     col_count = pgctx->var_cols;
     row_count = pgctx->var_rows;
 
-    /* pre-calculate total length up-front for single buffer allocation */
-    size = 2 + 1; // [] + \0
-
     int col_type = 0;
 
-    for (row = 0; row < row_count; row++) {
-        size += sizeof("{}") - 1;
-        for (col = 0; col < col_count; col++) {
-            if (PQgetisnull(res, row, col)) {
-                size += sizeof("null") - 1;
-            } else {
-                col_type = PQftype(res, col);
-                int col_length = PQgetlength(res, row, col);
+    // single row with single json column, return that column
+    if (row_count == 1 && col_count == 1 && (PQftype(res, 0) == 114 || PQftype(res, 0) == 3802)) {
+        size = PQgetlength(res, 0, 0) + 1;
+    } else {
+        /* pre-calculate total length up-front for single buffer allocation */
+        size = 2 + 1; // [] + \0
 
-                if ((col_type < 20 || col_type > 23) && (col_type != 3802 && col_type != 114)) { //not numbers or json
-                    size += sizeof("\"\"") - 1;
 
-                    char *col_value = PQgetvalue(res, row, col);
-                    col_length += ngx_escape_json(NULL, (u_char *) col_value, col_length);
+        for (row = 0; row < row_count; row++) {
+            size += sizeof("{}") - 1;
+            for (col = 0; col < col_count; col++) {
+                if (PQgetisnull(res, row, col)) {
+                    size += sizeof("null") - 1;
+                } else {
+                    col_type = PQftype(res, col);
+                    int col_length = PQgetlength(res, row, col);
 
+                    if ((col_type < 20 || col_type > 23) && (col_type != 3802 && col_type != 114)) { //not numbers or json
+                        size += sizeof("\"\"") - 1;
+
+                        char *col_value = PQgetvalue(res, row, col);
+                        col_length += ngx_escape_json(NULL, (u_char *) col_value, col_length);
+
+                    }
+                        
+                    size += col_length;  /* field string data */
                 }
-                    
-                size += col_length;  /* field string data */
             }
         }
-    }
-    for (col = 0; col < col_count; col++) {
-        char *col_name = PQfname(res, col);
-        size += (strlen(col_name) + 3) * row_count; // extra "":  
-    }
+        for (col = 0; col < col_count; col++) {
+            char *col_name = PQfname(res, col);
+            size += (strlen(col_name) + 3) * row_count; // extra "":  
+        }
 
-    size += row_count * (col_count - 1);               /* column delimeters */
-    size += row_count - 1;                            /* row delimeters */
-    
+        size += row_count * (col_count - 1);               /* column delimeters */
+        size += row_count - 1;                            /* row delimeters */
+        
+    }
 
     if ((row_count == 0) || (size == 0)) {
         dd("returning NGX_DONE (empty result)");
@@ -727,47 +733,56 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
     b->memory = 1;
     b->tag = r->upstream->output.tag;
 
-    /* fill data */
-    b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
-    for (row = 0; row < row_count; row++) {
-        if (row > 0)
-            b->last = ngx_copy(b->last, ",", 1);
 
-        b->last = ngx_copy(b->last, "{", sizeof("{") - 1);
-        for (col = 0; col < col_count; col++) {
-            if (col > 0)
+    if (row_count == 1 && col_count == 1 && (PQftype(res, 0) == 114 || PQftype(res, 0) == 3802)) {
+
+        b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0),
+                           size - 1);
+        b->last = ngx_copy(b->last, "", sizeof(""));
+    } else {
+
+        /* fill data */
+        b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
+        for (row = 0; row < row_count; row++) {
+            if (row > 0)
                 b->last = ngx_copy(b->last, ",", 1);
 
-            char *col_name = PQfname(res, col);
-            b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
-            b->last = ngx_copy(b->last, col_name, strlen(col_name));
-            b->last = ngx_copy(b->last, "\":", sizeof("\":") - 1);
+            b->last = ngx_copy(b->last, "{", sizeof("{") - 1);
+            for (col = 0; col < col_count; col++) {
+                if (col > 0)
+                    b->last = ngx_copy(b->last, ",", 1);
 
-            if (PQgetisnull(res, row, col)) {
-                b->last = ngx_copy(b->last, "null", sizeof("null") - 1);
-            } else {
-                size = PQgetlength(res, row, col);
+                char *col_name = PQfname(res, col);
+                b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
+                b->last = ngx_copy(b->last, col_name, strlen(col_name));
+                b->last = ngx_copy(b->last, "\":", sizeof("\":") - 1);
 
-                col_type = PQftype(res, col);
-                //not numbers or json
-                if (((col_type < 20 || col_type > 23) && (col_type != 3802 && col_type != 114)) || size == 0) {
-                    b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
-
-                    if (size > 0)
-                        b->last = (u_char *) ngx_escape_json(b->last, (u_char *) PQgetvalue(res, row, col), size);
-
-
-                    b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
+                if (PQgetisnull(res, row, col)) {
+                    b->last = ngx_copy(b->last, "null", sizeof("null") - 1);
                 } else {
-                    b->last = ngx_copy(b->last, PQgetvalue(res, row, col),
-                                       size);
-                }
-            }
+                    size = PQgetlength(res, row, col);
 
+                    col_type = PQftype(res, col);
+                    //not numbers or json
+                    if (((col_type < 20 || col_type > 23) && (col_type != 3802 && col_type != 114)) || size == 0) {
+                        b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
+
+                        if (size > 0)
+                            b->last = (u_char *) ngx_escape_json(b->last, (u_char *) PQgetvalue(res, row, col), size);
+
+
+                        b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
+                    } else {
+                        b->last = ngx_copy(b->last, PQgetvalue(res, row, col),
+                                           size);
+                    }
+                }
+
+            }
+            b->last = ngx_copy(b->last, "}", sizeof("}") - 1);
         }
-        b->last = ngx_copy(b->last, "}", sizeof("}") - 1);
+        b->last = ngx_copy(b->last, "]", sizeof("]"));
     }
-    b->last = ngx_copy(b->last, "]", sizeof("]"));
 
     //fprintf(stdout, "PRINTING %d\n", b->end - b->last);
     //fprintf(stdout, "PRINTING %s\n", b->pos);
