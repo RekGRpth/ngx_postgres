@@ -412,7 +412,9 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                     char *subquery = find_query_in_json(r, p, f - p + 1);
                         
                     // copy middle side
+                    int oldparamnum = *paramnum;
                     int newsize = generate_prepared_query(r, NULL, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
+                    *paramnum = oldparamnum;
                     generate_prepared_query(r, query + counter, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
 
                     counter += newsize;
@@ -469,6 +471,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                         param_variable.data = p + 1;
                         param_variable.len = f - (p + 1);
 
+                        //fprintf(stdout, "req param by name: [%s] %d\n", param_variable.data, param_variable.len);
                         ngx_uint_t param_hash = ngx_hash_key(param_variable.data, param_variable.len);
                         ngx_http_variable_value_t *param_value = ngx_http_get_variable( r, &param_variable, param_hash  );
 
@@ -504,7 +507,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
         counter += data + len - lastcut;
         memcpy(query + counter, "\0", 1);
         
-        //fprintf(stdout, "Final query: [%lu] %s\n", strlen(query), query);
+        fprintf(stdout, "Final query: [%lu] %s\n", strlen(query), query);
         return counter;
     }
     //fprintf(stdout, "Paramnum is %d\n", paramnum);
@@ -527,7 +530,6 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
 
     u_char *p = pgdt->query.data;
     // run query substitution
-    //fprintf(stdout, "running query %s\n", p);
     if (*p == ':') {
         // prepare param arrays
         Oid *types[30];
@@ -536,21 +538,43 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
         const char *Values[30];
         const char *Names[30];
 
+        // when query is :index, set $action to and read $sql
+        u_char *start = pgdt->query.data + 1;
+        int len = pgdt->query.len - 1;
+        int i = 0;
+        while (*(start + i) >= 'a' && *(start + i) <= 'z' && i < len) {
+            if (i == len - 1) {
+                ngx_str_t meta_variable = ngx_string("action");
+                ngx_uint_t meta_variable_hash = ngx_hash_key(meta_variable.data, meta_variable.len);
+                ngx_http_variable_value_t *meta_data = ngx_http_get_variable( r, &meta_variable, meta_variable_hash  );
+                meta_data->data = start;
+                meta_data->len = len;
+
+                ngx_str_t sql_variable = ngx_string("sql");
+                ngx_uint_t sql_variable_hash = ngx_hash_key(sql_variable.data, sql_variable.len);
+                ngx_http_variable_value_t *sql_data = ngx_http_get_variable( r, &sql_variable, sql_variable_hash  );
+                    
+                start = sql_data->data;
+                len = sql_data->len;
+                break;
+            }
+            i++;
+        }
+
         // measure and alloc new query
         int paramnum = 0;
-        int prepared_query_size = generate_prepared_query(r, NULL, pgdt->query.data + 1, pgdt->query.len - 1, &paramnum, NULL, NULL, (char **) &Names);
+        int prepared_query_size = generate_prepared_query(r, NULL, start, len, &paramnum, NULL, NULL, (char **) &Names);
         //fprintf(stdout, "prepared query size: %d \n", prepared_query_size);
         query = ngx_pnalloc(r->pool, prepared_query_size + 1);
         
 
         // generate prepared query
         paramnum = 0;
-        generate_prepared_query(r, (char *) query, pgdt->query.data + 1, pgdt->query.len - 1, &paramnum, Types, (char **) &Values, (char **) &Names);
+        generate_prepared_query(r, (char *) query, start, len, &paramnum, Types, (char **) &Values, (char **) &Names);
         //fprintf(stdout, "prepared query: [%d] %s \n", paramnum, query);
 
-        for (int i = 0; i < paramnum; i++)
-            fprintf(stdout, "Prepared param #%d [%d/%d] %s %p \n", i, Types[i], strlen(Values[i]), Values[i], Values[i]);
-//
+        //for (int i = 0; i < paramnum; i++)
+        //    fprintf(stdout, "Prepared param #%d [%d] %s %p \n", i, Types[i], Values[i], Values[i]);
         if (pgdt->statements) {
             // hash query
             ngx_uint_t prepared_hash = ngx_hash_key(query, strlen((char *) query));
