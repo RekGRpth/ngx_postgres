@@ -40,6 +40,7 @@
 ngx_int_t        ngx_postgres_output_value(ngx_http_request_t *, PGresult *);
 ngx_int_t        ngx_postgres_output_text(ngx_http_request_t *, PGresult *);
 ngx_int_t        ngx_postgres_output_json(ngx_http_request_t *, PGresult *);
+ngx_int_t        ngx_postgres_output_hex(ngx_http_request_t *, PGresult *);
 ngx_int_t        ngx_postgres_output_rds(ngx_http_request_t *, PGresult *);
 ngx_chain_t     *ngx_postgres_render_rds_header(ngx_http_request_t *,
                      ngx_pool_t *, PGresult *, ngx_int_t, ngx_int_t);

@@ -118,6 +118,115 @@ ngx_postgres_output_value(ngx_http_request_t *r, PGresult *res)
     return NGX_DONE;
 }
 
+
+ngx_int_t
+ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
+{
+    ngx_postgres_ctx_t        *pgctx;
+    ngx_http_core_loc_conf_t  *clcf;
+    ngx_chain_t               *cl;
+    ngx_buf_t                 *b;
+    size_t                     size;
+
+    dd("entering");
+
+    pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
+
+    if ((pgctx->var_rows != 1) || (pgctx->var_cols != 1)) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "postgres: \"postgres_output value\" received %d value(s)"
+                      " instead of expected single value in location \"%V\"",
+                      pgctx->var_rows * pgctx->var_cols, &clcf->name);
+
+        dd("returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR");
+        pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_DONE;
+    }
+
+    if (PQgetisnull(res, 0, 0)) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "postgres: \"postgres_output value\" received NULL value"
+                      " in location \"%V\"", &clcf->name);
+
+        dd("returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR");
+        pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_DONE;
+    }
+
+    size = PQgetlength(res, 0, 0);
+    if (size == 0) {
+        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "postgres: \"postgres_output value\" received empty value"
+                      " in location \"%V\"", &clcf->name);
+
+        dd("returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR");
+        pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        return NGX_DONE;
+    }
+
+    b = ngx_create_temp_buf(r->pool, floor(size / 2));
+    if (b == NULL) {
+        dd("returning NGX_ERROR");
+        return NGX_ERROR;
+    }
+
+    cl = ngx_alloc_chain_link(r->pool);
+    if (cl == NULL) {
+        dd("returning NGX_ERROR");
+        return NGX_ERROR;
+    }
+
+    cl->buf = b;
+    b->memory = 1;
+    b->tag = r->upstream->output.tag;
+
+    char *value = PQgetvalue(res, 0, 0);
+
+    int start = 0;
+    if (value[start] == 'x')
+        start++;
+
+    int i = 0;
+    for (; start < size; start += 2)
+        *(b->last++) = hex2bin(value + start);
+    if (b->last != b->end) {
+        dd("returning NGX_ERROR");
+        return NGX_ERROR;
+    }
+
+    cl->next = NULL;
+
+    /* set output response */
+    pgctx->response = cl;
+
+    dd("returning NGX_DONE");
+    return NGX_DONE;
+}
+int hex2bin( const char *s )
+{
+    int ret=0;
+    int i;
+    for( i=0; i<2; i++ )
+    {
+        char c = *s++;
+        int n=0;
+        if( '0'<=c && c<='9' )
+            n = c-'0';
+        else if( 'a'<=c && c<='f' )
+            n = 10 + c-'a';
+        else if( 'A'<=c && c<='F' )
+            n = 10 + c-'A';
+        ret = n + ret*16;
+    }
+    return ret;
+}
+
 ngx_int_t
 ngx_postgres_output_text(ngx_http_request_t *r, PGresult *res)
 {
