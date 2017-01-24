@@ -332,7 +332,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
     u_char *p = data;
     int size = len;
     if (query == NULL) {
-        for (p++; p < data + len; p++) {
+        for (; p < data + len; p++) {
             if (*p == ':' && ((*(p + 1) >= 'a' && *(p + 1) <= 'z') || (*(p + 1) >= 'A' && *(p + 1) <= 'Z') || *(p + 1) == ':' || *(p + 1) == '@' || *(p + 1) == '_')) {
                 // leave double colon as is
                 if (*(p + 1) == ':') {
@@ -350,7 +350,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                     //fprintf(stdout, "Length is %d %s\n", f - p, p);
                     char *subquery = find_query_in_json(r, p, f - p + 1);
 
-                    int newsize = generate_prepared_query(r, query, (u_char *) subquery, strlen(subquery) - 1, paramnum, types, values, names);
+                    int newsize = generate_prepared_query(r, NULL, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
                     size += newsize; // expanded :sql
                 } else {
                     // typed param
@@ -385,6 +385,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
 
             }
         }
+        //fprintf(stdout, "Final query size: [%d]\n", size);
     } else {
         u_char *lastcut = data;
         int counter = 0;
@@ -412,12 +413,8 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                     char *subquery = find_query_in_json(r, p, f - p + 1);
                         
                     // copy middle side
-                    int oldparamnum = *paramnum;
-                    int newsize = generate_prepared_query(r, NULL, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
-                    *paramnum = oldparamnum;
-                    generate_prepared_query(r, query + counter, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
+                    counter += generate_prepared_query(r, query + counter, (u_char *) subquery, strlen(subquery), paramnum, types, values, names);
 
-                    counter += newsize;
                     
                     //fprintf(stdout, "Query after subquery %s\n", query);
                     lastcut = f;
@@ -506,8 +503,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
         memcpy(query + counter, lastcut, data + len - lastcut + 1);
         counter += data + len - lastcut;
         memcpy(query + counter, "\0", 1);
-        
-        fprintf(stdout, "Final query: [%lu] %s\n", strlen(query), query);
+        //fprintf(stdout, "Final query: [%d/%d/%d] [%lu] %s\n", strlen(query), size, counter, strlen(query), query);
         return counter;
     }
     //fprintf(stdout, "Paramnum is %d\n", paramnum);
