@@ -233,6 +233,12 @@ done:
     return ngx_postgres_upstream_send_query(r, pgxc, pgdt);
 }
 
+
+bool is_variable_character(char *p) {
+    return ((*p >= '0' && *p <= '9') || 
+            (*p >= 'a' && *p <= 'z') ||
+            (*p >= 'A' && *p <= 'Z') || *p == '_');
+}
 char * find_query_in_json(ngx_http_request_t *r, u_char *data, ngx_int_t length) {
     //fprintf(stdout, "Looking for %s\n", data);
 
@@ -282,7 +288,7 @@ char * find_query_in_json(ngx_http_request_t *r, u_char *data, ngx_int_t length)
                 while (c < j) {
                     if (*c == '$') {
                         u_char *z = c + 1;
-                        while ((*z >= 'a' && *z <= 'z') || (*z >= 'A' && *z <= 'Z') || *z == '_')
+                        while (is_variable_character(z))
                             z++;
 
 
@@ -326,14 +332,13 @@ char * find_query_in_json(ngx_http_request_t *r, u_char *data, ngx_int_t length)
     return NULL;
 }
 
-
 int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, int len, int *paramnum, Oid *types, char **values, char **names) {
     // compute size for placeholders
     u_char *p = data;
     int size = len;
     if (query == NULL) {
         for (; p < data + len; p++) {
-            if (*p == ':' && ((*(p + 1) >= 'a' && *(p + 1) <= 'z') || (*(p + 1) >= 'A' && *(p + 1) <= 'Z') || *(p + 1) == ':' || *(p + 1) == '@' || *(p + 1) == '_')) {
+            if (*p == ':' && (is_variable_character(p + 1) || *(p + 1) == ':' ||  *(p + 1) == '@')) {
                 // leave double colon as is
                 if (*(p + 1) == ':') {
                     p++;
@@ -343,7 +348,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                     p += 2;
 
                     u_char *f = p + 1;
-                    while ((*f >= 'a' && *f <= 'z') || (*f >= 'A' && *f <= 'Z') || *f == '_')
+                    while (is_variable_character(f))
                         f++;
                     size -= f - p - 1; // :name
 
@@ -359,16 +364,14 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                         p += 2;
                     }
                     u_char *f = p + 1;
-                    while ((*f >= 'a' && *f <= 'z') || (*f >= 'A' && *f <= 'Z') || *f == '_')
+                    while (is_variable_character(f))
                         f++;
                     size -= f - p; // :name
 
                     int i = 0;
                     for (; i < *paramnum; i++) {
-                        if (strncmp(names[i], (char *) p, f - p) == 0) {
-                            char *n = names[i] + (f - p) + 1;
-                            if ((*n >= 'a' && *n <= 'z') || (*n >= 'A' && *n <= 'Z') || *n == '_')
-                                continue;
+                        if (strncmp(names[i], (char *) p, f - p) == 0
+                        && !is_variable_character(names[i] + (f - p))) {
                             break;
                         }
                     }
@@ -390,7 +393,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
         u_char *lastcut = data;
         int counter = 0;
         for (; p < data + len; p++) {
-            if (*p == ':' && ((*(p + 1) >= 'a' && *(p + 1) <= 'z') || (*(p + 1) >= 'A' && *(p + 1) <= 'Z') || *(p + 1) == ':' || *(p + 1) == '@' || *(p + 1) == '_')) {
+            if (*p == ':' && (is_variable_character(p + 1) || *(p + 1) == ':' || *(p + 1) == '@')) {
                 if (*(p + 1) == ':') {
                     p++;
                     continue;
@@ -406,7 +409,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                     p += 2;
 
                     u_char *f = p + 1;
-                    while ((*f >= 'a' && *f <= 'z') || (*f >= 'A' && *f <= 'Z') || *f == '_')
+                    while (is_variable_character(f))
                         f++;
                     
                     //fprintf(stdout, "Length is %d %s\n", f - p, p);
@@ -449,16 +452,14 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                     }
 
                     u_char *f = p + 1;
-                    while ((*f >= 'a' && *f <= 'z') || (*f >= 'A' && *f <= 'Z') || *f == '_')
+                    while (is_variable_character(f))
                         f++;
                     
 
                     int i = 0;
                     for (; i < *paramnum; i++) {
-                        if (strncmp(names[i], (char *) p, f - p) == 0) {
-                            char *n = names[i] + (f - p) + 1;
-                            if ((*n >= 'a' && *n <= 'z') || (*n >= 'A' && *n <= 'Z') || *n == '_')
-                                continue;
+                        if (strncmp(names[i], (char *) p, f - p) == 0
+                        && !is_variable_character(names[i] + (f - p))) {
                             break;
                         }
                     }
