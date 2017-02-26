@@ -849,6 +849,28 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
                            size - 1);
         b->last = ngx_copy(b->last, "", sizeof(""));
     } else {
+        // YF: Populate empty parent req variables with names of columns, if in subrequest
+        // HACK, LOL! Better move me out 
+        if (r != r->main) {
+
+            ngx_str_t export_variable;
+            for (col = 0; col < col_count; col++) {
+                char *col_name = PQfname(res, col);
+                export_variable.data = col_name;
+                export_variable.len = strlen(col_name);
+
+                ngx_uint_t meta_variable_hash = ngx_hash_key(export_variable.data, export_variable.len);
+                ngx_http_variable_value_t *raw_meta = ngx_http_get_variable( r->main, &export_variable, meta_variable_hash  );
+                if (!raw_meta->not_found && raw_meta->len == 0) {
+                    raw_meta->valid = 1;
+                    int exported_length = PQgetlength(res, 0, col);
+                    char *exported_value = ngx_palloc(r->main->pool, exported_length);
+                    ngx_memcpy(exported_value, PQgetvalue(res, 0, col), exported_length);
+                    raw_meta->len = exported_length;
+                    raw_meta->data = exported_value;
+                }
+            }
+        }
 
         /* fill data */
         b->last = ngx_copy(b->last, "[", sizeof("[") - 1);

@@ -39,7 +39,7 @@
     // find variables in redirect url
    
     char *p;
-    for (p = url; p < url + size - 1; p++)
+    for (p = url; p < url + size - 2; p++)
       if (*p == ':' && *(p + 1) != '/')
         variables[vars++] = (p + 1);
 
@@ -70,7 +70,7 @@
             values[i] = PQgetvalue(res, 0, col);
             columned[i] = values[i];
             resolved++;
-            fprintf(stdout, "Resolved variable [%s] to column %s\n", col_name, values[i]);
+            //fprintf(stdout, "Resolved variable [%s] to column %s\n", col_name, values[i]);
           }
         }
       }
@@ -117,7 +117,7 @@
                   }
                   for (; *k == *(p + (k - s) + 1); k++) {
                     char *n = k + 1;
-                    if (*n == '\0' || *n == '=' || *n == '&' || *n == '-' || *n == '%' || *n == '/') {
+                    if (*n == '\0' || *n == '=' || *n == '&' || *n == '-' || *n == '%' || *n == '/' || *n == '$') {
                       if (*(p + (k - s) + 2) != '"') break;
                       //fprintf(stdout, "matched %s %d\n", p + (k - s) + 3, i);
 
@@ -216,9 +216,10 @@
           ngx_uint_t url_variable_hash = ngx_hash_key(url_variable.data, url_variable.len);
           ngx_http_variable_value_t *url_value = ngx_http_get_variable( r, &url_variable, url_variable_hash  );
           ngx_uint_t l;
-          for (l = 0; l < url_value->len; l++) {
-            url[written++] = *(url_value->data + l);
-          }
+          if (!url_value->not_found)
+            for (l = 0; l < url_value->len; l++) {
+              url[written++] = *(url_value->data + l);
+            }
           //fprintf(stdout, "variable %s\n", url);
         }
         // skip variable
@@ -234,7 +235,7 @@
         
           // output value
           if (values[i] != NULL) {
-            fprintf(stdout, "OUTPUT VARIABLE%s\n", variables[i]);
+//            fprintf(stdout, "OUTPUT VARIABLE%s\n", variables[i]);
             char *n = values[i];
             char *start = values[i];
             if (*n == '"') {
@@ -325,7 +326,13 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         raw_html->len = rewrite[i].location.len;
                         raw_html->data = rewrite[i].location.data;
 
-                        return 200;
+                        // bad request 400 on errors
+                        // if i return 400 here, pg result is lost :( YF: FIXME 
+                        if (pgrcf->key % 2 == 1 && pgrcf->handler == &ngx_postgres_rewrite_valid) {
+                          return 200;
+                        } else {
+                          return 200;
+                        }
                     // redirect to outside url
                     } else {
                         // errors/no_errors rewriters already provide interpolated url, 
@@ -446,7 +453,7 @@ ngx_postgres_rewrite_valid(ngx_http_request_t *r,
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
     ngx_str_t redirect;
-    //redirect.len = 0;
+    redirect.len = 0;
 
     char *variables[10];
     char *columned[10];
@@ -467,7 +474,8 @@ ngx_postgres_rewrite_valid(ngx_http_request_t *r,
       for (i = 0; i < pgrcf->methods->nelts; i++)
         if (rewrite[i].key & r->method)
           if (rewrite[i].location.len > 0) {
-            redirect = rewrite[i].location;
+            redirect.data = rewrite[i].location.data;
+            redirect.len = rewrite[i].location.len;
             break;
           }
     }
