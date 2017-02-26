@@ -36,6 +36,7 @@
 #include "ngx_postgres_util.h"
 #include "ngx_postgres_variable.h"
 
+#include <stdbool.h>
 
 void
 ngx_postgres_process_events(ngx_http_request_t *r)
