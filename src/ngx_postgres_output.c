@@ -25,7 +25,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 #ifndef DDEBUG
 #define DDEBUG 0
 #endif
@@ -33,6 +32,7 @@
 #include "ngx_postgres_ddebug.h"
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"
+#include <math.h>
 
 
 ngx_int_t
@@ -118,6 +118,25 @@ ngx_postgres_output_value(ngx_http_request_t *r, PGresult *res)
     return NGX_DONE;
 }
 
+
+int hex2bin( const char *s )
+{
+    int ret=0;
+    int i;
+    for( i=0; i<2; i++ )
+    {
+        char c = *s++;
+        int n=0;
+        if( '0'<=c && c<='9' )
+            n = c-'0';
+        else if( 'a'<=c && c<='f' )
+            n = 10 + c-'a';
+        else if( 'A'<=c && c<='F' )
+            n = 10 + c-'A';
+        ret = n + ret*16;
+    }
+    return ret;
+}
 
 ngx_int_t
 ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
@@ -208,25 +227,6 @@ ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
     dd("returning NGX_DONE");
     return NGX_DONE;
 }
-int hex2bin( const char *s )
-{
-    int ret=0;
-    int i;
-    for( i=0; i<2; i++ )
-    {
-        char c = *s++;
-        int n=0;
-        if( '0'<=c && c<='9' )
-            n = c-'0';
-        else if( 'a'<=c && c<='f' )
-            n = 10 + c-'a';
-        else if( 'A'<=c && c<='F' )
-            n = 10 + c-'A';
-        ret = n + ret*16;
-    }
-    return ret;
-}
-
 ngx_int_t
 ngx_postgres_output_text(ngx_http_request_t *r, PGresult *res)
 {
