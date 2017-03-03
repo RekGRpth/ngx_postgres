@@ -213,9 +213,12 @@ ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
     if (value[start] == 'x')
         start++;
 
+    fprintf(stdout, "GGOSGJKOSJGIJSDG  [%d] [%d]   [%.*s]\n", start, size, 10, value);
+
     int i = 0;
+    char *first = value[start];
     for (; start < size; start += 2)
-        *(b->last++) = hex2bin(value + start);
+        *b->last++ = hex2bin(value + start);
     //if (b->last != b->end) {
     //    dd("returning NGX_ERROR");
     //    return NGX_ERROR;
