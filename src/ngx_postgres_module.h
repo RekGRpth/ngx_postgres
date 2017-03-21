@@ -112,6 +112,7 @@ typedef struct {
 #endif
     ngx_uint_t                          naddrs;
     in_port_t                           port;
+    int                                 family;
     ngx_str_t                           dbname;
     ngx_str_t                           user;
     ngx_str_t                           password;
@@ -123,6 +124,7 @@ typedef struct {
     ngx_str_t                           name;
     ngx_str_t                           host;
     in_port_t                           port;
+    int                                 family;
     ngx_str_t                           dbname;
     ngx_str_t                           user;
     ngx_str_t                           password;
