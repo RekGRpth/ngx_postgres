@@ -19,7 +19,7 @@ Postgres additions (by @Inviz)
 * **`errors`** and **`no_errors`** rewrite conditions that look for `error:` or `errors:` in json response
 
 Server additions (by @cryptofuture) 
-* **socket** support for pg connection 
+* backported **socket** support for pg connection
 * **dynamic module** loading support
 
 Status
