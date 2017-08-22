@@ -868,7 +868,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
                     char *exported_value = ngx_palloc(r->main->pool, exported_length);
                     ngx_memcpy(exported_value, PQgetvalue(res, 0, col), exported_length);
                     raw_meta->len = exported_length;
-                    raw_meta->data = (unsinged char*)exported_value;
+                    raw_meta->data = (unsigned char*)exported_value;
                 }
             }
         }
