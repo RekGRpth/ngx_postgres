@@ -37,7 +37,7 @@
     int vars = 0;
 
     // find variables in redirect url
-   
+
     char *p;
     for (p = url; p < url + size - 2; p++)
       if (*p == ':' && *(p + 1) != '/')
@@ -89,7 +89,7 @@
 
     int failed = 0;
     if ((find_error && !error_in_columns) || resolved < vars) {
-      int current = -1; 
+      int current = -1;
       //fprintf(stdout, "Scanning json %d\n", vars - resolved);
 
       // find some json in pg results
@@ -142,7 +142,7 @@
 
 
               // find a key that looks like "errors": something
-              if (find_error && !error_in_columns && 
+              if (find_error && !error_in_columns &&
                   *p == 'e' && *(p+1) == 'r'&& *(p+2) == 'r'&& *(p+3) == 'o'&& *(p+4) == 'r') {
                 char *ch = (p + 5);
                 if (*ch == 's')
@@ -187,7 +187,7 @@
         url_variable.len = 0;
         //fprintf(stdout, "something here %s\n", p);
 
-        while(url_variable.len < (redirect + size) - (p + 1)) {
+        while((int)url_variable.len < (redirect + size) - (p + 1)) {
           u_char *n = url_variable.data + url_variable.len;
           if (*n == '\0' || *n == '=' || *n == '&' || *n == '-' || *n == '%' || *n == '/' || *n == '#' || *n == '?' || *n == ':')
             break;
@@ -198,7 +198,7 @@
 
         // captures $1, $2
         if (num != NGX_ERROR && num > 0 && (ngx_uint_t) num <= r->ncaptures) {
-          
+
           int *cap = r->captures;
           int ncap = num * 2;
 
@@ -232,7 +232,7 @@
       for (i= 0; i < vars; i++) {
 
         if (variables[i] == p +1) {
-        
+
           // output value
           if (values[i] != NULL) {
 //            fprintf(stdout, "OUTPUT VARIABLE%s\n", variables[i]);
@@ -322,12 +322,12 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         ngx_str_t html_variable = ngx_string("html");
                         ngx_uint_t html_variable_hash = ngx_hash_key(html_variable.data, html_variable.len);
                         ngx_http_variable_value_t *raw_html = ngx_http_get_variable( r, &html_variable, html_variable_hash  );
-                        
+
                         raw_html->len = rewrite[i].location.len;
                         raw_html->data = rewrite[i].location.data;
 
                         // bad request 400 on errors
-                        // if i return 400 here, pg result is lost :( YF: FIXME 
+                        // if i return 400 here, pg result is lost :( YF: FIXME
                         if (pgrcf->key % 2 == 1 && pgrcf->handler == &ngx_postgres_rewrite_valid) {
                           return 200;
                         } else {
@@ -335,7 +335,7 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         }
                     // redirect to outside url
                     } else {
-                        // errors/no_errors rewriters already provide interpolated url, 
+                        // errors/no_errors rewriters already provide interpolated url,
                         // but others need to do it here
                         if (url == NULL) {
                           char *variables[10];
@@ -343,7 +343,7 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                           char *values[10];
                           ngx_postgres_ctx_t  *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
                           int vars = ngx_postgres_find_variables(variables, (char *) rewrite[i].location.data, rewrite[i].location.len);
-                          char *error = ngx_postgres_find_values(values, variables, vars, columned, pgctx, 1);
+                          ngx_postgres_find_values(values, variables, vars, columned, pgctx, 1);
                           url = ngx_postgres_interpolate_url((char *) rewrite[i].location.data, rewrite[i].location.len, variables, vars, columned, values, r);
                         }
 
@@ -467,7 +467,6 @@ ngx_postgres_rewrite_valid(ngx_http_request_t *r,
       values[i] = columned[i] = variables[i] = NULL;
     }
     
-    int size = 0;
     // find callback
     if (pgrcf->methods_set & r->method) {
       rewrite = pgrcf->methods->elts;
