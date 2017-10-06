@@ -577,7 +577,7 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
             // hash query
             ngx_uint_t prepared_hash = ngx_hash_key(query, strlen((char *) query));
             char *prepared_name = ngx_pnalloc(r->pool, 32);
-            sprintf(prepared_name, "test%lu", prepared_hash);
+            sprintf(prepared_name, "test%lu", ( unsigned long )prepared_hash);
 
             // find if query was prepared for this connection
             ngx_uint_t n = 0;
