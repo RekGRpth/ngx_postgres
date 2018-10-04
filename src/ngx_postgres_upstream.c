@@ -338,8 +338,8 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
         + sizeof("port=") + sizeof("65535") - 1
         + sizeof("dbname=") + peer->dbname.len
         + sizeof("user=") + peer->user.len
-        + sizeof("password=") + peer->password.len
-        + sizeof("sslmode=disable");
+        + sizeof("password=") + peer->password.len/*
+        + sizeof("sslmode=disable")*/;
 
     connstring = ngx_pnalloc(pgdt->request->pool, len);
     if (connstring == NULL) {
@@ -353,14 +353,14 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
 
     if(peer->family != AF_UNIX)
         last = ngx_snprintf(connstring, len - 1,
-                            "hostaddr=%V port=%d dbname=%V user=%V password=%V"
-                            " sslmode=disable",
+                            "hostaddr=%V port=%d dbname=%V user=%V password=%V"/*
+                            " sslmode=disable"*/,
                             &peer->host, peer->port, &peer->dbname, &peer->user,
                             &peer->password);
     else
         last = ngx_snprintf(connstring, len - 1,
-                            "host=%s port=%d dbname=%V user=%V password=%V"
-                            " sslmode=disable",
+                            "host=%s port=%d dbname=%V user=%V password=%V"/*
+                            " sslmode=disable"*/,
                             &peer->host.data[5], peer->port, &peer->dbname, &peer->user,
                             &peer->password);
     *last = '\0';
