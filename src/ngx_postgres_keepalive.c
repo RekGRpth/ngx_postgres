@@ -309,6 +309,12 @@ ngx_postgres_keepalive_close_handler(ngx_event_t *ev)
     if (PQconsumeInput(item->pgconn) && !PQisBusy(item->pgconn)) {
         res = PQgetResult(item->pgconn);
         if (res == NULL) {
+            for (PGnotify *notify; (notify = PQnotifies(item->pgconn)); PQfreemem(notify)) {
+//                ngx_log_error(NGX_LOG_ERR, c->log, 0, "relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
+                ngx_str_t id = { strlen(notify->relname), (u_char *) notify->relname };
+                ngx_str_t text = { strlen(notify->extra), (u_char *) notify->extra };
+                ngx_http_push_stream_add_msg_to_channel_my(c->log, &id, &text, NULL, NULL, 0, c->pool);
+            }
             dd("returning");
             return;
         }

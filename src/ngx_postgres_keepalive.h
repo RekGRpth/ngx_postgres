@@ -62,5 +62,6 @@ void        ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *,
 void        ngx_postgres_keepalive_dummy_handler(ngx_event_t *);
 void        ngx_postgres_keepalive_close_handler(ngx_event_t *);
 void        ngx_postgres_keepalive_cleanup(void *);
+void        ngx_http_push_stream_add_msg_to_channel_my(ngx_log_t *log, ngx_str_t *id, ngx_str_t *text, ngx_str_t *event_id, ngx_str_t *event_type, ngx_flag_t store_messages, ngx_pool_t *temp_pool);
 
 #endif /* _NGX_POSTGRES_KEEPALIVE_H_ */
