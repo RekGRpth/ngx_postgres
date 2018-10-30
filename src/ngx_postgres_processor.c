@@ -596,12 +596,15 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
             // prepare query synchronously the first time
             if (matched == 0) {
                //fprintf(stdout, "Preparing query [%d] %s\n", n, query);
-
-                PQprepare(pgdt->pgconn,
-                                    prepared_name,
-                                    (char *) query,
-                                    paramnum,
-                                    Types);
+                PGresult *res = PQprepare(pgdt->pgconn, prepared_name, (char *) query, paramnum, Types);
+                if (res == NULL) {
+                    ngx_log_error(NGX_LOG_ERR, pgxc->log, 0, "postgres: failed to prepare: %s", PQerrorMessage(pgdt->pgconn));
+                    return NGX_ERROR;
+                }
+                if ((pgrc = PQresultStatus(res)) != PGRES_COMMAND_OK) {
+                    ngx_log_error(NGX_LOG_ERR, pgxc->log, 0, "postgres: failed to prepare: %s: %s", PQresStatus(pgrc), PQerrorMessage(pgdt->pgconn));
+                    return NGX_ERROR;
+                }
                 pgdt->statements[n] = prepared_hash;
                 //fprintf(stdout, "Preparing query [%d] %d\n",n, prepared_hash);
 
