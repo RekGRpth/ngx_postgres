@@ -785,10 +785,10 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
 
     // single row with single json column, return that column
     if (row_count == 1 && col_count == 1 && (PQftype(res, 0) == 114 || PQftype(res, 0) == 3802)) {
-        size = PQgetlength(res, 0, 0) + 1;
+        size = PQgetlength(res, 0, 0);
     } else {
         /* pre-calculate total length up-front for single buffer allocation */
-        size = 2 + 1; // [] + \0
+        size = 2; // [] + \0
 
 
         for (row = 0; row < row_count; row++) {
@@ -847,8 +847,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
     if (row_count == 1 && col_count == 1 && (PQftype(res, 0) == 114 || PQftype(res, 0) == 3802)) {
 
         b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0),
-                           size - 1);
-        b->last = ngx_copy(b->last, "", sizeof(""));
+                           size);
     } else {
         // YF: Populate empty parent req variables with names of columns, if in subrequest
         // HACK, LOL! Better move me out
@@ -913,7 +912,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
             }
             b->last = ngx_copy(b->last, "}", sizeof("}") - 1);
         }
-        b->last = ngx_copy(b->last, "]", sizeof("]"));
+        b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
     }
 
     //fprintf(stdout, "PRINTING %d\n", b->end - b->last);
