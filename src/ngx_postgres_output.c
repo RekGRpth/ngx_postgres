@@ -801,10 +801,16 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
                     int col_length = PQgetlength(res, row, col);
 
                     if ((col_type < 20 || col_type > 23) && (col_type != 3802 && col_type != 114)) { //not numbers or json
-                        size += sizeof("\"\"") - 1;
-
                         char *col_value = PQgetvalue(res, row, col);
-                        col_length += ngx_escape_json(NULL, (u_char *) col_value, col_length);
+                        if (col_type == 16) {
+                            switch (col_value[0]) {
+                                case 't': case 'T': col_length = sizeof("true") - 1; break;
+                                case 'f': case 'F': col_length = sizeof("false") - 1; break;
+                            }
+                        } else {
+                            size += sizeof("\"\"") - 1;
+                            col_length += ngx_escape_json(NULL, (u_char *) col_value, col_length);
+                        }
 
                     }
 
@@ -896,13 +902,16 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
                     col_type = PQftype(res, col);
                     //not numbers or json
                     if (((col_type < 20 || col_type > 23) && (col_type != 3802 && col_type != 114)) || size == 0) {
-                        b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
-
-                        if (size > 0)
-                            b->last = (u_char *) ngx_escape_json(b->last, (u_char *) PQgetvalue(res, row, col), size);
-
-
-                        b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
+                        if (col_type == 16) {
+                            switch (PQgetvalue(res, row, col)[0]) {
+                                case 't': case 'T': b->last = ngx_copy(b->last, "true", sizeof("true") - 1); break;
+                                case 'f': case 'F': b->last = ngx_copy(b->last, "false", sizeof("false") - 1); break;
+                            }
+                        } else {
+                            b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
+                            if (size > 0) b->last = (u_char *) ngx_escape_json(b->last, (u_char *) PQgetvalue(res, row, col), size);
+                            b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
+                        }
                     } else {
                         b->last = ngx_copy(b->last, PQgetvalue(res, row, col),
                                            size);
