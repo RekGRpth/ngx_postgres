@@ -43,10 +43,6 @@ void
 ngx_postgres_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc)
 {
-#if defined(nginx_version) && (nginx_version < 1009001)
-    ngx_time_t  *tp;
-#endif
-
     dd("entering");
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -61,15 +57,8 @@ ngx_postgres_upstream_finalize_request(ngx_http_request_t *r,
         u->resolved->ctx = NULL;
     }
 
-#if defined(nginx_version) && (nginx_version >= 1009001)
     if (u->state && u->state->response_time) {
         u->state->response_time = ngx_current_msec - u->state->response_time;
-#else
-    if (u->state && u->state->response_sec) {
-        tp = ngx_timeofday();
-        u->state->response_sec = tp->sec - u->state->response_sec;
-        u->state->response_msec = tp->msec - u->state->response_msec;
-#endif
 
         if (u->pipe) {
             u->state->response_length = u->pipe->read_length;
@@ -108,11 +97,9 @@ ngx_postgres_upstream_finalize_request(ngx_http_request_t *r,
                        "close http upstream connection: %d",
                        u->peer.connection->fd);
 
-#if defined(nginx_version) && (nginx_version >= 1001004)
         if (u->peer.connection->pool) {
             ngx_destroy_pool(u->peer.connection->pool);
         }
-#endif
 
         ngx_close_connection(u->peer.connection);
     }
@@ -239,11 +226,9 @@ ngx_postgres_upstream_next(ngx_http_request_t *r,
         }
 #endif
 
-#if defined(nginx_version) && (nginx_version >= 1001004)
         if (u->peer.connection->pool) {
             ngx_destroy_pool(u->peer.connection->pool);
         }
-#endif
 
         ngx_close_connection(u->peer.connection);
     }

@@ -213,9 +213,7 @@ ngx_conf_bitmask_t ngx_postgres_http_methods[] = {
    { ngx_string("PROPPATCH"), NGX_HTTP_PROPPATCH },
    { ngx_string("LOCK"),      NGX_HTTP_LOCK },
    { ngx_string("UNLOCK"),    NGX_HTTP_UNLOCK },
-#if defined(nginx_version) && (nginx_version >= 8041)
    { ngx_string("PATCH"),     NGX_HTTP_PATCH },
-#endif
     { ngx_null_string, 0 }
 };
 
@@ -1337,22 +1335,7 @@ ngx_postgres_find_upstream(ngx_http_request_t *r, ngx_url_t *url)
             dd("host doesn't match");
             continue;
         }
-        
-  #if (nginx_version < 1011006)
-        if (uscfp[i]->port != url->port) {
-            dd("port doesn't match: %d != %d",
-               (int) uscfp[i]->port, (int) url->port);
-            continue;
-        }
 
-        if (uscfp[i]->default_port && url->default_port
-            && (uscfp[i]->default_port != url->default_port))
-        {
-            dd("default_port doesn't match");
-            continue;
-        }
-        
-  #endif
         dd("returning");
         return uscfp[i];
     }

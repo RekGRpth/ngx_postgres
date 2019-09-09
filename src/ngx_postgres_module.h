@@ -103,11 +103,7 @@ typedef struct {
 } ngx_postgres_output_enum_t;
 
 typedef struct {
-#if defined(nginx_version) && (nginx_version >= 8022)
     ngx_addr_t                         *addrs;
-#else
-    ngx_peer_addr_t                    *addrs;
-#endif
     ngx_uint_t                          naddrs;
     in_port_t                           port;
     int                                 family;

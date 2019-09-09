@@ -108,32 +108,12 @@ ngx_postgres_handler(ngx_http_request_t *r)
         return rc;
     }
 
-#if defined(nginx_version) \
-    && (((nginx_version >= 7063) && (nginx_version < 8000)) \
-        || (nginx_version >= 8007))
-
     if (ngx_http_upstream_create(r) != NGX_OK) {
         dd("returning NGX_HTTP_INTERNAL_SERVER_ERROR");
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
     u = r->upstream;
-
-#else /* 0.7.x < 0.7.63, 0.8.x < 0.8.7 */
-
-    u = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_t));
-    if (u == NULL) {
-        dd("returning NGX_HTTP_INTERNAL_SERVER_ERROR");
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    u->peer.log = r->connection->log;
-    u->peer.log_error = NGX_ERROR_ERR;
-#  if (NGX_THREADS)
-    u->peer.lock = &r->connection->lock;
-#  endif
-    r->upstream = u;
-#endif
 
     if (pglcf->upstream_cv) {
         /* use complex value */
@@ -225,9 +205,7 @@ ngx_postgres_handler(ngx_http_request_t *r)
     u->input_filter = ngx_postgres_input_filter;
     u->input_filter_ctx = NULL;
 
-#if defined(nginx_version) && (nginx_version >= 8011)
     r->main->count++;
-#endif
 
     ngx_http_upstream_init(r);
 
@@ -244,20 +222,14 @@ ngx_postgres_handler(ngx_http_request_t *r)
             ngx_del_timer(c->write);
         }
 
-#if defined(nginx_version) && (nginx_version >= 1001004)
         if (c->pool) {
             ngx_destroy_pool(c->pool);
         }
-#endif
 
         ngx_free_connection(c);
 
         ngx_postgres_upstream_finalize_request(r, u,
-#if defined(nginx_version) && (nginx_version >= 8017)
                                                NGX_HTTP_SERVICE_UNAVAILABLE);
-#else
-            pgctx->status ? pgctx->status : NGX_HTTP_INTERNAL_SERVER_ERROR);
-#endif
     }
 
     dd("returning NGX_DONE");
