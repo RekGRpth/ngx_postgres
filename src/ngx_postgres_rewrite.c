@@ -24,11 +24,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DDEBUG
-#define DDEBUG 0
-#endif
-
-#include "ngx_postgres_ddebug.h"
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_rewrite.h"
 
@@ -302,7 +297,7 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
     ngx_postgres_rewrite_t  *rewrite;
     ngx_uint_t               i;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     if (pgrcf->methods_set & r->method) {
         /* method-specific */
@@ -375,17 +370,17 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
                         return 303;
                     }
                 }
-                dd("returning status:%d", (int) rewrite[i].status);
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning status:%d", __func__, (int) rewrite[i].status);
                 return rewrite[i].status;
             }
         }
     } else if (pgrcf->def) {
         /* default */
-        dd("returning status:%d", (int) pgrcf->def->status);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning status:%d", __func__, (int) pgrcf->def->status);
         return pgrcf->def->status;
     }
 
-    dd("returning NGX_DECLINED");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DECLINED", __func__);
     return NGX_DECLINED;
 }
 
@@ -395,23 +390,23 @@ ngx_postgres_rewrite_changes(ngx_http_request_t *r,
 {
     ngx_postgres_ctx_t  *pgctx;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
     if ((pgrcf->key % 2 == 0) && (pgctx->var_affected == 0)) {
         /* no_changes */
-        dd("returning");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
         return ngx_postgres_rewrite(r, pgrcf, NULL);
     }
 
     if ((pgrcf->key % 2 == 1) && (pgctx->var_affected > 0)) {
         /* changes */
-        dd("returning");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
         return ngx_postgres_rewrite(r, pgrcf, NULL);
     }
 
-    dd("returning NGX_DECLINED");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DECLINED", __func__);
     return NGX_DECLINED;
 }
 
@@ -421,23 +416,23 @@ ngx_postgres_rewrite_rows(ngx_http_request_t *r,
 {
     ngx_postgres_ctx_t  *pgctx;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
     if ((pgrcf->key % 2 == 0) && (pgctx->var_rows == 0)) {
         /* no_rows */
-        dd("returning");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
         return ngx_postgres_rewrite(r, pgrcf, NULL);
     }
 
     if ((pgrcf->key % 2 == 1) && (pgctx->var_rows > 0)) {
         /* rows */
-        dd("returning");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
         return ngx_postgres_rewrite(r, pgrcf, NULL);
     }
 
-    dd("returning NGX_DECLINED");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DECLINED", __func__);
     return NGX_DECLINED;
 }
 
@@ -446,7 +441,7 @@ ngx_postgres_rewrite_valid(ngx_http_request_t *r,
     ngx_postgres_rewrite_conf_t *pgrcf)
 {
     ngx_postgres_ctx_t  *pgctx;
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
@@ -490,18 +485,18 @@ ngx_postgres_rewrite_valid(ngx_http_request_t *r,
 
     if ((pgrcf->key % 2 == 0) && error == NULL) {
         /* no_rows */
-        dd("returning");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
         //fprintf(stdout, "Valid: redirect1%s\n", url);
         return ngx_postgres_rewrite(r, pgrcf, url);
     }
 
     if ((pgrcf->key % 2 == 1) && error != NULL) {
         /* rows */
-        dd("returning");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
         //fprintf(stdout, "Invalid: %s\n", url);
         return ngx_postgres_rewrite(r, pgrcf, url);
     }
 
-    dd("returning NGX_DECLINED");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DECLINED", __func__);
     return NGX_DECLINED;
 }

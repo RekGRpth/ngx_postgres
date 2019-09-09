@@ -26,11 +26,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DDEBUG
-#define DDEBUG 0
-#endif
-
-#include "ngx_postgres_ddebug.h"
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_keepalive.h"
 #include "ngx_postgres_processor.h"
@@ -54,7 +49,7 @@ ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf)
     ngx_postgres_upstream_peers_t     *peers;
     ngx_uint_t                         i, j, n;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
 
     uscf->peer.init = ngx_postgres_upstream_init_peer;
 
@@ -66,7 +61,7 @@ ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf)
                       " in upstream \"%V\" in %s:%ui",
                       &uscf->host, uscf->file_name, uscf->line);
 
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -84,7 +79,7 @@ ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf)
             + sizeof(ngx_postgres_upstream_peer_t) * (n - 1));
 
     if (peers == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -108,7 +103,7 @@ ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf)
             peers->peer[n].host.data = ngx_pnalloc(cf->pool,
                                                    NGX_SOCKADDR_STRLEN);
             if (peers->peer[n].host.data == NULL) {
-                dd("returning NGX_ERROR");
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_ERROR", __func__);
                 return NGX_ERROR;
             }
 
@@ -117,7 +112,7 @@ ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf)
                                           peers->peer[n].host.data,
                                           NGX_SOCKADDR_STRLEN, 0);
             if (peers->peer[n].host.len == 0) {
-                dd("returning NGX_ERROR");
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_ERROR", __func__);
                 return NGX_ERROR;
             }
 
@@ -129,11 +124,11 @@ ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf)
     pgscf->active_conns = 0;
 
     if (pgscf->max_cached) {
-        dd("returning");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning", __func__);
         return ngx_postgres_keepalive_init(cf->pool, pgscf);
     }
 
-    dd("returning NGX_OK");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 }
 
@@ -151,7 +146,7 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
     ngx_str_t                           sql;
     ngx_uint_t                          i;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     pgdt = ngx_pcalloc(r->pool, sizeof(ngx_postgres_upstream_peer_data_t));
     if (pgdt == NULL) {
@@ -176,7 +171,7 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
 
     if (pglcf->query.methods_set & r->method) {
         /* method-specific query */
-        dd("using method-specific query");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s using method-specific query", __func__);
 
         query = pglcf->query.methods->elts;
         for (i = 0; i < pglcf->query.methods->nelts; i++) {
@@ -191,14 +186,14 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
         }
     } else {
         /* default query */
-        dd("using default query");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s using default query", __func__);
 
         query = pglcf->query.def;
     }
 
     if (query->cv) {
         /* complex value */
-        dd("using complex value");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s using complex value", __func__);
 
         if (ngx_http_complex_value(r, query->cv, &sql) != NGX_OK) {
             goto failed;
@@ -218,7 +213,7 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
         pgdt->query = sql;
     } else {
         /* simple value */
-        dd("using simple value");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s using simple value", __func__);
 
         pgdt->query = query->sv;
     }
@@ -226,12 +221,12 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
     /* set $postgres_query */
     pgctx->var_query = pgdt->query;
 
-    dd("returning NGX_OK");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 
 failed:
 
-    dd("returning NGX_ERROR");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
     return NGX_ERROR;
 }
 
@@ -249,7 +244,7 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
     u_char                             *connstring, *last;
     size_t                              len;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s entering", __func__);
 
     pgscf = pgdt->srv_conf;
 
@@ -259,13 +254,13 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
         rc = ngx_postgres_keepalive_get_peer_single(pc, pgdt, pgscf);
         if (rc != NGX_DECLINED) {
             /* re-use keepalive peer */
-            dd("re-using keepalive peer (single)");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s re-using keepalive peer (single)", __func__);
 
             pgdt->state = state_db_send_query;
 
             ngx_postgres_process_events(pgdt->request);
 
-            dd("returning NGX_AGAIN");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_AGAIN", __func__);
             return NGX_AGAIN;
         }
     }
@@ -292,13 +287,13 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
         rc = ngx_postgres_keepalive_get_peer_multi(pc, pgdt, pgscf);
         if (rc != NGX_DECLINED) {
             /* re-use keepalive peer */
-            dd("re-using keepalive peer (multi)");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s re-using keepalive peer (multi)", __func__);
 
             pgdt->state = state_db_send_query;
 
             ngx_postgres_process_events(pgdt->request);
 
-            dd("returning NGX_AGAIN");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_AGAIN", __func__);
             return NGX_AGAIN;
         }
     }
@@ -311,7 +306,7 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
         /* a bit hack-ish way to return error response (setup part) */
         pc->connection = ngx_get_connection(0, pc->log);
 
-        dd("returning NGX_AGAIN (NGX_HTTP_SERVICE_UNAVAILABLE)");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_AGAIN (NGX_HTTP_SERVICE_UNAVAILABLE)", __func__);
         return NGX_AGAIN;
     }
 
@@ -328,7 +323,7 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
 
     connstring = ngx_pnalloc(pgdt->request->pool, len);
     if (connstring == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -346,7 +341,7 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
                             &peer->password);
     *last = '\0';
 
-    dd("PostgreSQL connection string: %s", connstring);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s PostgreSQL connection string: %s", __func__, connstring);
 
     /*
      * internal checks in PQsetnonblocking are taking care of any
@@ -365,7 +360,7 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
         PQfinish(pgdt->pgconn);
         pgdt->pgconn = NULL;
 
-        dd("returning NGX_DECLINED");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_DECLINED", __func__);
         return NGX_DECLINED;
     }
 
@@ -373,7 +368,7 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
     PQtrace(pgdt->pgconn, stderr);
 #endif
 
-    dd("connection status:%d", (int) PQstatus(pgdt->pgconn));
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s connection status:%d", __func__, (int) PQstatus(pgdt->pgconn));
 
     /* take spot in keepalive connection pool */
     pgscf->active_conns++;
@@ -414,13 +409,13 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
      * nginx event model */
 
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-        dd("NGX_USE_RTSIG_EVENT");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s NGX_USE_RTSIG_EVENT", __func__);
         if (ngx_add_conn(pgxc) != NGX_OK) {
             goto bad_add;
         }
 
     } else if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
-        dd("NGX_USE_CLEAR_EVENT");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s NGX_USE_CLEAR_EVENT", __func__);
         if (ngx_add_event(rev, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) {
             goto bad_add;
         }
@@ -430,7 +425,7 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
         }
 
     } else {
-        dd("NGX_USE_LEVEL_EVENT");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s NGX_USE_LEVEL_EVENT", __func__);
         if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) {
             goto bad_add;
         }
@@ -443,7 +438,7 @@ ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
     pgxc->log->action = "connecting to PostgreSQL database";
     pgdt->state = state_db_connect;
 
-    dd("returning NGX_AGAIN");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_AGAIN", __func__);
     return NGX_AGAIN;
 
 bad_add:
@@ -456,7 +451,7 @@ invalid:
     ngx_postgres_upstream_free_connection(pc->log, pc->connection,
                                           pgdt->pgconn, pgscf);
 
-    dd("returning NGX_ERROR");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_ERROR", __func__);
     return NGX_ERROR;
 }
 
@@ -467,7 +462,7 @@ ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc,
     ngx_postgres_upstream_peer_data_t  *pgdt = data;
     ngx_postgres_upstream_srv_conf_t   *pgscf;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s entering", __func__);
 
     pgscf = pgdt->srv_conf;
 
@@ -476,7 +471,7 @@ ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc,
     }
 
     if (pc->connection) {
-        dd("free connection to PostgreSQL database");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s free connection to PostgreSQL database", __func__);
 
         ngx_postgres_upstream_free_connection(pc->log, pc->connection,
                 pgdt->pgconn, pgscf);
@@ -486,13 +481,13 @@ ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc,
         pc->connection = NULL;
     }
 
-    dd("returning");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning", __func__);
 }
 
 ngx_flag_t
 ngx_postgres_upstream_is_my_peer(const ngx_peer_connection_t *peer)
 {
-    dd("entering & returning");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, peer->log, 0, "%s entering & returning", __func__);
     return (peer->get == ngx_postgres_upstream_get_peer);
 }
 
@@ -502,7 +497,7 @@ ngx_postgres_upstream_free_connection(ngx_log_t *log, ngx_connection_t *c,
 {
     ngx_event_t  *rev, *wev;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s entering", __func__);
 
     PQfinish(pgconn);
 
@@ -553,5 +548,5 @@ ngx_postgres_upstream_free_connection(ngx_log_t *log, ngx_connection_t *c,
     /* free spot in keepalive connection pool */
     pgscf->active_conns--;
 
-    dd("returning");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s returning", __func__);
 }

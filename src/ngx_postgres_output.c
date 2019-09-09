@@ -25,11 +25,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef DDEBUG
-#define DDEBUG 0
-#endif
 
-#include "ngx_postgres_ddebug.h"
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"
 #include <math.h>
@@ -59,7 +55,7 @@ ngx_postgres_output_value(ngx_http_request_t *r, PGresult *res)
     ngx_buf_t                 *b;
     size_t                     size;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
@@ -71,7 +67,7 @@ ngx_postgres_output_value(ngx_http_request_t *r, PGresult *res)
                       " instead of expected single value in location \"%V\"",
                       pgctx->var_rows * pgctx->var_cols, &clcf->name);
 
-        dd("returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
@@ -83,7 +79,7 @@ ngx_postgres_output_value(ngx_http_request_t *r, PGresult *res)
                       "postgres: \"postgres_output value\" received NULL value"
                       " in location \"%V\"", &clcf->name);
 
-        dd("returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
@@ -96,20 +92,20 @@ ngx_postgres_output_value(ngx_http_request_t *r, PGresult *res)
                       "postgres: \"postgres_output value\" received empty value"
                       " in location \"%V\"", &clcf->name);
 
-        dd("returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
 
     b = ngx_create_temp_buf(r->pool, size);
     if (b == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
     cl = ngx_alloc_chain_link(r->pool);
     if (cl == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -120,7 +116,7 @@ ngx_postgres_output_value(ngx_http_request_t *r, PGresult *res)
     b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0), size);
 
     if (b->last != b->end) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -129,7 +125,7 @@ ngx_postgres_output_value(ngx_http_request_t *r, PGresult *res)
     /* set output response */
     pgctx->response = cl;
 
-    dd("returning NGX_DONE");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
     return NGX_DONE;
 }
 
@@ -162,7 +158,7 @@ ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
     ngx_buf_t                 *b;
     size_t                     size;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
@@ -174,7 +170,7 @@ ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
                       " instead of expected single value in location \"%V\"",
                       pgctx->var_rows * pgctx->var_cols, &clcf->name);
 
-        dd("returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
@@ -186,7 +182,7 @@ ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
                       "postgres: \"postgres_output value\" received NULL value"
                       " in location \"%V\"", &clcf->name);
 
-        dd("returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
@@ -199,20 +195,20 @@ ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
                       "postgres: \"postgres_output value\" received empty value"
                       " in location \"%V\"", &clcf->name);
 
-        dd("returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
 
     b = ngx_create_temp_buf(r->pool, floor(size / 2));
     if (b == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
     cl = ngx_alloc_chain_link(r->pool);
     if (cl == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -231,7 +227,7 @@ ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
     for (; start < size; start += 2)
         *(b->last++) = hex2bin(value + start);
     //if (b->last != b->end) {
-    //    dd("returning NGX_ERROR");
+    //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
     //    return NGX_ERROR;
     //}
 
@@ -240,7 +236,7 @@ ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
     /* set output response */
     pgctx->response = cl;
 
-    dd("returning NGX_DONE");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
     return NGX_DONE;
 }
 ngx_int_t
@@ -252,7 +248,7 @@ ngx_postgres_output_text(ngx_http_request_t *r, PGresult *res)
     size_t                     size;
     ngx_int_t                  col_count, row_count, col, row;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
@@ -275,19 +271,19 @@ ngx_postgres_output_text(ngx_http_request_t *r, PGresult *res)
     size += row_count * col_count - 1;               /* delimiters */
 
     if ((row_count == 0) || (size == 0)) {
-        dd("returning NGX_DONE (empty result)");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE (empty result)", __func__);
         return NGX_DONE;
     }
 
     b = ngx_create_temp_buf(r->pool, size);
     if (b == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
     cl = ngx_alloc_chain_link(r->pool);
     if (cl == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -315,7 +311,7 @@ ngx_postgres_output_text(ngx_http_request_t *r, PGresult *res)
     }
 
     if (b->last != b->end) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -324,7 +320,7 @@ ngx_postgres_output_text(ngx_http_request_t *r, PGresult *res)
     /* set output response */
     pgctx->response = cl;
 
-    dd("returning NGX_DONE");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
     return NGX_DONE;
 }
 
@@ -335,7 +331,7 @@ ngx_postgres_output_rds(ngx_http_request_t *r, PGresult *res)
     ngx_chain_t         *first, *last;
     ngx_int_t            col_count, row_count, aff_count, row;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
@@ -347,7 +343,7 @@ ngx_postgres_output_rds(ngx_http_request_t *r, PGresult *res)
     first = last = ngx_postgres_render_rds_header(r, r->pool, res, col_count,
                                                   aff_count);
     if (last == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -358,7 +354,7 @@ ngx_postgres_output_rds(ngx_http_request_t *r, PGresult *res)
     /* render columns */
     last->next = ngx_postgres_render_rds_columns(r, r->pool, res, col_count);
     if (last->next == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
     last = last->next;
@@ -368,7 +364,7 @@ ngx_postgres_output_rds(ngx_http_request_t *r, PGresult *res)
         last->next = ngx_postgres_render_rds_row(r, r->pool, res, col_count,
                                                  row, (row == row_count - 1));
         if (last->next == NULL) {
-            dd("returning NGX_ERROR");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
             return NGX_ERROR;
         }
         last = last->next;
@@ -378,7 +374,7 @@ ngx_postgres_output_rds(ngx_http_request_t *r, PGresult *res)
     if (row == 0) {
         last->next = ngx_postgres_render_rds_row_terminator(r, r->pool);
         if (last->next == NULL) {
-            dd("returning NGX_ERROR");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
             return NGX_ERROR;
         }
         last = last->next;
@@ -391,7 +387,7 @@ done:
     /* set output response */
     pgctx->response = first;
 
-    dd("returning NGX_DONE");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
     return NGX_DONE;
 }
 
@@ -405,7 +401,7 @@ ngx_postgres_render_rds_header(ngx_http_request_t *r, ngx_pool_t *pool,
     char         *errstr;
     size_t        errstr_len;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     errstr = PQresultErrorMessage(res);
     errstr_len = ngx_strlen(errstr);
@@ -424,13 +420,13 @@ ngx_postgres_render_rds_header(ngx_http_request_t *r, ngx_pool_t *pool,
 
     b = ngx_create_temp_buf(pool, size);
     if (b == NULL) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
     cl = ngx_alloc_chain_link(pool);
     if (cl == NULL) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
@@ -473,11 +469,11 @@ ngx_postgres_render_rds_header(ngx_http_request_t *r, ngx_pool_t *pool,
     b->last += sizeof(uint16_t);
 
     if (b->last != b->end) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
-    dd("returning");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
     return cl;
 }
 
@@ -493,7 +489,7 @@ ngx_postgres_render_rds_columns(ngx_http_request_t *r, ngx_pool_t *pool,
     char         *col_name;
     size_t        col_name_len;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     /* pre-calculate total length up-front for single buffer allocation */
     size = col_count
@@ -509,13 +505,13 @@ ngx_postgres_render_rds_columns(ngx_http_request_t *r, ngx_pool_t *pool,
 
     b = ngx_create_temp_buf(pool, size);
     if (b == NULL) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
     cl = ngx_alloc_chain_link(pool);
     if (cl == NULL) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
@@ -542,11 +538,11 @@ ngx_postgres_render_rds_columns(ngx_http_request_t *r, ngx_pool_t *pool,
     }
 
     if (b->last != b->end) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
-    dd("returning");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
     return cl;
 }
 
@@ -559,7 +555,7 @@ ngx_postgres_render_rds_row(ngx_http_request_t *r, ngx_pool_t *pool,
     size_t        size;
     ngx_int_t     col;
 
-    dd("entering, row:%d", (int) row);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering, row:%d", __func__, (int) row);
 
     /* pre-calculate total length up-front for single buffer allocation */
     size = sizeof(uint8_t)                 /* row number */
@@ -576,13 +572,13 @@ ngx_postgres_render_rds_row(ngx_http_request_t *r, ngx_pool_t *pool,
 
     b = ngx_create_temp_buf(pool, size);
     if (b == NULL) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
     cl = ngx_alloc_chain_link(pool);
     if (cl == NULL) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
@@ -613,11 +609,11 @@ ngx_postgres_render_rds_row(ngx_http_request_t *r, ngx_pool_t *pool,
     }
 
     if (b->last != b->end) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
-    dd("returning");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
     return cl;
 }
 
@@ -627,17 +623,17 @@ ngx_postgres_render_rds_row_terminator(ngx_http_request_t *r, ngx_pool_t *pool)
     ngx_chain_t  *cl;
     ngx_buf_t    *b;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     b = ngx_create_temp_buf(pool, sizeof(uint8_t));
     if (b == NULL) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
     cl = ngx_alloc_chain_link(pool);
     if (cl == NULL) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
@@ -649,11 +645,11 @@ ngx_postgres_render_rds_row_terminator(ngx_http_request_t *r, ngx_pool_t *pool)
     *b->last++ = (uint8_t) 0; /* row terminator */
 
     if (b->last != b->end) {
-        dd("returning NULL");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
         return NULL;
     }
 
-    dd("returning");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
     return cl;
 }
 
@@ -666,7 +662,7 @@ ngx_postgres_output_chain(ngx_http_request_t *r, ngx_chain_t *cl)
     ngx_postgres_ctx_t        *pgctx;
     ngx_int_t                  rc;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     if (!r->header_sent) {
         ngx_http_clear_content_length(r);
@@ -700,26 +696,26 @@ ngx_postgres_output_chain(ngx_http_request_t *r, ngx_chain_t *cl)
 
         rc = ngx_http_send_header(r);
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-            dd("returning rc:%d", (int) rc);
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning rc:%d", __func__, (int) rc);
             return rc;
         }
     }
 
     if (cl == NULL) {
-        dd("returning NGX_DONE");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
         return NGX_DONE;
     }
 
     rc = ngx_http_output_filter(r, cl);
     if (rc == NGX_ERROR || rc > NGX_OK) {
-        dd("returning rc:%d", (int) rc);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning rc:%d", __func__, (int) rc);
         return rc;
     }
 
     ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &cl,
                             u->output.tag);
 
-    dd("returning rc:%d", (int) rc);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning rc:%d", __func__, (int) rc);
     return rc;
 }
 
@@ -785,7 +781,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
     size_t                     size;
     ngx_int_t                  col_count, row_count, col, row;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
@@ -840,19 +836,19 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
     }
 
     if ((row_count == 0) || (size == 0)) {
-        dd("returning NGX_DONE (empty result)");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE (empty result)", __func__);
         return NGX_DONE;
     }
 
     b = ngx_create_temp_buf(r->pool, size);
     if (b == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
     cl = ngx_alloc_chain_link(r->pool);
     if (cl == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -938,7 +934,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
     //fprintf(stdout, "PRINTING %d\n", b->end - b->last);
     //fprintf(stdout, "PRINTING %s\n", b->pos);
     if (b->last != b->end) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -947,6 +943,6 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
     /* set output response */
     pgctx->response = cl;
 
-    dd("returning NGX_DONE");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
     return NGX_DONE;
 }

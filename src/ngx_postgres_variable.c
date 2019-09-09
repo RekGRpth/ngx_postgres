@@ -24,11 +24,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DDEBUG
-#define DDEBUG 0
-#endif
-
-#include "ngx_postgres_ddebug.h"
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_variable.h"
 
@@ -39,19 +34,19 @@ ngx_postgres_variable_columns(ngx_http_request_t *r,
 {
     ngx_postgres_ctx_t  *pgctx;
 
-    dd("entering: \"$postgres_columns\"");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering: \"$postgres_columns\"", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
     if ((pgctx == NULL) || (pgctx->var_cols == NGX_ERROR)) {
         v->not_found = 1;
-        dd("returning NGX_OK (not_found)");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK (not_found)", __func__);
         return NGX_OK;
     }
 
     v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN);
     if (v->data == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -60,7 +55,7 @@ ngx_postgres_variable_columns(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    dd("returning NGX_OK");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 }
 
@@ -70,19 +65,19 @@ ngx_postgres_variable_rows(ngx_http_request_t *r,
 {
     ngx_postgres_ctx_t  *pgctx;
 
-    dd("entering: \"$postgres_rows\"");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering: \"$postgres_rows\"", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
     if ((pgctx == NULL) || (pgctx->var_rows == NGX_ERROR)) {
         v->not_found = 1;
-        dd("returning NGX_OK (not_found)");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK (not_found)", __func__);
         return NGX_OK;
     }
 
     v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN);
     if (v->data == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -91,7 +86,7 @@ ngx_postgres_variable_rows(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    dd("returning NGX_OK");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 }
 
@@ -101,19 +96,19 @@ ngx_postgres_variable_affected(ngx_http_request_t *r,
 {
     ngx_postgres_ctx_t  *pgctx;
 
-    dd("entering: \"$postgres_affected\"");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering: \"$postgres_affected\"", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
     if ((pgctx == NULL) || (pgctx->var_affected == NGX_ERROR)) {
         v->not_found = 1;
-        dd("returning NGX_OK (not_found)");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK (not_found)", __func__);
         return NGX_OK;
     }
 
     v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN);
     if (v->data == NULL) {
-        dd("returning NGX_ERROR");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
         return NGX_ERROR;
     }
 
@@ -122,7 +117,7 @@ ngx_postgres_variable_affected(ngx_http_request_t *r,
     v->no_cacheable = 0;
     v->not_found = 0;
 
-    dd("returning NGX_OK");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 }
 
@@ -132,13 +127,13 @@ ngx_postgres_variable_query(ngx_http_request_t *r,
 {
     ngx_postgres_ctx_t  *pgctx;
 
-    dd("entering: \"$postgres_query\"");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering: \"$postgres_query\"", __func__);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
     if ((pgctx == NULL) || (pgctx->var_query.len == 0)) {
         v->not_found = 1;
-        dd("returning NGX_OK (not_found)");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK (not_found)", __func__);
         return NGX_OK;
     }
 
@@ -148,7 +143,7 @@ ngx_postgres_variable_query(ngx_http_request_t *r,
     v->len = pgctx->var_query.len;
     v->data = pgctx->var_query.data;
 
-    dd("returning NGX_OK");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 }
 
@@ -160,14 +155,15 @@ ngx_postgres_variable_get_custom(ngx_http_request_t *r,
     ngx_postgres_ctx_t       *pgctx;
     ngx_str_t                *store;
 
-    dd("entering: \"$%.*s\"", (int) pgvar->var->name.len,
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering: \"$%.*s\"", __func__,
+                              (int) pgvar->var->name.len,
                               pgvar->var->name.data);
 
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
 
     if ((pgctx == NULL) || (pgctx->variables == NULL)) {
         v->not_found = 1;
-        dd("returning NGX_OK (not_found)");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK (not_found)", __func__);
         return NGX_OK;
     }
 
@@ -176,7 +172,7 @@ ngx_postgres_variable_get_custom(ngx_http_request_t *r,
     /* idx is always valid */
     if (store[pgvar->idx].len == 0) {
         v->not_found = 1;
-        dd("returning NGX_OK (not_found)");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK (not_found)", __func__);
         return NGX_OK;
     }
 
@@ -186,7 +182,7 @@ ngx_postgres_variable_get_custom(ngx_http_request_t *r,
     v->len = store[pgvar->idx].len;
     v->data = store[pgvar->idx].data;
 
-    dd("returning NGX_OK");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 }
 
@@ -199,7 +195,8 @@ ngx_postgres_variable_set_custom(ngx_http_request_t *r, PGresult *res,
     ngx_int_t                  col_count, row_count, col, len;
     ngx_str_t                  value = ngx_null_string;
 
-    dd("entering: \"$%.*s\"", (int) pgvar->var->name.len,
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering: \"$%.*s\"", __func__,
+                              (int) pgvar->var->name.len,
                               pgvar->var->name.data);
 
     col_count = PQnfields(res);
@@ -225,7 +222,7 @@ ngx_postgres_variable_set_custom(ngx_http_request_t *r, PGresult *res,
                               &pgvar->var->name, pgv->col_name, &clcf->name);
             }
 
-            dd("returning empty value");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning empty value", __func__);
             return value;
         }
     }
@@ -241,7 +238,7 @@ ngx_postgres_variable_set_custom(ngx_http_request_t *r, PGresult *res,
                           &pgvar->var->name, row_count, col_count, &clcf->name);
         }
 
-        dd("returning empty value");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning empty value", __func__);
         return value;
     }
 
@@ -255,7 +252,7 @@ ngx_postgres_variable_set_custom(ngx_http_request_t *r, PGresult *res,
                           &pgvar->var->name, &clcf->name);
         }
 
-        dd("returning empty value");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning empty value", __func__);
         return value;
     }
 
@@ -270,19 +267,19 @@ ngx_postgres_variable_set_custom(ngx_http_request_t *r, PGresult *res,
                           &pgvar->var->name, &clcf->name);
         }
 
-        dd("returning empty value");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning empty value", __func__);
         return value;
     }
 
     value.data = ngx_pnalloc(r->pool, len);
     if (value.data == NULL) {
-        dd("returning empty value");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning empty value", __func__);
         return value;
     }
 
     ngx_memcpy(value.data, PQgetvalue(res, pgv->row, col), len);
     value.len = len;
 
-    dd("returning non-empty value");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning non-empty value", __func__);
     return value;
 }

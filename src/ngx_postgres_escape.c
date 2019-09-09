@@ -24,11 +24,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DDEBUG
-#define DDEBUG 0
-#endif
-
-#include "ngx_postgres_ddebug.h"
 #include "ngx_postgres_escape.h"
 #include "ngx_postgres_module.h"
 
@@ -47,7 +42,7 @@ ngx_postgres_escape_string(ngx_http_script_engine_t *e)
 
     v = e->sp - 1;
 
-    dd("entering: \"%.*s\"", (int) v->len, v->data);
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s entering: \"%.*s\"", __func__, (int) v->len, v->data);
 
     pge = (ngx_postgres_escape_t *) e->ip;
     e->ip += sizeof(ngx_postgres_escape_t);
@@ -55,7 +50,7 @@ ngx_postgres_escape_string(ngx_http_script_engine_t *e)
     if ((v == NULL) || (v->not_found)) {
         v->data = (u_char *) "NULL";
         v->len = sizeof("NULL") - 1;
-        dd("returning (NULL)");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s returning (NULL)", __func__);
         goto done;
     }
 
@@ -63,12 +58,12 @@ ngx_postgres_escape_string(ngx_http_script_engine_t *e)
         if (pge->empty) {
             v->data = (u_char *) "''";
             v->len = 2;
-            dd("returning (empty/empty)");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s returning (empty/empty)", __func__);
             goto done;
         } else {
             v->data = (u_char *) "NULL";
             v->len = sizeof("NULL") - 1;
-            dd("returning (empty/NULL)");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s returning (empty/NULL)", __func__);
             goto done;
         }
     }
@@ -77,7 +72,7 @@ ngx_postgres_escape_string(ngx_http_script_engine_t *e)
     if (p == NULL) {
         e->ip = (u_char *) &ngx_postgres_script_exit_code;
         e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-        dd("returning (NGX_HTTP_INTERNAL_SERVER_ERROR)");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s returning (NGX_HTTP_INTERNAL_SERVER_ERROR)", __func__);
         return;
     }
 
@@ -87,7 +82,7 @@ ngx_postgres_escape_string(ngx_http_script_engine_t *e)
     v->len += 2;
     v->data = s;
 
-    dd("returning");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s returning", __func__);
 
 done:
 

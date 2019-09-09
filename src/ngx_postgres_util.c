@@ -25,11 +25,6 @@
  * SUCH DAMAGE.
  */
 
-#ifndef DDEBUG
-#define DDEBUG 0
-#endif
-
-#include "ngx_postgres_ddebug.h"
 #include "ngx_postgres_util.h"
 
 
@@ -43,7 +38,7 @@ void
 ngx_postgres_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc)
 {
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "finalize http upstream request: %i", rc);
@@ -119,7 +114,7 @@ ngx_postgres_upstream_finalize_request(ngx_http_request_t *r,
     }
 
     if (rc == NGX_DECLINED) {
-        dd("returning");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
         return;
     }
 
@@ -131,7 +126,7 @@ ngx_postgres_upstream_finalize_request(ngx_http_request_t *r,
 
     ngx_http_finalize_request(r, rc);
 
-    dd("returning");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
 }
 
 void
@@ -140,7 +135,7 @@ ngx_postgres_upstream_next(ngx_http_request_t *r,
 {
     ngx_uint_t  status, state;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http next upstream, %xi", ft_type);
@@ -196,7 +191,7 @@ ngx_postgres_upstream_next(ngx_http_request_t *r,
         ngx_postgres_upstream_finalize_request(r, u,
                                                NGX_HTTP_CLIENT_CLOSED_REQUEST);
 
-        dd("returning");
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
         return;
     }
 
@@ -206,7 +201,7 @@ ngx_postgres_upstream_next(ngx_http_request_t *r,
         if (u->peer.tries == 0 || !(u->conf->next_upstream & ft_type)) {
             ngx_postgres_upstream_finalize_request(r, u, status);
 
-            dd("returning");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
             return;
         }
     }
@@ -245,7 +240,7 @@ ngx_postgres_upstream_next(ngx_http_request_t *r,
         status = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    dd("returning");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
     return ngx_postgres_upstream_finalize_request(r, u, status);
 }
 
@@ -255,7 +250,7 @@ ngx_postgres_upstream_test_connect(ngx_connection_t *c)
     int        err;
     socklen_t  len;
 
-    dd("entering");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s entering", __func__);
 
 #if (NGX_HAVE_KQUEUE)
 
@@ -265,7 +260,7 @@ ngx_postgres_upstream_test_connect(ngx_connection_t *c)
             (void) ngx_connection_error(c, c->write->kq_errno,
                        "kevent() reported that connect() failed");
 
-            dd("returning NGX_ERROR");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s returning NGX_ERROR", __func__);
             return NGX_ERROR;
         }
 
@@ -289,12 +284,12 @@ ngx_postgres_upstream_test_connect(ngx_connection_t *c)
             c->log->action = "connecting to upstream";
             (void) ngx_connection_error(c, err, "connect() failed");
 
-            dd("returning NGX_ERROR");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s returning NGX_ERROR", __func__);
             return NGX_ERROR;
         }
     }
 
-    dd("returning NGX_OK");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 }
 
