@@ -29,8 +29,6 @@
 #define DDEBUG 0
 #endif
 
-#include <nginx.h>
-
 #include "ngx_postgres_ddebug.h"
 #include "ngx_postgres_util.h"
 

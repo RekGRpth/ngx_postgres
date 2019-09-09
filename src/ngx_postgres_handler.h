@@ -29,7 +29,6 @@
 #ifndef _NGX_POSTGRES_HANDLER_H_
 #define _NGX_POSTGRES_HANDLER_H_
 
-#include <ngx_core.h>
 #include <ngx_http.h>
 
 
