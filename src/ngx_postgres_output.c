@@ -29,6 +29,7 @@
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"
 #include <math.h>
+#include <postgresql/server/catalog/pg_type_d.h>
 
 
 static ngx_chain_t *
@@ -723,47 +724,47 @@ static rds_col_type_t
 ngx_postgres_rds_col_type(Oid col_type)
 {
     switch (col_type) {
-    case 20: /* int8 */
+    case INT8OID: /* int8 */
         return rds_col_type_bigint;
-    case 1560: /* bit */
+    case BITOID: /* bit */
         return rds_col_type_bit;
-    case 1562: /* varbit */
+    case VARBITOID: /* varbit */
         return rds_col_type_bit_varying;
-    case 16: /* bool */
+    case BOOLOID: /* bool */
         return rds_col_type_bool;
-    case 18: /* char */
+    case CHAROID: /* char */
         return rds_col_type_char;
-    case 19: /* name */
+    case NAMEOID: /* name */
         /* FALLTROUGH */
-    case 25: /* text */
+    case TEXTOID: /* text */
         /* FALLTROUGH */
-    case 1043: /* varchar */
+    case VARCHAROID: /* varchar */
         return rds_col_type_varchar;
-    case 1082: /* date */
+    case DATEOID: /* date */
         return rds_col_type_date;
-    case 701: /* float8 */
+    case FLOAT8OID: /* float8 */
         return rds_col_type_double;
-    case 23: /* int4 */
+    case INT4OID: /* int4 */
         return rds_col_type_integer;
-    case 1186: /* interval */
+    case INTERVALOID: /* interval */
         return rds_col_type_interval;
-    case 1700: /* numeric */
+    case NUMERICOID: /* numeric */
         return rds_col_type_decimal;
-    case 700: /* float4 */
+    case FLOAT4OID: /* float4 */
         return rds_col_type_real;
-    case 21: /* int2 */
+    case INT2OID: /* int2 */
         return rds_col_type_smallint;
-    case 1266: /* timetz */
+    case TIMETZOID: /* timetz */
         return rds_col_type_time_with_time_zone;
-    case 1083: /* time */
+    case TIMEOID: /* time */
         return rds_col_type_time;
-    case 1184: /* timestamptz */
+    case TIMESTAMPTZOID: /* timestamptz */
         return rds_col_type_timestamp_with_time_zone;
-    case 1114: /* timestamp */
+    case TIMESTAMPOID: /* timestamp */
         return rds_col_type_timestamp;
-    case 142: /* xml */
+    case XMLOID: /* xml */
         return rds_col_type_xml;
-    case 17: /* bytea */
+    case BYTEAOID: /* bytea */
         return rds_col_type_blob;
     default:
         return rds_col_type_unknown;
@@ -791,7 +792,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
     int col_type = 0;
 
     // single row with single json column, return that column
-    if (row_count == 1 && col_count == 1 && (PQftype(res, 0) == 114 || PQftype(res, 0) == 3802)) {
+    if (row_count == 1 && col_count == 1 && (PQftype(res, 0) == JSONOID || PQftype(res, 0) == JSONBOID)) {
         size = PQgetlength(res, 0, 0);
     } else {
         /* pre-calculate total length up-front for single buffer allocation */
@@ -807,9 +808,9 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
                     col_type = PQftype(res, col);
                     int col_length = PQgetlength(res, row, col);
 
-                    if ((col_type < 20 || col_type > 23) && (col_type != 3802 && col_type != 114)) { //not numbers or json
+                    if ((col_type < INT8OID || col_type > INT4OID) && (col_type != JSONBOID && col_type != JSONOID)) { //not numbers or json
                         char *col_value = PQgetvalue(res, row, col);
-                        if (col_type == 16) {
+                        if (col_type == BOOLOID) {
                             switch (col_value[0]) {
                                 case 't': case 'T': col_length = sizeof("true") - 1; break;
                                 case 'f': case 'F': col_length = sizeof("false") - 1; break;
@@ -857,7 +858,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
     b->tag = r->upstream->output.tag;
 
 
-    if (row_count == 1 && col_count == 1 && (PQftype(res, 0) == 114 || PQftype(res, 0) == 3802)) {
+    if (row_count == 1 && col_count == 1 && (PQftype(res, 0) == JSONOID || PQftype(res, 0) == JSONBOID)) {
 
         b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0),
                            size);
@@ -908,8 +909,8 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
 
                     col_type = PQftype(res, col);
                     //not numbers or json
-                    if (((col_type < 20 || col_type > 23) && (col_type != 3802 && col_type != 114)) || size == 0) {
-                        if (col_type == 16) {
+                    if (((col_type < INT8OID || col_type > INT4OID) && (col_type != JSONBOID && col_type != JSONOID)) || size == 0) {
+                        if (col_type == BOOLOID) {
                             switch (PQgetvalue(res, row, col)[0]) {
                                 case 't': case 'T': b->last = ngx_copy(b->last, "true", sizeof("true") - 1); break;
                                 case 'f': case 'F': b->last = ngx_copy(b->last, "false", sizeof("false") - 1); break;

@@ -32,6 +32,7 @@
 #include "ngx_postgres_variable.h"
 
 #include <stdbool.h>
+#include <postgresql/server/catalog/pg_type_d.h>
 
 
 static ngx_int_t
@@ -443,26 +444,26 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
                     if (*(p + 2) == ':') {
                         switch (*(p + 1)) {
                             case 't': case 's':
-                                type = 25;
+                                type = TEXTOID;
                                 break;
                             case 'd': case 'i': case 'n':
-                                type = 23;
+                                type = INT4OID;
                                 break;
                             case 'f':
-                                type = 701;
+                                type = FLOAT8OID;
                                 break;
                             case 'b':
-                                type = 16;
+                                type = BOOLOID;
                                 break;
                             case 'j':
-                                type = 114;
+                                type = JSONOID;
                                 break;
                             default:
                                 type = 0;
                         }
                         p += 2;
                     } else { // default is string
-                        type = 25;
+                        type = TEXTOID;
                     }
 
                     u_char *f = p + 1;
