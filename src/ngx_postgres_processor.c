@@ -538,11 +538,8 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
 
     pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
 
-
-
-    u_char *p = pgdt->query.data;
     // run query substitution
-    if (*p == ':') {
+    if (pgdt->query.data[0] == ':') {
         // prepare param arrays
         Oid *types[30];
         Oid *Types = (Oid *) types;
@@ -553,8 +550,7 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
         // when query is :index, set $action to and read $sql
         u_char *start = pgdt->query.data + 1;
         int len = pgdt->query.len - 1;
-        int i = 0;
-        while (*(start + i) >= 'a' && *(start + i) <= 'z' && i < len) {
+        for (int i = 0; *(start + i) >= 'a' && *(start + i) <= 'z' && i < len; i++) {
             if (i == len - 1) {
                 ngx_str_t meta_variable = ngx_string("action");
                 ngx_uint_t meta_variable_hash = ngx_hash_key(meta_variable.data, meta_variable.len);
@@ -570,7 +566,6 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
                 len = sql_data->len;
                 break;
             }
-            i++;
         }
 
         // measure and alloc new query
