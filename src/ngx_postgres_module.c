@@ -718,7 +718,7 @@ ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                          sql = value[cf->args->nelts - 1];
     ngx_postgres_loc_conf_t           *pglcf = conf;
     ngx_http_compile_complex_value_t   ccv;
-    ngx_postgres_mixed_t              *query;
+    ngx_postgres_query_t              *query;
     ngx_conf_bitmask_t                *b;
     ngx_uint_t                         methods, i, j;
 
@@ -742,7 +742,7 @@ ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             return "is duplicate";
         }
 
-        pglcf->query.def = ngx_palloc(cf->pool, sizeof(ngx_postgres_mixed_t));
+        pglcf->query.def = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t));
         if (pglcf->query.def == NULL) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
             return NGX_CONF_ERROR;
@@ -790,7 +790,7 @@ ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
         if (pglcf->query.methods == NULL) {
             pglcf->query.methods = ngx_array_create(cf->pool, 4,
-                                       sizeof(ngx_postgres_mixed_t));
+                                       sizeof(ngx_postgres_query_t));
             if (pglcf->query.methods == NULL) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
                 return NGX_CONF_ERROR;
@@ -810,7 +810,7 @@ ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         /* complex value */
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s complex value", __func__);
 
-        query->key = methods;
+        query->methods = methods;
 
         query->cv = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t));
         if (query->cv == NULL) {
@@ -832,7 +832,7 @@ ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         /* simple value */
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s simple value", __func__);
 
-        query->key = methods;
+        query->methods = methods;
         query->sv = sql;
         query->cv = NULL;
     }
@@ -986,7 +986,7 @@ found:
         keep_body = 0;
     }
 
-    rewrite->key = methods;
+    rewrite->methods = methods;
     rewrite->status = ngx_atoi(to.data, to.len);
     if ((rewrite->status == NGX_ERROR)
         || (rewrite->status < NGX_HTTP_OK)

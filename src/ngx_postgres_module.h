@@ -42,13 +42,13 @@ typedef struct {
 } ngx_postgres_escape_t;
 
 typedef struct {
-    ngx_uint_t                          key;
+    ngx_uint_t                          methods;
     ngx_str_t                           sv;
     ngx_http_complex_value_t           *cv;
-} ngx_postgres_mixed_t;
+} ngx_postgres_query_t;
 
 typedef struct {
-    ngx_uint_t                          key;
+    ngx_uint_t                          methods;
     ngx_int_t                           status;
     ngx_str_t                           location;
 } ngx_postgres_rewrite_t;
@@ -69,7 +69,7 @@ typedef struct {
 typedef struct {
     ngx_uint_t                          methods_set;
     ngx_array_t                        *methods; /* method-specific */
-    ngx_postgres_mixed_t               *def;     /* default */
+    ngx_postgres_query_t               *def;     /* default */
 } ngx_postgres_query_conf_t;
 
 typedef struct ngx_postgres_rewrite_conf_s ngx_postgres_rewrite_conf_t;

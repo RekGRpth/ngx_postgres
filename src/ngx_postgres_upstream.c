@@ -142,7 +142,7 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
     ngx_postgres_ctx_t                 *pgctx;
     ngx_http_core_loc_conf_t           *clcf;
     ngx_http_upstream_t                *u;
-    ngx_postgres_mixed_t               *query;
+    ngx_postgres_query_t               *query;
     ngx_str_t                           sql;
     ngx_uint_t                          i;
 
@@ -175,7 +175,7 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
 
         query = pglcf->query.methods->elts;
         for (i = 0; i < pglcf->query.methods->nelts; i++) {
-            if (query[i].key & r->method) {
+            if (query[i].methods & r->method) {
                 query = &query[i];
                 break;
             }

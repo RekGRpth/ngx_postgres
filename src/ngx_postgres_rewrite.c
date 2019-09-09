@@ -303,7 +303,7 @@ ngx_postgres_rewrite(ngx_http_request_t *r,
         /* method-specific */
         rewrite = pgrcf->methods->elts;
         for (i = 0; i < pgrcf->methods->nelts; i++) {
-            if (rewrite[i].key & r->method) {
+            if (rewrite[i].methods & r->method) {
 
                 if (rewrite[i].location.len > 0) {
 
@@ -464,7 +464,7 @@ ngx_postgres_rewrite_valid(ngx_http_request_t *r,
     if (pgrcf->methods_set & r->method) {
       rewrite = pgrcf->methods->elts;
       for (i = 0; i < pgrcf->methods->nelts; i++)
-        if (rewrite[i].key & r->method)
+        if (rewrite[i].methods & r->method)
           if (rewrite[i].location.len > 0) {
             redirect.data = rewrite[i].location.data;
             redirect.len = rewrite[i].location.len;
