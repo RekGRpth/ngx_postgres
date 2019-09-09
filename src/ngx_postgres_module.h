@@ -178,19 +178,6 @@ typedef struct {
 } ngx_postgres_ctx_t;
 
 
-ngx_int_t   ngx_postgres_add_variables(ngx_conf_t *);
-void       *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *);
-void       *ngx_postgres_create_loc_conf(ngx_conf_t *);
-char       *ngx_postgres_merge_loc_conf(ngx_conf_t *, void *, void *);
-char       *ngx_postgres_conf_server(ngx_conf_t *, ngx_command_t *, void *);
-char       *ngx_postgres_conf_keepalive(ngx_conf_t *, ngx_command_t *, void *);
-char       *ngx_postgres_conf_pass(ngx_conf_t *, ngx_command_t *, void *);
-char       *ngx_postgres_conf_query(ngx_conf_t *, ngx_command_t *, void *);
-char       *ngx_postgres_conf_rewrite(ngx_conf_t *, ngx_command_t *, void *);
-char       *ngx_postgres_conf_output(ngx_conf_t *, ngx_command_t *, void *);
-char       *ngx_postgres_conf_set(ngx_conf_t *, ngx_command_t *, void *);
-char       *ngx_postgres_conf_escape(ngx_conf_t *, ngx_command_t *, void *);
-
 ngx_http_upstream_srv_conf_t  *ngx_postgres_find_upstream(ngx_http_request_t *,
                                    ngx_url_t *);
 

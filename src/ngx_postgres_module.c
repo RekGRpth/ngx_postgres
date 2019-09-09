@@ -45,6 +45,32 @@
 #define NGX_CONF_TAKE34  (NGX_CONF_TAKE3|NGX_CONF_TAKE4)
 
 
+static ngx_int_t
+ngx_postgres_add_variables(ngx_conf_t *cf);
+static void *
+ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf);
+static void *
+ngx_postgres_create_loc_conf(ngx_conf_t *cf);
+static char *
+ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
+static char *
+ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *
+ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *
+ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *
+ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *
+ngx_postgres_conf_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *
+ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *
+ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *
+ngx_postgres_conf_escape(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+
+
 static ngx_command_t ngx_postgres_module_commands[] = {
 
     { ngx_string("postgres_server"),
@@ -233,7 +259,7 @@ ngx_postgres_output_enum_t ngx_postgres_output_handlers[] = {
 };
 
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_add_variables(ngx_conf_t *cf)
 {
     ngx_http_variable_t  *var, *v;
@@ -255,7 +281,7 @@ ngx_postgres_add_variables(ngx_conf_t *cf)
     return NGX_OK;
 }
 
-void *
+static void *
 ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf)
 {
     ngx_postgres_upstream_srv_conf_t  *conf;
@@ -295,7 +321,7 @@ ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf)
     return conf;
 }
 
-void *
+static void *
 ngx_postgres_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_postgres_loc_conf_t  *conf;
@@ -344,7 +370,7 @@ ngx_postgres_create_loc_conf(ngx_conf_t *cf)
     return conf;
 }
 
-char *
+static char *
 ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_postgres_loc_conf_t  *prev = parent;
@@ -393,7 +419,7 @@ ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
  * Based on: ngx_http_upstream.c/ngx_http_upstream_server
  * Copyright (C) Igor Sysoev
  */
-char *
+static char *
 ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t                         *value = cf->args->elts;
@@ -497,7 +523,7 @@ ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
-char *
+static char *
 ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t                         *value = cf->args->elts;
@@ -615,7 +641,7 @@ ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
-char *
+static char *
 ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t                         *value = cf->args->elts;
@@ -692,7 +718,7 @@ ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 }
 
-char *
+static char *
 ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t                         *value = cf->args->elts;
@@ -822,7 +848,7 @@ ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
-char *
+static char *
 ngx_postgres_conf_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t                    *value = cf->args->elts;
@@ -989,7 +1015,7 @@ found:
     return NGX_CONF_OK;
 }
 
-char *
+static char *
 ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t                   *value = cf->args->elts;
@@ -1029,7 +1055,7 @@ ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
-char *
+static char *
 ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t                *value = cf->args->elts;
@@ -1161,7 +1187,7 @@ ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
  * Based on: ngx_http_rewrite_module.c/ngx_http_rewrite_set
  * Copyright (C) Igor Sysoev
  */
-char *
+static char *
 ngx_postgres_conf_escape(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     ngx_str_t                           *value = cf->args->elts;

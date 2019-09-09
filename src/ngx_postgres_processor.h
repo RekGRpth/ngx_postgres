@@ -37,16 +37,5 @@
 
 
 void       ngx_postgres_process_events(ngx_http_request_t *);
-ngx_int_t  ngx_postgres_upstream_connect(ngx_http_request_t *,
-               ngx_connection_t *, ngx_postgres_upstream_peer_data_t *);
-ngx_int_t  ngx_postgres_upstream_send_query(ngx_http_request_t *,
-               ngx_connection_t *, ngx_postgres_upstream_peer_data_t *);
-ngx_int_t  ngx_postgres_upstream_get_result(ngx_http_request_t *,
-               ngx_connection_t *, ngx_postgres_upstream_peer_data_t *);
-ngx_int_t  ngx_postgres_process_response(ngx_http_request_t *, PGresult *);
-ngx_int_t  ngx_postgres_upstream_get_ack(ngx_http_request_t *,
-               ngx_connection_t *, ngx_postgres_upstream_peer_data_t *);
-ngx_int_t  ngx_postgres_upstream_done(ngx_http_request_t *,
-               ngx_http_upstream_t *, ngx_postgres_upstream_peer_data_t *);
 
 #endif /* _NGX_POSTGRES_PROCESSOR_H_ */

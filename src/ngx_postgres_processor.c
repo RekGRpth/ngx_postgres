@@ -38,6 +38,26 @@
 
 #include <stdbool.h>
 
+
+static ngx_int_t
+ngx_postgres_upstream_connect(ngx_http_request_t *r, ngx_connection_t *pgxc,
+    ngx_postgres_upstream_peer_data_t *pgdt);
+static ngx_int_t
+ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
+    ngx_postgres_upstream_peer_data_t *pgdt);
+static ngx_int_t
+ngx_postgres_upstream_get_result(ngx_http_request_t *r, ngx_connection_t *pgxc,
+    ngx_postgres_upstream_peer_data_t *pgdt);
+static ngx_int_t
+ngx_postgres_process_response(ngx_http_request_t *r, PGresult *res);
+static ngx_int_t
+ngx_postgres_upstream_get_ack(ngx_http_request_t *r, ngx_connection_t *pgxc,
+    ngx_postgres_upstream_peer_data_t *pgdt);
+static ngx_int_t
+ngx_postgres_upstream_done(ngx_http_request_t *r, ngx_http_upstream_t *u,
+    ngx_postgres_upstream_peer_data_t *pgdt);
+
+
 void
 ngx_postgres_process_events(ngx_http_request_t *r)
 {
@@ -115,7 +135,7 @@ failed:
     dd("returning");
 }
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_upstream_connect(ngx_http_request_t *r, ngx_connection_t *pgxc,
     ngx_postgres_upstream_peer_data_t *pgdt)
 {
@@ -512,7 +532,7 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
     return size;
 }
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
     ngx_postgres_upstream_peer_data_t *pgdt)
 {
@@ -668,7 +688,7 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
     return NGX_DONE;
 }
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_upstream_get_result(ngx_http_request_t *r, ngx_connection_t *pgxc,
     ngx_postgres_upstream_peer_data_t *pgdt)
 {
@@ -753,7 +773,7 @@ ngx_postgres_upstream_get_result(ngx_http_request_t *r, ngx_connection_t *pgxc,
     return ngx_postgres_upstream_get_ack(r, pgxc, pgdt);
 }
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_process_response(ngx_http_request_t *r, PGresult *res)
 {
     ngx_postgres_loc_conf_t      *pglcf;
@@ -834,7 +854,7 @@ ngx_postgres_process_response(ngx_http_request_t *r, PGresult *res)
     return NGX_DONE;
 }
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_upstream_get_ack(ngx_http_request_t *r, ngx_connection_t *pgxc,
     ngx_postgres_upstream_peer_data_t *pgdt)
 {
@@ -880,7 +900,7 @@ ngx_postgres_upstream_get_ack(ngx_http_request_t *r, ngx_connection_t *pgxc,
     return ngx_postgres_upstream_done(r, r->upstream, pgdt);
 }
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_upstream_done(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_postgres_upstream_peer_data_t *pgdt)
 {

@@ -38,6 +38,26 @@
 #include "ngx_postgres_util.h"
 
 
+static void
+ngx_postgres_wev_handler(ngx_http_request_t *r, ngx_http_upstream_t *u);
+static void
+ngx_postgres_rev_handler(ngx_http_request_t *r, ngx_http_upstream_t *u);
+static ngx_int_t
+ngx_postgres_create_request(ngx_http_request_t *r);
+static ngx_int_t
+ngx_postgres_reinit_request(ngx_http_request_t *r);
+static void
+ngx_postgres_abort_request(ngx_http_request_t *r);
+static void
+ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc);
+static ngx_int_t
+ngx_postgres_process_header(ngx_http_request_t *r);
+static ngx_int_t
+ngx_postgres_input_filter_init(void *data);
+static ngx_int_t
+ngx_postgres_input_filter(void *data, ssize_t bytes);
+
+
 ngx_int_t
 ngx_postgres_handler(ngx_http_request_t *r)
 {
@@ -244,7 +264,7 @@ ngx_postgres_handler(ngx_http_request_t *r)
     return NGX_DONE;
 }
 
-void
+static void
 ngx_postgres_wev_handler(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_connection_t  *pgxc;
@@ -280,7 +300,7 @@ ngx_postgres_wev_handler(ngx_http_request_t *r, ngx_http_upstream_t *u)
     dd("returning");
 }
 
-void
+static void
 ngx_postgres_rev_handler(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_connection_t  *pgxc;
@@ -316,7 +336,7 @@ ngx_postgres_rev_handler(ngx_http_request_t *r, ngx_http_upstream_t *u)
     dd("returning");
 }
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_create_request(ngx_http_request_t *r)
 {
     dd("entering");
@@ -327,7 +347,7 @@ ngx_postgres_create_request(ngx_http_request_t *r)
     return NGX_OK;
 }
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_reinit_request(ngx_http_request_t *r)
 {
     ngx_http_upstream_t  *u;
@@ -344,13 +364,13 @@ ngx_postgres_reinit_request(ngx_http_request_t *r)
     return NGX_OK;
 }
 
-void
+static void
 ngx_postgres_abort_request(ngx_http_request_t *r)
 {
     dd("entering & returning (dummy function)");
 }
 
-void
+static void
 ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
 {
     ngx_postgres_ctx_t  *pgctx;
@@ -366,7 +386,7 @@ ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
     dd("returning");
 }
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_process_header(ngx_http_request_t *r)
 {
     dd("entering");
@@ -379,7 +399,7 @@ ngx_postgres_process_header(ngx_http_request_t *r)
     return NGX_ERROR;
 }
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_input_filter_init(void *data)
 {
     ngx_http_request_t  *r = data;
@@ -394,7 +414,7 @@ ngx_postgres_input_filter_init(void *data)
     return NGX_ERROR;
 }
 
-ngx_int_t
+static ngx_int_t
 ngx_postgres_input_filter(void *data, ssize_t bytes)
 {
     ngx_http_request_t  *r = data;

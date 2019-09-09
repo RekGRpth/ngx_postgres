@@ -42,15 +42,6 @@ ngx_int_t        ngx_postgres_output_text(ngx_http_request_t *, PGresult *);
 ngx_int_t        ngx_postgres_output_json(ngx_http_request_t *, PGresult *);
 ngx_int_t        ngx_postgres_output_hex(ngx_http_request_t *, PGresult *);
 ngx_int_t        ngx_postgres_output_rds(ngx_http_request_t *, PGresult *);
-ngx_chain_t     *ngx_postgres_render_rds_header(ngx_http_request_t *,
-                     ngx_pool_t *, PGresult *, ngx_int_t, ngx_int_t);
-ngx_chain_t     *ngx_postgres_render_rds_columns(ngx_http_request_t *,
-                     ngx_pool_t *, PGresult *, ngx_int_t);
-ngx_chain_t     *ngx_postgres_render_rds_row(ngx_http_request_t *, ngx_pool_t *,
-                     PGresult *, ngx_int_t, ngx_int_t, ngx_int_t);
-ngx_chain_t     *ngx_postgres_render_rds_row_terminator(ngx_http_request_t *,
-                     ngx_pool_t *);
 ngx_int_t        ngx_postgres_output_chain(ngx_http_request_t *, ngx_chain_t *);
-rds_col_type_t   ngx_postgres_rds_col_type(Oid);
 
 #endif /* _NGX_POSTGRES_OUTPUT_H_ */

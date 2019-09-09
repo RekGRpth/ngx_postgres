@@ -33,6 +33,12 @@
 #include "ngx_postgres_keepalive.h"
 
 
+static void
+ngx_postgres_keepalive_dummy_handler(ngx_event_t *ev);
+static void
+ngx_postgres_keepalive_close_handler(ngx_event_t *ev);
+
+
 ngx_int_t
 ngx_postgres_keepalive_init(ngx_pool_t *pool,
     ngx_postgres_upstream_srv_conf_t *pgscf)
@@ -283,13 +289,13 @@ ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc,
     dd("returning");
 }
 
-void
+static void
 ngx_postgres_keepalive_dummy_handler(ngx_event_t *ev)
 {
     dd("entering & returning (dummy handler)");
 }
 
-void
+static void
 ngx_postgres_keepalive_close_handler(ngx_event_t *ev)
 {
     ngx_postgres_upstream_srv_conf_t  *pgscf;
