@@ -44,19 +44,16 @@ typedef enum {
 } ngx_postgres_state_t;
 
 typedef struct {
-    ngx_uint_t                          oid;
-    ngx_str_t                           arg;
-} ngx_postgres_upstream_arg_t;
-
-typedef struct {
     ngx_postgres_upstream_srv_conf_t  *srv_conf;
     ngx_postgres_loc_conf_t           *loc_conf;
     ngx_http_upstream_t               *upstream;
     ngx_http_request_t                *request;
     PGconn                            *pgconn;
     ngx_postgres_state_t               state;
+    int                                nParams;
+    Oid                               *paramTypes;
+    u_char                           **paramValues;
     ngx_str_t                          sql;
-    ngx_array_t                        args;
     ngx_str_t                          name;
     struct sockaddr                    sockaddr;
     unsigned                           failed;
