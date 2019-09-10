@@ -163,6 +163,8 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
     pgdt->srv_conf = pgscf;
     pgdt->loc_conf = pglcf;
 
+    pgdt->statements = ngx_pcalloc(r->pool, pgscf->max_statements * sizeof(ngx_uint_t));
+
     u->peer.data = pgdt;
     u->peer.get = ngx_postgres_upstream_get_peer;
     u->peer.free = ngx_postgres_upstream_free_peer;

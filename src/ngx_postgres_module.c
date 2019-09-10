@@ -473,6 +473,7 @@ ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf)
 
     /* enable keepalive (single) by default */
     conf->max_cached = 10;
+    conf->max_statements = 256;
     conf->single = 1;
 
     cln = ngx_pool_cleanup_add(cf->pool, 0);
@@ -701,6 +702,11 @@ ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
+    if (pgscf->max_statements != 256 /* default */) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning", __func__);
+        return "is duplicate";
+    }
+
     if ((cf->args->nelts == 2) && (ngx_strcmp(value[1].data, "off") == 0)) {
         pgscf->max_cached = 0;
 
@@ -728,6 +734,28 @@ ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
 
             pgscf->max_cached = (ngx_uint_t) n;
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "prepare=", sizeof("prepare=") - 1)
+                == 0)
+        {
+            value[i].len = value[i].len - (sizeof("prepare=") - 1);
+            value[i].data = &value[i].data[sizeof("prepare=") - 1];
+
+            n = ngx_atoi(value[i].data, value[i].len);
+            if (n == NGX_ERROR) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "postgres: invalid \"prepare\" value \"%V\""
+                                   " in \"%V\" directive",
+                                   &value[i], &cmd->name);
+
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
+                return NGX_CONF_ERROR;
+            }
+
+            pgscf->max_statements = (ngx_uint_t) n;
 
             continue;
         }
