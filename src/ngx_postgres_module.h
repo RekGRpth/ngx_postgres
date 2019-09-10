@@ -73,7 +73,7 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t                          methods_set;
-    ngx_array_t                        *methods; /* method-specific */
+    ngx_array_t                         methods; /* method-specific */
     ngx_postgres_query_t               *def;     /* default */
 } ngx_postgres_query_conf_t;
 
@@ -88,7 +88,7 @@ struct ngx_postgres_rewrite_conf_s {
     ngx_postgres_rewrite_handler_pt     handler;
     /* methods */
     ngx_uint_t                          methods_set;
-    ngx_array_t                        *methods; /* method-specific */
+    ngx_array_t                         methods; /* method-specific */
     ngx_postgres_rewrite_t             *def;     /* default */
 };
 

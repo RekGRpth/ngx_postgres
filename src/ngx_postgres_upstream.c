@@ -149,10 +149,10 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     u->peer.free = ngx_postgres_upstream_free_peer;
     ngx_postgres_query_t *query;
     if (pglcf->query.methods_set & r->method) {
-        query = pglcf->query.methods->elts;
+        query = pglcf->query.methods.elts;
         ngx_uint_t i;
-        for (i = 0; i < pglcf->query.methods->nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
-        if (i == pglcf->query.methods->nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        for (i = 0; i < pglcf->query.methods.nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
+        if (i == pglcf->query.methods.nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     } else query = pglcf->query.def;
     if (ngx_http_complex_value(r, &query->sql, &pgdt->sql) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     if (query->args.nelts) {
