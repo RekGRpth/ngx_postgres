@@ -107,6 +107,7 @@ ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc,
         pc->socklen = item->socklen;
 
         /* Inherit list of prepared statements */
+        pgp->statement = item->statement;
         ngx_uint_t j;
         for (j = 0; j < pgscf->max_statements; j++)
             pgp->statements[j] = item->statements[j];
@@ -161,6 +162,7 @@ ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc,
             pgp->pgconn = item->pgconn;
 
             /* Inherit list of prepared statements */
+            pgp->statement = item->statement;
             ngx_uint_t j;
             for (j = 0; j < pgscf->max_statements; j++)
                 pgp->statements[j] = item->statements[j];
@@ -240,6 +242,7 @@ ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc,
                                   queue);
         }
 
+        item->statement = pgp->statement;
         ngx_uint_t j;
         for (j = 0; j < pgscf->max_statements; j++)
             item->statements[j] = pgp->statements[j];

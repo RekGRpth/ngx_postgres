@@ -529,11 +529,11 @@ int generate_prepared_query(ngx_http_request_t *r, char *query, u_char *data, in
 static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc, ngx_postgres_upstream_peer_data_t *pgdt) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
     ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    u_char *query = ngx_pnalloc(r->pool, pgdt->sql.len + 1);
-    if (!query) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    (void) ngx_cpystrn(query, pgdt->sql.data, pgdt->sql.len + 1);
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s sending query: %s", __func__, query);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgxc->log, 0, "postgres: sending query: \"%s\"", query);
+    u_char *command = ngx_pnalloc(r->pool, pgdt->sql.len + 1);
+    if (!command) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    (void) ngx_cpystrn(command, pgdt->sql.data, pgdt->sql.len + 1);
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s sending query: %s", __func__, command);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgxc->log, 0, "postgres: sending query: \"%s\"", command);
     int nParams = pgdt->args ? pgdt->args->nelts : 0;
     Oid *paramTypes = NULL;
     u_char **paramValues = NULL;
@@ -541,21 +541,31 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_con
     int *paramFormats = NULL;
     int resultFormat = pglcf->output_binary;
     if (nParams) {
-        if (!(paramTypes = ngx_pnalloc(r->pool, nParams * sizeof(Oid)))) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        if (!(paramValues = ngx_pnalloc(r->pool, nParams * sizeof(char *)))) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        if (!(paramTypes = ngx_pnalloc(r->pool, nParams * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        if (!(paramValues = ngx_pnalloc(r->pool, nParams * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         ngx_postgres_upstream_arg_t *arg = pgdt->args->elts;
         for (int i = 0; i < nParams; i++) {
             paramTypes[i] = arg[i].oid;
-            if (!(paramValues[i] = ngx_pnalloc(r->pool, arg[i].arg.len + 1))) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            if (!(paramValues[i] = ngx_pnalloc(r->pool, arg[i].arg.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             (void) ngx_cpystrn(paramValues[i], arg[i].arg.data, arg[i].arg.len + 1);
         }
     }
-    if (!PQsendQueryParams(pgdt->pgconn, (const char *) query, nParams, paramTypes, (const char *const *)paramValues, paramLengths, paramFormats, resultFormat)) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s sending query failed", __func__);
-        ngx_log_error(NGX_LOG_ERR, pgxc->log, 0, "postgres: sending query failed: %s", PQerrorMessage(pgdt->pgconn));
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
+    if (pgdt->statements) {
+        u_char stmtName[32];
+        ngx_uint_t hash = ngx_hash_key(pgdt->sql.data, pgdt->sql.len);
+        *ngx_snprintf(stmtName, 32, "ngx_%ul", (unsigned long)hash) = '\0';
+        ngx_uint_t n;
+        bool matched = false;
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "stmtName = %s", stmtName);
+        for (n = 0; n < pgdt->srv_conf->max_statements && pgdt->statements[n]; n++) if (pgdt->statements[n] == hash) { matched = true; break; }
+        if (!matched) {
+            PGresult *res = PQprepare(pgdt->pgconn, (const char *)stmtName, (const char *)command, nParams, paramTypes);
+            if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, pgxc->log, 0, "postgres: failed to prepare: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+            pgdt->statements[n] = hash;
+        }
+        if (!PQsendQueryPrepared(pgdt->pgconn, (const char *)stmtName, nParams, (const char *const *)paramValues, paramLengths, paramFormats, resultFormat)) { ngx_log_error(NGX_LOG_ERR, pgxc->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+    } else if (!PQsendQueryParams(pgdt->pgconn, (const char *)command, nParams, paramTypes, (const char *const *)paramValues, paramLengths, paramFormats, resultFormat)) { ngx_log_error(NGX_LOG_ERR, pgxc->log, 0, "postgres: failed to send query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
 
     /* set result timeout */
     ngx_add_timer(pgxc->read, r->upstream->conf->read_timeout);
