@@ -173,229 +173,100 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     return NGX_OK;
 }
 
-static ngx_int_t
-ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data)
-{
-    ngx_postgres_upstream_peer_data_t  *pgdt = data;
-    ngx_postgres_upstream_srv_conf_t   *pgscf;
-    ngx_postgres_upstream_peers_t      *peers;
-    ngx_postgres_upstream_peer_t       *peer;
-    ngx_connection_t                   *pgxc = NULL;
-    int                                 fd;
-    ngx_event_t                        *rev, *wev;
-    ngx_int_t                           rc;
-    u_char                             *connstring, *last;
-    size_t                              len;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s entering", __func__);
-
-    pgscf = pgdt->srv_conf;
-
+static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data) {
+    ngx_postgres_upstream_peer_data_t *pgdt = data;
     pgdt->failed = 0;
-
-    if (pgscf->max_cached && pgscf->single) {
-        rc = ngx_postgres_keepalive_get_peer_single(pc, pgdt, pgscf);
-        if (rc != NGX_DECLINED) {
-            /* re-use keepalive peer */
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s re-using keepalive peer (single)", __func__);
-
-            pgdt->state = state_db_send_query;
-
-            ngx_postgres_process_events(pgdt->request);
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_AGAIN", __func__);
-            return NGX_AGAIN;
-        }
+    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->srv_conf;
+    if (pgscf->max_cached && pgscf->single && ngx_postgres_keepalive_get_peer_single(pc, pgdt) != NGX_DECLINED) { /* re-use keepalive peer */
+        pgdt->state = state_db_send_query;
+        ngx_postgres_process_events(pgdt->request);
+        return NGX_AGAIN;
     }
-
-    peers = pgscf->peers;
-
-    if (pgscf->current > peers->number - 1) {
-        pgscf->current = 0;
-    }
-
-    peer = &peers->peer[pgscf->current++];
-
+    ngx_postgres_upstream_peers_t *peers = pgscf->peers;
+    if (pgscf->current > peers->number - 1) pgscf->current = 0;
+    ngx_postgres_upstream_peer_t *peer = &peers->peer[pgscf->current++];
     pgdt->name.len = peer->name.len;
     pgdt->name.data = peer->name.data;
-
     pgdt->sockaddr = *peer->sockaddr;
-
     pc->name = &pgdt->name;
     pc->sockaddr = &pgdt->sockaddr;
     pc->socklen = peer->socklen;
     pc->cached = 0;
-
-    if ((pgscf->max_cached) && (!pgscf->single)) {
-        rc = ngx_postgres_keepalive_get_peer_multi(pc, pgdt, pgscf);
-        if (rc != NGX_DECLINED) {
-            /* re-use keepalive peer */
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s re-using keepalive peer (multi)", __func__);
-
-            pgdt->state = state_db_send_query;
-
-            ngx_postgres_process_events(pgdt->request);
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_AGAIN", __func__);
-            return NGX_AGAIN;
-        }
-    }
-
-    if ((pgscf->reject) && (pgscf->active_conns >= pgscf->max_cached)) {
-        ngx_log_error(NGX_LOG_INFO, pc->log, 0,
-                      "postgres: keepalive connection pool is full,"
-                      " rejecting request to upstream \"%V\"", &peer->name);
-
-        /* a bit hack-ish way to return error response (setup part) */
-        pc->connection = ngx_get_connection(0, pc->log);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_AGAIN (NGX_HTTP_SERVICE_UNAVAILABLE)", __func__);
+    if (pgscf->max_cached && !pgscf->single && ngx_postgres_keepalive_get_peer_multi(pc, pgdt) != NGX_DECLINED) { /* re-use keepalive peer */
+        pgdt->state = state_db_send_query;
+        ngx_postgres_process_events(pgdt->request);
         return NGX_AGAIN;
     }
-
+    if (pgscf->reject && pgscf->active_conns >= pgscf->max_cached) {
+        ngx_log_error(NGX_LOG_INFO, pc->log, 0, "postgres: keepalive connection pool is full, rejecting request to upstream \"%V\"", &peer->name);
+        /* a bit hack-ish way to return error response (setup part) */
+        pc->connection = ngx_get_connection(0, pc->log);
+        return NGX_AGAIN;
+    }
     /* sizeof("...") - 1 + 1 (for spaces and '\0' omitted */
     /* we hope that unix sockets connection string will be always shorter than tcp/ip one (because 'host' is shorter than 'hostaddr') */
-    len = sizeof("hostaddr=") + peer->host.len
+    size_t len = sizeof("hostaddr=") + peer->host.len
         + sizeof("port=") + sizeof("65535") - 1
         + sizeof("dbname=") + peer->dbname.len
         + sizeof("port=") + sizeof("65535") - 1
         + sizeof("dbname=") + peer->dbname.len
         + sizeof("user=") + peer->user.len
-        + sizeof("password=") + peer->password.len/*
-        + sizeof("sslmode=disable")*/;
-
-    connstring = ngx_pnalloc(pgdt->request->pool, len);
-    if (connstring == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
-    if(peer->family != AF_UNIX)
-        last = ngx_snprintf(connstring, len - 1,
-                            "hostaddr=%V port=%d dbname=%V user=%V password=%V"/*
-                            " sslmode=disable"*/,
-                            &peer->host, peer->port, &peer->dbname, &peer->user,
-                            &peer->password);
-    else
-        last = ngx_snprintf(connstring, len - 1,
-                            "host=%s port=%d dbname=%V user=%V password=%V"/*
-                            " sslmode=disable"*/,
-                            &peer->host.data[5], peer->port, &peer->dbname, &peer->user,
-                            &peer->password);
+        + sizeof("password=") + peer->password.len;
+    u_char *connstring = ngx_pnalloc(pgdt->request->pool, len);
+    if (!connstring) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    u_char *last = (peer->family != AF_UNIX)
+        ? ngx_snprintf(connstring, len - 1, "hostaddr=%V port=%d dbname=%V user=%V password=%V", &peer->host, peer->port, &peer->dbname, &peer->user, &peer->password)
+        : ngx_snprintf(connstring, len - 1, "host=%s port=%d dbname=%V user=%V password=%V", &peer->host.data[5], peer->port, &peer->dbname, &peer->user, &peer->password);
     *last = '\0';
-
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s PostgreSQL connection string: %s", __func__, connstring);
-
-    /*
-     * internal checks in PQsetnonblocking are taking care of any
-     * PQconnectStart failures, so we don't need to check them here.
-     */
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-                   "postgres: connecting");
-
+    /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
     pgdt->pgconn = PQconnectStart((const char *)connstring);
     if (PQsetnonblocking(pgdt->pgconn, 1) == -1) {
-        ngx_log_error(NGX_LOG_ERR, pc->log, 0,
-                      "postgres: connection failed: %s in upstream \"%V\"",
-                      PQerrorMessage(pgdt->pgconn), &peer->name);
-
+        ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: connection failed: %s in upstream \"%V\"", PQerrorMessage(pgdt->pgconn), &peer->name);
         PQfinish(pgdt->pgconn);
         pgdt->pgconn = NULL;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_DECLINED", __func__);
         return NGX_DECLINED;
     }
-
-#if defined(DDEBUG) && (DDEBUG > 1)
-    PQtrace(pgdt->pgconn, stderr);
-#endif
-
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s connection status:%d", __func__, (int) PQstatus(pgdt->pgconn));
-
     /* take spot in keepalive connection pool */
     pgscf->active_conns++;
-
     /* add the file descriptor (fd) into an nginx connection structure */
-
-    fd = PQsocket(pgdt->pgconn);
-    if (fd == -1) {
-        ngx_log_error(NGX_LOG_ERR, pc->log, 0,
-                      "postgres: failed to get connection fd");
-
-        goto invalid;
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-                   "postgres: connection fd:%d", fd);
-
-    pgxc = pc->connection = ngx_get_connection(fd, pc->log);
-
-    if (pgxc == NULL) {
-        ngx_log_error(NGX_LOG_ERR, pc->log, 0,
-                      "postgres: failed to get a free nginx connection");
-
-        goto invalid;
-    }
-
+    int fd = PQsocket(pgdt->pgconn);
+    if (fd == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get connection fd"); goto invalid; }
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection fd:%d", fd);
+    if (!(pc->connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get a free nginx connection"); goto invalid; }
+    ngx_connection_t *pgxc = pc->connection;
     pgxc->log = pc->log;
     pgxc->log_error = pc->log_error;
     pgxc->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
-
-    rev = pgxc->read;
-    wev = pgxc->write;
-
+    ngx_event_t *rev = pgxc->read;
+    ngx_event_t *wev = pgxc->write;
     rev->log = pc->log;
     wev->log = pc->log;
-
-    /* register the connection with postgres connection fd into the
-     * nginx event model */
-
+    /* register the connection with postgres connection fd into the nginx event model */
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s NGX_USE_RTSIG_EVENT", __func__);
-        if (ngx_add_conn(pgxc) != NGX_OK) {
-            goto bad_add;
-        }
-
+        if (ngx_add_conn(pgxc) != NGX_OK) goto bad_add;
     } else if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s NGX_USE_CLEAR_EVENT", __func__);
-        if (ngx_add_event(rev, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) {
-            goto bad_add;
-        }
-
-        if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_CLEAR_EVENT) != NGX_OK) {
-            goto bad_add;
-        }
-
+        if (ngx_add_event(rev, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) goto bad_add;
+        if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_CLEAR_EVENT) != NGX_OK) goto bad_add;
     } else {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s NGX_USE_LEVEL_EVENT", __func__);
-        if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) {
-            goto bad_add;
-        }
-
-        if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) {
-            goto bad_add;
-        }
+        if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
+        if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
     }
-
-    pgxc->log->action = "connecting to PostgreSQL database";
+//    pgxc->log->action = "connecting to PostgreSQL database";
     pgdt->state = state_db_connect;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_AGAIN", __func__);
     return NGX_AGAIN;
-
 bad_add:
-
-    ngx_log_error(NGX_LOG_ERR, pc->log, 0,
-                  "postgres: failed to add nginx connection");
-
+    ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to add nginx connection");
 invalid:
-
     ngx_postgres_upstream_free_connection(pc->connection, pgdt->pgconn, pgscf);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_ERROR", __func__);
     return NGX_ERROR;
 }
+
 
 static void
 ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc,
@@ -409,7 +280,7 @@ ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc,
     pgscf = pgdt->srv_conf;
 
     if (pgscf->max_cached) {
-        ngx_postgres_keepalive_free_peer(pc, pgdt, pgscf, state);
+        ngx_postgres_keepalive_free_peer(pc, pgdt, state);
     }
 
     if (pc->connection) {

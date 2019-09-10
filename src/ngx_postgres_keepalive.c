@@ -63,11 +63,8 @@ ngx_postgres_keepalive_init(ngx_pool_t *pool,
     return NGX_OK;
 }
 
-ngx_int_t
-ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc,
-    ngx_postgres_upstream_peer_data_t *pgp,
-    ngx_postgres_upstream_srv_conf_t *pgscf)
-{
+ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt) {
+    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->srv_conf;
     ngx_postgres_keepalive_cache_t  *item;
     ngx_queue_t                     *q;
     ngx_connection_t                *c;
@@ -91,25 +88,25 @@ ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc,
         c->read->log = pc->log;
         c->write->log = pc->log;
 
-        pgp->name.data = item->name.data;
-        pgp->name.len = item->name.len;
+        pgdt->name.data = item->name.data;
+        pgdt->name.len = item->name.len;
 
-        pgp->sockaddr = item->sockaddr;
+        pgdt->sockaddr = item->sockaddr;
 
-        pgp->pgconn = item->pgconn;
+        pgdt->pgconn = item->pgconn;
 
         pc->connection = c;
         pc->cached = 1;
 
-        pc->name = &pgp->name;
+        pc->name = &pgdt->name;
 
-        pc->sockaddr = &pgp->sockaddr;
+        pc->sockaddr = &pgdt->sockaddr;
         pc->socklen = item->socklen;
 
         /* Inherit list of prepared statements */
         ngx_uint_t j;
         for (j = 0; j < pgscf->max_statements; j++)
-            pgp->statements[j] = item->statements[j];
+            pgdt->statements[j] = item->statements[j];
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_DONE", __func__);
 
@@ -120,11 +117,8 @@ ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc,
     return NGX_DECLINED;
 }
 
-ngx_int_t
-ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc,
-    ngx_postgres_upstream_peer_data_t *pgp,
-    ngx_postgres_upstream_srv_conf_t *pgscf)
-{
+ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt) {
+    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->srv_conf;
     ngx_postgres_keepalive_cache_t  *item;
     ngx_queue_t                     *q, *cache;
     ngx_connection_t                *c;
@@ -158,12 +152,12 @@ ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc,
             /* we do not need to resume the peer name
              * because we already take the right value outside */
 
-            pgp->pgconn = item->pgconn;
+            pgdt->pgconn = item->pgconn;
 
             /* Inherit list of prepared statements */
             ngx_uint_t j;
             for (j = 0; j < pgscf->max_statements; j++)
-                pgp->statements[j] = item->statements[j];
+                pgdt->statements[j] = item->statements[j];
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_DONE", __func__);
             return NGX_DONE;
@@ -174,11 +168,8 @@ ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc,
     return NGX_DECLINED;
 }
 
-void
-ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc,
-    ngx_postgres_upstream_peer_data_t *pgp,
-    ngx_postgres_upstream_srv_conf_t *pgscf, ngx_uint_t  state)
-{
+void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt, ngx_uint_t  state) {
+    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->srv_conf;
     ngx_postgres_keepalive_cache_t  *item;
     ngx_queue_t                     *q;
     ngx_connection_t                *c;
@@ -190,12 +181,12 @@ ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc,
                    "postgres: free keepalive peer");
 
     if (state & NGX_PEER_FAILED) {
-        pgp->failed = 1;
+        pgdt->failed = 1;
     }
 
-    u = pgp->upstream;
+    u = pgdt->upstream;
 
-    if ((!pgp->failed) && (pc->connection != NULL)
+    if ((!pgdt->failed) && (pc->connection != NULL)
         && (u->headers_in.status_n == NGX_HTTP_OK))
     {
         c = pc->connection;
@@ -241,7 +232,7 @@ ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc,
 
         ngx_uint_t j;
         for (j = 0; j < pgscf->max_statements; j++)
-            item->statements[j] = pgp->statements[j];
+            item->statements[j] = pgdt->statements[j];
         item->connection = c;
 
         ngx_queue_insert_head(&pgscf->cache, q);
@@ -259,10 +250,10 @@ ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc,
         item->socklen = pc->socklen;
         ngx_memcpy(&item->sockaddr, pc->sockaddr, pc->socklen);
 
-        item->pgconn = pgp->pgconn;
+        item->pgconn = pgdt->pgconn;
 
-        item->name.data = pgp->name.data;
-        item->name.len = pgp->name.len;
+        item->name.data = pgdt->name.data;
+        item->name.len = pgdt->name.len;
 
     }
 
