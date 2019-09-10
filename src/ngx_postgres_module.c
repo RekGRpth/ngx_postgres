@@ -908,11 +908,11 @@ ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 }
 
-inline static bool is_variable_character(char p) {
+static bool is_variable_character(char p) {
     return ((p >= '0' && p <= '9') || (p >= 'a' && p <= 'z') || (p >= 'A' && p <= 'Z') || p == '_');
 }
 
-inline static ngx_uint_t oid_from_text(ngx_str_t *value) {
+static ngx_uint_t oid_from_text(ngx_str_t *value) {
     for (ngx_uint_t i = 0; ngx_postgres_oids[i].name.len; i++) {
         if (ngx_postgres_oids[i].name.len - 3 == value->len && !ngx_strncasecmp(ngx_postgres_oids[i].name.data, value->data, value->len)) {
             return ngx_postgres_oids[i].value;
@@ -927,10 +927,8 @@ ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_str_t                         *value = cf->args->elts;
     ngx_str_t                          sql = value[cf->args->nelts - 1];
     ngx_postgres_loc_conf_t           *pglcf = conf;
-//    ngx_http_compile_complex_value_t   ccv;
     ngx_postgres_query_t              *query;
     ngx_conf_bitmask_t                *b;
-//    ngx_conf_enum_t                   *c;
     ngx_uint_t                         methods, i, j, n;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
@@ -1031,7 +1029,7 @@ ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 for (name.data = s, name.len = 0; s++ < e && is_variable_character(*s); name.len++);
                 if (!name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
                 name.len++;
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "name = %V", &name);
+//                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "name = %V", &name);
                 if ((ngx_int_t)(arg->index = ngx_http_get_variable_index(cf, &name)) == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
                 ngx_str_t oid = ngx_string("TEXT");
                 if (*s++ == ':' && *s++ == ':') {
@@ -1039,12 +1037,12 @@ ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                     if (!oid.len) { ngx_str_set(&oid, "TEXT"); }
                 }
                 if (!(arg->oid = oid_from_text(&oid))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__);  return NGX_CONF_ERROR; }
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "oid = %V, oid = %d", &oid, arg->oid);
+//                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "oid = %V, oid = %d", &oid, arg->oid);
             }
         }
         query->sql.len = p - query->sql.data;
     }
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sql.len = %ul, query->sql.len = %ul, query->sql = %V", sql.len, query->sql.len, &query->sql);
+//    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sql.len = %ul, query->sql.len = %ul, query->sql = %V", sql.len, query->sql.len, &query->sql);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_OK", __func__);
     return NGX_CONF_OK;
