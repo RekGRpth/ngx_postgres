@@ -132,90 +132,45 @@ ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf)
     return NGX_OK;
 }
 
-static ngx_int_t
-ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
-    ngx_http_upstream_srv_conf_t *uscf)
-{
-    ngx_postgres_upstream_peer_data_t  *pgdt;
-    ngx_postgres_upstream_srv_conf_t   *pgscf;
-    ngx_postgres_loc_conf_t            *pglcf;
-    ngx_postgres_ctx_t                 *pgctx;
-    ngx_http_upstream_t                *u;
-    ngx_postgres_query_t               *query;
-    ngx_uint_t                          i;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    pgdt = ngx_pcalloc(r->pool, sizeof(ngx_postgres_upstream_peer_data_t));
-    if (pgdt == NULL) {
-        goto failed;
-    }
-
-    u = r->upstream;
-
+static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *uscf) {
+    ngx_postgres_upstream_peer_data_t *pgdt = ngx_pcalloc(r->pool, sizeof(ngx_postgres_upstream_peer_data_t));
+    if (!pgdt) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    ngx_http_upstream_t *u = r->upstream;
     pgdt->upstream = u;
     pgdt->request = r;
-
-    pgscf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
-    pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-
+    ngx_postgres_upstream_srv_conf_t *pgscf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
+    ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
     pgdt->srv_conf = pgscf;
     pgdt->loc_conf = pglcf;
-
-    pgdt->statements = ngx_pcalloc(r->pool, pgscf->max_statements * sizeof(ngx_uint_t));
-
+    if (!(pgdt->statements = ngx_pcalloc(r->pool, pgscf->max_statements * sizeof(ngx_uint_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     u->peer.data = pgdt;
     u->peer.get = ngx_postgres_upstream_get_peer;
     u->peer.free = ngx_postgres_upstream_free_peer;
-
+    ngx_postgres_query_t *query;
     if (pglcf->query.methods_set & r->method) {
-        /* method-specific query */
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s using method-specific query", __func__);
-
         query = pglcf->query.methods->elts;
-        for (i = 0; i < pglcf->query.methods->nelts; i++) {
-            if (query[i].methods & r->method) {
-                query = &query[i];
-                break;
-            }
-        }
-
-        if (i == pglcf->query.methods->nelts) {
-            goto failed;
-        }
-    } else {
-        /* default query */
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s using default query", __func__);
-
-        query = pglcf->query.def;
-    }
-
+        ngx_uint_t i;
+        for (i = 0; i < pglcf->query.methods->nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
+        if (i == pglcf->query.methods->nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    } else query = pglcf->query.def;
     pgdt->sql = query->sql;
     if (query->args && query->args->nelts) {
-        if (!(pgdt->args = ngx_array_create(r->pool, query->args->nelts, sizeof(ngx_postgres_upstream_arg_t)))) goto failed;
+        if (!(pgdt->args = ngx_array_create(r->pool, query->args->nelts, sizeof(ngx_postgres_upstream_arg_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         ngx_postgres_arg_t *arg = query->args->elts;
         ngx_postgres_upstream_arg_t *u_arg;
         for (ngx_uint_t i = 0; i < query->args->nelts; i++) {
-            if (!(u_arg = ngx_array_push(pgdt->args))) goto failed;
+            if (!(u_arg = ngx_array_push(pgdt->args))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             u_arg->oid = arg[i].oid;
             ngx_http_variable_value_t *v_arg = ngx_http_get_indexed_variable(r, arg[i].index);
-            if (!v_arg || !v_arg->data) goto failed;
+            if (!v_arg || !v_arg->data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             u_arg->arg.data = v_arg->data;
             u_arg->arg.len = v_arg->len;
         }
     }
-
     /* set $postgres_query */
     pgctx->var_query = pgdt->sql;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
-
-failed:
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-    return NGX_ERROR;
 }
 
 static ngx_int_t
