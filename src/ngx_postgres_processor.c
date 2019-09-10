@@ -550,7 +550,7 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_con
             (void) ngx_cpystrn(paramValues[i], arg[i].arg.data, arg[i].arg.len + 1);
         }
     }
-    if (pgdt->statements) {
+    if (pgdt->srv_conf->max_statements) {
         u_char stmtName[32];
         ngx_uint_t hash = ngx_hash_key(pgdt->sql.data, pgdt->sql.len);
         *ngx_snprintf(stmtName, 32, "ngx_%ul", (unsigned long)hash) = '\0';
