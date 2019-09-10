@@ -229,8 +229,7 @@ ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc,
             item = ngx_queue_data(q, ngx_postgres_keepalive_cache_t,
                                   queue);
 
-            ngx_postgres_upstream_free_connection(pc->log, item->connection,
-                                                  item->pgconn, pgscf);
+            ngx_postgres_upstream_free_connection(item->connection, item->pgconn, pgscf);
 
         } else {
             q = ngx_queue_head(&pgscf->free);
@@ -317,7 +316,7 @@ close:
 
     pgscf = item->srv_conf;
 
-    ngx_postgres_upstream_free_connection(ev->log, c, item->pgconn, pgscf);
+    ngx_postgres_upstream_free_connection(c, item->pgconn, pgscf);
 
     ngx_queue_remove(&item->queue);
     ngx_queue_insert_head(&pgscf->free, &item->queue);
@@ -352,9 +351,7 @@ ngx_postgres_keepalive_cleanup(void *data)
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pgscf->pool->log, 0, "%s ostgres: disconnecting %p", __func__, item->connection);
 
-        ngx_postgres_upstream_free_connection(item->connection->log,
-                                              item->connection,
-                                              item->pgconn, pgscf);
+        ngx_postgres_upstream_free_connection(item->connection, item->pgconn, pgscf);
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgscf->pool->log, 0, "%s returning", __func__);

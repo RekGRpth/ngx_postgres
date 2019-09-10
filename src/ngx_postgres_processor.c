@@ -69,47 +69,47 @@ ngx_postgres_process_events(ngx_http_request_t *r)
     pgdt = u->peer.data;
 
     if (!ngx_postgres_upstream_is_my_peer(&u->peer)) {
-        ngx_log_error(NGX_LOG_ERR, pgxc->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "postgres: trying to connect to something that"
                       " is not PostgreSQL database");
 
         goto failed;
     }
 
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "postgres: process events");
 
     switch (pgdt->state) {
     case state_db_connect:
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "state_db_connect");
         rc = ngx_postgres_upstream_connect(r, pgxc, pgdt);
         break;
     case state_db_send_query:
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "state_db_send_query");
         rc = ngx_postgres_upstream_send_query(r, pgxc, pgdt);
         break;
     case state_db_get_result:
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "state_db_get_result");
         rc = ngx_postgres_upstream_get_result(r, pgxc, pgdt);
         break;
     case state_db_get_ack:
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "state_db_get_ack");
         rc = ngx_postgres_upstream_get_ack(r, pgxc, pgdt);
         break;
     case state_db_idle:
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "state_db_idle, re-using keepalive connection");
-        pgxc->log->action = "sending query to PostgreSQL database";
+        r->connection->log->action = "sending query to PostgreSQL database";
         pgdt->state = state_db_send_query;
         rc = ngx_postgres_upstream_send_query(r, pgxc, pgdt);
         break;
     default:
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s unknown state:%d", __func__, pgdt->state);
-        ngx_log_error(NGX_LOG_ERR, pgxc->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "postgres: unknown state:%d", pgdt->state);
 
         goto failed;
@@ -141,7 +141,7 @@ ngx_postgres_upstream_connect(ngx_http_request_t *r, ngx_connection_t *pgxc,
 
     pgrc = PQconnectPoll(pgdt->pgconn);
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "postgres: polling while connecting, rc:%d", (int) pgrc);
 
     if (pgrc == PGRES_POLLING_READING || pgrc == PGRES_POLLING_WRITING) {
@@ -163,13 +163,13 @@ ngx_postgres_upstream_connect(ngx_http_request_t *r, ngx_connection_t *pgxc,
             pgrc = PQconnectPoll(pgdt->pgconn);
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s re-polling rc:%d", __func__, (int) pgrc);
 
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                            "postgres: re-polling while connecting, rc:%d",
                            (int) pgrc);
 
             if (pgrc == PGRES_POLLING_READING || pgrc == PGRES_POLLING_WRITING)
             {
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                                "postgres: busy while connecting, rc:%d",
                                (int) pgrc);
 
@@ -213,7 +213,7 @@ ngx_postgres_upstream_connect(ngx_http_request_t *r, ngx_connection_t *pgxc,
              return NGX_ERROR;
         }
 
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "postgres: busy while connecting, rc:%d", (int) pgrc);
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_AGAIN", __func__);
@@ -229,7 +229,7 @@ done:
 
     if (pgrc != PGRES_POLLING_OK) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s connection failed", __func__);
-        ngx_log_error(NGX_LOG_ERR, pgxc->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "postgres: connection failed: %s",
                       PQerrorMessage(pgdt->pgconn));
 
@@ -238,10 +238,10 @@ done:
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s connected successfully", __func__);
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "postgres: connected successfully");
 
-    pgxc->log->action = "sending query to PostgreSQL database";
+    r->connection->log->action = "sending query to PostgreSQL database";
     pgdt->state = state_db_send_query;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
@@ -256,7 +256,7 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_con
     if (!command) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     (void) ngx_cpystrn(command, pgdt->sql.data, pgdt->sql.len + 1);
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s sending query: %s", __func__, command);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgxc->log, 0, "postgres: sending query: \"%s\"", command);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: sending query: \"%s\"", command);
     if (pgdt->srv_conf->max_statements) {
         u_char stmtName[32];
         ngx_uint_t hash = ngx_hash_key(pgdt->sql.data, pgdt->sql.len);
@@ -268,19 +268,19 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_con
         if (!matched) {
             PGresult *res = PQprepare(pgdt->pgconn, (const char *)stmtName, (const char *)command, pgdt->nParams, pgdt->paramTypes);
             if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-            if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, pgxc->log, 0, "postgres: failed to prepare: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+            if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to prepare: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
             pgdt->statements[n] = hash;
         }
-        if (!PQsendQueryPrepared(pgdt->pgconn, (const char *)stmtName, pgdt->nParams, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, pgxc->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
-    } else if (!PQsendQueryParams(pgdt->pgconn, (const char *)command, pgdt->nParams, pgdt->paramTypes, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, pgxc->log, 0, "postgres: failed to send query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+        if (!PQsendQueryPrepared(pgdt->pgconn, (const char *)stmtName, pgdt->nParams, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+    } else if (!PQsendQueryParams(pgdt->pgconn, (const char *)command, pgdt->nParams, pgdt->paramTypes, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
 
     /* set result timeout */
     ngx_add_timer(pgxc->read, r->upstream->conf->read_timeout);
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s query sent successfully", __func__);
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0, "postgres: query sent successfully");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query sent successfully");
 
-    pgxc->log->action = "waiting for result from PostgreSQL database";
+    r->connection->log->action = "waiting for result from PostgreSQL database";
     pgdt->state = state_db_get_result;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
@@ -304,7 +304,7 @@ ngx_postgres_upstream_get_result(ngx_http_request_t *r, ngx_connection_t *pgxc,
     }
 
     if (!PQconsumeInput(pgdt->pgconn)) {
-        ngx_log_error(NGX_LOG_ERR, pgxc->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "postgres: failed to consume input: %s",
                       PQerrorMessage(pgdt->pgconn));
 
@@ -313,7 +313,7 @@ ngx_postgres_upstream_get_result(ngx_http_request_t *r, ngx_connection_t *pgxc,
     }
 
     if (PQisBusy(pgdt->pgconn)) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "postgres: busy while receiving result");
 
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_AGAIN", __func__);
@@ -325,7 +325,7 @@ ngx_postgres_upstream_get_result(ngx_http_request_t *r, ngx_connection_t *pgxc,
     res = PQgetResult(pgdt->pgconn);
     if (res == NULL) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s receiving result failed", __func__);
-        ngx_log_error(NGX_LOG_ERR, pgxc->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "postgres: failed to receive result: %s",
                       PQerrorMessage(pgdt->pgconn));
 
@@ -336,7 +336,7 @@ ngx_postgres_upstream_get_result(ngx_http_request_t *r, ngx_connection_t *pgxc,
     pgrc = PQresultStatus(res);
     if ((pgrc != PGRES_COMMAND_OK) && (pgrc != PGRES_TUPLES_OK)) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s receiving result failed", __func__);
-        ngx_log_error(NGX_LOG_ERR, pgxc->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "postgres: failed to receive result: %s: %s",
                       PQresStatus(pgrc),
                       PQerrorMessage(pgdt->pgconn));
@@ -349,11 +349,11 @@ ngx_postgres_upstream_get_result(ngx_http_request_t *r, ngx_connection_t *pgxc,
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s result received successfully, cols:%d rows:%d", __func__, PQnfields(res), PQntuples(res));
 
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "postgres: result received successfully, cols:%d rows:%d",
                    PQnfields(res), PQntuples(res));
 
-    pgxc->log->action = "processing result from PostgreSQL database";
+    r->connection->log->action = "processing result from PostgreSQL database";
     rc = ngx_postgres_process_response(r, res);
 
     PQclear(res);
@@ -365,7 +365,7 @@ ngx_postgres_upstream_get_result(ngx_http_request_t *r, ngx_connection_t *pgxc,
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s result processed successfully", __func__);
 
-    pgxc->log->action = "waiting for ACK from PostgreSQL database";
+    r->connection->log->action = "waiting for ACK from PostgreSQL database";
     pgdt->state = state_db_get_ack;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
@@ -481,7 +481,7 @@ ngx_postgres_upstream_get_ack(ngx_http_request_t *r, ngx_connection_t *pgxc,
     res = PQgetResult(pgdt->pgconn);
     if (res != NULL) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s receiving ACK failed", __func__);
-        ngx_log_error(NGX_LOG_ERR, pgxc->log, 0,
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "postgres: receiving ACK failed: multiple queries(?)");
 
         PQclear(res);
@@ -492,7 +492,7 @@ ngx_postgres_upstream_get_ack(ngx_http_request_t *r, ngx_connection_t *pgxc,
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s ACK received successfully", __func__);
 
-    pgxc->log->action = "being idle on PostgreSQL database";
+    r->connection->log->action = "being idle on PostgreSQL database";
     pgdt->state = state_db_idle;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
