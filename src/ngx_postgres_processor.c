@@ -539,7 +539,7 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
     pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
 
     // run query substitution
-    if (pgdt->query.data[0] == ':') {
+    if (pgdt->sql.data[0] == ':') {
         // prepare param arrays
         Oid *types[30];
         Oid *Types = (Oid *) types;
@@ -548,8 +548,8 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
         const char *Names[30];
 
         // when query is :index, set $action to and read $sql
-        u_char *start = pgdt->query.data + 1;
-        int len = pgdt->query.len - 1;
+        u_char *start = pgdt->sql.data + 1;
+        int len = pgdt->sql.len - 1;
         for (int i = 0; *(start + i) >= 'a' && *(start + i) <= 'z' && i < len; i++) {
             if (i == len - 1) {
                 ngx_str_t meta_variable = ngx_string("action");
@@ -630,16 +630,15 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
         }
     } else {
 
-        //fprintf(stdout, "standart QUERY TO RUN : %s\n", pgdt->query.data);
+        //fprintf(stdout, "standart QUERY TO RUN : %s\n", pgdt->sql.data);
 
-        query = ngx_pnalloc(r->pool, pgdt->query.len + 1);
-        if (query == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
+        query = ngx_pnalloc(r->pool, pgdt->sql.len + 1);
+        if (!query) {
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s:%d", __FILE__, __LINE__);
             return NGX_ERROR;
         }
 
-        (void) ngx_cpystrn(query, pgdt->query.data, pgdt->query.len + 1);
-
+        (void) ngx_cpystrn(query, pgdt->sql.data, pgdt->sql.len + 1);
 
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s sending query: %s", __func__, query);
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgxc->log, 0,
@@ -648,6 +647,20 @@ ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_connection_t *pgxc,
         if (pglcf->output_binary) {
             pgrc = PQsendQueryParams(pgdt->pgconn, (const char *) query,
                                      0, NULL, NULL, NULL, NULL, /* binary */ 1);
+        } else if (pgdt->args && pgdt->args->nelts) {
+            Oid *Types = ngx_pnalloc(r->pool, pgdt->args->nelts * sizeof(Oid));
+            if (!Types) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            char **Values = ngx_pnalloc(r->pool, pgdt->args->nelts * sizeof(char *));
+            if (!Values) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            ngx_postgres_upstream_arg_t *arg = pgdt->args->elts;
+            for (ngx_uint_t i = 0; i < pgdt->args->nelts; i++) {
+                Types[i] = arg[i].oid;
+                u_char *v = ngx_pnalloc(r->pool, arg[i].arg.len + 1);
+                if (!v) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+                (void) ngx_cpystrn(v, arg[i].arg.data, arg[i].arg.len + 1);
+                Values[i] = (char *)v;
+            }
+            pgrc = PQsendQueryParams(pgdt->pgconn, (const char *) query, pgdt->args->nelts, Types, (const char *const *)Values, NULL, NULL, 0);
         } else {
             pgrc = PQsendQuery(pgdt->pgconn, (const char *) query);
         }

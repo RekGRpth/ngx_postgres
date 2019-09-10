@@ -140,10 +140,10 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
     ngx_postgres_upstream_srv_conf_t   *pgscf;
     ngx_postgres_loc_conf_t            *pglcf;
     ngx_postgres_ctx_t                 *pgctx;
-    ngx_http_core_loc_conf_t           *clcf;
+//    ngx_http_core_loc_conf_t           *clcf;
     ngx_http_upstream_t                *u;
     ngx_postgres_query_t               *query;
-    ngx_str_t                           sql;
+//    ngx_str_t                           sql;
     ngx_uint_t                          i;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
@@ -191,35 +191,23 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
         query = pglcf->query.def;
     }
 
-    if (query->cv) {
-        /* complex value */
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s using complex value", __func__);
-
-        if (ngx_http_complex_value(r, query->cv, &sql) != NGX_OK) {
-            goto failed;
+    pgdt->sql = query->sql;
+    if (query->args && query->args->nelts) {
+        if (!(pgdt->args = ngx_array_create(r->pool, query->args->nelts, sizeof(ngx_postgres_upstream_arg_t)))) goto failed;
+        ngx_postgres_arg_t *arg = query->args->elts;
+        ngx_postgres_upstream_arg_t *u_arg;
+        for (ngx_uint_t i = 0; i < query->args->nelts; i++) {
+            if (!(u_arg = ngx_array_push(pgdt->args))) goto failed;
+            u_arg->oid = arg[i].oid;
+            ngx_http_variable_value_t *v_arg = ngx_http_get_variable(r, &arg[i].var, ngx_hash_key(arg[i].var.data, arg[i].var.len));
+            if (!v_arg || !v_arg->data) goto failed;
+            u_arg->arg.data = v_arg->data;
+            u_arg->arg.len = v_arg->len;
         }
-
-        if (sql.len == 0) {
-            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "postgres: empty \"postgres_query\" (was: \"%V\")"
-                          " in location \"%V\"", &query->cv->value,
-                          &clcf->name);
-
-            goto failed;
-        }
-
-        pgdt->query = sql;
-    } else {
-        /* simple value */
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s using simple value", __func__);
-
-        pgdt->query = query->sv;
     }
 
     /* set $postgres_query */
-    pgctx->var_query = pgdt->query;
+    pgctx->var_query = pgdt->sql;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
