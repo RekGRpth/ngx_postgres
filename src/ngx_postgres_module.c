@@ -912,7 +912,7 @@ static bool is_variable_character(char p) {
     return ((p >= '0' && p <= '9') || (p >= 'a' && p <= 'z') || (p >= 'A' && p <= 'Z') || p == '_');
 }
 
-static ngx_uint_t oid_from_text(ngx_str_t *value) {
+static ngx_uint_t str2oid(ngx_str_t *value) {
     for (ngx_uint_t i = 0; ngx_postgres_oids[i].name.len; i++) {
         if (ngx_postgres_oids[i].name.len - 3 == value->len && !ngx_strncasecmp(ngx_postgres_oids[i].name.data, value->data, value->len)) {
             return ngx_postgres_oids[i].value;
@@ -921,130 +921,65 @@ static ngx_uint_t oid_from_text(ngx_str_t *value) {
     return 0;
 }
 
-static char *
-ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_str_t                         *value = cf->args->elts;
-    ngx_str_t                          sql = value[cf->args->nelts - 1];
-    ngx_postgres_loc_conf_t           *pglcf = conf;
-    ngx_postgres_query_t              *query;
-    ngx_conf_bitmask_t                *b;
-    ngx_uint_t                         methods, i, j, n;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
-    if (sql.len == 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: empty query in \"%V\" directive",
-                           &cmd->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    if (cf->args->nelts == 2) {
-        /* default query */
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s default query", __func__);
-
-        if (pglcf->query.def != NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning", __func__);
-            return "is duplicate";
-        }
-
-        pglcf->query.def = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t));
-        if (pglcf->query.def == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-            return NGX_CONF_ERROR;
-        }
-
+static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_str_t *value = cf->args->elts;
+    ngx_str_t sql = value[cf->args->nelts - 1];
+    if (!sql.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty query in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_postgres_query_t *query;
+    ngx_uint_t methods;
+    ngx_postgres_loc_conf_t *pglcf = conf;
+    if (cf->args->nelts == 2) { /* default query */
+        if (pglcf->query.def) return "is duplicate";
+        if (!(pglcf->query.def = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         methods = 0xFFFF;
         query = pglcf->query.def;
-    } else {
-        /* method-specific query */
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s method-specific query", __func__);
-
+    } else { /* method-specific query */
         methods = 0;
-
-        for (i = 1; i < cf->args->nelts - 1; i++) {
-            b = ngx_postgres_http_methods;
-            for (j = 0; b[j].name.len; j++) {
-                if ((b[j].name.len == value[i].len)
-                    && (ngx_strcasecmp(b[j].name.data, value[i].data) == 0))
-                {
-                    if (pglcf->query.methods_set & b[j].mask) {
-                        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                           "postgres: method \"%V\" is"
-                                           " duplicate in \"%V\" directive",
-                                           &value[i], &cmd->name);
-
-                        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-                        return NGX_CONF_ERROR;
-                    }
-
-                    methods |= b[j].mask;
+        for (ngx_uint_t i = 1; i < cf->args->nelts - 1; i++) {
+            ngx_uint_t j;
+            for (j = 0; ngx_postgres_http_methods[j].name.len; j++) {
+                if (ngx_postgres_http_methods[j].name.len == value[i].len && !ngx_strncasecmp(ngx_postgres_http_methods[j].name.data, value[i].data, value[i].len)) {
+                    if (pglcf->query.methods_set & ngx_postgres_http_methods[j].mask) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: method \"%V\" is duplicate in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+                    methods |= ngx_postgres_http_methods[j].mask;
                     break;
                 }
             }
-
-            if (b[j].name.len == 0) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "postgres: invalid method \"%V\""
-                                   " in \"%V\" directive",
-                                   &value[i], &cmd->name);
-
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-                return NGX_CONF_ERROR;
-            }
+            if (ngx_postgres_http_methods[j].name.len == 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid method \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
         }
-
-        if (pglcf->query.methods == NULL) {
-            pglcf->query.methods = ngx_array_create(cf->pool, 4,
-                                       sizeof(ngx_postgres_query_t));
-            if (pglcf->query.methods == NULL) {
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-                return NGX_CONF_ERROR;
-            }
-        }
-
-        query = ngx_array_push(pglcf->query.methods);
-        if (query == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-            return NGX_CONF_ERROR;
-        }
-
+        if (!pglcf->query.methods && !(pglcf->query.methods = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_query_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (!(query = ngx_array_push(pglcf->query.methods))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         pglcf->query.methods_set |= methods;
     }
-
     query->methods = methods;
-    if (!(n = ngx_http_script_variables_count(&sql))) query->sql = sql; else {
-        if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-        if (!(query->args = ngx_array_create(cf->pool, n, sizeof(ngx_postgres_arg_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-        u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
-        for (ngx_uint_t k = 0; s < e; ) {
-            if ((*p++ = *s++) == '$') {
-                p += ngx_sprintf(p, "%d", ++k) - p;
+    u_char *q;
+    if (!(q = ngx_palloc(cf->pool, sql.len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    if (!(query->args = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_arg_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    u_char *p = q, *s = sql.data, *e = sql.data + sql.len;
+    for (ngx_uint_t k = 0; s < e; ) {
+        if ((*p++ = *s++) == '$' && (*p++ = *s++) == '$') {
+            p += ngx_sprintf(p, "%d", ++k) - p;
+            ngx_str_t name;
+            for (name.data = s, name.len = 0; s++ < e && is_variable_character(*s); name.len++);
+            if (!name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+            name.len++;
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "name = %V", &name);
+            ngx_str_t oid;
+            if (*s++ == ':' && *s++ == ':') for (oid.data = s, oid.len = 0; s < e && is_variable_character(*s); s++, oid.len++);
+            if (oid.len) {
                 ngx_postgres_arg_t *arg;
                 if (!(arg = ngx_array_push(query->args))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-                ngx_str_t name;
-                for (name.data = s, name.len = 0; s++ < e && is_variable_character(*s); name.len++);
-                if (!name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-                name.len++;
-//                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "name = %V", &name);
                 if ((ngx_int_t)(arg->index = ngx_http_get_variable_index(cf, &name)) == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-                ngx_str_t oid = ngx_string("TEXT");
-                if (*s++ == ':' && *s++ == ':') {
-                    for (oid.data = s, oid.len = 0; s < e && is_variable_character(*s); s++, oid.len++);
-                    if (!oid.len) { ngx_str_set(&oid, "TEXT"); }
-                }
-                if (!(arg->oid = oid_from_text(&oid))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__);  return NGX_CONF_ERROR; }
-//                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "oid = %V, oid = %d", &oid, arg->oid);
+                if (!(arg->oid = str2oid(&oid))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__);  return NGX_CONF_ERROR; }
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "oid = %V, oid = %d", &oid, arg->oid);
+            } else {
+                p = ngx_copy(p, name.data, name.len);
             }
         }
-        query->sql.len = p - query->sql.data;
     }
-//    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sql.len = %ul, query->sql.len = %ul, query->sql = %V", sql.len, query->sql.len, &query->sql);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_OK", __func__);
+    ngx_str_t sv = {p - q, q};
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sv = %V", &sv);
+    ngx_http_compile_complex_value_t ccv = {cf, &sv, &query->sql, 0, 0, 0};
+    if (ngx_http_compile_complex_value(&ccv) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     return NGX_CONF_OK;
 }
 

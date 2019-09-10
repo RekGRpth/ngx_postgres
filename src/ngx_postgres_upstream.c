@@ -154,7 +154,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         for (i = 0; i < pglcf->query.methods->nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
         if (i == pglcf->query.methods->nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     } else query = pglcf->query.def;
-    pgdt->sql = query->sql;
+    if (ngx_http_complex_value(r, &query->sql, &pgdt->sql) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     if (query->args && query->args->nelts) {
         if (!(pgdt->args = ngx_array_create(r->pool, query->args->nelts, sizeof(ngx_postgres_upstream_arg_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         ngx_postgres_arg_t *arg = query->args->elts;
