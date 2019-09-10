@@ -156,11 +156,11 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     } else query = pglcf->query.def;
     if (ngx_http_complex_value(r, &query->sql, &pgdt->sql) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     if (query->args.nelts) {
-        if (!(pgdt->args = ngx_array_create(r->pool, query->args.nelts, sizeof(ngx_postgres_upstream_arg_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        if (ngx_array_init(&pgdt->args, r->pool, query->args.nelts, sizeof(ngx_postgres_upstream_arg_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         ngx_postgres_arg_t *arg = query->args.elts;
         ngx_postgres_upstream_arg_t *u_arg;
         for (ngx_uint_t i = 0; i < query->args.nelts; i++) {
-            if (!(u_arg = ngx_array_push(pgdt->args))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            if (!(u_arg = ngx_array_push(&pgdt->args))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             u_arg->oid = arg[i].oid;
             ngx_http_variable_value_t *v_arg = ngx_http_get_indexed_variable(r, arg[i].index);
             if (!v_arg || !v_arg->data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }

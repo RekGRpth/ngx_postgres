@@ -534,7 +534,7 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_con
     (void) ngx_cpystrn(command, pgdt->sql.data, pgdt->sql.len + 1);
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s sending query: %s", __func__, command);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgxc->log, 0, "postgres: sending query: \"%s\"", command);
-    int nParams = pgdt->args ? pgdt->args->nelts : 0;
+    int nParams = pgdt->args.nelts;
     Oid *paramTypes = NULL;
     u_char **paramValues = NULL;
     int *paramLengths = NULL;
@@ -543,7 +543,7 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r, ngx_con
     if (nParams) {
         if (!(paramTypes = ngx_pnalloc(r->pool, nParams * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         if (!(paramValues = ngx_pnalloc(r->pool, nParams * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        ngx_postgres_upstream_arg_t *arg = pgdt->args->elts;
+        ngx_postgres_upstream_arg_t *arg = pgdt->args.elts;
         for (int i = 0; i < nParams; i++) {
             paramTypes[i] = arg[i].oid;
             if (!(paramValues[i] = ngx_pnalloc(r->pool, arg[i].arg.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }

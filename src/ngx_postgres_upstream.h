@@ -56,7 +56,7 @@ typedef struct {
     PGconn                            *pgconn;
     ngx_postgres_state_t               state;
     ngx_str_t                          sql;
-    ngx_array_t                       *args;
+    ngx_array_t                        args;
     ngx_str_t                          name;
     struct sockaddr                    sockaddr;
     unsigned                           failed;
