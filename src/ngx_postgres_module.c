@@ -1000,17 +1000,19 @@ ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
                 p += ngx_sprintf(p, "%d", ++k) - p;
                 ngx_postgres_arg_t *arg;
                 if (!(arg = ngx_array_push(query->args))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-                for (arg->var.data = s, arg->var.len = 0; s++ < e && is_variable_character(*s); arg->var.len++);
-                if (!arg->var.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-                arg->var.len++;
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "arg->var = %V", &arg->var);
-                ngx_str_t type = ngx_string("TEXT");
+                ngx_str_t name;
+                for (name.data = s, name.len = 0; s++ < e && is_variable_character(*s); name.len++);
+                if (!name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+                name.len++;
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "name = %V", &name);
+                if ((ngx_int_t)(arg->index = ngx_http_get_variable_index(cf, &name)) == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+                ngx_str_t oid = ngx_string("TEXT");
                 if (*s++ == ':' && *s++ == ':') {
-                    for (type.data = s, type.len = 0; s < e && is_variable_character(*s); s++, type.len++);
-                    if (!type.len) { ngx_str_set(&type, "TEXT"); }
+                    for (oid.data = s, oid.len = 0; s < e && is_variable_character(*s); s++, oid.len++);
+                    if (!oid.len) { ngx_str_set(&oid, "TEXT"); }
                 }
-                if (!(arg->oid = oid_from_text(&type))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__);  return NGX_CONF_ERROR; }
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "type = %V, oid = %d", &type, arg->oid);
+                if (!(arg->oid = oid_from_text(&oid))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__);  return NGX_CONF_ERROR; }
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "oid = %V, oid = %d", &oid, arg->oid);
             }
         }
         query->sql.len = p - query->sql.data;

@@ -140,10 +140,8 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
     ngx_postgres_upstream_srv_conf_t   *pgscf;
     ngx_postgres_loc_conf_t            *pglcf;
     ngx_postgres_ctx_t                 *pgctx;
-//    ngx_http_core_loc_conf_t           *clcf;
     ngx_http_upstream_t                *u;
     ngx_postgres_query_t               *query;
-//    ngx_str_t                           sql;
     ngx_uint_t                          i;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
@@ -199,7 +197,7 @@ ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
         for (ngx_uint_t i = 0; i < query->args->nelts; i++) {
             if (!(u_arg = ngx_array_push(pgdt->args))) goto failed;
             u_arg->oid = arg[i].oid;
-            ngx_http_variable_value_t *v_arg = ngx_http_get_variable(r, &arg[i].var, ngx_hash_key(arg[i].var.data, arg[i].var.len));
+            ngx_http_variable_value_t *v_arg = ngx_http_get_indexed_variable(r, arg[i].index);
             if (!v_arg || !v_arg->data) goto failed;
             u_arg->arg.data = v_arg->data;
             u_arg->arg.len = v_arg->len;

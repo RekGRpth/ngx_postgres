@@ -43,7 +43,7 @@ typedef struct {
 
 typedef struct {
     ngx_uint_t                          oid;
-    ngx_str_t                           var;
+    ngx_uint_t                          index;
 } ngx_postgres_arg_t;
 
 typedef struct {
