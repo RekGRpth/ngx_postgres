@@ -381,7 +381,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
     ngx_postgres_ctx_t        *pgctx;
     ngx_chain_t               *cl;
     ngx_buf_t                 *b;
-    size_t                     size;
+    size_t                     size = 0;
     ngx_int_t                  col_count, row_count, col, row;
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
@@ -398,7 +398,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
         size = PQgetlength(res, 0, 0);
     } else {
         /* pre-calculate total length up-front for single buffer allocation */
-        size = 2; // [] + \0
+        if (row_count > 1) size += 2; // [] + \0
 
 
         for (row = 0; row < row_count; row++) {
@@ -489,7 +489,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
         }
 
         /* fill data */
-        b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
+        if (row_count > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
         for (row = 0; row < row_count; row++) {
             if (row > 0)
                 b->last = ngx_copy(b->last, ",", 1);
@@ -531,7 +531,7 @@ ngx_postgres_output_json(ngx_http_request_t *r, PGresult *res)
             }
             b->last = ngx_copy(b->last, "}", sizeof("}") - 1);
         }
-        b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
+        if (row_count > 1) b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
     }
 
     //fprintf(stdout, "PRINTING %d\n", b->end - b->last);
