@@ -32,21 +32,6 @@
 #include <postgresql/server/catalog/pg_type_d.h>
 
 
-static ngx_chain_t *
-ngx_postgres_render_rds_header(ngx_http_request_t *r, ngx_pool_t *pool,
-    PGresult *res, ngx_int_t col_count, ngx_int_t aff_count);
-static ngx_chain_t *
-ngx_postgres_render_rds_columns(ngx_http_request_t *r, ngx_pool_t *pool,
-    PGresult *res, ngx_int_t col_count);
-static ngx_chain_t *
-ngx_postgres_render_rds_row(ngx_http_request_t *r, ngx_pool_t *pool,
-    PGresult *res, ngx_int_t col_count, ngx_int_t row, ngx_int_t last_row);
-static ngx_chain_t *
-ngx_postgres_render_rds_row_terminator(ngx_http_request_t *r, ngx_pool_t *pool);
-static rds_col_type_t
-ngx_postgres_rds_col_type(Oid col_type);
-
-
 ngx_int_t
 ngx_postgres_output_value(ngx_http_request_t *r, PGresult *res)
 {
@@ -150,6 +135,7 @@ int hex2bin( const char *s )
     return ret;
 }
 
+
 ngx_int_t
 ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
 {
@@ -240,6 +226,8 @@ ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
     return NGX_DONE;
 }
+
+
 ngx_int_t
 ngx_postgres_output_text(ngx_http_request_t *r, PGresult *res)
 {
@@ -325,334 +313,6 @@ ngx_postgres_output_text(ngx_http_request_t *r, PGresult *res)
     return NGX_DONE;
 }
 
-ngx_int_t
-ngx_postgres_output_rds(ngx_http_request_t *r, PGresult *res)
-{
-    ngx_postgres_ctx_t  *pgctx;
-    ngx_chain_t         *first, *last;
-    ngx_int_t            col_count, row_count, aff_count, row;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-
-    col_count = pgctx->var_cols;
-    row_count = pgctx->var_rows;
-    aff_count = (pgctx->var_affected == NGX_ERROR) ? 0 : pgctx->var_affected;
-
-    /* render header */
-    first = last = ngx_postgres_render_rds_header(r, r->pool, res, col_count,
-                                                  aff_count);
-    if (last == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        goto done;
-    }
-
-    /* render columns */
-    last->next = ngx_postgres_render_rds_columns(r, r->pool, res, col_count);
-    if (last->next == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-    last = last->next;
-
-    /* render rows */
-    for (row = 0; row < row_count; row++) {
-        last->next = ngx_postgres_render_rds_row(r, r->pool, res, col_count,
-                                                 row, (row == row_count - 1));
-        if (last->next == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-            return NGX_ERROR;
-        }
-        last = last->next;
-    }
-
-    /* render row terminator (for empty result-set only) */
-    if (row == 0) {
-        last->next = ngx_postgres_render_rds_row_terminator(r, r->pool);
-        if (last->next == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-            return NGX_ERROR;
-        }
-        last = last->next;
-    }
-
-done:
-
-    last->next = NULL;
-
-    /* set output response */
-    pgctx->response = first;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
-    return NGX_DONE;
-}
-
-static ngx_chain_t *
-ngx_postgres_render_rds_header(ngx_http_request_t *r, ngx_pool_t *pool,
-    PGresult *res, ngx_int_t col_count, ngx_int_t aff_count)
-{
-    ngx_chain_t  *cl;
-    ngx_buf_t    *b;
-    size_t        size;
-    char         *errstr;
-    size_t        errstr_len;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    errstr = PQresultErrorMessage(res);
-    errstr_len = ngx_strlen(errstr);
-
-    size = sizeof(uint8_t)        /* endian type */
-         + sizeof(uint32_t)       /* format version */
-         + sizeof(uint8_t)        /* result type */
-         + sizeof(uint16_t)       /* standard error code */
-         + sizeof(uint16_t)       /* driver-specific error code */
-         + sizeof(uint16_t)       /* driver-specific error string length */
-         + (uint16_t) errstr_len  /* driver-specific error string data */
-         + sizeof(uint64_t)       /* rows affected */
-         + sizeof(uint64_t)       /* insert id */
-         + sizeof(uint16_t)       /* column count */
-         ;
-
-    b = ngx_create_temp_buf(pool, size);
-    if (b == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    cl = ngx_alloc_chain_link(pool);
-    if (cl == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    cl->buf = b;
-    b->memory = 1;
-    b->tag = r->upstream->output.tag;
-
-    /* fill data */
-#if NGX_HAVE_LITTLE_ENDIAN
-    *b->last++ = 0;
-#else
-    *b->last++ = 1;
-#endif
-
-    *(uint32_t *) b->last = (uint32_t) resty_dbd_stream_version;
-    b->last += sizeof(uint32_t);
-
-    *b->last++ = 0;
-
-    *(uint16_t *) b->last = (uint16_t) 0;
-    b->last += sizeof(uint16_t);
-
-    *(uint16_t *) b->last = (uint16_t) PQresultStatus(res);
-    b->last += sizeof(uint16_t);
-
-    *(uint16_t *) b->last = (uint16_t) errstr_len;
-    b->last += sizeof(uint16_t);
-
-    if (errstr_len) {
-        b->last = ngx_copy(b->last, (u_char *) errstr, errstr_len);
-    }
-
-    *(uint64_t *) b->last = (uint64_t) aff_count;
-    b->last += sizeof(uint64_t);
-
-    *(uint64_t *) b->last = (uint64_t) PQoidValue(res);
-    b->last += sizeof(uint64_t);
-
-    *(uint16_t *) b->last = (uint16_t) col_count;
-    b->last += sizeof(uint16_t);
-
-    if (b->last != b->end) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
-    return cl;
-}
-
-static ngx_chain_t *
-ngx_postgres_render_rds_columns(ngx_http_request_t *r, ngx_pool_t *pool,
-    PGresult *res, ngx_int_t col_count)
-{
-    ngx_chain_t  *cl;
-    ngx_buf_t    *b;
-    size_t        size;
-    ngx_int_t     col;
-    Oid           col_type;
-    char         *col_name;
-    size_t        col_name_len;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    /* pre-calculate total length up-front for single buffer allocation */
-    size = col_count
-         * (sizeof(uint16_t)    /* standard column type */
-            + sizeof(uint16_t)  /* driver-specific column type */
-            + sizeof(uint16_t)  /* column name string length */
-           )
-         ;
-
-    for (col = 0; col < col_count; col++) {
-        size += ngx_strlen(PQfname(res, col));  /* column name string data */
-    }
-
-    b = ngx_create_temp_buf(pool, size);
-    if (b == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    cl = ngx_alloc_chain_link(pool);
-    if (cl == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    cl->buf = b;
-    b->memory = 1;
-    b->tag = r->upstream->output.tag;
-
-    /* fill data */
-    for (col = 0; col < col_count; col++) {
-        col_type = PQftype(res, col);
-        col_name = PQfname(res, col);
-        col_name_len = (uint16_t) ngx_strlen(col_name);
-
-        *(uint16_t *) b->last = (uint16_t) ngx_postgres_rds_col_type(col_type);
-        b->last += sizeof(uint16_t);
-
-        *(uint16_t *) b->last = col_type;
-        b->last += sizeof(uint16_t);
-
-        *(uint16_t *) b->last = col_name_len;
-        b->last += sizeof(uint16_t);
-
-        b->last = ngx_copy(b->last, col_name, col_name_len);
-    }
-
-    if (b->last != b->end) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
-    return cl;
-}
-
-static ngx_chain_t *
-ngx_postgres_render_rds_row(ngx_http_request_t *r, ngx_pool_t *pool,
-    PGresult *res, ngx_int_t col_count, ngx_int_t row, ngx_int_t last_row)
-{
-    ngx_chain_t  *cl;
-    ngx_buf_t    *b;
-    size_t        size;
-    ngx_int_t     col;
-
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering, row:%d", __func__, (int) row);
-
-    /* pre-calculate total length up-front for single buffer allocation */
-    size = sizeof(uint8_t)                 /* row number */
-         + (col_count * sizeof(uint32_t))  /* field string length */
-         ;
-
-    if (last_row) {
-        size += sizeof(uint8_t);
-    }
-
-    for (col = 0; col < col_count; col++) {
-        size += PQgetlength(res, row, col);  /* field string data */
-    }
-
-    b = ngx_create_temp_buf(pool, size);
-    if (b == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    cl = ngx_alloc_chain_link(pool);
-    if (cl == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    cl->buf = b;
-    b->memory = 1;
-    b->tag = r->upstream->output.tag;
-
-    /* fill data */
-    *b->last++ = (uint8_t) 1; /* valid row */
-
-    for (col = 0; col < col_count; col++) {
-        if (PQgetisnull(res, row, col)) {
-            *(uint32_t *) b->last = (uint32_t) -1;
-             b->last += sizeof(uint32_t);
-        } else {
-            size = PQgetlength(res, row, col);
-            *(uint32_t *) b->last = (uint32_t) size;
-            b->last += sizeof(uint32_t);
-
-            if (size) {
-                b->last = ngx_copy(b->last, PQgetvalue(res, row, col), size);
-            }
-        }
-    }
-
-    if (last_row) {
-        *b->last++ = (uint8_t) 0; /* row terminator */
-    }
-
-    if (b->last != b->end) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
-    return cl;
-}
-
-static ngx_chain_t *
-ngx_postgres_render_rds_row_terminator(ngx_http_request_t *r, ngx_pool_t *pool)
-{
-    ngx_chain_t  *cl;
-    ngx_buf_t    *b;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    b = ngx_create_temp_buf(pool, sizeof(uint8_t));
-    if (b == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    cl = ngx_alloc_chain_link(pool);
-    if (cl == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    cl->buf = b;
-    b->memory = 1;
-    b->tag = r->upstream->output.tag;
-
-    /* fill data */
-    *b->last++ = (uint8_t) 0; /* row terminator */
-
-    if (b->last != b->end) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
-    return cl;
-}
 
 ngx_int_t
 ngx_postgres_output_chain(ngx_http_request_t *r, ngx_chain_t *cl)
@@ -675,16 +335,10 @@ ngx_postgres_output_chain(ngx_http_request_t *r, ngx_chain_t *cl)
                                               : NGX_HTTP_OK;
 
 
-        if (pglcf->output_handler == &ngx_postgres_output_rds) {
-            /* RDS for output rds */
-            r->headers_out.content_type.data = (u_char *) rds_content_type;
-            r->headers_out.content_type.len = rds_content_type_len;
-            r->headers_out.content_type_len = rds_content_type_len;
-        } else if (pglcf->output_handler == &ngx_postgres_output_json) {
+        if (pglcf->output_handler == &ngx_postgres_output_json) {
         //    This thing crashes nginx for some reason...
-            r->headers_out.content_type.data = (u_char *) json_content_type;
-            r->headers_out.content_type.len = json_content_type_len;
-            r->headers_out.content_type_len = json_content_type_len;
+            ngx_str_set(&r->headers_out.content_type, "application/json");
+            r->headers_out.content_type_len = r->headers_out.content_type.len;
         } else if (pglcf->output_handler != NULL) {
             /* default type for output value|row */
             clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -719,58 +373,6 @@ ngx_postgres_output_chain(ngx_http_request_t *r, ngx_chain_t *cl)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning rc:%d", __func__, (int) rc);
     return rc;
 }
-
-static rds_col_type_t
-ngx_postgres_rds_col_type(Oid col_type)
-{
-    switch (col_type) {
-    case INT8OID: /* int8 */
-        return rds_col_type_bigint;
-    case BITOID: /* bit */
-        return rds_col_type_bit;
-    case VARBITOID: /* varbit */
-        return rds_col_type_bit_varying;
-    case BOOLOID: /* bool */
-        return rds_col_type_bool;
-    case CHAROID: /* char */
-        return rds_col_type_char;
-    case NAMEOID: /* name */
-        /* FALLTROUGH */
-    case TEXTOID: /* text */
-        /* FALLTROUGH */
-    case VARCHAROID: /* varchar */
-        return rds_col_type_varchar;
-    case DATEOID: /* date */
-        return rds_col_type_date;
-    case FLOAT8OID: /* float8 */
-        return rds_col_type_double;
-    case INT4OID: /* int4 */
-        return rds_col_type_integer;
-    case INTERVALOID: /* interval */
-        return rds_col_type_interval;
-    case NUMERICOID: /* numeric */
-        return rds_col_type_decimal;
-    case FLOAT4OID: /* float4 */
-        return rds_col_type_real;
-    case INT2OID: /* int2 */
-        return rds_col_type_smallint;
-    case TIMETZOID: /* timetz */
-        return rds_col_type_time_with_time_zone;
-    case TIMEOID: /* time */
-        return rds_col_type_time;
-    case TIMESTAMPTZOID: /* timestamptz */
-        return rds_col_type_timestamp_with_time_zone;
-    case TIMESTAMPOID: /* timestamp */
-        return rds_col_type_timestamp;
-    case XMLOID: /* xml */
-        return rds_col_type_xml;
-    case BYTEAOID: /* bytea */
-        return rds_col_type_blob;
-    default:
-        return rds_col_type_unknown;
-    }
-}
-
 
 
 ngx_int_t

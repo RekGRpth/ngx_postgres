@@ -412,10 +412,9 @@ ngx_postgres_rewrite_enum_t ngx_postgres_rewrite_handlers[] = {
 
 ngx_postgres_output_enum_t ngx_postgres_output_handlers[] = {
     { ngx_string("none"),         0, NULL },
-    { ngx_string("rds"),          0, ngx_postgres_output_rds },
     { ngx_string("text") ,        0, ngx_postgres_output_text },
     { ngx_string("value"),        0, ngx_postgres_output_value },
-    { ngx_string("binary_value"), 1, ngx_postgres_output_value },
+    { ngx_string("binary"),       1, ngx_postgres_output_value },
     { ngx_string("json"),         0, ngx_postgres_output_json },
     { ngx_string("hex"),          0, ngx_postgres_output_hex },
     { ngx_null_string, 0, NULL }
@@ -563,7 +562,7 @@ ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->output_handler == NGX_CONF_UNSET_PTR) {
         if (prev->output_handler == NGX_CONF_UNSET_PTR) {
             /* default */
-            conf->output_handler = ngx_postgres_output_rds;
+            conf->output_handler = NULL;
             conf->output_binary = 0;
         } else {
             /* merge */

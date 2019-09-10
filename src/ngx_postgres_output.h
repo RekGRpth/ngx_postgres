@@ -33,14 +33,12 @@
 #include <libpq-fe.h>
 
 #include "ngx_postgres_module.h"
-#include "resty_dbd_stream.h"
 
 
 ngx_int_t        ngx_postgres_output_value(ngx_http_request_t *, PGresult *);
 ngx_int_t        ngx_postgres_output_text(ngx_http_request_t *, PGresult *);
 ngx_int_t        ngx_postgres_output_json(ngx_http_request_t *, PGresult *);
 ngx_int_t        ngx_postgres_output_hex(ngx_http_request_t *, PGresult *);
-ngx_int_t        ngx_postgres_output_rds(ngx_http_request_t *, PGresult *);
 ngx_int_t        ngx_postgres_output_chain(ngx_http_request_t *, ngx_chain_t *);
 
 #endif /* _NGX_POSTGRES_OUTPUT_H_ */
