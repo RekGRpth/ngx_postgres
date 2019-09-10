@@ -49,7 +49,7 @@ typedef struct {
 typedef struct {
     ngx_uint_t                          methods;
     ngx_http_complex_value_t            sql;
-    ngx_array_t                        *args;
+    ngx_array_t                         args;
 } ngx_postgres_query_t;
 
 typedef struct {
