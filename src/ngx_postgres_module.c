@@ -751,45 +751,18 @@ found:;
 }
 
 
-static char *
-ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_str_t                   *value = cf->args->elts;
-    ngx_postgres_loc_conf_t     *pglcf = conf;
-    ngx_postgres_output_enum_t  *e;
-    ngx_uint_t                   i;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
-    if (pglcf->output_handler != NGX_CONF_UNSET_PTR) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning", __func__);
-        return "is duplicate";
-    }
-
-    e = ngx_postgres_output_handlers;
-    for (i = 0; e[i].name.len; i++) {
-        if ((e[i].name.len == value[1].len)
-            && (ngx_strcasecmp(e[i].name.data, value[1].data) == 0))
-        {
-            pglcf->output_handler = e[i].handler;
-            break;
-        }
-    }
-
-    if (e[i].name.len == 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: invalid output format \"%V\""
-                           " in \"%V\" directive", &value[1], &cmd->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
+static char *ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_postgres_loc_conf_t *pglcf = conf;
+    if (pglcf->output_handler != NGX_CONF_UNSET_PTR) return "is duplicate";
+    ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
+    ngx_str_t *value = cf->args->elts;
+    ngx_uint_t i;
+    for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[1].len && !ngx_strncasecmp(e[i].name.data, value[1].data, value[1].len)) { pglcf->output_handler = e[i].handler; break; }
+    if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid output format \"%V\" in \"%V\" directive", &value[1], &cmd->name); return NGX_CONF_ERROR; }
     pglcf->output_binary = e[i].binary;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_OK", __func__);
     return NGX_CONF_OK;
 }
+
 
 static char *
 ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
