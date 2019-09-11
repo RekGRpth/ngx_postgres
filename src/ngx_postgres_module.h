@@ -152,11 +152,6 @@ typedef struct {
 } ngx_postgres_upstream_srv_conf_t;
 
 typedef struct {
-    ngx_uint_t                          hash;
-    ngx_uint_t                          used;
-} ngx_postgres_statement_t;
-
-typedef struct {
     /* upstream */
     ngx_http_upstream_conf_t            upstream;
     ngx_http_complex_value_t           *upstream_cv;
