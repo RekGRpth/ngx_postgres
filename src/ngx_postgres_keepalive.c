@@ -46,75 +46,50 @@ ngx_int_t ngx_postgres_keepalive_init(ngx_pool_t *pool, ngx_postgres_upstream_sr
 
 
 ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt) {
-    if (!ngx_queue_empty(&pgdt->pgscf->cache)) {
-        ngx_queue_t *q = ngx_queue_head(&pgdt->pgscf->cache);
-        ngx_queue_remove(q);
+    if (ngx_queue_empty(&pgdt->pgscf->cache)) return NGX_DECLINED;
+    ngx_queue_t *q = ngx_queue_head(&pgdt->pgscf->cache);
+    ngx_queue_remove(q);
+    ngx_postgres_keepalive_cache_t *cached = ngx_queue_data(q, ngx_postgres_keepalive_cache_t, queue);
+    ngx_queue_insert_head(&pgdt->pgscf->free, q);
+    cached->connection->idle = 0;
+    cached->connection->log = pc->log;
+    cached->connection->pool->log = pc->log;
+    cached->connection->read->log = pc->log;
+    cached->connection->write->log = pc->log;
+    pgdt->name.data = cached->name.data;
+    pgdt->name.len = cached->name.len;
+    pgdt->sockaddr = cached->sockaddr;
+    pgdt->pgconn = cached->pgconn;
+    pc->connection = cached->connection;
+    pc->cached = 1;
+    pc->name = &pgdt->name;
+    pc->sockaddr = &pgdt->sockaddr;
+    pc->socklen = cached->socklen;
+    return NGX_DONE;
+}
+
+
+ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt) {
+    ngx_queue_t *cache = &pgdt->pgscf->cache;
+    for (ngx_queue_t *q = ngx_queue_head(cache); q != ngx_queue_sentinel(cache); q = ngx_queue_next(q)) {
         ngx_postgres_keepalive_cache_t *cached = ngx_queue_data(q, ngx_postgres_keepalive_cache_t, queue);
+        if (ngx_memn2cmp((u_char *) &cached->sockaddr, (u_char *) pc->sockaddr, cached->socklen, pc->socklen)) continue;
+        ngx_queue_remove(q);
         ngx_queue_insert_head(&pgdt->pgscf->free, q);
         cached->connection->idle = 0;
         cached->connection->log = pc->log;
         cached->connection->pool->log = pc->log;
         cached->connection->read->log = pc->log;
         cached->connection->write->log = pc->log;
-        pgdt->name.data = cached->name.data;
-        pgdt->name.len = cached->name.len;
-        pgdt->sockaddr = cached->sockaddr;
-        pgdt->pgconn = cached->pgconn;
         pc->connection = cached->connection;
         pc->cached = 1;
-        pc->name = &pgdt->name;
-        pc->sockaddr = &pgdt->sockaddr;
-        pc->socklen = cached->socklen;
+        /* we do not need to resume the peer name, because we already take the right value outside */
+        pgdt->pgconn = cached->pgconn;
         return NGX_DONE;
     }
     return NGX_DECLINED;
 }
 
-ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt) {
-    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->pgscf;
-    ngx_postgres_keepalive_cache_t  *cached;
-    ngx_queue_t                     *q, *cache;
-    ngx_connection_t                *c;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s entering", __func__);
-
-    cache = &pgscf->cache;
-
-    for (q = ngx_queue_head(cache);
-         q != ngx_queue_sentinel(cache);
-         q = ngx_queue_next(q))
-    {
-        cached = ngx_queue_data(q, ngx_postgres_keepalive_cache_t, queue);
-        c = cached->connection;
-
-        if (ngx_memn2cmp((u_char *) &cached->sockaddr, (u_char *) pc->sockaddr,
-                cached->socklen, pc->socklen) == 0)
-        {
-            ngx_queue_remove(q);
-            ngx_queue_insert_head(&pgscf->free, q);
-
-            c->idle = 0;
-            c->log = pc->log;
-            c->pool->log = pc->log;
-            c->read->log = pc->log;
-            c->write->log = pc->log;
-
-            pc->connection = c;
-            pc->cached = 1;
-
-            /* we do not need to resume the peer name
-             * because we already take the right value outside */
-
-            pgdt->pgconn = cached->pgconn;
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_DONE", __func__);
-            return NGX_DONE;
-        }
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_DECLINED", __func__);
-    return NGX_DECLINED;
-}
 
 void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt, ngx_uint_t  state) {
     ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->pgscf;
