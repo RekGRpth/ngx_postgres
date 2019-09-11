@@ -840,33 +840,12 @@ static char *ngx_postgres_conf_escape(ngx_conf_t *cf, ngx_command_t *cmd, void *
 }
 
 
-ngx_http_upstream_srv_conf_t *
-ngx_postgres_find_upstream(ngx_http_request_t *r, ngx_url_t *url)
-{
-    ngx_http_upstream_main_conf_t   *umcf;
-    ngx_http_upstream_srv_conf_t   **uscfp;
-    ngx_uint_t                       i;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
-
-    uscfp = umcf->upstreams.elts;
-
-    for (i = 0; i < umcf->upstreams.nelts; i++) {
-
-        if ((uscfp[i]->host.len != url->host.len)
-            || (ngx_strncasecmp(uscfp[i]->host.data, url->host.data,
-                                url->host.len) != 0))
-        {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s host doesn't match", __func__);
-            continue;
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
+ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *r, ngx_url_t *url) {
+    ngx_http_upstream_main_conf_t *umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+    ngx_http_upstream_srv_conf_t **uscfp = umcf->upstreams.elts;
+    for (ngx_uint_t i = 0; i < umcf->upstreams.nelts; i++) {
+        if (uscfp[i]->host.len != url->host.len || !ngx_strncasecmp(uscfp[i]->host.data, url->host.data, url->host.len)) continue;
         return uscfp[i];
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NULL", __func__);
     return NULL;
 }
