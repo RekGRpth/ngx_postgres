@@ -129,6 +129,7 @@ typedef struct {
     ngx_str_t                           user;
     ngx_str_t                           password;
     ngx_str_t                           application_name;
+    u_char                             *connstring;
 } ngx_postgres_upstream_peer_t;
 
 typedef struct {
