@@ -590,86 +590,36 @@ static char *ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, voi
     return NGX_CONF_OK;
 }
 
-static char *
-ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_str_t                         *value = cf->args->elts;
-    ngx_postgres_loc_conf_t           *pglcf = conf;
-    ngx_http_core_loc_conf_t          *clcf;
-    ngx_http_compile_complex_value_t   ccv;
-    ngx_url_t                          url;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
-    if ((pglcf->upstream.upstream != NULL) || (pglcf->upstream_cv != NULL)) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning", __func__);
-        return "is duplicate";
-    }
-
-    if (value[1].len == 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: empty upstream in \"%V\" directive",
-                           &cmd->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-
+static char *ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_postgres_loc_conf_t *pglcf = conf;
+    if (pglcf->upstream.upstream || pglcf->upstream_cv) return "is duplicate";
+    ngx_str_t *value = cf->args->elts;
+    if (!value[1].len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty upstream in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_http_core_loc_conf_t *clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_postgres_handler;
-
-    if (clcf->name.data[clcf->name.len - 1] == '/') {
-        clcf->auto_redirect = 1;
-    }
-
-    if (ngx_http_script_variables_count(&value[1])) {
-        /* complex value */
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s complex value", __func__);
-
-        pglcf->upstream_cv = ngx_palloc(cf->pool,
-                                        sizeof(ngx_http_complex_value_t));
-        if (pglcf->upstream_cv == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-            return NGX_CONF_ERROR;
-        }
-
-        ngx_memzero(&ccv, sizeof(ngx_http_compile_complex_value_t));
-
-        ccv.cf = cf;
-        ccv.value = &value[1];
-        ccv.complex_value = pglcf->upstream_cv;
-
-        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-            return NGX_CONF_ERROR;
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_OK", __func__);
+    if (clcf->name.data[clcf->name.len - 1] == '/') clcf->auto_redirect = 1;
+    if (ngx_http_script_variables_count(&value[1])) { /* complex value */
+        if (!(pglcf->upstream_cv = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        ngx_http_compile_complex_value_t ccv = {cf, &value[1], pglcf->upstream_cv, 0, 0, 0};
+        if (ngx_http_compile_complex_value(&ccv) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
-    } else {
-        /* simple value */
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s simple value", __func__);
-
+    } else { /* simple value */
+        ngx_url_t url;
         ngx_memzero(&url, sizeof(ngx_url_t));
-
         url.url = value[1];
         url.no_resolve = 1;
-
         pglcf->upstream.upstream = ngx_http_upstream_add(cf, &url, 0);
-        if (pglcf->upstream.upstream == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-            return NGX_CONF_ERROR;
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_OK", __func__);
+        if (!pglcf->upstream.upstream) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
     }
 }
+
 
 static ngx_flag_t is_variable_character(char p) {
     return ((p >= '0' && p <= '9') || (p >= 'a' && p <= 'z') || (p >= 'A' && p <= 'Z') || p == '_');
 }
+
 
 static ngx_uint_t str2oid(ngx_str_t *value) {
     for (ngx_uint_t i = 0; ngx_postgres_oids[i].name.len; i++) {
@@ -679,6 +629,7 @@ static ngx_uint_t str2oid(ngx_str_t *value) {
     }
     return 0;
 }
+
 
 static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_str_t *value = cf->args->elts;
@@ -741,6 +692,7 @@ static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     if (ngx_http_compile_complex_value(&ccv) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     return NGX_CONF_OK;
 }
+
 
 static char *
 ngx_postgres_conf_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
