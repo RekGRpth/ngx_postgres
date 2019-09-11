@@ -33,59 +33,29 @@
 uintptr_t ngx_postgres_script_exit_code = (uintptr_t) NULL;
 
 
-void
-ngx_postgres_escape_string(ngx_http_script_engine_t *e)
-{
-    ngx_postgres_escape_t      *pge;
-    ngx_http_variable_value_t  *v;
-    u_char                     *p, *s;
-
-    v = e->sp - 1;
-
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s entering: \"%.*s\"", __func__, (int) v->len, v->data);
-
+void ngx_postgres_escape_string(ngx_http_script_engine_t *e) {
+    ngx_postgres_escape_t *pge;
     pge = (ngx_postgres_escape_t *) e->ip;
     e->ip += sizeof(ngx_postgres_escape_t);
-
-    if ((v == NULL) || (v->not_found)) {
-        v->data = (u_char *) "NULL";
-        v->len = sizeof("NULL") - 1;
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s returning (NULL)", __func__);
-        goto done;
+    ngx_http_variable_value_t *v = e->sp - 1;
+    if (!v || v->not_found) { ngx_str_set(v, "NULL"); goto done; }
+    if (!v->len) {
+        if (pge->empty) { ngx_str_set(v, "''"); goto done; }
+        else { ngx_str_set(v, "NULL"); goto done; }
     }
-
-    if (v->len == 0) {
-        if (pge->empty) {
-            v->data = (u_char *) "''";
-            v->len = 2;
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s returning (empty/empty)", __func__);
-            goto done;
-        } else {
-            v->data = (u_char *) "NULL";
-            v->len = sizeof("NULL") - 1;
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s returning (empty/NULL)", __func__);
-            goto done;
-        }
-    }
-
-    s = p = ngx_pnalloc(e->request->pool, 2 * v->len + 2);
-    if (p == NULL) {
+    u_char *p = ngx_pnalloc(e->request->pool, 2 * v->len + 2);
+    if (!p) {
         e->ip = (u_char *) &ngx_postgres_script_exit_code;
         e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s returning (NGX_HTTP_INTERNAL_SERVER_ERROR)", __func__);
         return;
     }
-
+    u_char *s = p;
     *p++ = '\'';
     v->len = PQescapeString((char *) p, (const char *) v->data, v->len);
     p[v->len] = '\'';
     v->len += 2;
     v->data = s;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->request->connection->log, 0, "%s returning", __func__);
-
 done:
-
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
