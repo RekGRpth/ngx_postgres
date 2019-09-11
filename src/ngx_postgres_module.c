@@ -856,22 +856,22 @@ static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             for (name.data = s, name.len = 0; s++ < e && is_variable_character(*s); name.len++);
             if (!name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
             name.len++;
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "name = %V", &name);
-            ngx_str_t oid;
+//            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "name = %V", &name);
+            ngx_str_t oid = {0, NULL};
             if (*s++ == ':' && *s++ == ':') for (oid.data = s, oid.len = 0; s < e && is_variable_character(*s); s++, oid.len++);
             if (oid.len) {
                 ngx_postgres_arg_t *arg;
                 if (!(arg = ngx_array_push(&query->args))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
                 if ((ngx_int_t)(arg->index = ngx_http_get_variable_index(cf, &name)) == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
                 if (!(arg->oid = str2oid(&oid))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__);  return NGX_CONF_ERROR; }
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "oid = %V, oid = %d", &oid, arg->oid);
+//                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "oid = %V, oid = %d", &oid, arg->oid);
             } else {
                 p = ngx_copy(p, name.data, name.len);
             }
         }
     }
     ngx_str_t sv = {p - q, q};
-    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sv = %V", &sv);
+//    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sv = %V", &sv);
     ngx_http_compile_complex_value_t ccv = {cf, &sv, &query->sql, 0, 0, 0};
     if (ngx_http_compile_complex_value(&ccv) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     return NGX_CONF_OK;

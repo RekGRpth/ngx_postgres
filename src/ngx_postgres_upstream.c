@@ -162,7 +162,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     if (peer->password.len) last = ngx_snprintf(last, sizeof(" password=%V") - 1 - 1 + peer->password.len, " password=%V", &peer->password);
     if (peer->application_name.len) last = ngx_snprintf(last, sizeof(" application_name=%V") - 1 - 1 + peer->application_name.len, " application_name=%V", &peer->application_name);
     *last = '\0';
-    ngx_log_error(NGX_LOG_ERR, pc->log, 0, "%s PostgreSQL connection string: %s", __func__, connstring);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PostgreSQL connstring: %s", connstring);
     /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
     pgdt->pgconn = PQconnectStart((const char *)connstring);
     if (PQsetnonblocking(pgdt->pgconn, 1) == -1) {
@@ -171,7 +171,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
         pgdt->pgconn = NULL;
         return NGX_DECLINED;
     }
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s connection status:%d", __func__, (int) PQstatus(pgdt->pgconn));
+//    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s connection status:%d", __func__, (int) PQstatus(pgdt->pgconn));
     /* take spot in keepalive connection pool */
     pgscf->active_conns++;
     /* add the file descriptor (fd) into an nginx connection structure */
