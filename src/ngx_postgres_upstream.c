@@ -39,8 +39,7 @@ static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *dat
 ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf) {
     uscf->peer.init = ngx_postgres_upstream_init_peer;
     ngx_postgres_upstream_srv_conf_t *pgscf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
-    if (!pgscf->servers.elts || !pgscf->servers.nelts) { ngx_log_error(NGX_LOG_ERR, cf->log, 0, "postgres: no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &uscf->host, uscf->file_name, uscf->line); return NGX_ERROR; }
-    /* pgscf->servers != NULL */
+    if (!uscf->servers || !uscf->servers->nelts) { ngx_log_error(NGX_LOG_ERR, cf->log, 0, "postgres: no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &uscf->host, uscf->file_name, uscf->line); return NGX_ERROR; }
     ngx_postgres_upstream_server_t *server = uscf->servers->elts;
     ngx_uint_t n = 0;
     for (ngx_uint_t i = 0; i < uscf->servers->nelts; i++) n += server[i].naddrs;

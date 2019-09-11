@@ -542,12 +542,8 @@ ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
 static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_http_upstream_srv_conf_t *uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
-    ngx_postgres_upstream_srv_conf_t *pgscf = conf;
-    if (!pgscf->servers.elts) {
-        if (ngx_array_init(&pgscf->servers, cf->pool, 4, sizeof(ngx_postgres_upstream_server_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-        uscf->servers = &pgscf->servers;
-    }
-    ngx_postgres_upstream_server_t *server = ngx_array_push(&pgscf->servers);
+    if (!uscf->servers && !(uscf->servers = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_upstream_server_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    ngx_postgres_upstream_server_t *server = ngx_array_push(uscf->servers);
     if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     ngx_memzero(server, sizeof(ngx_postgres_upstream_server_t));
     /* parse the first name:port argument */
