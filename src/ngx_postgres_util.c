@@ -91,54 +91,30 @@ void ngx_postgres_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, n
 }
 
 
-ngx_int_t
-ngx_postgres_upstream_test_connect(ngx_connection_t *c)
-{
-    int        err;
-    socklen_t  len;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s entering", __func__);
-
+ngx_int_t ngx_postgres_upstream_test_connect(ngx_connection_t *c) {
 #if (NGX_HAVE_KQUEUE)
-
-    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT)  {
+    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
         if (c->write->pending_eof) {
-            c->log->action = "connecting to upstream";
-            (void) ngx_connection_error(c, c->write->kq_errno,
-                       "kevent() reported that connect() failed");
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s returning NGX_ERROR", __func__);
+//            c->log->action = "connecting to upstream";
+            (void) ngx_connection_error(c, c->write->kq_errno, "kevent() reported that connect() failed");
             return NGX_ERROR;
         }
-
     } else
 #endif
     {
-        err = 0;
-        len = sizeof(int);
-
-        /*
-         * BSDs and Linux return 0 and set a pending error in err
-         * Solaris returns -1 and sets errno
-         */
-
-        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1)
-        {
-            err = ngx_errno;
-        }
-
+        int err = 0;
+        socklen_t len = sizeof(int);
+        /* BSDs and Linux return 0 and set a pending error in err, Solaris returns -1 and sets errno */
+        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1) err = ngx_errno;
         if (err) {
-            c->log->action = "connecting to upstream";
+//            c->log->action = "connecting to upstream";
             (void) ngx_connection_error(c, err, "connect() failed");
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s returning NGX_ERROR", __func__);
             return NGX_ERROR;
         }
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 }
+
 
 ngx_int_t
 ngx_postgres_rewrite_var(ngx_http_request_t *r, ngx_http_variable_value_t *v,
