@@ -134,7 +134,6 @@ typedef struct {
 typedef struct {
     ngx_uint_t                          single;
     ngx_uint_t                          number;
-    ngx_str_t                           name;
     ngx_postgres_upstream_peer_t        peer[1];
 } ngx_postgres_upstream_peers_t;
 
