@@ -139,7 +139,7 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
     ngx_connection_t *pgxc = u->peer.connection;
     ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
     ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (pgdt->srv_conf->prepare) {
+    if (pgdt->pgscf->prepare) {
         u_char stmtName[32];
         ngx_uint_t hash = ngx_hash_key(pgdt->command, pgdt->command_len);
         *ngx_snprintf(stmtName, 32, "ngx_%ul", (unsigned long)hash) = '\0';

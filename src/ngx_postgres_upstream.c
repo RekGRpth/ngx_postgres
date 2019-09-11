@@ -80,8 +80,8 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     ngx_postgres_upstream_srv_conf_t *pgscf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
     ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    pgdt->srv_conf = pgscf;
-    pgdt->loc_conf = pglcf;
+    pgdt->pgscf = pgscf;
+    pgdt->pglcf = pglcf;
     u->peer.data = pgdt;
     u->peer.get = ngx_postgres_upstream_get_peer;
     u->peer.free = ngx_postgres_upstream_free_peer;
@@ -119,7 +119,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
 static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_upstream_peer_data_t *pgdt = data;
     pgdt->failed = 0;
-    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->srv_conf;
+    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->pgscf;
     if (pgscf->max_cached && pgscf->single && ngx_postgres_keepalive_get_peer_single(pc, pgdt) != NGX_DECLINED) { /* re-use keepalive peer */
         pgdt->state = state_db_send_query;
         ngx_postgres_process_events(pgdt->request);
@@ -215,8 +215,8 @@ invalid:
 
 
 static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
-    ngx_postgres_upstream_peer_data_t  *pgdt = data;
-    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->srv_conf;
+    ngx_postgres_upstream_peer_data_t *pgdt = data;
+    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->pgscf;
     if (pgscf->max_cached) ngx_postgres_keepalive_free_peer(pc, pgdt, state);
     if (pc->connection) {
         ngx_postgres_upstream_free_connection(pc->connection, pgdt->pgconn, pgscf);

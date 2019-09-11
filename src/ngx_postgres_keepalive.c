@@ -55,7 +55,7 @@ ngx_postgres_keepalive_init(ngx_pool_t *pool,
 
     for (i = 0; i < pgscf->max_cached; i++) {
         ngx_queue_insert_head(&pgscf->free, &cached[i].queue);
-        cached[i].srv_conf = pgscf;
+        cached[i].pgscf = pgscf;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pool->log, 0, "%s returning NGX_OK", __func__);
@@ -63,7 +63,7 @@ ngx_postgres_keepalive_init(ngx_pool_t *pool,
 }
 
 ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt) {
-    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->srv_conf;
+    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->pgscf;
     ngx_postgres_keepalive_cache_t  *item;
     ngx_queue_t                     *q;
     ngx_connection_t                *c;
@@ -112,7 +112,7 @@ ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_
 }
 
 ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt) {
-    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->srv_conf;
+    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->pgscf;
     ngx_postgres_keepalive_cache_t  *item;
     ngx_queue_t                     *q, *cache;
     ngx_connection_t                *c;
@@ -158,7 +158,7 @@ ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_p
 }
 
 void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt, ngx_uint_t  state) {
-    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->srv_conf;
+    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->pgscf;
     ngx_postgres_keepalive_cache_t  *item;
     ngx_queue_t                     *q;
     ngx_connection_t                *c;
@@ -291,7 +291,7 @@ ngx_postgres_keepalive_close_handler(ngx_event_t *ev)
 
 close:
 
-    pgscf = item->srv_conf;
+    pgscf = item->pgscf;
 
     ngx_postgres_upstream_free_connection(c, item->pgconn, pgscf);
 
