@@ -441,98 +441,59 @@ static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf) {
 }
 
 
-static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf)
-{
-    ngx_postgres_loc_conf_t  *conf;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
-    conf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_loc_conf_t));
-    if (conf == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    /*
-     * set by ngx_pcalloc():
-     *
-     *     conf->upstream.* = 0 / NULL
-     *     conf->upstream_cv = NULL
-     *     conf->query.methods_set = 0
-     *     conf->query.methods = NULL
-     *     conf->query.def = NULL
-     *     conf->output_binary = 0
-     */
-
-    conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
-    conf->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
-
-    conf->rewrites = NGX_CONF_UNSET_PTR;
-    conf->output_handler = NGX_CONF_UNSET_PTR;
-    conf->variables = NGX_CONF_UNSET_PTR;
-
+static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
+    ngx_postgres_loc_conf_t *pglcf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_loc_conf_t));
+    if (!pglcf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NULL; }
+    pglcf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
+    pglcf->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
+    pglcf->rewrites = NGX_CONF_UNSET_PTR;
+    pglcf->output_handler = NGX_CONF_UNSET_PTR;
+    pglcf->variables = NGX_CONF_UNSET_PTR;
     /* the hardcoded values */
-    conf->upstream.cyclic_temp_file = 0;
-    conf->upstream.buffering = 1;
-    conf->upstream.ignore_client_abort = 1;
-    conf->upstream.send_lowat = 0;
-    conf->upstream.bufs.num = 0;
-    conf->upstream.busy_buffers_size = 0;
-    conf->upstream.max_temp_file_size = 0;
-    conf->upstream.temp_file_write_size = 0;
-    conf->upstream.intercept_errors = 1;
-    conf->upstream.intercept_404 = 1;
-    conf->upstream.pass_request_headers = 0;
-    conf->upstream.pass_request_body = 0;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning", __func__);
-    return conf;
+    pglcf->upstream.cyclic_temp_file = 0;
+    pglcf->upstream.buffering = 1;
+    pglcf->upstream.ignore_client_abort = 1;
+    pglcf->upstream.send_lowat = 0;
+    pglcf->upstream.bufs.num = 0;
+    pglcf->upstream.busy_buffers_size = 0;
+    pglcf->upstream.max_temp_file_size = 0;
+    pglcf->upstream.temp_file_write_size = 0;
+    pglcf->upstream.intercept_errors = 1;
+    pglcf->upstream.intercept_404 = 1;
+    pglcf->upstream.pass_request_headers = 0;
+    pglcf->upstream.pass_request_body = 0;
+    return pglcf;
 }
 
-static char *
-ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
-{
-    ngx_postgres_loc_conf_t  *prev = parent;
-    ngx_postgres_loc_conf_t  *conf = child;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
-    ngx_conf_merge_msec_value(conf->upstream.connect_timeout,
-                              prev->upstream.connect_timeout, 10000);
-
-    ngx_conf_merge_msec_value(conf->upstream.read_timeout,
-                              prev->upstream.read_timeout, 30000);
-
-    if ((conf->upstream.upstream == NULL) && (conf->upstream_cv == NULL)) {
+static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
+    ngx_postgres_loc_conf_t *prev = parent;
+    ngx_postgres_loc_conf_t *conf = child;
+    ngx_conf_merge_msec_value(conf->upstream.connect_timeout, prev->upstream.connect_timeout, 10000);
+    ngx_conf_merge_msec_value(conf->upstream.read_timeout, prev->upstream.read_timeout, 30000);
+    if (!conf->upstream.upstream && !conf->upstream_cv) {
         conf->upstream.upstream = prev->upstream.upstream;
         conf->upstream_cv = prev->upstream_cv;
     }
-
-    if ((conf->query.def == NULL) && (conf->query.methods.elts == NULL)) {
+    if (!conf->query.def && !conf->query.methods.elts) {
         conf->query.methods_set = prev->query.methods_set;
         conf->query.methods = prev->query.methods;
         conf->query.def = prev->query.def;
     }
-
     ngx_conf_merge_ptr_value(conf->rewrites, prev->rewrites, NULL);
-
     if (conf->output_handler == NGX_CONF_UNSET_PTR) {
-        if (prev->output_handler == NGX_CONF_UNSET_PTR) {
-            /* default */
+        if (prev->output_handler == NGX_CONF_UNSET_PTR) { /* default */
             conf->output_handler = NULL;
             conf->output_binary = 0;
-        } else {
-            /* merge */
+        } else { /* merge */
             conf->output_handler = prev->output_handler;
             conf->output_binary = prev->output_binary;
         }
     }
-
     ngx_conf_merge_ptr_value(conf->variables, prev->variables, NULL);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_OK", __func__);
     return NGX_CONF_OK;
 }
+
 
 /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
 static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
