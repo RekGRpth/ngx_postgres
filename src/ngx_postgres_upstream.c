@@ -31,66 +31,27 @@
 #include "ngx_postgres_processor.h"
 
 
-static ngx_int_t
-ngx_postgres_upstream_init_peer(ngx_http_request_t *r,
-    ngx_http_upstream_srv_conf_t *uscf);
-static ngx_int_t
-ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data);
-static void
-ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc,
-    void *data, ngx_uint_t state);
+static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *uscf);
+static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data);
+static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state);
 
 
-ngx_int_t
-ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf)
-{
-    ngx_postgres_upstream_srv_conf_t  *pgscf;
-    ngx_postgres_upstream_server_t    *server;
-    ngx_postgres_upstream_peers_t     *peers;
-    ngx_uint_t                         i, j, n;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
+ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf) {
     uscf->peer.init = ngx_postgres_upstream_init_peer;
-
-    pgscf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
-
-    if (pgscf->servers == NULL || pgscf->servers->nelts == 0) {
-        ngx_log_error(NGX_LOG_ERR, cf->log, 0,
-                      "postgres: no \"postgres_server\" defined"
-                      " in upstream \"%V\" in %s:%ui",
-                      &uscf->host, uscf->file_name, uscf->line);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
+    ngx_postgres_upstream_srv_conf_t *pgscf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
+    if (!pgscf->servers.elts || !pgscf->servers.nelts) { ngx_log_error(NGX_LOG_ERR, cf->log, 0, "postgres: no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &uscf->host, uscf->file_name, uscf->line); return NGX_ERROR; }
     /* pgscf->servers != NULL */
-
-    server = uscf->servers->elts;
-
-    n = 0;
-
-    for (i = 0; i < uscf->servers->nelts; i++) {
-        n += server[i].naddrs;
-    }
-
-    peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_upstream_peers_t)
-            + sizeof(ngx_postgres_upstream_peer_t) * (n - 1));
-
-    if (peers == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
+    ngx_postgres_upstream_server_t *server = uscf->servers->elts;
+    ngx_uint_t n = 0;
+    for (ngx_uint_t i = 0; i < uscf->servers->nelts; i++) n += server[i].naddrs;
+    ngx_postgres_upstream_peers_t *peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_upstream_peers_t) + sizeof(ngx_postgres_upstream_peer_t) * (n - 1));
+    if (!peers) { ngx_log_error(NGX_LOG_ERR, cf->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     peers->single = (n == 1);
     peers->number = n;
     peers->name = &uscf->host;
-
     n = 0;
-
-    for (i = 0; i < uscf->servers->nelts; i++) {
-        for (j = 0; j < server[i].naddrs; j++) {
+    for (ngx_uint_t i = 0; i < uscf->servers->nelts; i++) {
+        for (ngx_uint_t j = 0; j < server[i].naddrs; j++) {
             peers->peer[n].sockaddr = server[i].addrs[j].sockaddr;
             peers->peer[n].socklen = server[i].addrs[j].socklen;
             peers->peer[n].name = server[i].addrs[j].name;
@@ -99,38 +60,17 @@ ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf)
             peers->peer[n].dbname = server[i].dbname;
             peers->peer[n].user = server[i].user;
             peers->peer[n].password = server[i].password;
-
-            peers->peer[n].host.data = ngx_pnalloc(cf->pool,
-                                                   NGX_SOCKADDR_STRLEN);
-            if (peers->peer[n].host.data == NULL) {
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_ERROR", __func__);
-                return NGX_ERROR;
-            }
-
-            peers->peer[n].host.len = ngx_sock_ntop(peers->peer[n].sockaddr,
-                                          peers->peer[n].socklen,
-                                          peers->peer[n].host.data,
-                                          NGX_SOCKADDR_STRLEN, 0);
-            if (peers->peer[n].host.len == 0) {
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_ERROR", __func__);
-                return NGX_ERROR;
-            }
-
+            if (!(peers->peer[n].host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_log_error(NGX_LOG_ERR, cf->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            if (!(peers->peer[n].host.len = ngx_sock_ntop(peers->peer[n].sockaddr, peers->peer[n].socklen, peers->peer[n].host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_log_error(NGX_LOG_ERR, cf->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             n++;
         }
     }
-
     pgscf->peers = peers;
     pgscf->active_conns = 0;
-
-    if (pgscf->max_cached) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning", __func__);
-        return ngx_postgres_keepalive_init(cf->pool, pgscf);
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_OK", __func__);
+    if (pgscf->max_cached) return ngx_postgres_keepalive_init(cf->pool, pgscf);
     return NGX_OK;
 }
+
 
 static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *uscf) {
     ngx_postgres_upstream_peer_data_t *pgdt = ngx_pcalloc(r->pool, sizeof(ngx_postgres_upstream_peer_data_t));

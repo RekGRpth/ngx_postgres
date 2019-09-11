@@ -61,8 +61,7 @@ typedef struct {
 } ngx_postgres_upstream_peer_data_t;
 
 
-ngx_int_t   ngx_postgres_upstream_init(ngx_conf_t *,
-                ngx_http_upstream_srv_conf_t *);
+ngx_int_t   ngx_postgres_upstream_init(ngx_conf_t *, ngx_http_upstream_srv_conf_t *);
 ngx_flag_t  ngx_postgres_upstream_is_my_peer(const ngx_peer_connection_t *);
 void        ngx_postgres_upstream_free_connection(ngx_connection_t *, PGconn *, ngx_postgres_upstream_srv_conf_t *);
 

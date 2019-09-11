@@ -43,30 +43,18 @@
 #define NGX_CONF_TAKE34  (NGX_CONF_TAKE3|NGX_CONF_TAKE4)
 
 
-static ngx_int_t
-ngx_postgres_add_variables(ngx_conf_t *cf);
-static void *
-ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf);
-static void *
-ngx_postgres_create_loc_conf(ngx_conf_t *cf);
-static char *
-ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
-static char *
-ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *
-ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *
-ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *
-ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *
-ngx_postgres_conf_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *
-ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *
-ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *
-ngx_postgres_conf_escape(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static ngx_int_t ngx_postgres_add_variables(ngx_conf_t *cf);
+static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf);
+static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf);
+static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
+static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_conf_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_conf_escape(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
 static ngx_command_t ngx_postgres_module_commands[] = {
@@ -443,45 +431,18 @@ ngx_postgres_add_variables(ngx_conf_t *cf)
     return NGX_OK;
 }
 
-static void *
-ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf)
-{
-    ngx_postgres_upstream_srv_conf_t  *conf;
-    ngx_pool_cleanup_t                *cln;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
-    conf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_upstream_srv_conf_t));
-    if (conf == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NULL", __func__);
-        return NULL;
-    }
-
-    /*
-     * set by ngx_pcalloc():
-     *
-     *     conf->peers = NULL
-     *     conf->current = 0
-     *     conf->servers = NULL
-     *     conf->free = { NULL, NULL }
-     *     conf->cache = { NULL, NULL }
-     *     conf->active_conns = 0
-     *     conf->reject = 0
-     */
-
-    conf->pool = cf->pool;
-
+static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf) {
+    ngx_postgres_upstream_srv_conf_t *pgscf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_upstream_srv_conf_t));
+    if (!pgscf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NULL; }
+    pgscf->pool = cf->pool;
     /* enable keepalive (single) by default */
-    conf->max_cached = 10;
-    conf->max_statements = 256;
-    conf->single = 1;
-
-    cln = ngx_pool_cleanup_add(cf->pool, 0);
+    pgscf->max_cached = 10;
+    pgscf->max_statements = 256;
+    pgscf->single = 1;
+    ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     cln->handler = ngx_postgres_keepalive_cleanup;
-    cln->data = conf;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning", __func__);
-    return conf;
+    cln->data = pgscf;
+    return pgscf;
 }
 
 static void *
@@ -578,111 +539,54 @@ ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     return NGX_CONF_OK;
 }
 
-/*
- * Based on: ngx_http_upstream.c/ngx_http_upstream_server
- * Copyright (C) Igor Sysoev
- */
-static char *
-ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_str_t                         *value = cf->args->elts;
-    ngx_postgres_upstream_srv_conf_t  *pgscf = conf;
-    ngx_postgres_upstream_server_t    *pgs;
-    ngx_http_upstream_srv_conf_t      *uscf;
-    ngx_url_t                          u;
-    ngx_uint_t                         i;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
-    uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
-
-    if (pgscf->servers == NULL) {
-        pgscf->servers = ngx_array_create(cf->pool, 4,
-                             sizeof(ngx_postgres_upstream_server_t));
-        if (pgscf->servers == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-            return NGX_CONF_ERROR;
-        }
-
-        uscf->servers = pgscf->servers;
+/* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
+static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_http_upstream_srv_conf_t *uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
+    ngx_postgres_upstream_srv_conf_t *pgscf = conf;
+    if (!pgscf->servers.elts) {
+        if (ngx_array_init(&pgscf->servers, cf->pool, 4, sizeof(ngx_postgres_upstream_server_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        uscf->servers = &pgscf->servers;
     }
-
-    pgs = ngx_array_push(pgscf->servers);
-    if (pgs == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    ngx_memzero(pgs, sizeof(ngx_postgres_upstream_server_t));
-
+    ngx_postgres_upstream_server_t *server = ngx_array_push(&pgscf->servers);
+    if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    ngx_memzero(server, sizeof(ngx_postgres_upstream_server_t));
     /* parse the first name:port argument */
-
+    ngx_url_t u;
     ngx_memzero(&u, sizeof(ngx_url_t));
-
+    ngx_str_t *value = cf->args->elts;
     u.url = value[1];
     u.default_port = 5432; /* PostgreSQL default */
-
     if (ngx_parse_url(cf->pool, &u) != NGX_OK) {
-        if (u.err) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "postgres: %s in upstream \"%V\"",
-                               u.err, &u.url);
-        }
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
+        if (u.err) ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s in upstream \"%V\"", u.err, &u.url);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__);
         return NGX_CONF_ERROR;
     }
-
-    pgs->addrs = u.addrs;
-    pgs->naddrs = u.naddrs;
-    pgs->port = u.family == AF_UNIX ? u.default_port : u.port;
-    pgs->family = u.family;
-
+    server->addrs = u.addrs;
+    server->naddrs = u.naddrs;
+    server->port = u.family == AF_UNIX ? u.default_port : u.port;
+    server->family = u.family;
     /* parse various options */
-    for (i = 2; i < cf->args->nelts; i++) {
-
-        if (ngx_strncmp(value[i].data, "port=", sizeof("port=") - 1)
-                == 0)
-        {
-            pgs->port = (in_port_t) ngx_atoi(&value[i].data[sizeof("port=") - 1], value[i].len - (sizeof("port=") - 1));
+    for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
+        if (!ngx_strncmp(value[i].data, "port=", sizeof("port=") - 1)) {
+            server->port = (in_port_t) ngx_atoi(&value[i].data[sizeof("port=") - 1], value[i].len - (sizeof("port=") - 1));
+            continue;
+        } else if (!ngx_strncmp(value[i].data, "dbname=", sizeof("dbname=") - 1)) {
+            server->dbname.len = value[i].len - (sizeof("dbname=") - 1);
+            server->dbname.data = &value[i].data[sizeof("dbname=") - 1];
+            continue;
+        } else if (!ngx_strncmp(value[i].data, "user=", sizeof("user=") - 1)) {
+            server->user.len = value[i].len - (sizeof("user=") - 1);
+            server->user.data = &value[i].data[sizeof("user=") - 1];
+            continue;
+        } else if (!ngx_strncmp(value[i].data, "password=", sizeof("password=") - 1)) {
+            server->password.len = value[i].len - (sizeof("password=") - 1);
+            server->password.data = &value[i].data[sizeof("password=") - 1];
             continue;
         }
-
-        if (ngx_strncmp(value[i].data, "dbname=", sizeof("dbname=") - 1)
-                == 0)
-        {
-            pgs->dbname.len = value[i].len - (sizeof("dbname=") - 1);
-            pgs->dbname.data = &value[i].data[sizeof("dbname=") - 1];
-            continue;
-        }
-
-        if (ngx_strncmp(value[i].data, "user=", sizeof("user=") - 1)
-                == 0)
-        {
-            pgs->user.len = value[i].len - (sizeof("user=") - 1);
-            pgs->user.data = &value[i].data[sizeof("user=") - 1];
-            continue;
-        }
-
-        if (ngx_strncmp(value[i].data, "password=", sizeof("password=") - 1)
-                == 0)
-        {
-            pgs->password.len = value[i].len - (sizeof("password=") - 1);
-            pgs->password.data = &value[i].data[sizeof("password=") - 1];
-            continue;
-        }
-
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: invalid parameter \"%V\" in"
-                           " \"postgres_server\"", &value[i]);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid parameter \"%V\" in \"postgres_server\"", &value[i]);
         return NGX_CONF_ERROR;
     }
-
     uscf->peer.init_upstream = ngx_postgres_upstream_init;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_OK", __func__);
     return NGX_CONF_OK;
 }
 
