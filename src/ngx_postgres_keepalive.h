@@ -43,7 +43,6 @@ typedef struct {
     struct sockaddr                    sockaddr;
     socklen_t                          socklen;
     ngx_str_t                          name;
-    ngx_postgres_statement_t          *statements;
 } ngx_postgres_keepalive_cache_t;
 
 

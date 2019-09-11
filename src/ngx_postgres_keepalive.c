@@ -56,7 +56,6 @@ ngx_postgres_keepalive_init(ngx_pool_t *pool,
     for (i = 0; i < pgscf->max_cached; i++) {
         ngx_queue_insert_head(&pgscf->free, &cached[i].queue);
         cached[i].srv_conf = pgscf;
-        if (pgscf->max_statements && !(cached[i].statements = ngx_pcalloc(pool, pgscf->max_statements * sizeof(ngx_postgres_statement_t)))) return NGX_ERROR;
     }
 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pool->log, 0, "%s returning NGX_OK", __func__);
@@ -103,11 +102,6 @@ ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_
         pc->sockaddr = &pgdt->sockaddr;
         pc->socklen = item->socklen;
 
-        /* Inherit list of prepared statements */
-        ngx_uint_t j;
-        for (j = 0; j < pgscf->max_statements; j++)
-            pgdt->statements[j] = item->statements[j];
-
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_DONE", __func__);
 
         return NGX_DONE;
@@ -153,11 +147,6 @@ ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_p
              * because we already take the right value outside */
 
             pgdt->pgconn = item->pgconn;
-
-            /* Inherit list of prepared statements */
-            ngx_uint_t j;
-            for (j = 0; j < pgscf->max_statements; j++)
-                pgdt->statements[j] = item->statements[j];
 
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning NGX_DONE", __func__);
             return NGX_DONE;
@@ -230,9 +219,6 @@ void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_up
                                   queue);
         }
 
-        ngx_uint_t j;
-        for (j = 0; j < pgscf->max_statements; j++)
-            item->statements[j] = pgdt->statements[j];
         item->connection = c;
 
         ngx_queue_insert_head(&pgscf->cache, q);

@@ -375,6 +375,12 @@ ngx_conf_enum_t ngx_postgres_upstream_mode_options[] = {
     { ngx_null_string, 0 }
 };
 
+ngx_conf_enum_t ngx_postgres_upstream_prepare_options[] = {
+    { ngx_string("false"),  0 },
+    { ngx_string("true"), 1 },
+    { ngx_null_string, 0 }
+};
+
 ngx_conf_enum_t ngx_postgres_upstream_overflow_options[] = {
     { ngx_string("ignore"), 0 },
     { ngx_string("reject"), 1 },
@@ -425,8 +431,8 @@ static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf) {
     pgscf->pool = cf->pool;
     /* enable keepalive (single) by default */
     pgscf->max_cached = 10;
-    pgscf->max_statements = 256;
     pgscf->single = 1;
+    pgscf->prepare = 1;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NULL; }
     cln->handler = ngx_postgres_keepalive_cleanup;
@@ -595,11 +601,6 @@ ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         return "is duplicate";
     }
 
-    if (pgscf->max_statements != 256 /* default */) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning", __func__);
-        return "is duplicate";
-    }
-
     if ((cf->args->nelts == 2) && (ngx_strcmp(value[1].data, "off") == 0)) {
         pgscf->max_cached = 0;
 
@@ -631,28 +632,6 @@ ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-        if (ngx_strncmp(value[i].data, "prepare=", sizeof("prepare=") - 1)
-                == 0)
-        {
-            value[i].len = value[i].len - (sizeof("prepare=") - 1);
-            value[i].data = &value[i].data[sizeof("prepare=") - 1];
-
-            n = ngx_atoi(value[i].data, value[i].len);
-            if (n == NGX_ERROR) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "postgres: invalid \"prepare\" value \"%V\""
-                                   " in \"%V\" directive",
-                                   &value[i], &cmd->name);
-
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-                return NGX_CONF_ERROR;
-            }
-
-            pgscf->max_statements = (ngx_uint_t) n;
-
-            continue;
-        }
-
         if (ngx_strncmp(value[i].data, "mode=", sizeof("mode=") - 1)
                 == 0)
         {
@@ -672,6 +651,35 @@ ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             if (e[j].name.len == 0) {
                 ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
                                    "postgres: invalid \"mode\" value \"%V\""
+                                   " in \"%V\" directive",
+                                   &value[i], &cmd->name);
+
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
+                return NGX_CONF_ERROR;
+            }
+
+            continue;
+        }
+
+        if (ngx_strncmp(value[i].data, "prepare=", sizeof("prepare=") - 1)
+                == 0)
+        {
+            value[i].len = value[i].len - (sizeof("prepare=") - 1);
+            value[i].data = &value[i].data[sizeof("prepare=") - 1];
+
+            e = ngx_postgres_upstream_prepare_options;
+            for (j = 0; e[j].name.len; j++) {
+                if ((e[j].name.len == value[i].len)
+                    && (ngx_strcasecmp(e[j].name.data, value[i].data) == 0))
+                {
+                    pgscf->prepare = e[j].value;
+                    break;
+                }
+            }
+
+            if (e[j].name.len == 0) {
+                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+                                   "postgres: invalid \"prepare\" value \"%V\""
                                    " in \"%V\" directive",
                                    &value[i], &cmd->name);
 

@@ -139,32 +139,19 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
     ngx_connection_t *pgxc = u->peer.connection;
     ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
     ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (pgdt->srv_conf->max_statements) {
+    if (pgdt->srv_conf->prepare) {
         u_char stmtName[32];
         ngx_uint_t hash = ngx_hash_key(pgdt->command, pgdt->command_len);
         *ngx_snprintf(stmtName, 32, "ngx_%ul", (unsigned long)hash) = '\0';
-        ngx_uint_t n;
-        ngx_flag_t matched = 0;
-//        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "stmtName = %s, command = %s", stmtName, pgdt->command);
-        for (n = 0; n < pgdt->srv_conf->max_statements && pgdt->statements[n].hash; n++) if (pgdt->statements[n].hash == hash) { matched = 1; break; }
-        ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "n = %d, max_statements=%d, stmtName = %s, command = %s", n, pgdt->srv_conf->max_statements, stmtName, pgdt->command);
-        if (!matched) {
-            PGresult *res = PQdescribePrepared(pgdt->pgconn, (const char *)stmtName);
+        PGresult *res = PQdescribePrepared(pgdt->pgconn, (const char *)stmtName);
+        if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+            PGresult *res = PQprepare(pgdt->pgconn, (const char *)stmtName, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes);
             if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-            if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-                PGresult *res = PQprepare(pgdt->pgconn, (const char *)stmtName, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes);
-                if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-                if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to prepare: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
-                if (n == pgdt->srv_conf->max_statements) {
-                    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "stmtName = %s, command = %s", stmtName, pgdt->command);
-                    for (ngx_uint_t i = 0, used = pgdt->statements[0].used; i < pgdt->srv_conf->max_statements; i++) if (pgdt->statements[i].used <= used) { used = pgdt->statements[i].used; n = i; }
-                }
-                pgdt->statements[n].hash = hash;
-                pgdt->statements[n].used++;
-                PQclear(res);
-            }
+            if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to prepare: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
             PQclear(res);
         }
+        PQclear(res);
         if (!PQsendQueryPrepared(pgdt->pgconn, (const char *)stmtName, pgdt->nParams, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     } else if (!PQsendQueryParams(pgdt->pgconn, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     /* set result timeout */
