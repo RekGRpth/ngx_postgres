@@ -145,20 +145,22 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     }
     /* sizeof("...") - 1 + 1 (for spaces and '\0' omitted */
     /* we hope that unix sockets connection string will be always shorter than tcp/ip one (because 'host' is shorter than 'hostaddr') */
-    size_t len = sizeof("hostaddr=") + peer->host.len
-        + sizeof("port=") + sizeof("65535") - 1
-        + sizeof("dbname=") + peer->dbname.len
-        + sizeof("port=") + sizeof("65535") - 1
-        + sizeof("dbname=") + peer->dbname.len
-        + sizeof("user=") + peer->user.len
-        + sizeof("password=") + peer->password.len;
+    size_t len = peer->family == AF_UNIX ? sizeof("host=%s") - 1 - 1 + peer->host.len - 5 : sizeof("hostaddr=%V") - 1 - 1 + peer->host.len;
+    len += sizeof(" port=%d") - 1 - 1 + sizeof("65535") - 1;
+    if (peer->dbname.len) len += sizeof(" dbname=%V") - 1 - 1 + peer->dbname.len;
+    if (peer->user.len) len += sizeof(" user=%V") - 1 - 1 + peer->user.len;
+    if (peer->password.len) len += sizeof(" password=%V") - 1 - 1 + peer->password.len;
     u_char *connstring = ngx_pnalloc(pgdt->request->pool, len);
     if (!connstring) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    u_char *last = (peer->family != AF_UNIX)
-        ? ngx_snprintf(connstring, len - 1, "hostaddr=%V port=%d dbname=%V user=%V password=%V", &peer->host, peer->port, &peer->dbname, &peer->user, &peer->password)
-        : ngx_snprintf(connstring, len - 1, "host=%s port=%d dbname=%V user=%V password=%V", &peer->host.data[5], peer->port, &peer->dbname, &peer->user, &peer->password);
+    u_char *last = peer->family == AF_UNIX
+        ? ngx_snprintf(connstring, sizeof("host=%s") - 1 - 1 + peer->host.len - 5, "host=%s", &peer->host.data[5])
+        : ngx_snprintf(connstring, sizeof("hostaddr=%V") - 1 - 1 + peer->host.len, "hostaddr=%V", &peer->host);
+    last = ngx_snprintf(last, sizeof(" port=%d") - 1 - 1 + sizeof("65535") - 1, " port=%d", peer->port);
+    if (peer->dbname.len) last = ngx_snprintf(last, sizeof(" dbname=%V") - 1 - 1 + peer->dbname.len, " dbname=%V", &peer->dbname);
+    if (peer->user.len) last = ngx_snprintf(last, sizeof(" user=%V") - 1 - 1 + peer->user.len, " user=%V", &peer->user);
+    if (peer->password.len) last = ngx_snprintf(last, sizeof(" password=%V") - 1 - 1 + peer->password.len, " password=%V", &peer->password);
     *last = '\0';
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s PostgreSQL connection string: %s", __func__, connstring);
+    ngx_log_error(NGX_LOG_ERR, pc->log, 0, "%s PostgreSQL connection string: %s", __func__, connstring);
     /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
     pgdt->pgconn = PQconnectStart((const char *)connstring);
     if (PQsetnonblocking(pgdt->pgconn, 1) == -1) {
