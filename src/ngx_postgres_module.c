@@ -495,8 +495,7 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 }
 
 
-/* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
-static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
     ngx_http_upstream_srv_conf_t *uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
     if (!uscf->servers && !(uscf->servers = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_upstream_server_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     ngx_postgres_upstream_server_t *server = ngx_array_push(uscf->servers);
@@ -546,150 +545,48 @@ static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *
     return NGX_CONF_OK;
 }
 
-static char *
-ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_str_t                         *value = cf->args->elts;
-    ngx_postgres_upstream_srv_conf_t  *pgscf = conf;
-    ngx_conf_enum_t                   *e;
-    ngx_uint_t                         i, j;
-    ngx_int_t                          n;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
-    if (pgscf->max_cached != 10 /* default */) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning", __func__);
-        return "is duplicate";
-    }
-
-    if ((cf->args->nelts == 2) && (ngx_strcmp(value[1].data, "off") == 0)) {
+static char *ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_postgres_upstream_srv_conf_t *pgscf = conf;
+    if (pgscf->max_cached != 10 /* default */) return "is duplicate";
+    ngx_str_t *value = cf->args->elts;
+    if (cf->args->nelts == 2 && !ngx_strcmp(value[1].data, "off")) {
         pgscf->max_cached = 0;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_OK", __func__);
         return NGX_CONF_OK;
     }
-
-    for (i = 1; i < cf->args->nelts; i++) {
-
-        if (ngx_strncmp(value[i].data, "max=", sizeof("max=") - 1)
-                == 0)
-        {
+    for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
+        if (!ngx_strncmp(value[i].data, "max=", sizeof("max=") - 1)) {
             value[i].len = value[i].len - (sizeof("max=") - 1);
             value[i].data = &value[i].data[sizeof("max=") - 1];
-
-            n = ngx_atoi(value[i].data, value[i].len);
-            if (n == NGX_ERROR) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "postgres: invalid \"max\" value \"%V\""
-                                   " in \"%V\" directive",
-                                   &value[i], &cmd->name);
-
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-                return NGX_CONF_ERROR;
-            }
-
+            ngx_int_t n = ngx_atoi(value[i].data, value[i].len);
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"max\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
             pgscf->max_cached = (ngx_uint_t) n;
-
-            continue;
-        }
-
-        if (ngx_strncmp(value[i].data, "mode=", sizeof("mode=") - 1)
-                == 0)
-        {
+        } else if (!ngx_strncmp(value[i].data, "mode=", sizeof("mode=") - 1)) {
             value[i].len = value[i].len - (sizeof("mode=") - 1);
             value[i].data = &value[i].data[sizeof("mode=") - 1];
-
-            e = ngx_postgres_upstream_mode_options;
-            for (j = 0; e[j].name.len; j++) {
-                if ((e[j].name.len == value[i].len)
-                    && (ngx_strcasecmp(e[j].name.data, value[i].data) == 0))
-                {
-                    pgscf->single = e[j].value;
-                    break;
-                }
-            }
-
-            if (e[j].name.len == 0) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "postgres: invalid \"mode\" value \"%V\""
-                                   " in \"%V\" directive",
-                                   &value[i], &cmd->name);
-
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-                return NGX_CONF_ERROR;
-            }
-
-            continue;
-        }
-
-        if (ngx_strncmp(value[i].data, "prepare=", sizeof("prepare=") - 1)
-                == 0)
-        {
+            ngx_uint_t j;
+            ngx_conf_enum_t *e = ngx_postgres_upstream_mode_options;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { pgscf->single = e[j].value; break; }
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"mode\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+        } else if (!ngx_strncmp(value[i].data, "prepare=", sizeof("prepare=") - 1)) {
             value[i].len = value[i].len - (sizeof("prepare=") - 1);
             value[i].data = &value[i].data[sizeof("prepare=") - 1];
-
-            e = ngx_postgres_upstream_prepare_options;
-            for (j = 0; e[j].name.len; j++) {
-                if ((e[j].name.len == value[i].len)
-                    && (ngx_strcasecmp(e[j].name.data, value[i].data) == 0))
-                {
-                    pgscf->prepare = e[j].value;
-                    break;
-                }
-            }
-
-            if (e[j].name.len == 0) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "postgres: invalid \"prepare\" value \"%V\""
-                                   " in \"%V\" directive",
-                                   &value[i], &cmd->name);
-
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-                return NGX_CONF_ERROR;
-            }
-
-            continue;
-        }
-
-        if (ngx_strncmp(value[i].data, "overflow=", sizeof("overflow=") - 1)
-                == 0)
-        {
+            ngx_uint_t j;
+            ngx_conf_enum_t *e = ngx_postgres_upstream_prepare_options;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { pgscf->prepare = e[j].value; break; }
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"prepare\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+        } else if (!ngx_strncmp(value[i].data, "overflow=", sizeof("overflow=") - 1)) {
             value[i].len = value[i].len - (sizeof("overflow=") - 1);
             value[i].data = &value[i].data[sizeof("overflow=") - 1];
-
-            e = ngx_postgres_upstream_overflow_options;
-            for (j = 0; e[j].name.len; j++) {
-                if ((e[j].name.len == value[i].len)
-                    && (ngx_strcasecmp(e[j].name.data, value[i].data) == 0))
-                {
-                    pgscf->reject = e[j].value;
-                    break;
-                }
-            }
-
-            if (e[j].name.len == 0) {
-                ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                                   "postgres: invalid \"overflow\" value \"%V\""
-                                   " in \"%V\" directive",
-                                   &value[i], &cmd->name);
-
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-                return NGX_CONF_ERROR;
-            }
-
-            continue;
+            ngx_uint_t j;
+            ngx_conf_enum_t *e = ngx_postgres_upstream_overflow_options;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { pgscf->reject = e[j].value; break; }
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"overflow\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid parameter \"%V\" in \"%V\" directive", &value[i], &cmd->name);
+            return NGX_CONF_ERROR;
         }
-
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: invalid parameter \"%V\" in"
-                           " \"%V\" directive",
-                           &value[i], &cmd->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_OK", __func__);
     return NGX_CONF_OK;
 }
 
