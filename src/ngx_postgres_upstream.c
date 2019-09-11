@@ -170,7 +170,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PostgreSQL connstring: %s", connstring);
     /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
     pgdt->pgconn = PQconnectStart((const char *)connstring);
-    if (PQsetnonblocking(pgdt->pgconn, 1) == -1) {
+    if (PQstatus(pgdt->pgconn) == CONNECTION_BAD || PQsetnonblocking(pgdt->pgconn, 1) == -1) {
         ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: connection failed: %s in upstream \"%V\"", PQerrorMessage(pgdt->pgconn), &peer->name);
         PQfinish(pgdt->pgconn);
         pgdt->pgconn = NULL;
