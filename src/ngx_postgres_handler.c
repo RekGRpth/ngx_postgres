@@ -45,8 +45,6 @@ static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes);
 
 
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
-    ngx_connection_t          *c;
-
     /* TODO: add support for subrequest in memory by emitting output into u->buffer instead */
     if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: ngx_postgres module does not support subrequests in memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
@@ -106,7 +104,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     u->read_event_handler = ngx_postgres_rev_handler;
     /* a bit hack-ish way to return error response (clean-up part) */
     if (u->peer.connection && !u->peer.connection->fd) {
-        c = u->peer.connection;
+        ngx_connection_t *c = u->peer.connection;
         u->peer.connection = NULL;
         if (c->write->timer_set) ngx_del_timer(c->write);
         if (c->pool) ngx_destroy_pool(c->pool);
@@ -116,167 +114,66 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     return NGX_DONE;
 }
 
-static void
-ngx_postgres_wev_handler(ngx_http_request_t *r, ngx_http_upstream_t *u)
-{
-    ngx_connection_t  *pgxc;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    /* just to ensure u->reinit_request always gets called for
-     * upstream_next */
-    u->request_sent = 1;
-
-    pgxc = u->peer.connection;
-
-    if (pgxc->write->timedout) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s postgres connection write timeout", __func__);
-
-        ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
-        return;
-    }
-
-    if (ngx_postgres_upstream_test_connect(pgxc) != NGX_OK) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s postgres connection is broken", __func__);
-
-        ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
-        return;
-    }
-
+static void ngx_postgres_wev_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
+    u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
+    ngx_connection_t *pgxc = u->peer.connection;
+    if (pgxc->write->timedout) { ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); return; }
+    if (ngx_postgres_upstream_test_connect(pgxc) != NGX_OK) { ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); return; }
     ngx_postgres_process_events(r);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
 }
 
-static void
-ngx_postgres_rev_handler(ngx_http_request_t *r, ngx_http_upstream_t *u)
-{
-    ngx_connection_t  *pgxc;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    /* just to ensure u->reinit_request always gets called for
-     * upstream_next */
-    u->request_sent = 1;
-
-    pgxc = u->peer.connection;
-
-    if (pgxc->read->timedout) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s postgres connection read timeout", __func__);
-
-        ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
-        return;
-    }
-
-    if (ngx_postgres_upstream_test_connect(pgxc) != NGX_OK) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s postgres connection is broken", __func__);
-
-        ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
-        return;
-    }
-
+static void ngx_postgres_rev_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
+    u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
+    ngx_connection_t *pgxc = u->peer.connection;
+    if (pgxc->read->timedout) { ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); return; }
+    if (ngx_postgres_upstream_test_connect(pgxc) != NGX_OK) { ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); return; }
     ngx_postgres_process_events(r);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
 }
 
-static ngx_int_t
-ngx_postgres_create_request(ngx_http_request_t *r)
-{
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
+static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
     r->upstream->request_bufs = NULL;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 }
 
-static ngx_int_t
-ngx_postgres_reinit_request(ngx_http_request_t *r)
-{
-    ngx_http_upstream_t  *u;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    u = r->upstream;
-
+static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
+    ngx_http_upstream_t *u = r->upstream;
     /* override the read/write event handler to our own */
     u->write_event_handler = ngx_postgres_wev_handler;
     u->read_event_handler = ngx_postgres_rev_handler;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 }
 
-static void
-ngx_postgres_abort_request(ngx_http_request_t *r)
-{
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering & returning (dummy function)", __func__);
-}
 
-static void
-ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc)
-{
-    ngx_postgres_ctx_t  *pgctx;
+static void ngx_postgres_abort_request(ngx_http_request_t *r) { }
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
+static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
     if (rc == NGX_OK) {
-        pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-
+        ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
         ngx_postgres_output_chain(r, pgctx->response);
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
 }
 
-static ngx_int_t
-ngx_postgres_process_header(ngx_http_request_t *r)
-{
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
 
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "postgres: ngx_postgres_process_header should not"
-                  " be called by the upstream");
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
+static ngx_int_t ngx_postgres_process_header(ngx_http_request_t *r) {
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: ngx_postgres_process_header should not be called by the upstream");
     return NGX_ERROR;
 }
 
-static ngx_int_t
-ngx_postgres_input_filter_init(void *data)
-{
-    ngx_http_request_t  *r = data;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "postgres: ngx_postgres_input_filter_init should not"
-                  " be called by the upstream");
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
+static ngx_int_t ngx_postgres_input_filter_init(void *data) {
+    ngx_http_request_t *r = data;
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: ngx_postgres_input_filter_init should not be called by the upstream");
     return NGX_ERROR;
 }
 
-static ngx_int_t
-ngx_postgres_input_filter(void *data, ssize_t bytes)
-{
-    ngx_http_request_t  *r = data;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "postgres: ngx_postgres_input_filter should not"
-                  " be called by the upstream");
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
+static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes) {
+    ngx_http_request_t *r = data;
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: ngx_postgres_input_filter should not be called by the upstream");
     return NGX_ERROR;
 }
