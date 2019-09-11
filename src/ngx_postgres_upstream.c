@@ -59,6 +59,7 @@ ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_
             peers->peer[n].dbname = server[i].dbname;
             peers->peer[n].user = server[i].user;
             peers->peer[n].password = server[i].password;
+            peers->peer[n].application_name = server[i].application_name;
             if (!(peers->peer[n].host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_log_error(NGX_LOG_ERR, cf->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             if (!(peers->peer[n].host.len = ngx_sock_ntop(peers->peer[n].sockaddr, peers->peer[n].socklen, peers->peer[n].host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_log_error(NGX_LOG_ERR, cf->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             n++;
@@ -150,6 +151,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     if (peer->dbname.len) len += sizeof(" dbname=%V") - 1 - 1 + peer->dbname.len;
     if (peer->user.len) len += sizeof(" user=%V") - 1 - 1 + peer->user.len;
     if (peer->password.len) len += sizeof(" password=%V") - 1 - 1 + peer->password.len;
+    if (peer->application_name.len) len += sizeof(" application_name=%V") - 1 - 1 + peer->application_name.len;
     u_char *connstring = ngx_pnalloc(pgdt->request->pool, len);
     if (!connstring) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     u_char *last = peer->family == AF_UNIX
@@ -159,6 +161,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     if (peer->dbname.len) last = ngx_snprintf(last, sizeof(" dbname=%V") - 1 - 1 + peer->dbname.len, " dbname=%V", &peer->dbname);
     if (peer->user.len) last = ngx_snprintf(last, sizeof(" user=%V") - 1 - 1 + peer->user.len, " user=%V", &peer->user);
     if (peer->password.len) last = ngx_snprintf(last, sizeof(" password=%V") - 1 - 1 + peer->password.len, " password=%V", &peer->password);
+    if (peer->application_name.len) last = ngx_snprintf(last, sizeof(" application_name=%V") - 1 - 1 + peer->application_name.len, " application_name=%V", &peer->application_name);
     *last = '\0';
     ngx_log_error(NGX_LOG_ERR, pc->log, 0, "%s PostgreSQL connection string: %s", __func__, connstring);
     /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
