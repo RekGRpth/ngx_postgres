@@ -45,7 +45,6 @@ typedef enum {
 
 typedef struct {
     ngx_postgres_upstream_srv_conf_t  *pgscf;
-    ngx_postgres_loc_conf_t           *pglcf;
     ngx_http_upstream_t               *upstream;
     ngx_http_request_t                *request;
     PGconn                            *pgconn;
