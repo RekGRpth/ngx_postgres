@@ -47,7 +47,7 @@ ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_
     if (!peers) { ngx_log_error(NGX_LOG_ERR, cf->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     peers->single = (n == 1);
     peers->number = n;
-    peers->name = &uscf->host;
+    peers->name = uscf->host;
     n = 0;
     for (ngx_uint_t i = 0; i < uscf->servers->nelts; i++) {
         for (ngx_uint_t j = 0; j < server[i].naddrs; j++) {

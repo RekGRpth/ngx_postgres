@@ -132,7 +132,7 @@ typedef struct {
 typedef struct {
     ngx_uint_t                          single;
     ngx_uint_t                          number;
-    ngx_str_t                          *name;
+    ngx_str_t                           name;
     ngx_postgres_upstream_peer_t        peer[1];
 } ngx_postgres_upstream_peers_t;
 
@@ -177,7 +177,6 @@ typedef struct {
 } ngx_postgres_ctx_t;
 
 
-ngx_http_upstream_srv_conf_t  *ngx_postgres_find_upstream(ngx_http_request_t *,
-                                   ngx_url_t *);
+ngx_http_upstream_srv_conf_t  *ngx_postgres_find_upstream(ngx_http_request_t *, ngx_url_t *);
 
 #endif /* _NGX_POSTGRES_MODULE_H_ */
