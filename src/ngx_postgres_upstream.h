@@ -50,10 +50,11 @@ typedef struct {
     ngx_http_request_t                *request;
     PGconn                            *pgconn;
     ngx_postgres_state_t               state;
+    u_char                            *command;
+    size_t                             command_len;
     int                                nParams;
     Oid                               *paramTypes;
     u_char                           **paramValues;
-    ngx_str_t                          sql;
     ngx_str_t                          name;
     struct sockaddr                    sockaddr;
     unsigned                           failed;
