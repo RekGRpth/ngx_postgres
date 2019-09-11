@@ -91,104 +91,51 @@ ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_p
 }
 
 
-void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt, ngx_uint_t  state) {
-    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->pgscf;
-    ngx_postgres_keepalive_cache_t  *cached;
-    ngx_queue_t                     *q;
-    ngx_connection_t                *c;
-    ngx_http_upstream_t             *u;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s entering", __func__);
-
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-                   "postgres: free keepalive peer");
-
-    if (state & NGX_PEER_FAILED) {
-        pgdt->failed = 1;
-    }
-
-    u = pgdt->upstream;
-
-    if ((!pgdt->failed) && (pc->connection != NULL)
-        && (u->headers_in.status_n == NGX_HTTP_OK))
-    {
-        c = pc->connection;
-
-        if (c->read->timer_set) {
-            ngx_del_timer(c->read);
-        }
-
-        if (c->write->timer_set) {
-            ngx_del_timer(c->write);
-        }
-
-        if (c->write->active && (ngx_event_flags & NGX_USE_LEVEL_EVENT)) {
-            if (ngx_del_event(c->write, NGX_WRITE_EVENT, 0) != NGX_OK) {
-                return;
-            }
-        }
-
+void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_upstream_peer_data_t *pgdt, ngx_uint_t state) {
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer");
+    if (state & NGX_PEER_FAILED) pgdt->failed = 1;
+    if (!pgdt->failed && pc->connection && pgdt->upstream->headers_in.status_n == NGX_HTTP_OK) {
+        ngx_connection_t *c = pc->connection;
+        if (c->read->timer_set) ngx_del_timer(c->read);
+        if (c->write->timer_set) ngx_del_timer(c->write);
+        if (c->write->active && (ngx_event_flags & NGX_USE_LEVEL_EVENT) && ngx_del_event(c->write, NGX_WRITE_EVENT, 0) != NGX_OK) return;
         pc->connection = NULL;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0,
-                       "postgres: free keepalive peer: saving connection %p",
-                       c);
-
-        if (ngx_queue_empty(&pgscf->free)) {
-            /* connection pool is already full */
-
-            q = ngx_queue_last(&pgscf->cache);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer: saving connection %p", c);
+        ngx_queue_t *q;
+        ngx_postgres_keepalive_cache_t *cached;
+        if (ngx_queue_empty(&pgdt->pgscf->free)) { /* connection pool is already full */
+            q = ngx_queue_last(&pgdt->pgscf->cache);
             ngx_queue_remove(q);
-
-            cached = ngx_queue_data(q, ngx_postgres_keepalive_cache_t,
-                                  queue);
-
-            ngx_postgres_upstream_free_connection(cached->connection, cached->pgconn, pgscf);
-
+            cached = ngx_queue_data(q, ngx_postgres_keepalive_cache_t, queue);
+            ngx_postgres_upstream_free_connection(cached->connection, cached->pgconn, pgdt->pgscf);
         } else {
-            q = ngx_queue_head(&pgscf->free);
+            q = ngx_queue_head(&pgdt->pgscf->free);
             ngx_queue_remove(q);
-
-            cached = ngx_queue_data(q, ngx_postgres_keepalive_cache_t,
-                                  queue);
+            cached = ngx_queue_data(q, ngx_postgres_keepalive_cache_t, queue);
         }
-
         cached->connection = c;
-
-        ngx_queue_insert_head(&pgscf->cache, q);
-
+        ngx_queue_insert_head(&pgdt->pgscf->cache, q);
         c->write->handler = ngx_postgres_keepalive_dummy_handler;
         c->read->handler = ngx_postgres_keepalive_close_handler;
-
         c->data = cached;
         c->idle = 1;
         c->log = ngx_cycle->log;
         c->pool->log = ngx_cycle->log;
         c->read->log = ngx_cycle->log;
         c->write->log = ngx_cycle->log;
-
         cached->socklen = pc->socklen;
         ngx_memcpy(&cached->sockaddr, pc->sockaddr, pc->socklen);
-
         cached->pgconn = pgdt->pgconn;
-
         cached->name.data = pgdt->name.data;
         cached->name.len = pgdt->name.len;
-
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning", __func__);
 }
 
-static void
-ngx_postgres_keepalive_dummy_handler(ngx_event_t *ev)
-{
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s entering & returning (dummy handler)", __func__);
-}
 
-static void
-ngx_postgres_keepalive_close_handler(ngx_event_t *ev)
-{
+static void ngx_postgres_keepalive_dummy_handler(ngx_event_t *ev) { }
+
+
+static void ngx_postgres_keepalive_close_handler(ngx_event_t *ev) {
     ngx_postgres_upstream_srv_conf_t  *pgscf;
     ngx_postgres_keepalive_cache_t    *cached;
     ngx_connection_t                  *c;
