@@ -28,27 +28,18 @@
 #include "ngx_postgres_rewrite.h"
 
 
-  int ngx_postgres_find_variables(char *variables[10], char *url, int size) {
+static int ngx_postgres_find_variables(char *variables[10], char *url, int size) {
     int vars = 0;
-
     // find variables in redirect url
-
     char *p;
-    for (p = url; p < url + size - 2; p++)
-      if (*p == ':' && *(p + 1) != '/')
-        variables[vars++] = (p + 1);
-
+    for (p = url; p < url + size - 2; p++) if (*p == ':' && *(p + 1) != '/') variables[vars++] = (p + 1);
     return vars;
-  }
+}
 
-  char *ngx_postgres_find_values(char *values[10], char *variables[10], int vars, char *columned[10], ngx_postgres_ctx_t *pgctx, int find_error) {
-
-
+static char *ngx_postgres_find_values(char *values[10], char *variables[10], int vars, char *columned[10], ngx_postgres_ctx_t *pgctx, int find_error) {
     PGresult *res = pgctx->res;
-
     ngx_int_t col_count = pgctx->var_cols;
     ngx_int_t row_count = pgctx->var_rows;
-
     char *error = NULL;
     int error_in_columns = 0;
     int resolved = 0;
