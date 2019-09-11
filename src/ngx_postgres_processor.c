@@ -148,10 +148,16 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "stmtName = %s", stmtName);
         for (n = 0; n < pgdt->srv_conf->max_statements && pgdt->statements[n]; n++) if (pgdt->statements[n] == hash) { matched = 1; break; }
         if (!matched) {
-            PGresult *res = PQprepare(pgdt->pgconn, (const char *)stmtName, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes);
+            PGresult *res = PQdescribePrepared(pgdt->pgconn, (const char *)stmtName);
             if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-            if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to prepare: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
-            pgdt->statements[n] = hash;
+            if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+                PGresult *res = PQprepare(pgdt->pgconn, (const char *)stmtName, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes);
+                if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+                if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to prepare: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+                pgdt->statements[n] = hash;
+                PQclear(res);
+            }
+            PQclear(res);
         }
         if (!PQsendQueryPrepared(pgdt->pgconn, (const char *)stmtName, pgdt->nParams, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     } else if (!PQsendQueryParams(pgdt->pgconn, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
