@@ -764,133 +764,40 @@ static char *ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *
 }
 
 
-static char *
-ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_str_t                *value = cf->args->elts;
-    ngx_postgres_loc_conf_t  *pglcf = conf;
-    ngx_postgres_variable_t  *pgvar;
-    ngx_conf_enum_t          *e;
-    ngx_int_t                 idx;
-    ngx_uint_t                i;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
-    if (value[1].len < 2) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: empty variable name in \"%V\" directive",
-                           &cmd->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    if (value[1].data[0] != '$') {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: invalid variable name \"%V\""
-                           " in \"%V\" directive", &value[1], &cmd->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
+static char *ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_str_t *value = cf->args->elts;
+    if (value[1].len < 2) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty variable name in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
+    if (value[1].data[0] != '$') { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid variable name \"%V\" in \"%V\" directive", &value[1], &cmd->name); }
     value[1].len--;
     value[1].data++;
-
-    if (value[3].len == 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: empty column in \"%V\" directive",
-                           &cmd->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    if (pglcf->variables == NGX_CONF_UNSET_PTR) {
-        pglcf->variables = ngx_array_create(cf->pool, 4,
-                                            sizeof(ngx_postgres_variable_t));
-        if (pglcf->variables == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-            return NGX_CONF_ERROR;
-        }
-    }
-
-    pgvar = ngx_array_push(pglcf->variables);
-    if (pgvar == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
+    if (!value[3].len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty column in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_postgres_loc_conf_t *pglcf = conf;
+    if (pglcf->variables == NGX_CONF_UNSET_PTR && !(pglcf->variables = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_variable_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    ngx_postgres_variable_t *pgvar = ngx_array_push(pglcf->variables);
+    if (!pgvar) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     pgvar->idx = pglcf->variables->nelts - 1;
-
-    pgvar->var = ngx_http_add_variable(cf, &value[1], NGX_HTTP_VAR_CHANGEABLE);
-    if (pgvar->var == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    idx = ngx_http_get_variable_index(cf, &value[1]);
-    if (idx == NGX_ERROR) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    if (pgvar->var->get_handler == NULL) {
+    if (!(pgvar->var = ngx_http_add_variable(cf, &value[1], NGX_HTTP_VAR_CHANGEABLE))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    if (ngx_http_get_variable_index(cf, &value[1]) == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    if (!pgvar->var->get_handler) {
         pgvar->var->get_handler = ngx_postgres_variable_get_custom;
         pgvar->var->data = (uintptr_t) pgvar;
     }
-
-    pgvar->value.row = ngx_atoi(value[2].data, value[2].len);
-    if (pgvar->value.row == NGX_ERROR) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: invalid row number \"%V\""
-                           " in \"%V\" directive", &value[2], &cmd->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
+    if ((pgvar->value.row = ngx_atoi(value[2].data, value[2].len)) == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid row number \"%V\" in \"%V\" directive", &value[2], &cmd->name); return NGX_CONF_ERROR; }
+    if ((pgvar->value.column = ngx_atoi(value[3].data, value[3].len)) == NGX_ERROR) { /* get column by name */
+        if (!(pgvar->value.col_name = ngx_pnalloc(cf->pool, value[3].len + 1))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        (void) ngx_cpystrn(pgvar->value.col_name, value[3].data, value[3].len + 1);
     }
-
-    pgvar->value.column = ngx_atoi(value[3].data, value[3].len);
-    if (pgvar->value.column == NGX_ERROR) {
-        /* get column by name */
-        pgvar->value.col_name = ngx_pnalloc(cf->pool, value[3].len + 1);
-        if (pgvar->value.col_name == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-            return NGX_CONF_ERROR;
-        }
-
-        (void) ngx_cpystrn(pgvar->value.col_name,
-                           value[3].data, value[3].len + 1);
-    }
-
-    if (cf->args->nelts == 4) {
-        /* default value */
+    if (cf->args->nelts == 4) { /* default value */
         pgvar->value.required = 0;
-    } else {
-        /* user-specified value */
-        e = ngx_postgres_requirement_options;
-        for (i = 0; e[i].name.len; i++) {
-            if ((e[i].name.len == value[4].len)
-                && (ngx_strcasecmp(e[i].name.data, value[4].data) == 0))
-            {
-                pgvar->value.required = e[i].value;
-                break;
-            }
-        }
-
-        if (e[i].name.len == 0) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "postgres: invalid requirement option \"%V\""
-                               " in \"%V\" directive", &value[4], &cmd->name);
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-            return NGX_CONF_ERROR;
-        }
+    } else { /* user-specified value */
+        ngx_conf_enum_t *e = ngx_postgres_requirement_options;
+        ngx_uint_t i;
+        for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[4].len && !ngx_strncasecmp(e[i].name.data, value[4].data, value[4].len)) { pgvar->value.required = e[i].value; break; }
+        if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid requirement option \"%V\" in \"%V\" directive", &value[4], &cmd->name); return NGX_CONF_ERROR; }
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_OK", __func__);
     return NGX_CONF_OK;
 }
+
 
 /*
  * Based on: ngx_http_rewrite_module.c/ngx_http_rewrite_set
