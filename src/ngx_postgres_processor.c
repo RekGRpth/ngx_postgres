@@ -31,7 +31,6 @@
 #include "ngx_postgres_util.h"
 #include "ngx_postgres_variable.h"
 
-#include <stdbool.h>
 #include <postgresql/server/catalog/pg_type_d.h>
 
 
@@ -149,9 +148,9 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
         ngx_uint_t hash = ngx_hash_key(pgdt->sql.data, pgdt->sql.len);
         *ngx_snprintf(stmtName, 32, "ngx_%ul", (unsigned long)hash) = '\0';
         ngx_uint_t n;
-        bool matched = false;
+        ngx_flag_t matched = 0;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "stmtName = %s", stmtName);
-        for (n = 0; n < pgdt->srv_conf->max_statements && pgdt->statements[n]; n++) if (pgdt->statements[n] == hash) { matched = true; break; }
+        for (n = 0; n < pgdt->srv_conf->max_statements && pgdt->statements[n]; n++) if (pgdt->statements[n] == hash) { matched = 1; break; }
         if (!matched) {
             PGresult *res = PQprepare(pgdt->pgconn, (const char *)stmtName, (const char *)command, pgdt->nParams, pgdt->paramTypes);
             if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }

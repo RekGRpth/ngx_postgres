@@ -36,7 +36,6 @@
 #include "ngx_postgres_variable.h"
 #include "ngx_postgres_rewrite.h"
 
-#include <stdbool.h>
 #include <postgresql/server/catalog/pg_type_d.h>
 
 
@@ -802,7 +801,7 @@ ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     }
 }
 
-static bool is_variable_character(char p) {
+static ngx_flag_t is_variable_character(char p) {
     return ((p >= '0' && p <= '9') || (p >= 'a' && p <= 'z') || (p >= 'A' && p <= 'Z') || p == '_');
 }
 

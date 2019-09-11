@@ -211,40 +211,22 @@ invalid:
 }
 
 
-static void
-ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc,
-    void *data, ngx_uint_t state)
-{
+static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
     ngx_postgres_upstream_peer_data_t  *pgdt = data;
-    ngx_postgres_upstream_srv_conf_t   *pgscf;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s entering", __func__);
-
-    pgscf = pgdt->srv_conf;
-
-    if (pgscf->max_cached) {
-        ngx_postgres_keepalive_free_peer(pc, pgdt, state);
-    }
-
+    ngx_postgres_upstream_srv_conf_t *pgscf = pgdt->srv_conf;
+    if (pgscf->max_cached) ngx_postgres_keepalive_free_peer(pc, pgdt, state);
     if (pc->connection) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s free connection to PostgreSQL database", __func__);
-
         ngx_postgres_upstream_free_connection(pc->connection, pgdt->pgconn, pgscf);
-
-     
         pgdt->pgconn = NULL;
         pc->connection = NULL;
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s returning", __func__);
 }
 
-ngx_flag_t
-ngx_postgres_upstream_is_my_peer(const ngx_peer_connection_t *peer)
-{
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, peer->log, 0, "%s entering & returning", __func__);
+
+ngx_flag_t ngx_postgres_upstream_is_my_peer(const ngx_peer_connection_t *peer) {
     return (peer->get == ngx_postgres_upstream_get_peer);
 }
+
 
 void ngx_postgres_upstream_free_connection(ngx_connection_t *c, PGconn *pgconn, ngx_postgres_upstream_srv_conf_t *pgscf) {
     ngx_event_t  *rev, *wev;
