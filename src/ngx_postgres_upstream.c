@@ -239,8 +239,8 @@ void ngx_postgres_upstream_free_connection(ngx_connection_t *c, PGconn *pgconn, 
             if (rev->active || rev->disabled) ngx_del_event(rev, NGX_READ_EVENT, NGX_CLOSE_EVENT);
             if (wev->active || wev->disabled) ngx_del_event(wev, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
         }
-        if (rev->posted) ngx_delete_posted_event(rev);
-        if (wev->posted) ngx_delete_posted_event(wev);
+        if (rev->posted) { ngx_delete_posted_event(rev); }
+        if (wev->posted) { ngx_delete_posted_event(wev); }
         rev->closed = 1;
         wev->closed = 1;
         if (c->pool) ngx_destroy_pool(c->pool);
