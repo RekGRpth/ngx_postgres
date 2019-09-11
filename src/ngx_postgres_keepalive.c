@@ -56,8 +56,7 @@ ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_
     cached->connection->pool->log = pc->log;
     cached->connection->read->log = pc->log;
     cached->connection->write->log = pc->log;
-    pgdt->name.data = cached->name.data;
-    pgdt->name.len = cached->name.len;
+    pgdt->name = cached->name;
     pgdt->sockaddr = cached->sockaddr;
     pgdt->pgconn = cached->pgconn;
     pc->connection = cached->connection;
@@ -126,8 +125,7 @@ void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_up
         cached->socklen = pc->socklen;
         ngx_memcpy(&cached->sockaddr, pc->sockaddr, pc->socklen);
         cached->pgconn = pgdt->pgconn;
-        cached->name.data = pgdt->name.data;
-        cached->name.len = pgdt->name.len;
+        cached->name = pgdt->name;
     }
 }
 

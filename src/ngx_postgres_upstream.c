@@ -128,8 +128,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     }
     if (pgdt->pgscf->current > pgdt->pgscf->peers->number - 1) pgdt->pgscf->current = 0;
     ngx_postgres_upstream_peer_t *peer = &pgdt->pgscf->peers->peer[pgdt->pgscf->current++];
-    pgdt->name.len = peer->name.len;
-    pgdt->name.data = peer->name.data;
+    pgdt->name = peer->name;
     pgdt->sockaddr = *peer->sockaddr;
     pc->name = &pgdt->name;
     pc->sockaddr = &pgdt->sockaddr;
@@ -146,8 +145,6 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
         pc->connection = ngx_get_connection(0, pc->log);
         return NGX_AGAIN;
     }
-    /* sizeof("...") - 1 + 1 (for spaces and '\0' omitted */
-    /* we hope that unix sockets connection string will be always shorter than tcp/ip one (because 'host' is shorter than 'hostaddr') */
     size_t len = peer->family == AF_UNIX ? sizeof("host=%s") - 1 - 1 + peer->host.len - 5 : sizeof("hostaddr=%V") - 1 - 1 + peer->host.len;
     len += sizeof(" port=%d") - 1 - 1 + sizeof("65535") - 1;
     if (peer->dbname.len) len += sizeof(" dbname=%V") - 1 - 1 + peer->dbname.len;
