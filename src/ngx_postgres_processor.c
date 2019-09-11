@@ -140,19 +140,16 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
     ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
     ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (pgdt->pgscf->prepare) {
-        u_char stmtName[32];
-        ngx_uint_t hash = ngx_hash_key(pgdt->command, pgdt->command_len);
-        *ngx_snprintf(stmtName, 32, "ngx_%ul", (unsigned long)hash) = '\0';
-        PGresult *res = PQdescribePrepared(pgdt->pgconn, (const char *)stmtName);
+        PGresult *res = PQdescribePrepared(pgdt->pgconn, (const char *)pgdt->stmtName);
         if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-            PGresult *res = PQprepare(pgdt->pgconn, (const char *)stmtName, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes);
+            PGresult *res = PQprepare(pgdt->pgconn, (const char *)pgdt->stmtName, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes);
             if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to prepare: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
             PQclear(res);
         }
         PQclear(res);
-        if (!PQsendQueryPrepared(pgdt->pgconn, (const char *)stmtName, pgdt->nParams, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+        if (!PQsendQueryPrepared(pgdt->pgconn, (const char *)pgdt->stmtName, pgdt->nParams, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     } else if (!PQsendQueryParams(pgdt->pgconn, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     /* set result timeout */
     ngx_add_timer(pgxc->read, r->upstream->conf->read_timeout);
