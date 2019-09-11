@@ -172,15 +172,13 @@ static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_connection_t *pgxc = u->peer.connection;
     ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
-    ExecStatusType   pgrc;
-    PGresult        *res;
-    ngx_int_t        rc;
     /* remove connection timeout from re-used keepalive connection */
     if (pgxc->write->timer_set) ngx_del_timer(pgxc->write);
     if (!PQconsumeInput(pgdt->pgconn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     if (PQisBusy(pgdt->pgconn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while receiving result"); return NGX_AGAIN; }
-    if (!(res = PQgetResult(pgdt->pgconn))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
-    pgrc = PQresultStatus(res);
+    PGresult *res = PQgetResult(pgdt->pgconn);
+    if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+    ExecStatusType pgrc = PQresultStatus(res);
     if ((pgrc != PGRES_COMMAND_OK) && (pgrc != PGRES_TUPLES_OK)) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s: %s", PQresStatus(pgrc), PQerrorMessage(pgdt->pgconn));
         PQclear(res);
@@ -188,7 +186,7 @@ static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r) {
     }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: result received successfully, cols:%d rows:%d", PQnfields(res), PQntuples(res));
 //    r->connection->log->action = "processing result from PostgreSQL database";
-    rc = ngx_postgres_process_response(r, res);
+    ngx_int_t rc = ngx_postgres_process_response(r, res);
     PQclear(res);
     if (rc != NGX_DONE) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning rc:%d", __func__, (int) rc); return rc; }
 //    r->connection->log->action = "waiting for ACK from PostgreSQL database";
