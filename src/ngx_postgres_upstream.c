@@ -54,28 +54,22 @@ ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_
             peer->sockaddr = server[i].addrs[j].sockaddr;
             peer->socklen = server[i].addrs[j].socklen;
             peer->name = server[i].addrs[j].name;
-            peer->port = server[i].port;
-            peer->family = server[i].family;
-            peer->dbname = server[i].dbname;
-            peer->user = server[i].user;
-            peer->password = server[i].password;
-            peer->application_name = server[i].application_name;
             if (!(peer->host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             if (!(peer->host.len = ngx_sock_ntop(peer->sockaddr, peer->socklen, peer->host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-            size_t len = peer->family == AF_UNIX ? sizeof("host=%s") - 1 - 1 + peer->host.len - 5 : sizeof("hostaddr=%V") - 1 - 1 + peer->host.len;
+            size_t len = server[i].family == AF_UNIX ? sizeof("host=%s") - 1 - 1 + peer->host.len - 5 : sizeof("hostaddr=%V") - 1 - 1 + peer->host.len;
             len += sizeof(" port=%d") - 1 - 1 + sizeof("65535") - 1;
-            if (peer->dbname.len) len += sizeof(" dbname=%V") - 1 - 1 + peer->dbname.len;
-            if (peer->user.len) len += sizeof(" user=%V") - 1 - 1 + peer->user.len;
-            if (peer->password.len) len += sizeof(" password=%V") - 1 - 1 + peer->password.len;
-            if (peer->application_name.len) len += sizeof(" application_name=%V") - 1 - 1 + peer->application_name.len;
+            if (server[i].dbname.len) len += sizeof(" dbname=%V") - 1 - 1 + server[i].dbname.len;
+            if (server[i].user.len) len += sizeof(" user=%V") - 1 - 1 + server[i].user.len;
+            if (server[i].password.len) len += sizeof(" password=%V") - 1 - 1 + server[i].password.len;
+            if (server[i].application_name.len) len += sizeof(" application_name=%V") - 1 - 1 + server[i].application_name.len;
             if (!(peer->connstring = ngx_pnalloc(cf->pool, len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             u_char *last = peer->connstring;
-            last = peer->family == AF_UNIX ? ngx_snprintf(last, sizeof("host=%s") - 1 - 1 + peer->host.len - 5, "host=%s", &peer->host.data[5]) : ngx_snprintf(last, sizeof("hostaddr=%V") - 1 - 1 + peer->host.len, "hostaddr=%V", &peer->host);
-            last = ngx_snprintf(last, sizeof(" port=%d") - 1 - 1 + sizeof("65535") - 1, " port=%d", peer->port);
-            if (peer->dbname.len) last = ngx_snprintf(last, sizeof(" dbname=%V") - 1 - 1 + peer->dbname.len, " dbname=%V", &peer->dbname);
-            if (peer->user.len) last = ngx_snprintf(last, sizeof(" user=%V") - 1 - 1 + peer->user.len, " user=%V", &peer->user);
-            if (peer->password.len) last = ngx_snprintf(last, sizeof(" password=%V") - 1 - 1 + peer->password.len, " password=%V", &peer->password);
-            if (peer->application_name.len) last = ngx_snprintf(last, sizeof(" application_name=%V") - 1 - 1 + peer->application_name.len, " application_name=%V", &peer->application_name);
+            last = server[i].family == AF_UNIX ? ngx_snprintf(last, sizeof("host=%s") - 1 - 1 + peer->host.len - 5, "host=%s", &peer->host.data[5]) : ngx_snprintf(last, sizeof("hostaddr=%V") - 1 - 1 + peer->host.len, "hostaddr=%V", &peer->host);
+            last = ngx_snprintf(last, sizeof(" port=%d") - 1 - 1 + sizeof("65535") - 1, " port=%d", server[i].port);
+            if (server[i].dbname.len) last = ngx_snprintf(last, sizeof(" dbname=%V") - 1 - 1 + server[i].dbname.len, " dbname=%V", &server[i].dbname);
+            if (server[i].user.len) last = ngx_snprintf(last, sizeof(" user=%V") - 1 - 1 + server[i].user.len, " user=%V", &server[i].user);
+            if (server[i].password.len) last = ngx_snprintf(last, sizeof(" password=%V") - 1 - 1 + server[i].password.len, " password=%V", &server[i].password);
+            if (server[i].application_name.len) last = ngx_snprintf(last, sizeof(" application_name=%V") - 1 - 1 + server[i].application_name.len, " application_name=%V", &server[i].application_name);
             *last = '\0';
             n++;
         }

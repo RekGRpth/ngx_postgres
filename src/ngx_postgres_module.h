@@ -123,12 +123,6 @@ typedef struct {
     socklen_t                           socklen;
     ngx_str_t                           name;
     ngx_str_t                           host;
-    in_port_t                           port;
-    int                                 family;
-    ngx_str_t                           dbname;
-    ngx_str_t                           user;
-    ngx_str_t                           password;
-    ngx_str_t                           application_name;
     u_char                             *connstring;
 } ngx_postgres_upstream_peer_t;
 
