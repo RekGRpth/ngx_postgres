@@ -184,18 +184,17 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     if (fd == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get connection fd"); goto invalid; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection fd:%d", fd);
     if (!(pc->connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get a free nginx connection"); goto invalid; }
-    ngx_connection_t *pgxc = pc->connection;
-    pgxc->log = pc->log;
-    pgxc->log_error = pc->log_error;
-    pgxc->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
-    ngx_event_t *rev = pgxc->read;
-    ngx_event_t *wev = pgxc->write;
+    pc->connection->log = pc->log;
+    pc->connection->log_error = pc->log_error;
+    pc->connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
+    ngx_event_t *rev = pc->connection->read;
+    ngx_event_t *wev = pc->connection->write;
     rev->log = pc->log;
     wev->log = pc->log;
     /* register the connection with postgres connection fd into the nginx event model */
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s NGX_USE_RTSIG_EVENT", __func__);
-        if (ngx_add_conn(pgxc) != NGX_OK) goto bad_add;
+        if (ngx_add_conn(pc->connection) != NGX_OK) goto bad_add;
     } else if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s NGX_USE_CLEAR_EVENT", __func__);
         if (ngx_add_event(rev, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) goto bad_add;
@@ -205,7 +204,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
         if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
         if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
     }
-//    pgxc->log->action = "connecting to PostgreSQL database";
+//    pc->connection->log->action = "connecting to PostgreSQL database";
     pgdt->state = state_db_connect;
     return NGX_AGAIN;
 bad_add:
