@@ -136,50 +136,27 @@ static void ngx_postgres_keepalive_dummy_handler(ngx_event_t *ev) { }
 
 
 static void ngx_postgres_keepalive_close_handler(ngx_event_t *ev) {
-    ngx_postgres_upstream_srv_conf_t  *pgscf;
-    ngx_postgres_keepalive_cache_t    *cached;
-    ngx_connection_t                  *c;
-    PGresult                          *res;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s entering", __func__);
-
-    c = ev->data;
-    cached = c->data;
-
-    if (c->close) {
-        goto close;
-    }
-
+    ngx_connection_t *c = ev->data;
+    ngx_postgres_keepalive_cache_t *cached = c->data;
+    if (c->close) goto close;
     if (PQconsumeInput(cached->pgconn) && !PQisBusy(cached->pgconn)) {
-        res = PQgetResult(cached->pgconn);
-        if (res == NULL) {
+        PGresult *res = PQgetResult(cached->pgconn);
+        if (!res) {
             for (PGnotify *notify; (notify = PQnotifies(cached->pgconn)); PQfreemem(notify)) {
                 ngx_log_debug3(NGX_LOG_DEBUG_HTTP, ev->log, 0, "postgres notify: relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
-                ngx_str_t id = { strlen(notify->relname), (u_char *) notify->relname };
-                ngx_str_t text = { strlen(notify->extra), (u_char *) notify->extra };
+                ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
+                ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
                 ngx_http_push_stream_add_msg_to_channel_my(c->log, &id, &text, NULL, NULL, 0, c->pool);
             }
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s returning", __func__);
             return;
         }
-
         PQclear(res);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s received result on idle keepalive connection", __func__);
-        ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                      "postgres: received result on idle keepalive connection");
+        ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: received result on idle keepalive connection");
     }
-
 close:
-
-    pgscf = cached->pgscf;
-
-    ngx_postgres_upstream_free_connection(c, cached->pgconn, pgscf);
-
+    ngx_postgres_upstream_free_connection(c, cached->pgconn, cached->pgscf);
     ngx_queue_remove(&cached->queue);
-    ngx_queue_insert_head(&pgscf->free, &cached->queue);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s returning", __func__);
+    ngx_queue_insert_head(&cached->pgscf->free, &cached->queue);
 }
 
 
