@@ -229,58 +229,24 @@ ngx_flag_t ngx_postgres_upstream_is_my_peer(const ngx_peer_connection_t *peer) {
 
 
 void ngx_postgres_upstream_free_connection(ngx_connection_t *c, PGconn *pgconn, ngx_postgres_upstream_srv_conf_t *pgscf) {
-    ngx_event_t  *rev, *wev;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s entering", __func__);
-
     PQfinish(pgconn);
-
     if (c) {
-        rev = c->read;
-        wev = c->write;
-
-        if (rev->timer_set) {
-            ngx_del_timer(rev);
+        ngx_event_t *rev = c->read;
+        ngx_event_t *wev = c->write;
+        if (rev->timer_set) ngx_del_timer(rev);
+        if (wev->timer_set) ngx_del_timer(wev);
+        if (ngx_del_conn) ngx_del_conn(c, NGX_CLOSE_EVENT); else {
+            if (rev->active || rev->disabled) ngx_del_event(rev, NGX_READ_EVENT, NGX_CLOSE_EVENT);
+            if (wev->active || wev->disabled) ngx_del_event(wev, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
         }
-
-        if (wev->timer_set) {
-            ngx_del_timer(wev);
-        }
-
-        if (ngx_del_conn) {
-           ngx_del_conn(c, NGX_CLOSE_EVENT);
-        } else {
-            if (rev->active || rev->disabled) {
-                ngx_del_event(rev, NGX_READ_EVENT, NGX_CLOSE_EVENT);
-            }
-
-            if (wev->active || wev->disabled) {
-                ngx_del_event(wev, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
-            }
-        }
-
-        if (rev->posted) {
-            ngx_delete_posted_event(rev);
-        }
-
-        if (wev->posted) {
-            ngx_delete_posted_event(wev);
-        }
-
+        if (rev->posted) ngx_delete_posted_event(rev);
+        if (wev->posted) ngx_delete_posted_event(wev);
         rev->closed = 1;
         wev->closed = 1;
-
-        if (c->pool) {
-            ngx_destroy_pool(c->pool);
-        }
-
+        if (c->pool) ngx_destroy_pool(c->pool);
         ngx_free_connection(c);
-
         c->fd = (ngx_socket_t) -1;
     }
-
     /* free spot in keepalive connection pool */
     pgscf->active_conns--;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s returning", __func__);
 }
