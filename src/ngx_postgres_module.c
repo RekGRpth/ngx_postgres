@@ -520,26 +520,22 @@ static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
         if (!ngx_strncmp(value[i].data, "port=", sizeof("port=") - 1)) {
             server->port = (in_port_t) ngx_atoi(&value[i].data[sizeof("port=") - 1], value[i].len - (sizeof("port=") - 1));
-            continue;
         } else if (!ngx_strncmp(value[i].data, "dbname=", sizeof("dbname=") - 1)) {
             server->dbname.len = value[i].len - (sizeof("dbname=") - 1);
             server->dbname.data = &value[i].data[sizeof("dbname=") - 1];
-            continue;
         } else if (!ngx_strncmp(value[i].data, "user=", sizeof("user=") - 1)) {
             server->user.len = value[i].len - (sizeof("user=") - 1);
             server->user.data = &value[i].data[sizeof("user=") - 1];
-            continue;
         } else if (!ngx_strncmp(value[i].data, "password=", sizeof("password=") - 1)) {
             server->password.len = value[i].len - (sizeof("password=") - 1);
             server->password.data = &value[i].data[sizeof("password=") - 1];
-            continue;
         } else if (!ngx_strncmp(value[i].data, "application_name=", sizeof("application_name=") - 1)) {
             server->application_name.len = value[i].len - (sizeof("application_name=") - 1);
             server->application_name.data = &value[i].data[sizeof("application_name=") - 1];
-            continue;
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid parameter \"%V\" in \"postgres_server\"", &value[i]);
+            return NGX_CONF_ERROR;
         }
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid parameter \"%V\" in \"postgres_server\"", &value[i]);
-        return NGX_CONF_ERROR;
     }
     uscf->peer.init_upstream = ngx_postgres_upstream_init;
     return NGX_CONF_OK;
