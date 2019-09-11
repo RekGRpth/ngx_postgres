@@ -699,7 +699,7 @@ static char *ngx_postgres_conf_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void 
     ngx_str_t *value = cf->args->elts;
     ngx_str_t what = value[cf->args->nelts - 2];
     ngx_uint_t i;
-    for (i = 0; e[i].name.len; i++) if (e[i].name.len == what.len && !ngx_strcasecmp(e[i].name.data, what.data)) break;
+    for (i = 0; e[i].name.len; i++) if (e[i].name.len == what.len && !ngx_strncasecmp(e[i].name.data, what.data, what.len)) break;
     if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid condition \"%V\" in \"%V\" directive", &what, &cmd->name); return NGX_CONF_ERROR; }
     ngx_postgres_loc_conf_t *pglcf = conf;
     ngx_postgres_rewrite_conf_t *pgrcf;
@@ -799,137 +799,46 @@ static char *ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *con
 }
 
 
-/*
- * Based on: ngx_http_rewrite_module.c/ngx_http_rewrite_set
- * Copyright (C) Igor Sysoev
- */
-static char *
-ngx_postgres_conf_escape(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_str_t                           *value = cf->args->elts;
-    ngx_str_t                            src = value[cf->args->nelts - 1];
-    ngx_int_t                            index;
-    ngx_http_variable_t                 *v;
-    ngx_http_script_var_code_t          *vcode;
-    ngx_http_script_var_handler_code_t  *vhcode;
-    ngx_postgres_rewrite_loc_conf_t     *rlcf;
-    ngx_postgres_escape_t               *pge;
-    ngx_str_t                            dst;
-    ngx_uint_t                           empty;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
-    if ((src.len != 0) && (src.data[0] == '=')) {
-        empty = 1;
-        src.len--;
-        src.data++;
-    } else {
-        empty = 0;
-    }
-
-    if (src.len == 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: empty value in \"%V\" directive",
-                           &cmd->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    if (cf->args->nelts == 2) {
-        dst = src;
-    } else {
-        dst = value[1];
-    }
-
-    if (dst.len < 2) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: empty variable name in \"%V\" directive",
-                           &cmd->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    if (dst.data[0] != '$') {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "postgres: invalid variable name \"%V\""
-                           " in \"%V\" directive", &dst, &cmd->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
+static char *ngx_postgres_conf_escape(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_rewrite_module.c/ngx_http_rewrite_set, Copyright (C) Igor Sysoev */
+    ngx_str_t *value = cf->args->elts;
+    ngx_str_t src = value[cf->args->nelts - 1];
+    ngx_uint_t empty;
+    if (src.len && src.data[0] == '=') { empty = 1; src.len--; src.data++; } else empty = 0;
+    if (!src.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty value in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_str_t dst = cf->args->nelts == 2 ? src : value[1];
+    if (dst.len < 2) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty variable name in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
+    if (dst.data[0] != '$') { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid variable name \"%V\" in \"%V\" directive", &dst, &cmd->name); return NGX_CONF_ERROR; }
     dst.len--;
     dst.data++;
-
-    v = ngx_http_add_variable(cf, &dst, NGX_HTTP_VAR_CHANGEABLE);
-    if (v == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    index = ngx_http_get_variable_index(cf, &dst);
-    if (index == NGX_ERROR) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    if (v->get_handler == NULL
-        && ngx_strncasecmp(dst.data, (u_char *) "http_", 5) != 0
-        && ngx_strncasecmp(dst.data, (u_char *) "sent_http_", 10) != 0
-        && ngx_strncasecmp(dst.data, (u_char *) "upstream_http_", 14) != 0)
-    {
+    ngx_http_variable_t *v = ngx_http_add_variable(cf, &dst, NGX_HTTP_VAR_CHANGEABLE);
+    if (!v) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    ngx_int_t index = ngx_http_get_variable_index(cf, &dst);
+    if (index == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    if (!v->get_handler && ngx_strncasecmp(dst.data, (u_char *) "http_", 5) && ngx_strncasecmp(dst.data, (u_char *) "sent_http_", 10) && ngx_strncasecmp(dst.data, (u_char *) "upstream_http_", 14)) {
         v->get_handler = ngx_postgres_rewrite_var;
         v->data = index;
     }
-
-    rlcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_rewrite_module);
-
-    if (ngx_postgres_rewrite_value(cf, rlcf, &src) != NGX_CONF_OK) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
-    pge = ngx_http_script_start_code(cf->pool, &rlcf->codes,
-                                     sizeof(ngx_postgres_escape_t));
-    if (pge == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
+    ngx_postgres_rewrite_loc_conf_t *rlcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_rewrite_module);
+    if (ngx_postgres_rewrite_value(cf, rlcf, &src) != NGX_CONF_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    ngx_postgres_escape_t *pge = ngx_http_script_start_code(cf->pool, &rlcf->codes, sizeof(ngx_postgres_escape_t));
+    if (!pge) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     pge->code = ngx_postgres_escape_string;
     pge->empty = empty;
-
     if (v->set_handler) {
-        vhcode = ngx_http_script_start_code(cf->pool, &rlcf->codes,
-                                   sizeof(ngx_http_script_var_handler_code_t));
-        if (vhcode == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-            return NGX_CONF_ERROR;
-        }
-
+        ngx_http_script_var_handler_code_t *vhcode = ngx_http_script_start_code(cf->pool, &rlcf->codes, sizeof(ngx_http_script_var_handler_code_t));
+        if (!vhcode) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         vhcode->code = ngx_http_script_var_set_handler_code;
         vhcode->handler = v->set_handler;
         vhcode->data = v->data;
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
         return NGX_CONF_OK;
     }
-
-    vcode = ngx_http_script_start_code(cf->pool, &rlcf->codes,
-                                       sizeof(ngx_http_script_var_code_t));
-    if (vcode == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_ERROR", __func__);
-        return NGX_CONF_ERROR;
-    }
-
+    ngx_http_script_var_code_t *vcode = ngx_http_script_start_code(cf->pool, &rlcf->codes, sizeof(ngx_http_script_var_code_t));
+    if (!vcode) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     vcode->code = ngx_http_script_set_var_code;
     vcode->index = (uintptr_t) index;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_CONF_OK", __func__);
     return NGX_CONF_OK;
 }
+
 
 ngx_http_upstream_srv_conf_t *
 ngx_postgres_find_upstream(ngx_http_request_t *r, ngx_url_t *url)
