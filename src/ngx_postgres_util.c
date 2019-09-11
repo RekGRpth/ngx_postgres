@@ -34,215 +34,62 @@
  */
 
 
-void
-ngx_postgres_upstream_finalize_request(ngx_http_request_t *r,
-    ngx_http_upstream_t *u, ngx_int_t rc)
-{
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "finalize http upstream request: %i", rc);
-
-    if (u->cleanup) {
-        *u->cleanup = NULL;
-    }
-
+void ngx_postgres_upstream_finalize_request(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t rc) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "finalize http upstream request: %i", rc);
+    if (u->cleanup) *u->cleanup = NULL;
     if (u->resolved && u->resolved->ctx) {
         ngx_resolve_name_done(u->resolved->ctx);
         u->resolved->ctx = NULL;
     }
-
     if (u->state && u->state->response_time) {
         u->state->response_time = ngx_current_msec - u->state->response_time;
-
-        if (u->pipe) {
-            u->state->response_length = u->pipe->read_length;
-        }
+        if (u->pipe) u->state->response_length = u->pipe->read_length;
     }
-
-    if (u->finalize_request) {
-        u->finalize_request(r, rc);
-    }
-
-    if (u->peer.free) {
-        u->peer.free(&u->peer, u->peer.data, 0);
-    }
-
+    if (u->finalize_request) u->finalize_request(r, rc);
+    if (u->peer.free) u->peer.free(&u->peer, u->peer.data, 0);
     if (u->peer.connection) {
-
-#if 0 /* we don't support SSL at this time, was: (NGX_HTTP_SSL) */
-
-        /* TODO: do not shutdown persistent connection */
-
-        if (u->peer.connection->ssl) {
-
-            /*
-             * We send the "close notify" shutdown alert to the upstream only
-             * and do not wait its "close notify" shutdown alert.
-             * It is acceptable according to the TLS standard.
-             */
-
-            u->peer.connection->ssl->no_wait_shutdown = 1;
-
-            (void) ngx_ssl_shutdown(u->peer.connection);
-        }
-#endif
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "close http upstream connection: %d",
-                       u->peer.connection->fd);
-
-        if (u->peer.connection->pool) {
-            ngx_destroy_pool(u->peer.connection->pool);
-        }
-
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "close http upstream connection: %d", u->peer.connection->fd);
+        if (u->peer.connection->pool) ngx_destroy_pool(u->peer.connection->pool);
         ngx_close_connection(u->peer.connection);
     }
-
     u->peer.connection = NULL;
-
-    if (u->pipe && u->pipe->temp_file) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "http upstream temp fd: %d",
-                       u->pipe->temp_file->file.fd);
-    }
-
-    if (u->header_sent
-        && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE))
-    {
-        rc = 0;
-    }
-
-    if (rc == NGX_DECLINED) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
-        return;
-    }
-
-    r->connection->log->action = "sending to client";
-
-    if (rc == 0) {
-        rc = ngx_http_send_special(r, NGX_HTTP_LAST);
-    }
-
+    if (u->pipe && u->pipe->temp_file) ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http upstream temp fd: %d", u->pipe->temp_file->file.fd);
+    if (u->header_sent && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE)) rc = 0;
+    if (rc == NGX_DECLINED) return;
+//    r->connection->log->action = "sending to client";
+    if (!rc) rc = ngx_http_send_special(r, NGX_HTTP_LAST);
     ngx_http_finalize_request(r, rc);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
 }
 
-void
-ngx_postgres_upstream_next(ngx_http_request_t *r,
-    ngx_http_upstream_t *u, ngx_int_t ft_type)
-{
-    ngx_uint_t  status, state;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "http next upstream, %xi", ft_type);
-
-#if 0
-    ngx_http_busy_unlock(u->conf->busy_lock, &u->busy_lock);
-#endif
-
-    if (ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404) {
-        state = NGX_PEER_NEXT;
-    } else {
-        state = NGX_PEER_FAILED;
-    }
-
-    if (ft_type != NGX_HTTP_UPSTREAM_FT_NOLIVE) {
-        u->peer.free(&u->peer, u->peer.data, state);
-    }
-
-    if (ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_ETIMEDOUT,
-                      "upstream timed out");
-    }
-
-    if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
-        status = 0;
-
-    } else {
+void ngx_postgres_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t ft_type) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http next upstream, %xi", ft_type);
+    ngx_uint_t state = ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404 ? NGX_PEER_NEXT : NGX_PEER_FAILED;
+    if (ft_type != NGX_HTTP_UPSTREAM_FT_NOLIVE) u->peer.free(&u->peer, u->peer.data, state);
+    if (ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT) ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_ETIMEDOUT, "upstream timed out");
+    ngx_uint_t  status;
+    if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) status = 0; else {
         switch(ft_type) {
-
-        case NGX_HTTP_UPSTREAM_FT_TIMEOUT:
-            status = NGX_HTTP_GATEWAY_TIME_OUT;
-            break;
-
-        case NGX_HTTP_UPSTREAM_FT_HTTP_500:
-            status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-            break;
-
-        case NGX_HTTP_UPSTREAM_FT_HTTP_404:
-            status = NGX_HTTP_NOT_FOUND;
-            break;
-
-        /*
-         * NGX_HTTP_UPSTREAM_FT_BUSY_LOCK and NGX_HTTP_UPSTREAM_FT_MAX_WAITING
-         * never reach here
-         */
-
-        default:
-            status = NGX_HTTP_BAD_GATEWAY;
+            case NGX_HTTP_UPSTREAM_FT_TIMEOUT: status = NGX_HTTP_GATEWAY_TIME_OUT; break;
+            case NGX_HTTP_UPSTREAM_FT_HTTP_500: status = NGX_HTTP_INTERNAL_SERVER_ERROR; break;
+            case NGX_HTTP_UPSTREAM_FT_HTTP_404: status = NGX_HTTP_NOT_FOUND; break;
+            default: status = NGX_HTTP_BAD_GATEWAY; /* NGX_HTTP_UPSTREAM_FT_BUSY_LOCK and NGX_HTTP_UPSTREAM_FT_MAX_WAITING never reach here */
         }
     }
-
-    if (r->connection->error) {
-        ngx_postgres_upstream_finalize_request(r, u,
-                                               NGX_HTTP_CLIENT_CLOSED_REQUEST);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
-        return;
-    }
-
+    if (r->connection->error) { ngx_postgres_upstream_finalize_request(r, u, NGX_HTTP_CLIENT_CLOSED_REQUEST); return; }
     if (status) {
         u->state->status = status;
-
-        if (u->peer.tries == 0 || !(u->conf->next_upstream & ft_type)) {
-            ngx_postgres_upstream_finalize_request(r, u, status);
-
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
-            return;
-        }
+        if (!u->peer.tries || !(u->conf->next_upstream & ft_type)) { ngx_postgres_upstream_finalize_request(r, u, status); return; }
     }
-
     if (u->peer.connection) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                       "close http upstream connection: %d",
-                       u->peer.connection->fd);
-
-#if 0 /* we don't support SSL at this time, was: (NGX_HTTP_SSL) */
-
-        if (u->peer.connection->ssl) {
-            u->peer.connection->ssl->no_wait_shutdown = 1;
-            u->peer.connection->ssl->no_send_shutdown = 1;
-
-            (void) ngx_ssl_shutdown(u->peer.connection);
-        }
-#endif
-
-        if (u->peer.connection->pool) {
-            ngx_destroy_pool(u->peer.connection->pool);
-        }
-
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "close http upstream connection: %d", u->peer.connection->fd);
+        if (u->peer.connection->pool) ngx_destroy_pool(u->peer.connection->pool);
         ngx_close_connection(u->peer.connection);
     }
-
-#if 0
-    if (u->conf->busy_lock && !u->busy_locked) {
-        ngx_http_upstream_busy_lock(p);
-        return;
-    }
-#endif
-
-    /* TODO: ngx_http_upstream_connect(r, u); */
-    if (status == 0) {
-        status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning", __func__);
+    if (!status) status = NGX_HTTP_INTERNAL_SERVER_ERROR; /* TODO: ngx_http_upstream_connect(r, u); */
     return ngx_postgres_upstream_finalize_request(r, u, status);
 }
+
 
 ngx_int_t
 ngx_postgres_upstream_test_connect(ngx_connection_t *c)
