@@ -315,35 +315,18 @@ close:
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s returning", __func__);
 }
 
-void
-ngx_postgres_keepalive_cleanup(void *data)
-{
-    ngx_postgres_upstream_srv_conf_t  *pgscf = data;
-    ngx_postgres_keepalive_cache_t    *item;
-    ngx_queue_t                       *q;
 
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgscf->pool->log, 0, "%s entering", __func__);
-
+void ngx_postgres_keepalive_cleanup(void *data) {
+    ngx_postgres_upstream_srv_conf_t *pgscf = data;
     /* ngx_queue_empty is broken when used on unitialized queue */
-    if (pgscf->cache.prev == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgscf->pool->log, 0, "%s returning", __func__);
-        return;
-    }
-
+    if (!pgscf->cache.prev) return;
     /* just to be on the safe-side */
     pgscf->max_cached = 0;
-
     while (!ngx_queue_empty(&pgscf->cache)) {
-        q = ngx_queue_head(&pgscf->cache);
+        ngx_queue_t *q = ngx_queue_head(&pgscf->cache);
         ngx_queue_remove(q);
-
-        item = ngx_queue_data(q, ngx_postgres_keepalive_cache_t,
-                              queue);
-
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pgscf->pool->log, 0, "%s ostgres: disconnecting %p", __func__, item->connection);
-
+        ngx_postgres_keepalive_cache_t *item = ngx_queue_data(q, ngx_postgres_keepalive_cache_t, queue);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pgscf->pool->log, 0, "%s postgres: disconnecting %p", __func__, item->connection);
         ngx_postgres_upstream_free_connection(item->connection, item->pgconn, pgscf);
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pgscf->pool->log, 0, "%s returning", __func__);
 }

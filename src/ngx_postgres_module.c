@@ -409,27 +409,16 @@ ngx_postgres_output_enum_t ngx_postgres_output_handlers[] = {
 };
 
 
-static ngx_int_t
-ngx_postgres_add_variables(ngx_conf_t *cf)
-{
-    ngx_http_variable_t  *var, *v;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s entering", __func__);
-
-    for (v = ngx_postgres_module_variables; v->name.len; v++) {
-        var = ngx_http_add_variable(cf, &v->name, v->flags);
-        if (var == NULL) {
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_ERROR", __func__);
-            return NGX_ERROR;
-        }
-
+static ngx_int_t ngx_postgres_add_variables(ngx_conf_t *cf) {
+    for (ngx_http_variable_t *v = ngx_postgres_module_variables; v->name.len; v++) {
+        ngx_http_variable_t *var = ngx_http_add_variable(cf, &v->name, v->flags);
+        if (!var) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         var->get_handler = v->get_handler;
         var->data = v->data;
     }
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, cf->log, 0, "%s returning NGX_OK", __func__);
     return NGX_OK;
 }
+
 
 static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_upstream_srv_conf_t *pgscf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_upstream_srv_conf_t));
@@ -440,13 +429,14 @@ static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf) {
     pgscf->max_statements = 256;
     pgscf->single = 1;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NULL; }
     cln->handler = ngx_postgres_keepalive_cleanup;
     cln->data = pgscf;
     return pgscf;
 }
 
-static void *
-ngx_postgres_create_loc_conf(ngx_conf_t *cf)
+
+static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_postgres_loc_conf_t  *conf;
 
