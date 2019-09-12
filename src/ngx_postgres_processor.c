@@ -163,9 +163,9 @@ static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r) {
     if (PQisBusy(pgdt->pgconn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while receiving result"); return NGX_AGAIN; }
     PGresult *res = PQgetResult(pgdt->pgconn);
     if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQcmdStatus = %s", PQcmdStatus(res));
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQcmdStatus = %s", PQcmdStatus(res));
     ExecStatusType exec_status = PQresultStatus(res);
-    if ((exec_status != PGRES_COMMAND_OK) && (exec_status != PGRES_TUPLES_OK)) {
+    if (exec_status != PGRES_COMMAND_OK && exec_status != PGRES_TUPLES_OK) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s: %s", PQresStatus(exec_status), PQerrorMessage(pgdt->pgconn));
         PQclear(res);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
