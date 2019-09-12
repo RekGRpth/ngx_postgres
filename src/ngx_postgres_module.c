@@ -407,7 +407,11 @@ struct ngx_postgres_rewrite_enum_t {
     { ngx_null_string, 0, NULL }
 };
 
-ngx_postgres_output_enum_t ngx_postgres_output_handlers[] = {
+struct ngx_postgres_output_enum_t {
+    ngx_str_t                           name;
+    unsigned                            binary:1;
+    ngx_postgres_output_handler_pt      handler;
+} ngx_postgres_output_handlers[] = {
     { ngx_string("none"),         0, NULL },
     { ngx_string("text") ,        0, ngx_postgres_output_text },
     { ngx_string("value"),        0, ngx_postgres_output_value },
@@ -754,7 +758,7 @@ found:;
 static char *ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_loc_conf_t *pglcf = conf;
     if (pglcf->output_handler != NGX_CONF_UNSET_PTR) return "is duplicate";
-    ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
+    struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
     ngx_str_t *value = cf->args->elts;
     ngx_uint_t i;
     for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[1].len && !ngx_strncasecmp(e[i].name.data, value[1].data, value[1].len)) { pglcf->output_handler = e[i].handler; break; }

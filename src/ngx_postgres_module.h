@@ -94,12 +94,6 @@ struct ngx_postgres_rewrite_conf_s {
 typedef ngx_int_t (*ngx_postgres_output_handler_pt) (ngx_http_request_t *);
 
 typedef struct {
-    ngx_str_t                           name;
-    unsigned                            binary:1;
-    ngx_postgres_output_handler_pt      handler;
-} ngx_postgres_output_enum_t;
-
-typedef struct {
     ngx_addr_t                         *addrs;
     ngx_uint_t                          naddrs;
     in_port_t                           port;
