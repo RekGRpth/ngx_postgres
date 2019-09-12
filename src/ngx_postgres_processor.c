@@ -48,37 +48,15 @@ void ngx_postgres_process_events(ngx_http_request_t *r) {
     ngx_int_t rc;
     if (!ngx_postgres_upstream_is_my_peer(&u->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: trying to connect to something that is not PostgreSQL database"); goto failed; }
     switch (pgdt->state) {
-        case state_db_connect: {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_connect");
-            rc = ngx_postgres_upstream_connect(r);
-        } break;
-        case state_db_send_query: {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_send_query");
-            rc = ngx_postgres_upstream_send_query(r);
-        } break;
-        case state_db_get_result: {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_get_result");
-            rc = ngx_postgres_upstream_get_result(r);
-        } break;
-        case state_db_get_ack: {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_get_ack");
-            rc = ngx_postgres_upstream_get_ack(r);
-        } break;
-        case state_db_idle: {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_idle, re-using keepalive connection");
-            pgdt->state = state_db_send_query;
-            rc = ngx_postgres_upstream_send_query(r);
-        } break;
-        default: {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: unknown state:%d", pgdt->state);
-            goto failed;
-        }
+        case state_db_connect: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_connect"); rc = ngx_postgres_upstream_connect(r); break;
+        case state_db_send_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_send_query"); rc = ngx_postgres_upstream_send_query(r); break;
+        case state_db_get_result: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_get_result"); rc = ngx_postgres_upstream_get_result(r); break;
+        case state_db_get_ack: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_get_ack"); rc = ngx_postgres_upstream_get_ack(r); break;
+        case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_idle, re-using keepalive connection"); rc = ngx_postgres_upstream_send_query(r); break;
+        default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: unknown state:%d", pgdt->state); goto failed;
     }
-    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
-        ngx_postgres_upstream_finalize_request(r, u, rc);
-    } else if (rc == NGX_ERROR) {
-        goto failed;
-    }
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) ngx_postgres_upstream_finalize_request(r, u, rc);
+    else if (rc == NGX_ERROR) goto failed;
     return;
 failed:
     ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
