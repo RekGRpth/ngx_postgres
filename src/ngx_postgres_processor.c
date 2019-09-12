@@ -66,7 +66,6 @@ void ngx_postgres_process_events(ngx_http_request_t *r) {
         } break;
         case state_db_idle: {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_idle, re-using keepalive connection");
-//            r->connection->log->action = "sending query to PostgreSQL database";
             pgdt->state = state_db_send_query;
             rc = ngx_postgres_upstream_send_query(r);
         } break;
@@ -127,7 +126,6 @@ done:
     if (u->peer.connection->write->timer_set) ngx_del_timer(u->peer.connection->write);
     if (pgrc != PGRES_POLLING_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: connection failed: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: connected successfully");
-//    r->connection->log->action = "sending query to PostgreSQL database";
     pgdt->state = state_db_send_query;
     return ngx_postgres_upstream_send_query(r);
 }
@@ -152,7 +150,6 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
     /* set result timeout */
     ngx_add_timer(u->peer.connection->read, r->upstream->conf->read_timeout);
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query sent successfully");
-//    r->connection->log->action = "waiting for result from PostgreSQL database";
     pgdt->state = state_db_get_result;
     return NGX_DONE;
 }
@@ -174,11 +171,9 @@ static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: result received successfully, cols:%d rows:%d", PQnfields(res), PQntuples(res));
-//    r->connection->log->action = "processing result from PostgreSQL database";
     ngx_int_t rc = ngx_postgres_process_response(r, res);
     PQclear(res);
     if (rc != NGX_DONE) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning rc:%d", __func__, (int) rc); return rc; }
-//    r->connection->log->action = "waiting for ACK from PostgreSQL database";
     pgdt->state = state_db_get_ack;
     return ngx_postgres_upstream_get_ack(r);
 }
@@ -278,7 +273,6 @@ static ngx_int_t ngx_postgres_upstream_get_ack(ngx_http_request_t *r) {
         PQclear(res);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-//    r->connection->log->action = "being idle on PostgreSQL database";
     pgdt->state = state_db_idle;
     return ngx_postgres_upstream_done(r);
 }

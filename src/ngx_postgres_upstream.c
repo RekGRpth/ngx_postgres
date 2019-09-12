@@ -192,7 +192,6 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
         if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
         if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
     }
-//    pc->connection->log->action = "connecting to PostgreSQL database";
     pgdt->state = state_db_connect;
     return NGX_AGAIN;
 bad_add:

@@ -56,7 +56,6 @@ void ngx_postgres_upstream_finalize_request(ngx_http_request_t *r, ngx_http_upst
     if (u->pipe && u->pipe->temp_file) ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http upstream temp fd: %d", u->pipe->temp_file->file.fd);
     if (u->header_sent && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE)) rc = 0;
     if (rc == NGX_DECLINED) return;
-//    r->connection->log->action = "sending to client";
     if (!rc) rc = ngx_http_send_special(r, NGX_HTTP_LAST);
     ngx_http_finalize_request(r, rc);
 }
@@ -94,11 +93,7 @@ void ngx_postgres_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, n
 ngx_int_t ngx_postgres_upstream_test_connect(ngx_connection_t *c) {
 #if (NGX_HAVE_KQUEUE)
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
-        if (c->write->pending_eof) {
-//            c->log->action = "connecting to upstream";
-            (void) ngx_connection_error(c, c->write->kq_errno, "kevent() reported that connect() failed");
-            return NGX_ERROR;
-        }
+        if (c->write->pending_eof) { (void) ngx_connection_error(c, c->write->kq_errno, "kevent() reported that connect() failed"); return NGX_ERROR; }
     } else
 #endif
     {
@@ -106,11 +101,7 @@ ngx_int_t ngx_postgres_upstream_test_connect(ngx_connection_t *c) {
         socklen_t len = sizeof(int);
         /* BSDs and Linux return 0 and set a pending error in err, Solaris returns -1 and sets errno */
         if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1) err = ngx_errno;
-        if (err) {
-//            c->log->action = "connecting to upstream";
-            (void) ngx_connection_error(c, err, "connect() failed");
-            return NGX_ERROR;
-        }
+        if (err) { (void) ngx_connection_error(c, err, "connect() failed"); return NGX_ERROR; }
     }
     return NGX_OK;
 }
