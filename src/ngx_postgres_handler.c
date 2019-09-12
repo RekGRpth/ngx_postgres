@@ -150,10 +150,7 @@ static void ngx_postgres_abort_request(ngx_http_request_t *r) { }
 
 
 static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
-    if (rc == NGX_OK) {
-        ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-        ngx_postgres_output_chain(r, pgctx->response);
-    }
+    if (rc == NGX_OK) ngx_postgres_output_chain(r);
 }
 
 

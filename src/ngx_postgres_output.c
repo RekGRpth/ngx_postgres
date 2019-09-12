@@ -209,63 +209,29 @@ ngx_postgres_output_text(ngx_http_request_t *r)
 }
 
 
-ngx_int_t
-ngx_postgres_output_chain(ngx_http_request_t *r, ngx_chain_t *cl)
-{
-    ngx_http_upstream_t       *u = r->upstream;
-    ngx_http_core_loc_conf_t  *clcf;
-    ngx_postgres_loc_conf_t   *pglcf;
-    ngx_postgres_ctx_t        *pgctx;
-    ngx_int_t                  rc;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
+ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
+    ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
     if (!r->header_sent) {
         ngx_http_clear_content_length(r);
-
-        pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-        pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-
-        r->headers_out.status = pgctx->status ? ngx_abs(pgctx->status)
-                                              : NGX_HTTP_OK;
-
-
+        ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+        r->headers_out.status = pgctx->status ? ngx_abs(pgctx->status) : NGX_HTTP_OK;
         if (pglcf->output_handler == &ngx_postgres_output_json) {
-        //    This thing crashes nginx for some reason...
             ngx_str_set(&r->headers_out.content_type, "application/json");
             r->headers_out.content_type_len = r->headers_out.content_type.len;
         } else if (pglcf->output_handler != NULL) {
-            /* default type for output value|row */
-            clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
+            ngx_http_core_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
             r->headers_out.content_type = clcf->default_type;
             r->headers_out.content_type_len = clcf->default_type.len;
         }
-
         r->headers_out.content_type_lowcase = NULL;
-
-        rc = ngx_http_send_header(r);
-        if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning rc:%d", __func__, (int) rc);
-            return rc;
-        }
+        ngx_int_t rc = ngx_http_send_header(r);
+        if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return rc;
     }
-
-    if (cl == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
-        return NGX_DONE;
-    }
-
-    rc = ngx_http_output_filter(r, cl);
-    if (rc == NGX_ERROR || rc > NGX_OK) {
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning rc:%d", __func__, (int) rc);
-        return rc;
-    }
-
-    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &cl,
-                            u->output.tag);
-
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning rc:%d", __func__, (int) rc);
+    if (!pgctx->response) return NGX_DONE;
+    ngx_int_t rc = ngx_http_output_filter(r, pgctx->response);
+    if (rc == NGX_ERROR || rc > NGX_OK) return rc;
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &pgctx->response, u->output.tag);
     return rc;
 }
 
