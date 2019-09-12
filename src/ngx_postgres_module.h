@@ -30,7 +30,6 @@
 #define _NGX_POSTGRES_MODULE_H_
 
 #include <ngx_http.h>
-#include <libpq-fe.h>
 
 
 extern ngx_module_t  ngx_postgres_module;
@@ -159,17 +158,6 @@ typedef struct {
     /* custom variables */
     ngx_array_t                        *variables;
 } ngx_postgres_loc_conf_t;
-
-typedef struct {
-    ngx_chain_t                        *response;
-    ngx_int_t                           var_cols;
-    ngx_int_t                           var_rows;
-    ngx_int_t                           var_affected;
-    ngx_str_t                           var_query;
-    ngx_array_t                        *variables;
-    ngx_int_t                           status;
-    PGresult                           *res;
-} ngx_postgres_ctx_t;
 
 
 #endif /* _NGX_POSTGRES_MODULE_H_ */

@@ -28,7 +28,6 @@
 #define _NGX_POSTGRES_VARIABLE_H_
 
 #include <ngx_http.h>
-#include <libpq-fe.h>
 
 #include "ngx_postgres_module.h"
 
@@ -38,6 +37,6 @@ ngx_int_t  ngx_postgres_variable_rows(ngx_http_request_t *, ngx_http_variable_va
 ngx_int_t  ngx_postgres_variable_affected(ngx_http_request_t *,  ngx_http_variable_value_t *, uintptr_t);
 ngx_int_t  ngx_postgres_variable_query(ngx_http_request_t *, ngx_http_variable_value_t *, uintptr_t);
 ngx_int_t  ngx_postgres_variable_get_custom(ngx_http_request_t *, ngx_http_variable_value_t *, uintptr_t);
-ngx_str_t  ngx_postgres_variable_set_custom(ngx_http_request_t *r, PGresult *, ngx_postgres_variable_t *);
+ngx_str_t  ngx_postgres_variable_set_custom(ngx_http_request_t *r, ngx_postgres_variable_t *);
 
 #endif /* _NGX_POSTGRES_VARIABLE_H_ */

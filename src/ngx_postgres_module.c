@@ -26,17 +26,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <postgresql/server/catalog/pg_type_d.h>
+
 #include "ngx_postgres_escape.h"
 #include "ngx_postgres_handler.h"
 #include "ngx_postgres_keepalive.h"
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"
+#include "ngx_postgres_rewrite.h"
 #include "ngx_postgres_upstream.h"
 #include "ngx_postgres_util.h"
 #include "ngx_postgres_variable.h"
-#include "ngx_postgres_rewrite.h"
-
-#include <postgresql/server/catalog/pg_type_d.h>
 
 
 #define NGX_CONF_TAKE34  (NGX_CONF_TAKE3|NGX_CONF_TAKE4)

@@ -24,10 +24,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <libpq-fe.h>
+
 #include "ngx_postgres_escape.h"
 #include "ngx_postgres_module.h"
-
-#include <libpq-fe.h>
 
 
 uintptr_t ngx_postgres_script_exit_code = (uintptr_t) NULL;

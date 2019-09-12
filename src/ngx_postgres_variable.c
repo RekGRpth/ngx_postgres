@@ -25,6 +25,7 @@
  */
 
 #include "ngx_postgres_module.h"
+#include "ngx_postgres_processor.h"
 #include "ngx_postgres_variable.h"
 
 
@@ -186,10 +187,10 @@ ngx_postgres_variable_get_custom(ngx_http_request_t *r,
     return NGX_OK;
 }
 
-ngx_str_t
-ngx_postgres_variable_set_custom(ngx_http_request_t *r, PGresult *res,
-    ngx_postgres_variable_t *pgvar)
+ngx_str_t ngx_postgres_variable_set_custom(ngx_http_request_t *r, ngx_postgres_variable_t *pgvar)
 {
+    ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
+    PGresult *res = pgctx->res;
     ngx_http_core_loc_conf_t  *clcf;
     ngx_postgres_value_t      *pgv;
     ngx_int_t                  col_count, row_count, col, len;

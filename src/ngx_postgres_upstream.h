@@ -29,8 +29,8 @@
 #ifndef _NGX_HTTP_UPSTREAM_POSTGRES_H_
 #define _NGX_HTTP_UPSTREAM_POSTGRES_H_
 
-#include <ngx_http.h>
 #include <libpq-fe.h>
+#include <ngx_http.h>
 
 #include "ngx_postgres_module.h"
 

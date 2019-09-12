@@ -26,12 +26,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <postgresql/server/catalog/pg_type_d.h>
+
 #include "ngx_postgres_output.h"
 #include "ngx_postgres_processor.h"
+#include "ngx_postgres_upstream.h"
 #include "ngx_postgres_util.h"
 #include "ngx_postgres_variable.h"
-
-#include <postgresql/server/catalog/pg_type_d.h>
 
 
 static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r);
@@ -206,7 +207,7 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
         ngx_postgres_variable_t *pgvar = pglcf->variables->elts;
         ngx_str_t *store = pgctx->variables->elts;
         for (ngx_uint_t i = 0; i < pglcf->variables->nelts; i++) {
-            store[i] = ngx_postgres_variable_set_custom(r, pgctx->res, &pgvar[i]);
+            store[i] = ngx_postgres_variable_set_custom(r, &pgvar[i]);
             if (!store[i].len && pgvar[i].value.required) { pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR; return NGX_DONE; }
         }
     }

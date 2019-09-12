@@ -29,9 +29,20 @@
 #ifndef _NGX_POSTGRES_PROCESSOR_H_
 #define _NGX_POSTGRES_PROCESSOR_H_
 
+#include <libpq-fe.h>
 #include <ngx_http.h>
 
-#include "ngx_postgres_upstream.h"
+
+typedef struct {
+    ngx_chain_t                        *response;
+    ngx_int_t                           var_cols;
+    ngx_int_t                           var_rows;
+    ngx_int_t                           var_affected;
+    ngx_str_t                           var_query;
+    ngx_array_t                        *variables;
+    ngx_int_t                           status;
+    PGresult                           *res;
+} ngx_postgres_ctx_t;
 
 
 void       ngx_postgres_process_events(ngx_http_request_t *);

@@ -25,6 +25,7 @@
  */
 
 #include "ngx_postgres_module.h"
+#include "ngx_postgres_processor.h"
 #include "ngx_postgres_rewrite.h"
 
 
