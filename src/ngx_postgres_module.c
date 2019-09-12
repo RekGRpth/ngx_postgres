@@ -393,7 +393,11 @@ ngx_conf_enum_t ngx_postgres_requirement_options[] = {
     { ngx_null_string, 0 }
 };
 
-ngx_postgres_rewrite_enum_t ngx_postgres_rewrite_handlers[] = {
+struct ngx_postgres_rewrite_enum_t {
+    ngx_str_t                           name;
+    ngx_uint_t                          key;
+    ngx_postgres_rewrite_handler_pt     handler;
+} ngx_postgres_rewrite_handlers[] = {
     { ngx_string("no_changes"), 0, ngx_postgres_rewrite_changes },
     { ngx_string("changes"),    1, ngx_postgres_rewrite_changes },
     { ngx_string("no_rows"),    2, ngx_postgres_rewrite_rows },
@@ -691,7 +695,7 @@ static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 
 
 static char *ngx_postgres_conf_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_rewrite_enum_t *e = ngx_postgres_rewrite_handlers;
+    struct ngx_postgres_rewrite_enum_t *e = ngx_postgres_rewrite_handlers;
     ngx_str_t *value = cf->args->elts;
     ngx_str_t what = value[cf->args->nelts - 2];
     ngx_uint_t i;
