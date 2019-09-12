@@ -45,6 +45,7 @@ void ngx_postgres_escape_string(ngx_http_script_engine_t *e) {
     }
     u_char *p = ngx_pnalloc(e->request->pool, 2 * v->len + 2);
     if (!p) {
+        ngx_log_error(NGX_LOG_ERR, e->request->connection->log, 0, "%s:%d", __FILE__, __LINE__);
         e->ip = (u_char *) &ngx_postgres_script_exit_code;
         e->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return;
