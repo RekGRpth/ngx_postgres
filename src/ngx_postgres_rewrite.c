@@ -121,129 +121,89 @@ static char *ngx_postgres_find_values(char *values[10], char *variables[10], int
 }
 
 char *ngx_postgres_interpolate_url(char *redirect, int size, char *variables[10], int vars, char *columned[10], char *values[10], ngx_http_request_t *r) {
-
     char url[512] = "";
     ngx_memzero(url, 512);
-
     int written = 0;
-    char *p;
-    for (p = redirect; p < redirect + size; p++) {
-
-      // substitute nginx variable
-      if (*p == '$') {
-        ngx_str_t url_variable;
-
-        url_variable.data = (u_char *) p + 1;
-        url_variable.len = 0;
-        //fprintf(stdout, "something here %s\n", p);
-
-        while(url_variable.len < (size_t) ((redirect + size) - (p + 1))) {
-          u_char *n = url_variable.data + url_variable.len;
-          if (*n == '\0' || *n == '=' || *n == '&' || *n == '-' || *n == '%' || *n == '/' || *n == '#' || *n == '?' || *n == ':')
-            break;
-          url_variable.len++;
-        }
-
-        ngx_int_t num = ngx_atoi(url_variable.data, url_variable.len);
-
-        // captures $1, $2
-        if (num != NGX_ERROR && num > 0 && (ngx_uint_t) num <= r->ncaptures) {
-
-          int *cap = r->captures;
-          int ncap = num * 2;
-
-          ngx_str_t capture;
-          capture.data = r->captures_data + cap[ncap];
-          capture.len = cap[ncap + 1] - cap[ncap];
-          size_t l;
-          for (l = 0; l < capture.len; l++) {
-            url[written] = *(capture.data + l);
-            written++;
-          }
-          //fprintf(stdout, "capture %d %s\n", capture.len, url);
-        // nginx variables
-        } else {
-          ngx_uint_t url_variable_hash = ngx_hash_key(url_variable.data, url_variable.len);
-          ngx_http_variable_value_t *url_value = ngx_http_get_variable( r, &url_variable, url_variable_hash  );
-          ngx_uint_t l;
-          if (!url_value->not_found)
-            for (l = 0; l < url_value->len; l++) {
-              url[written++] = *(url_value->data + l);
+    for (char *p = redirect; p < redirect + size; p++) {
+        // substitute nginx variable
+        if (*p == '$') {
+            ngx_str_t url_variable;
+            url_variable.data = (u_char *) p + 1;
+            url_variable.len = 0;
+            while(url_variable.len < (size_t) ((redirect + size) - (p + 1))) {
+                u_char *n = url_variable.data + url_variable.len;
+                if (*n == '\0' || *n == '=' || *n == '&' || *n == '-' || *n == '%' || *n == '/' || *n == '#' || *n == '?' || *n == ':') break;
+                url_variable.len++;
             }
-          //fprintf(stdout, "variable %s\n", url);
-        }
-        // skip variable
-        while (*p != '\0' && *p != '=' && *p != '&' && *p != '-' && *p != '%' && *p != '/' && *p != '#'&& *p != ':' && *p != '?') {
-          p++;
-        }
-      }
-
-      ngx_int_t i;
-      for (i= 0; i < vars; i++) {
-
-        if (variables[i] == p +1) {
-
-          // output value
-          if (values[i] != NULL) {
-//            fprintf(stdout, "OUTPUT VARIABLE%s\n", variables[i]);
-            char *n = values[i];
-            char *start = values[i];
-            if (*n == '"') {
-              start++;
-              n++;
-              // find string boundary
-              while (*n != '"' || *(n - 1) == '\\') {
-                n++;
-              }
-              // output external string
-            } else if (columned[i] != NULL) {
-              n += strlen(values[i]);
+            ngx_int_t num = ngx_atoi(url_variable.data, url_variable.len);
+            // captures $1, $2
+            if (num != NGX_ERROR && num > 0 && (ngx_uint_t) num <= r->ncaptures) {
+                int *cap = r->captures;
+                int ncap = num * 2;
+                ngx_str_t capture;
+                capture.data = r->captures_data + cap[ncap];
+                capture.len = cap[ncap + 1] - cap[ncap];
+                for (size_t l = 0; l < capture.len; l++) {
+                    url[written] = *(capture.data + l);
+                    written++;
+                }
+                // nginx variables
             } else {
-              // find unquoted value boundary
-              while (*n != ',' && *n != ' ' && *n != '\n' && *n != '}' && *n != ']') {
-                n++;
-              }
+                ngx_uint_t url_variable_hash = ngx_hash_key(url_variable.data, url_variable.len);
+                ngx_http_variable_value_t *url_value = ngx_http_get_variable( r, &url_variable, url_variable_hash  );
+                if (!url_value->not_found) for (ngx_uint_t l = 0; l < url_value->len; l++) {
+                    url[written++] = *(url_value->data + l);
+                }
             }
-
-            int l = n - start;
-            int escape = ngx_escape_uri(NULL, (u_char *) start, l, NGX_ESCAPE_URI_COMPONENT);
-            ngx_escape_uri((u_char *) (url + written), (u_char *) start, l, NGX_ESCAPE_URI_COMPONENT);
-            //fprintf(stdout, "HERE VARIABLE%d\n%s\n", l, url + written);
-
-            written += l + escape * 3;
-          }
-          // skip variable
-          while (*p != '\0' && *p != '=' && *p != '&' && *p != '-' && *p != '%' && *p != '/' && *p != '#' && *p != '?') {
-            p++;
-          }
-
-          // Special case, ignore slash after variable if url already has query
-          if (*p == '/') {
-            int j = 0;
-            for (;j < written; j++) {
-              if (url[j] == '?') {
-                p++;
-                break;
-              }
-            }
-          }
-          continue;
+            // skip variable
+            while (*p != '\0' && *p != '=' && *p != '&' && *p != '-' && *p != '%' && *p != '/' && *p != '#'&& *p != ':' && *p != '?') p++;
         }
-      }
-      url[written] = *p;
-      written++;
-
-
+        for (ngx_int_t i = 0; i < vars; i++) {
+            if (variables[i] == p +1) {
+                // output value
+                if (values[i] != NULL) {
+                    char *n = values[i];
+                    char *start = values[i];
+                    if (*n == '"') {
+                        start++;
+                        n++;
+                        // find string boundary
+                        while (*n != '"' || *(n - 1) == '\\') n++;
+                        // output external string
+                    } else if (columned[i] != NULL) {
+                        n += strlen(values[i]);
+                    } else {
+                        // find unquoted value boundary
+                        while (*n != ',' && *n != ' ' && *n != '\n' && *n != '}' && *n != ']') n++;
+                    }
+                    int l = n - start;
+                    int escape = ngx_escape_uri(NULL, (u_char *) start, l, NGX_ESCAPE_URI_COMPONENT);
+                    ngx_escape_uri((u_char *) (url + written), (u_char *) start, l, NGX_ESCAPE_URI_COMPONENT);
+                    written += l + escape * 3;
+                }
+                // skip variable
+                while (*p != '\0' && *p != '=' && *p != '&' && *p != '-' && *p != '%' && *p != '/' && *p != '#' && *p != '?') p++;
+                // Special case, ignore slash after variable if url already has query
+                if (*p == '/') {
+                    int j = 0;
+                    for (;j < written; j++) {
+                        if (url[j] == '?') {
+                            p++;
+                            break;
+                        }
+                    }
+                }
+                continue;
+            }
+        }
+        url[written] = *p;
+        written++;
     }
-    if (written)
-      url[written++] = '\0';
-
-    //fprintf(stdout, "HERE COMES URL %s\n", url);
+    if (written) url[written++] = '\0';
     char *m = ngx_pnalloc(r->pool, written);
     memcpy(m, url, written);
-
     return m;
-  }
+}
 
 ngx_int_t
 ngx_postgres_rewrite(ngx_http_request_t *r,
