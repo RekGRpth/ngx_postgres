@@ -202,7 +202,7 @@ char *ngx_postgres_interpolate_url(char *redirect, int size, char *variables[10]
         written++;
     }
     if (written) url[written++] = '\0';
-    char *m = ngx_pnalloc(r->pool, written);
+    char *m = ngx_pnalloc(r->pool, written); // !!! BUG !!!
     memcpy(m, url, written);
     return m;
 }
@@ -242,7 +242,7 @@ ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_
                         int len = strlen(url);
                         // redirect out
                         r->headers_out.location = ngx_list_push(&r->headers_out.headers);
-                        u_char *m = ngx_pnalloc(r->pool, len + 1);
+                        u_char *m = ngx_pnalloc(r->pool, len + 1); // !!! BUG !!!
                         int written = 0;
                         // remove double // and /0/, leave ://
                         for (char *c = url; c < url + len; c++) {
