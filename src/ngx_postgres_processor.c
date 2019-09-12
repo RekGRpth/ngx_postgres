@@ -109,14 +109,14 @@ static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r) {
             goto done;
         }
         switch (PQstatus(pgdt->pgconn)) {
-            case CONNECTION_NEEDED: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s connecting (waiting for connect()))", __func__); break;
-            case CONNECTION_STARTED: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s connecting (waiting for connection to be made)", __func__); break;
-            case CONNECTION_MADE: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s connecting (connection established)", __func__); break;
-            case CONNECTION_AWAITING_RESPONSE: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s connecting (credentials sent, waiting for response)", __func__); break;
-            case CONNECTION_AUTH_OK: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s connecting (authenticated)", __func__); break;
-            case CONNECTION_SETENV: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s connecting (negotiating envinroment)", __func__); break;
-            case CONNECTION_SSL_STARTUP: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s connecting (negotiating SSL)", __func__); break;
-            default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s connecting (unknown state:%d)", __func__, (int) PQstatus(pgdt->pgconn)); return NGX_ERROR;
+            case CONNECTION_NEEDED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "waiting for connect"); break;
+            case CONNECTION_STARTED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "waiting for connection to be made"); break;
+            case CONNECTION_MADE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connection established"); break;
+            case CONNECTION_AWAITING_RESPONSE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "credentials sent, waiting for response"); break;
+            case CONNECTION_AUTH_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "authenticated"); break;
+            case CONNECTION_SETENV: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "negotiating envinroment"); break;
+            case CONNECTION_SSL_STARTUP: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "negotiating SSL"); break;
+            default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "unknown state: %d", (int) PQstatus(pgdt->pgconn)); return NGX_ERROR;
         }
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while connecting, rc:%d", (int) pgrc);
         return NGX_AGAIN;
@@ -186,8 +186,7 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
     ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
     pgctx->var_cols = PQnfields(pgctx->res); /* set $postgres_columns */
     pgctx->var_rows = PQntuples(pgctx->res); /* set $postgres_rows */
-    /* set $postgres_affected */
-    if (ngx_strncasecmp((u_char *)PQcmdStatus(pgctx->res), (u_char *)"SELECT", sizeof("SELECT") - 1)) {
+    if (ngx_strncasecmp((u_char *)PQcmdStatus(pgctx->res), (u_char *)"SELECT", sizeof("SELECT") - 1)) { /* set $postgres_affected */
         char *affected = PQcmdTuples(pgctx->res);
         size_t affected_len = ngx_strlen(affected);
         if (affected_len) pgctx->var_affected = ngx_atoi((u_char *)affected, affected_len);
@@ -219,17 +218,11 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
 static ngx_int_t ngx_postgres_upstream_get_ack(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
-    if (!PQconsumeInput(pgdt->pgconn)) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__); return NGX_ERROR; }
-    if (PQisBusy(pgdt->pgconn)) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_AGAIN", __func__); return NGX_AGAIN; }
-    /* remove result timeout */
-    if (u->peer.connection->read->timer_set) ngx_del_timer(u->peer.connection->read);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s receiving ACK (ready for next query)", __func__);
+    if (!PQconsumeInput(pgdt->pgconn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+    if (PQisBusy(pgdt->pgconn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while get ack"); return NGX_AGAIN; }
+    if (u->peer.connection->read->timer_set) ngx_del_timer(u->peer.connection->read); /* remove result timeout */
     PGresult *res = PQgetResult(pgdt->pgconn);
-    if (res) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: receiving ACK failed: multiple queries(?)");
-        PQclear(res);
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
+    if (res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: receiving ACK failed: multiple queries(?)"); PQclear(res); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     pgdt->state = state_db_idle;
     return ngx_postgres_upstream_done(r);
 }
@@ -238,13 +231,9 @@ static ngx_int_t ngx_postgres_upstream_get_ack(ngx_http_request_t *r) {
 static ngx_int_t ngx_postgres_upstream_done(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_ctx_t *pgctx;
-    /* flag for keepalive */
-    u->headers_in.status_n = NGX_HTTP_OK;
+    u->headers_in.status_n = NGX_HTTP_OK; /* flag for keepalive */
     pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (pgctx->status >= NGX_HTTP_SPECIAL_RESPONSE) {
-        ngx_postgres_upstream_finalize_request(r, u, pgctx->status);
-    } else {
-        ngx_postgres_upstream_finalize_request(r, u, NGX_OK);
-    }
+    if (pgctx->status >= NGX_HTTP_SPECIAL_RESPONSE) ngx_postgres_upstream_finalize_request(r, u, pgctx->status);
+    else ngx_postgres_upstream_finalize_request(r, u, NGX_OK);
     return NGX_DONE;
 }

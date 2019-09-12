@@ -168,7 +168,6 @@ void ngx_postgres_keepalive_cleanup(void *data) {
         ngx_queue_t *q = ngx_queue_head(&pgscf->cache);
         ngx_queue_remove(q);
         ngx_postgres_keepalive_cache_t *cached = ngx_queue_data(q, ngx_postgres_keepalive_cache_t, queue);
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pgscf->pool->log, 0, "%s postgres: disconnecting %p", __func__, cached->connection);
         ngx_postgres_upstream_free_connection(cached->connection, cached->pgconn, pgscf);
     }
 }
