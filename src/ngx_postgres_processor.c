@@ -37,7 +37,7 @@
 static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r);
 static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r);
 static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r);
-static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r, PGresult *res);
+static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r);
 static ngx_int_t ngx_postgres_upstream_get_ack(ngx_http_request_t *r);
 static ngx_int_t ngx_postgres_upstream_done(ngx_http_request_t *r);
 
@@ -171,7 +171,9 @@ static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: result received successfully, cols:%d rows:%d", PQnfields(res), PQntuples(res));
-    ngx_int_t rc = ngx_postgres_process_response(r, res);
+    ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
+    pgctx->res = res;
+    ngx_int_t rc = ngx_postgres_process_response(r);
     PQclear(res);
     if (rc != NGX_DONE) return rc;
     pgdt->state = state_db_get_ack;
@@ -179,39 +181,37 @@ static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r) {
 }
 
 
-static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r, PGresult *res) {
+static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
     ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    pgctx->var_cols = PQnfields(res); /* set $postgres_columns */
-    pgctx->var_rows = PQntuples(res); /* set $postgres_rows */
-    pgctx->res = res;
+    pgctx->var_cols = PQnfields(pgctx->res); /* set $postgres_columns */
+    pgctx->var_rows = PQntuples(pgctx->res); /* set $postgres_rows */
     /* set $postgres_affected */
-    if (ngx_strncasecmp((u_char *)PQcmdStatus(res), (u_char *)"SELECT", sizeof("SELECT") - 1)) {
-        char *affected = PQcmdTuples(res);
+    if (ngx_strncasecmp((u_char *)PQcmdStatus(pgctx->res), (u_char *)"SELECT", sizeof("SELECT") - 1)) {
+        char *affected = PQcmdTuples(pgctx->res);
         size_t affected_len = ngx_strlen(affected);
-        if (affected_len) pgctx->var_affected = ngx_atoi((u_char *) affected, affected_len);
+        if (affected_len) pgctx->var_affected = ngx_atoi((u_char *)affected, affected_len);
     }
     if (pglcf->rewrites) { /* process rewrites */
         ngx_postgres_rewrite_conf_t  *pgrcf = pglcf->rewrites->elts;
         for (ngx_uint_t i = 0; i < pglcf->rewrites->nelts; i++) {
             ngx_int_t rc = pgrcf[i].handler(r, &pgrcf[i]);
             if (rc != NGX_DECLINED) {
-                if (rc >= NGX_HTTP_SPECIAL_RESPONSE) { pgctx->status = rc; pgctx->res = NULL; return NGX_DONE; }
+                if (rc >= NGX_HTTP_SPECIAL_RESPONSE) { pgctx->status = rc; return NGX_DONE; }
                 pgctx->status = rc;
                 break;
             }
         }
     }
-    pgctx->res = NULL;
     if (pglcf->variables) { /* set custom variables */
         ngx_postgres_variable_t *pgvar = pglcf->variables->elts;
         ngx_str_t *store = pgctx->variables->elts;
         for (ngx_uint_t i = 0; i < pglcf->variables->nelts; i++) {
-            store[i] = ngx_postgres_variable_set_custom(r, res, &pgvar[i]);
+            store[i] = ngx_postgres_variable_set_custom(r, pgctx->res, &pgvar[i]);
             if (!store[i].len && pgvar[i].value.required) { pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR; return NGX_DONE; }
         }
     }
-    if (pglcf->output_handler) return pglcf->output_handler(r, res);
+    if (pglcf->output_handler) return pglcf->output_handler(r);
     return NGX_DONE;
 }
 
@@ -219,13 +219,13 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r, PGresult *
 static ngx_int_t ngx_postgres_upstream_get_ack(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
-    PGresult  *res;
     if (!PQconsumeInput(pgdt->pgconn)) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__); return NGX_ERROR; }
     if (PQisBusy(pgdt->pgconn)) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_AGAIN", __func__); return NGX_AGAIN; }
     /* remove result timeout */
     if (u->peer.connection->read->timer_set) ngx_del_timer(u->peer.connection->read);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s receiving ACK (ready for next query)", __func__);
-    if ((res = PQgetResult(pgdt->pgconn)) != NULL) {
+    PGresult *res = PQgetResult(pgdt->pgconn);
+    if (res) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: receiving ACK failed: multiple queries(?)");
         PQclear(res);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;

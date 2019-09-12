@@ -98,8 +98,7 @@ typedef struct {
     ngx_postgres_rewrite_handler_pt     handler;
 } ngx_postgres_rewrite_enum_t;
 
-typedef ngx_int_t (*ngx_postgres_output_handler_pt)
-    (ngx_http_request_t *, PGresult *);
+typedef ngx_int_t (*ngx_postgres_output_handler_pt) (ngx_http_request_t *);
 
 typedef struct {
     ngx_str_t                           name;
