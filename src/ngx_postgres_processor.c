@@ -102,10 +102,8 @@ static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: polling while connecting, %s", PostgresPollingStatusType2string(poll_status));
     if (poll_status == PGRES_POLLING_READING || poll_status == PGRES_POLLING_WRITING) {
         if (PQstatus(pgdt->pgconn) == CONNECTION_MADE && u->peer.connection->write->ready) {
-            poll_status = PQconnectPoll(pgdt->pgconn);
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: re-polling while connecting, %s", PostgresPollingStatusType2string(poll_status));
-            if (poll_status == PGRES_POLLING_READING || poll_status == PGRES_POLLING_WRITING) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while re-connecting, %s", PostgresPollingStatusType2string(poll_status)); return NGX_AGAIN; }
-            goto done;
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: re-polling while connecting");
+            return ngx_postgres_upstream_connect(r);
         }
         ConnStatusType conn_status;
         switch ((conn_status = PQstatus(pgdt->pgconn))) {
@@ -118,10 +116,9 @@ static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r) {
             case CONNECTION_SSL_STARTUP: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_SSL_STARTUP"); break;
             default: ngx_log_debug1(NGX_LOG_ERR, r->connection->log, 0, "unknown state: %s", ConnStatusType2string(conn_status)); return NGX_ERROR;
         }
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while connecting, %s", PostgresPollingStatusType2string(poll_status));
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while connecting");
         return NGX_AGAIN;
     }
-done:
     if (u->peer.connection->write->timer_set) ngx_del_timer(u->peer.connection->write); /* remove connection timeout from new connection */
     if (poll_status != PGRES_POLLING_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: connection failed: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: connected successfully");
