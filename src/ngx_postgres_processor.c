@@ -77,8 +77,8 @@ static const char *ConnStatusType2string(ConnStatusType status) {
 void ngx_postgres_process_events(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     if (!ngx_postgres_upstream_is_my_peer(&u->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: trying to connect to something that is not PostgreSQL database"); goto failed; }
-    ngx_int_t rc;
     ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
+    ngx_int_t rc;
     switch (pgdt->state) {
         case state_db_connect: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_connect"); rc = ngx_postgres_upstream_connect(r); break;
         case state_db_send_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_send_query"); rc = ngx_postgres_upstream_send_query(r); break;
