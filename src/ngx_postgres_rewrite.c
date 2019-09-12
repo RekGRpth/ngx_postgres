@@ -163,7 +163,7 @@ char *ngx_postgres_interpolate_url(char *redirect, int size, char *variables[10]
         for (ngx_int_t i = 0; i < vars; i++) {
             if (variables[i] == p +1) {
                 // output value
-                if (values[i] != NULL) {
+                if (values[i]) {
                     char *n = values[i];
                     char *start = values[i];
                     if (*n == '"') {
@@ -172,7 +172,7 @@ char *ngx_postgres_interpolate_url(char *redirect, int size, char *variables[10]
                         // find string boundary
                         while (*n != '"' || *(n - 1) == '\\') n++;
                         // output external string
-                    } else if (columned[i] != NULL) {
+                    } else if (columned[i]) {
                         n += strlen(values[i]);
                     } else {
                         // find unquoted value boundary
@@ -216,9 +216,9 @@ ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_
                 if (rewrite[i].location.len > 0) {
                     // write template name into $html
                     // if location had no slashes and no variables (can't read template file by variable name)
-                    if (ngx_strnstr(rewrite[i].location.data, "$", rewrite[i].location.len) == NULL &&
-                        ngx_strnstr(rewrite[i].location.data, ":", rewrite[i].location.len) == NULL &&
-                        ngx_strnstr(rewrite[i].location.data, ".html", rewrite[i].location.len) != NULL) {
+                    if (!ngx_strnstr(rewrite[i].location.data, "$", rewrite[i].location.len) &&
+                        !ngx_strnstr(rewrite[i].location.data, ":", rewrite[i].location.len) &&
+                        ngx_strnstr(rewrite[i].location.data, ".html", rewrite[i].location.len)) {
                         ngx_str_t html_variable = ngx_string("html");
                         ngx_uint_t html_variable_hash = ngx_hash_key(html_variable.data, html_variable.len);
                         ngx_http_variable_value_t *raw_html = ngx_http_get_variable(r, &html_variable, html_variable_hash);
@@ -232,7 +232,7 @@ ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_
                     } else {
                         // errors/no_errors rewriters already provide interpolated url,
                         // but others need to do it here
-                        if (url == NULL) {
+                        if (!url) {
                             char *variables[10];
                             char *columned[10];
                             char *values[10];

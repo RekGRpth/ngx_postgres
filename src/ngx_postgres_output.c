@@ -162,7 +162,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
         if (pglcf->output_handler == &ngx_postgres_output_json) {
             ngx_str_set(&r->headers_out.content_type, "application/json");
             r->headers_out.content_type_len = r->headers_out.content_type.len;
-        } else if (pglcf->output_handler != NULL) {
+        } else if (pglcf->output_handler) {
             ngx_http_core_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
             r->headers_out.content_type = clcf->default_type;
             r->headers_out.content_type_len = clcf->default_type.len;
