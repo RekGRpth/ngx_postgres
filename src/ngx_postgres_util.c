@@ -85,7 +85,7 @@ void ngx_postgres_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, n
         if (u->peer.connection->pool) ngx_destroy_pool(u->peer.connection->pool);
         ngx_close_connection(u->peer.connection);
     }
-    if (!status) status = NGX_HTTP_INTERNAL_SERVER_ERROR; /* TODO: ngx_http_upstream_connect(r, u); */
+    if (!status) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); status = NGX_HTTP_INTERNAL_SERVER_ERROR; /* TODO: ngx_http_upstream_connect(r, u); */ }
     return ngx_postgres_upstream_finalize_request(r, u, status);
 }
 

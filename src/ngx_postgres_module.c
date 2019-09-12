@@ -554,7 +554,7 @@ static char *ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, voi
     ngx_postgres_upstream_srv_conf_t *pgscf = conf;
     if (pgscf->max_cached != 10 /* default */) return "is duplicate";
     ngx_str_t *value = cf->args->elts;
-    if (cf->args->nelts == 2 && !ngx_strcmp(value[1].data, "off")) {
+    if (cf->args->nelts == 2 && !ngx_strncmp(value[1].data, "off", sizeof("off") - 1)) {
         pgscf->max_cached = 0;
         return NGX_CONF_OK;
     }

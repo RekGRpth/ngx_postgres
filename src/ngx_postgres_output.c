@@ -220,26 +220,7 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     cl->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
-    if (pgctx->var_rows == 1 && pgctx->var_cols == 1 && (PQftype(pgctx->res, 0) == JSONOID || PQftype(pgctx->res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(pgctx->res, 0, 0), size); else {
-        /*if (r != r->main) { // YF: Populate empty parent req variables with names of columns, if in subrequest. HACK, LOL! Better move me out
-            ngx_str_t export_variable;
-            for (ngx_int_t col = 0; col < pgctx->var_cols; col++) {
-                char *col_name = PQfname(pgctx->res, col);
-                export_variable.data = (u_char *)col_name;
-                export_variable.len = ngx_strlen(col_name);
-                ngx_uint_t meta_variable_hash = ngx_hash_key(export_variable.data, export_variable.len);
-                ngx_http_variable_value_t *raw_meta = ngx_http_get_variable(r->main, &export_variable, meta_variable_hash);
-                if (!raw_meta->not_found && !raw_meta->len) {
-                    raw_meta->valid = 1;
-                    int exported_length = PQgetlength(pgctx->res, 0, col);
-                    char *exported_value = ngx_palloc(r->main->pool, exported_length);
-                    ngx_memcpy(exported_value, PQgetvalue(pgctx->res, 0, col), exported_length);
-                    raw_meta->len = exported_length;
-                    raw_meta->data = (u_char *)exported_value;
-                }
-            }
-        }*/
-        /* fill data */
+    if (pgctx->var_rows == 1 && pgctx->var_cols == 1 && (PQftype(pgctx->res, 0) == JSONOID || PQftype(pgctx->res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(pgctx->res, 0, 0), size); else { /* fill data */
         if (pgctx->var_rows > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
         for (ngx_int_t row = 0; row < pgctx->var_rows; row++) {
             if (row > 0) b->last = ngx_copy(b->last, ",", 1);
