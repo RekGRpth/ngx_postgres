@@ -44,9 +44,9 @@ static ngx_int_t ngx_postgres_upstream_done(ngx_http_request_t *r);
 
 void ngx_postgres_process_events(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
-    ngx_int_t rc;
     if (!ngx_postgres_upstream_is_my_peer(&u->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: trying to connect to something that is not PostgreSQL database"); goto failed; }
+    ngx_int_t rc;
+    ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
     switch (pgdt->state) {
         case state_db_connect: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_connect"); rc = ngx_postgres_upstream_connect(r); break;
         case state_db_send_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_send_query"); rc = ngx_postgres_upstream_send_query(r); break;
@@ -63,20 +63,21 @@ failed:
 }
 
 
-static const char *PostgresPollingStatusType2string(PostgresPollingStatusType pgrc) {
-    switch (pgrc) {
+static const char *PostgresPollingStatusType2string(PostgresPollingStatusType status) {
+    switch (status) {
         case PGRES_POLLING_FAILED: return "PGRES_POLLING_FAILED";
         case PGRES_POLLING_READING: return "PGRES_POLLING_READING";
         case PGRES_POLLING_WRITING: return "PGRES_POLLING_WRITING";
         case PGRES_POLLING_OK: return "PGRES_POLLING_OK";
         case PGRES_POLLING_ACTIVE: return "PGRES_POLLING_ACTIVE";
+        default: return NULL;
     }
     return NULL;
 }
 
 
-static const char *ConnStatusType2string(ConnStatusType pgrc) {
-    switch (pgrc) {
+static const char *ConnStatusType2string(ConnStatusType status) {
+    switch (status) {
         case CONNECTION_OK: return "CONNECTION_OK";
         case CONNECTION_BAD: return "CONNECTION_BAD";
         case CONNECTION_STARTED: return "CONNECTION_STARTED";
@@ -88,6 +89,7 @@ static const char *ConnStatusType2string(ConnStatusType pgrc) {
         case CONNECTION_NEEDED: return "CONNECTION_NEEDED";
         case CONNECTION_CHECK_WRITABLE: return "CONNECTION_CHECK_WRITABLE";
         case CONNECTION_CONSUME: return "CONNECTION_CONSUME";
+        default: return NULL;
     }
     return NULL;
 }
@@ -96,16 +98,17 @@ static const char *ConnStatusType2string(ConnStatusType pgrc) {
 static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
-    PostgresPollingStatusType pgrc = PQconnectPoll(pgdt->pgconn);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: polling while connecting, %s", PostgresPollingStatusType2string(pgrc));
-    if (pgrc == PGRES_POLLING_READING || pgrc == PGRES_POLLING_WRITING) {
+    PostgresPollingStatusType poll_status = PQconnectPoll(pgdt->pgconn);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: polling while connecting, %s", PostgresPollingStatusType2string(poll_status));
+    if (poll_status == PGRES_POLLING_READING || poll_status == PGRES_POLLING_WRITING) {
         if (PQstatus(pgdt->pgconn) == CONNECTION_MADE && u->peer.connection->write->ready) {
-            pgrc = PQconnectPoll(pgdt->pgconn);
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: re-polling while connecting, %s", PostgresPollingStatusType2string(pgrc));
-            if (pgrc == PGRES_POLLING_READING || pgrc == PGRES_POLLING_WRITING) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while re-connecting, %s", PostgresPollingStatusType2string(pgrc)); return NGX_AGAIN; }
+            poll_status = PQconnectPoll(pgdt->pgconn);
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: re-polling while connecting, %s", PostgresPollingStatusType2string(poll_status));
+            if (poll_status == PGRES_POLLING_READING || poll_status == PGRES_POLLING_WRITING) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while re-connecting, %s", PostgresPollingStatusType2string(poll_status)); return NGX_AGAIN; }
             goto done;
         }
-        switch (PQstatus(pgdt->pgconn)) {
+        ConnStatusType conn_status;
+        switch ((conn_status = PQstatus(pgdt->pgconn))) {
             case CONNECTION_NEEDED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_NEEDED"); break;
             case CONNECTION_STARTED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_STARTED"); break;
             case CONNECTION_MADE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_MADE"); break;
@@ -113,14 +116,14 @@ static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r) {
             case CONNECTION_AUTH_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_AUTH_OK"); break;
             case CONNECTION_SETENV: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_SETENV"); break;
             case CONNECTION_SSL_STARTUP: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_SSL_STARTUP"); break;
-            default: ngx_log_debug1(NGX_LOG_ERR, r->connection->log, 0, "unknown state: %s", ConnStatusType2string(PQstatus(pgdt->pgconn))); return NGX_ERROR;
+            default: ngx_log_debug1(NGX_LOG_ERR, r->connection->log, 0, "unknown state: %s", ConnStatusType2string(conn_status)); return NGX_ERROR;
         }
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while connecting, %s", PostgresPollingStatusType2string(pgrc));
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while connecting, %s", PostgresPollingStatusType2string(poll_status));
         return NGX_AGAIN;
     }
 done:
     if (u->peer.connection->write->timer_set) ngx_del_timer(u->peer.connection->write); /* remove connection timeout from new connection */
-    if (pgrc != PGRES_POLLING_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: connection failed: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+    if (poll_status != PGRES_POLLING_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: connection failed: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: connected successfully");
     return ngx_postgres_upstream_send_query(r);
 }
