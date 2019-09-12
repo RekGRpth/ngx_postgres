@@ -37,6 +37,7 @@
 
 typedef enum {
     state_db_connect,
+    state_db_send_prepare,
     state_db_send_query,
     state_db_get_result,
     state_db_get_ack,

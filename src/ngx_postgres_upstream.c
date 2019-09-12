@@ -132,7 +132,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     ngx_postgres_upstream_peer_data_t *pgdt = data;
     pgdt->failed = 0;
     if (pgdt->pgscf->max_cached && pgdt->pgscf->single && ngx_postgres_keepalive_get_peer_single(pc, pgdt) != NGX_DECLINED) { /* re-use keepalive peer */
-        pgdt->state = state_db_send_query;
+        pgdt->state = pgdt->pgscf->prepare ? state_db_send_prepare : state_db_send_query;
         ngx_postgres_process_events(pgdt->request);
         return NGX_AGAIN;
     }
@@ -145,7 +145,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     pc->socklen = peer->socklen;
     pc->cached = 0;
     if (pgdt->pgscf->max_cached && !pgdt->pgscf->single && ngx_postgres_keepalive_get_peer_multi(pc, pgdt) != NGX_DECLINED) { /* re-use keepalive peer */
-        pgdt->state = state_db_send_query;
+        pgdt->state = pgdt->pgscf->prepare ? state_db_send_prepare : state_db_send_query;
         ngx_postgres_process_events(pgdt->request);
         return NGX_AGAIN;
     }
