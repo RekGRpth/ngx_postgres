@@ -164,7 +164,6 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
         pgdt->pgconn = NULL;
         return NGX_DECLINED;
     }
-//    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s connection status:%d", __func__, (int) PQstatus(pgdt->pgconn));
     /* take spot in keepalive connection pool */
     pgdt->pgscf->active_conns++;
     /* add the file descriptor (fd) into an nginx connection structure */
@@ -181,14 +180,11 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     wev->log = pc->log;
     /* register the connection with postgres connection fd into the nginx event model */
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s NGX_USE_RTSIG_EVENT", __func__);
         if (ngx_add_conn(pc->connection) != NGX_OK) goto bad_add;
     } else if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s NGX_USE_CLEAR_EVENT", __func__);
         if (ngx_add_event(rev, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) goto bad_add;
         if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_CLEAR_EVENT) != NGX_OK) goto bad_add;
     } else {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s NGX_USE_LEVEL_EVENT", __func__);
         if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
         if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
     }

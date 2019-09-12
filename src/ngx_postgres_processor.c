@@ -66,7 +66,7 @@ failed:
 static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
-    PostgresPollingStatusType  pgrc = PQconnectPoll(pgdt->pgconn);
+    PostgresPollingStatusType pgrc = PQconnectPoll(pgdt->pgconn);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: polling while connecting, rc:%d", (int) pgrc);
     if (pgrc == PGRES_POLLING_READING || pgrc == PGRES_POLLING_WRITING) {
         /*
