@@ -123,88 +123,30 @@ ngx_int_t ngx_postgres_output_hex(ngx_http_request_t *r) {
 }
 
 
-ngx_int_t
-ngx_postgres_output_text(ngx_http_request_t *r)
-{
-    ngx_postgres_ctx_t        *pgctx;
-    ngx_chain_t               *cl;
-    ngx_buf_t                 *b;
-    size_t                     size;
-    ngx_int_t                  col_count, row_count, col, row;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-
-    col_count = pgctx->var_cols;
-    row_count = pgctx->var_rows;
-
-    /* pre-calculate total length up-front for single buffer allocation */
-    size = 0;
-
-    for (row = 0; row < row_count; row++) {
-        for (col = 0; col < col_count; col++) {
-            if (PQgetisnull(pgctx->res, row, col)) {
-                size += sizeof("(null)") - 1;
-            } else {
-                size += PQgetlength(pgctx->res, row, col);  /* field string data */
-            }
-        }
-    }
-
-    size += row_count * col_count - 1;               /* delimiters */
-
-    if ((row_count == 0) || (size == 0)) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE (empty result)", __func__);
-        return NGX_DONE;
-    }
-
-    b = ngx_create_temp_buf(r->pool, size);
-    if (b == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
-    cl = ngx_alloc_chain_link(r->pool);
-    if (cl == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
+ngx_int_t ngx_postgres_output_text(ngx_http_request_t *r) {
+    ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
+    size_t size = 0; /* pre-calculate total length up-front for single buffer allocation */
+    for (ngx_int_t row = 0; row < pgctx->var_rows; row++) for (ngx_int_t col = 0; col < pgctx->var_cols; col++) if (PQgetisnull(pgctx->res, row, col)) size += sizeof("(null)") - 1; else size += PQgetlength(pgctx->res, row, col); /* field string data */
+    size += pgctx->var_rows * pgctx->var_cols - 1; /* delimiters */
+    if (!pgctx->var_rows || !size) return NGX_DONE;
+    ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
+    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    ngx_chain_t *cl = ngx_alloc_chain_link(r->pool);
+    if (!cl) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
-
     /* fill data */
-    for (row = 0; row < row_count; row++) {
-        for (col = 0; col < col_count; col++) {
-            if (PQgetisnull(pgctx->res, row, col)) {
-                b->last = ngx_copy(b->last, "(null)", sizeof("(null)") - 1);
-            } else {
-                size = PQgetlength(pgctx->res, row, col);
-                if (size) {
-                    b->last = ngx_copy(b->last, PQgetvalue(pgctx->res, row, col),
-                                       size);
-                }
-            }
-
-            if ((row != row_count - 1) || (col != col_count - 1)) {
-                b->last = ngx_copy(b->last, "\n", 1);
-            }
+    for (ngx_int_t row = 0; row < pgctx->var_rows; row++) {
+        for (ngx_int_t col = 0; col < pgctx->var_cols; col++) {
+            if (PQgetisnull(pgctx->res, row, col)) b->last = ngx_copy(b->last, "(null)", sizeof("(null)") - 1);
+            else if ((size = PQgetlength(pgctx->res, row, col))) b->last = ngx_copy(b->last, PQgetvalue(pgctx->res, row, col), size);
+            if (row != pgctx->var_rows - 1 || col != pgctx->var_cols - 1) b->last = ngx_copy(b->last, "\n", 1);
         }
     }
-
-    if (b->last != b->end) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
+    if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->next = NULL;
-
-    /* set output response */
-    pgctx->response = cl;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
+    pgctx->response = cl; /* set output response */
     return NGX_DONE;
 }
 
