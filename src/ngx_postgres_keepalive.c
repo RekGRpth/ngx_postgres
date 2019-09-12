@@ -28,6 +28,7 @@
 #include <libpq-fe.h>
 
 #include "ngx_postgres_keepalive.h"
+#include "ngx_postgres_processor.h"
 
 
 typedef struct {
@@ -152,15 +153,7 @@ static void ngx_postgres_keepalive_close_handler(ngx_event_t *ev) {
     if (c->close) goto close;
     if (PQconsumeInput(cached->pgconn) && !PQisBusy(cached->pgconn)) {
         PGresult *res = PQgetResult(cached->pgconn);
-        if (!res) {
-            for (PGnotify *notify; (notify = PQnotifies(cached->pgconn)); PQfreemem(notify)) {
-                ngx_log_debug3(NGX_LOG_DEBUG_HTTP, ev->log, 0, "postgres notify: relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
-                ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
-                ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
-                ngx_http_push_stream_add_msg_to_channel_my(c->log, &id, &text, NULL, NULL, 0, c->pool);
-            }
-            return;
-        }
+        if (!res) { ngx_postgres_process_notify(c->log, c->pool, cached->pgconn); return; }
         PQclear(res);
         ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: received result on idle keepalive connection");
     }

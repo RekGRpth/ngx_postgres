@@ -238,3 +238,13 @@ static ngx_int_t ngx_postgres_upstream_done(ngx_http_request_t *r) {
     else ngx_postgres_upstream_finalize_request(r, u, NGX_OK);
     return NGX_DONE;
 }
+
+
+void ngx_postgres_process_notify(ngx_log_t *log, ngx_pool_t *pool, PGconn *pgconn) {
+    for (PGnotify *notify; (notify = PQnotifies(pgconn)); PQfreemem(notify)) {
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, log, 0, "postgres notify: relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
+        ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
+        ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
+        ngx_http_push_stream_add_msg_to_channel_my(log, &id, &text, NULL, NULL, 0, pool);
+    }
+}
