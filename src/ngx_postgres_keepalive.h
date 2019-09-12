@@ -28,22 +28,10 @@
 #ifndef _NGX_POSTGRES_KEEPALIVE_H_
 #define _NGX_POSTGRES_KEEPALIVE_H_
 
-#include <libpq-fe.h>
 #include <ngx_http.h>
 
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_upstream.h"
-
-
-typedef struct {
-    ngx_queue_t                        queue;
-    ngx_postgres_upstream_srv_conf_t  *pgscf;
-    ngx_connection_t                  *connection;
-    PGconn                            *pgconn;
-    struct sockaddr                    sockaddr;
-    socklen_t                          socklen;
-    ngx_str_t                          name;
-} ngx_postgres_keepalive_cache_t;
 
 
 ngx_int_t   ngx_postgres_keepalive_init(ngx_pool_t *, ngx_postgres_upstream_srv_conf_t *);

@@ -25,7 +25,20 @@
  * SUCH DAMAGE.
  */
 
+#include <libpq-fe.h>
+
 #include "ngx_postgres_keepalive.h"
+
+
+typedef struct {
+    ngx_queue_t                        queue;
+    ngx_postgres_upstream_srv_conf_t  *pgscf;
+    ngx_connection_t                  *connection;
+    PGconn                            *pgconn;
+    struct sockaddr                    sockaddr;
+    socklen_t                          socklen;
+    ngx_str_t                          name;
+} ngx_postgres_keepalive_cache_t;
 
 
 static void ngx_postgres_keepalive_dummy_handler(ngx_event_t *ev);
