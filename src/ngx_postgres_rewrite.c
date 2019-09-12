@@ -32,132 +32,95 @@
 static int ngx_postgres_find_variables(char *variables[10], char *url, int size) {
     int vars = 0;
     // find variables in redirect url
-    char *p;
-    for (p = url; p < url + size - 2; p++) if (*p == ':' && *(p + 1) != '/') variables[vars++] = (p + 1);
+    for (char *p = url; p < url + size - 2; p++) if (*p == ':' && *(p + 1) != '/') variables[vars++] = (p + 1);
     return vars;
 }
 
 static char *ngx_postgres_find_values(char *values[10], char *variables[10], int vars, char *columned[10], ngx_postgres_ctx_t *pgctx, int find_error) {
-    PGresult *res = pgctx->res;
-    ngx_int_t col_count = pgctx->var_cols;
-    ngx_int_t row_count = pgctx->var_rows;
     char *error = NULL;
     int error_in_columns = 0;
     int resolved = 0;
-
-
     // check if returned columns match variable
-    ngx_int_t col;
-    for (col = 0; col < col_count; col++) {
-      char *col_name = PQfname(res, col);
-      ngx_int_t i;
-      for (i = 0; i < vars; i++) {
-        if (strncmp(variables[i], col_name, strlen(col_name)) == 0) {
-          if (!PQgetisnull(res, 0, col)) {
-            values[i] = PQgetvalue(res, 0, col);
-            columned[i] = values[i];
-            resolved++;
-            //fprintf(stdout, "Resolved variable [%s] to column %s\n", col_name, values[i]);
-          }
+    for (ngx_int_t col = 0; col < pgctx->var_cols; col++) {
+        char *col_name = PQfname(pgctx->res, col);
+        for (ngx_int_t i = 0; i < vars; i++) {
+            if (!ngx_strncmp(variables[i], col_name, ngx_strlen(col_name))) {
+                if (!PQgetisnull(pgctx->res, 0, col)) {
+                    values[i] = PQgetvalue(pgctx->res, 0, col);
+                    columned[i] = values[i];
+                    resolved++;
+                }
+            }
         }
-      }
-      if (find_error) {
-        if (*col_name == 'e' && *(col_name+1) == 'r'&& *(col_name+2) == 'r'&& *(col_name+3) == 'o'&& *(col_name+4) == 'r') {
-          if (!PQgetisnull(res, 0, col)) {
-            error = PQgetvalue(res, 0, col);
-          }
-          error_in_columns = 1;
+        if (find_error && *col_name == 'e' && *(col_name+1) == 'r' && *(col_name+2) == 'r' && *(col_name+3) == 'o' && *(col_name+4) == 'r') {
+            if (!PQgetisnull(pgctx->res, 0, col)) error = PQgetvalue(pgctx->res, 0, col);
+            error_in_columns = 1;
         }
-      }
     }
-
-    //fprintf(stdout, "Is error in column %d\n", error_in_columns);
-    //fprintf(stdout, "Resolved to columns %d\n", resolved);
-
     int failed = 0;
     if ((find_error && !error_in_columns) || resolved < vars) {
-      int current = -1;
-      //fprintf(stdout, "Scanning json %d\n", vars - resolved);
-
-      // find some json in pg results
-      ngx_int_t row;
-      for (row = 0; row < row_count && !failed; row++) {
-        ngx_int_t col;
-        for (col = 0; col < col_count && !failed; col++) {
-          if (!PQgetisnull(res, row, col)) {
-            char *value = PQgetvalue(res, row, col);
-            int size = PQgetlength(res, row, col);
-            char *p;
-            for (p = value; p < value + size; p++) {
-              //if not inside string
-              if (*p == '"') {
-                ngx_int_t i;
-                for (i = 0; i < vars; i++) {
-                  if (values[i] != NULL) continue;
-                  char *s, *k;
-                  if (current == i) {
-                    s = "value";
-                    k = "value";
-                  } else {
-                    s = variables[i];
-                    k = variables[i];
-                  }
-                  for (; *k == *(p + (k - s) + 1); k++) {
-                    char *n = k + 1;
-                    if (*n == '\0' || *n == '=' || *n == '&' || *n == '-' || *n == '%' || *n == '/' || *n == '$') {
-                      if (*(p + (k - s) + 2) != '"') break;
-                      //fprintf(stdout, "matched %s %d\n", p + (k - s) + 3, i);
-
-                      values[i] = p + (k - s) + 3; // 2 quotes + 1 ahead
-                      // skip space & colon
-                      while (*values[i] == ' ' || *values[i] == ':' || *values[i] == '\n') values[i]++;
-
-                      // {"name": "column", "value": "something"}
-                      if (*values[i] == ',') {
-                        //fprintf(stdout, "SETTING CURRENT %s\n", s);
-                        values[i] = NULL;
-                        current = i;
-                      // {"column": "value"}
-                      } else if (current == i) {
-                        current = -1;
-                      }
-                      //fprintf(stdout, "matching %d %s\n %s\n", k - s, s, values[i]);
+        int current = -1;
+        // find some json in pg results
+        for (ngx_int_t row = 0; row < pgctx->var_rows && !failed; row++) {
+            for (ngx_int_t col = 0; col < pgctx->var_cols && !failed; col++) {
+                if (!PQgetisnull(pgctx->res, row, col)) {
+                    char *value = PQgetvalue(pgctx->res, row, col);
+                    int size = PQgetlength(pgctx->res, row, col);
+                    for (char *p = value; p < value + size; p++) {
+                        //if not inside string
+                        if (*p == '"') {
+                            for (ngx_int_t i = 0; i < vars; i++) {
+                                if (values[i]) continue;
+                                char *s, *k;
+                                if (current == i) {
+                                    s = "value";
+                                    k = "value";
+                                } else {
+                                    s = variables[i];
+                                    k = variables[i];
+                                }
+                                for (; *k == *(p + (k - s) + 1); k++) {
+                                    char *n = k + 1;
+                                    if (*n == '\0' || *n == '=' || *n == '&' || *n == '-' || *n == '%' || *n == '/' || *n == '$') {
+                                        if (*(p + (k - s) + 2) != '"') break;
+                                        values[i] = p + (k - s) + 3; // 2 quotes + 1 ahead
+                                        // skip space & colon
+                                        while (*values[i] == ' ' || *values[i] == ':' || *values[i] == '\n') values[i]++;
+                                        // {"name": "column", "value": "something"}
+                                        if (*values[i] == ',') {
+                                            values[i] = NULL;
+                                            current = i;
+                                            // {"column": "value"}
+                                        } else if (current == i) {
+                                            current = -1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // find a key that looks like "errors": something
+                        if (find_error && !error_in_columns && *p == 'e' && *(p+1) == 'r'&& *(p+2) == 'r'&& *(p+3) == 'o'&& *(p+4) == 'r') {
+                            char *ch = (p + 5);
+                            if (*ch == 's') ch++;
+                            while (*ch == ' ' || *ch == '\t') ch++;
+                            if (*ch != '"') continue;
+                            ch++;
+                            if (*ch != ':') continue;
+                            ch++;
+                            while (*ch == ' ' || *ch == '\t') ch++;
+                            if (*ch == 'n') continue;
+                            error = ch;
+                            failed = 1;
+                        }
                     }
-                  }
                 }
-              }
-
-
-              // find a key that looks like "errors": something
-              if (find_error && !error_in_columns &&
-                  *p == 'e' && *(p+1) == 'r'&& *(p+2) == 'r'&& *(p+3) == 'o'&& *(p+4) == 'r') {
-                char *ch = (p + 5);
-                if (*ch == 's')
-                  ch++;
-                while (*ch == ' ' || *ch == '\t') ch++;
-                if (*ch != '"') continue;
-                ch++;
-                if (*ch != ':') continue;
-                ch++;
-                while (*ch == ' ' || *ch == '\t') ch++;
-                if (*ch == 'n') continue;
-
-                error = ch;
-
-                //fprintf(stdout, "found error: %s\n", p);
-
-                failed = 1;
-              }
             }
-          }
         }
-      }
     }
-
     return error;
-  }
+}
 
-  char *ngx_postgres_interpolate_url(char *redirect, int size, char *variables[10], int vars, char *columned[10], char *values[10], ngx_http_request_t *r) {
+char *ngx_postgres_interpolate_url(char *redirect, int size, char *variables[10], int vars, char *columned[10], char *values[10], ngx_http_request_t *r) {
 
     char url[512] = "";
     ngx_memzero(url, 512);
