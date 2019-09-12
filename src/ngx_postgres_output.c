@@ -32,198 +32,93 @@
 #include <postgresql/server/catalog/pg_type_d.h>
 
 
-ngx_int_t
-ngx_postgres_output_value(ngx_http_request_t *r, PGresult *res)
-{
-    ngx_postgres_ctx_t        *pgctx;
-    ngx_http_core_loc_conf_t  *clcf;
-    ngx_chain_t               *cl;
-    ngx_buf_t                 *b;
-    size_t                     size;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-
-    if ((pgctx->var_rows != 1) || (pgctx->var_cols != 1)) {
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "postgres: \"postgres_output value\" received %d value(s)"
-                      " instead of expected single value in location \"%V\"",
-                      pgctx->var_rows * pgctx->var_cols, &clcf->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
+ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r, PGresult *res) {
+    ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
+    if (pgctx->var_rows != 1 || pgctx->var_cols != 1) {
+        ngx_http_core_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received %d value(s) instead of expected single value in location \"%V\"", pgctx->var_rows * pgctx->var_cols, &clcf->name);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
-
     if (PQgetisnull(res, 0, 0)) {
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "postgres: \"postgres_output value\" received NULL value"
-                      " in location \"%V\"", &clcf->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
+        ngx_http_core_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received NULL value in location \"%V\"", &clcf->name);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
-
-    size = PQgetlength(res, 0, 0);
-    if (size == 0) {
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "postgres: \"postgres_output value\" received empty value"
-                      " in location \"%V\"", &clcf->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
+    size_t size = PQgetlength(res, 0, 0);
+    if (!size) {
+        ngx_http_core_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received empty value in location \"%V\"", &clcf->name);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
-
-    b = ngx_create_temp_buf(r->pool, size);
-    if (b == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
-    cl = ngx_alloc_chain_link(r->pool);
-    if (cl == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
+    ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
+    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    ngx_chain_t *cl = ngx_alloc_chain_link(r->pool);
+    if (!cl) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
-
     b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0), size);
-
-    if (b->last != b->end) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
+    if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->next = NULL;
-
-    /* set output response */
-    pgctx->response = cl;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
+    pgctx->response = cl; /* set output response */
     return NGX_DONE;
 }
 
 
-int hex2bin( const char *s )
-{
+int hex2bin (const char *s) {
     int ret=0;
-    int i;
-    for( i=0; i<2; i++ )
-    {
+    for (int i = 0; i < 2; i++) {
         char c = *s++;
-        int n=0;
-        if( '0'<=c && c<='9' )
-            n = c-'0';
-        else if( 'a'<=c && c<='f' )
-            n = 10 + c-'a';
-        else if( 'A'<=c && c<='F' )
-            n = 10 + c-'A';
-        ret = n + ret*16;
+        int n = 0;
+        if ('0' <=c && c <= '9') n = c - '0';
+        else if ('a' <= c && c <= 'f') n = 10 + c - 'a';
+        else if ('A' <=c && c <= 'F') n = 10 + c - 'A';
+        ret = n + ret * 16;
     }
     return ret;
 }
 
 
-ngx_int_t
-ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res)
-{
-    ngx_postgres_ctx_t        *pgctx;
-    ngx_http_core_loc_conf_t  *clcf;
-    ngx_chain_t               *cl;
-    ngx_buf_t                 *b;
-    size_t                     size;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s entering", __func__);
-
-    pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-
-    if ((pgctx->var_rows != 1) || (pgctx->var_cols != 1)) {
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "postgres: \"postgres_output value\" received %d value(s)"
-                      " instead of expected single value in location \"%V\"",
-                      pgctx->var_rows * pgctx->var_cols, &clcf->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
+ngx_int_t ngx_postgres_output_hex(ngx_http_request_t *r, PGresult *res) {
+    ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
+    if (pgctx->var_rows != 1 || pgctx->var_cols != 1) {
+        ngx_http_core_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received %d value(s) instead of expected single value in location \"%V\"", pgctx->var_rows * pgctx->var_cols, &clcf->name);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
-
     if (PQgetisnull(res, 0, 0)) {
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "postgres: \"postgres_output value\" received NULL value"
-                      " in location \"%V\"", &clcf->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
+        ngx_http_core_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received NULL value in location \"%V\"", &clcf->name);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
-
-    size = PQgetlength(res, 0, 0);
-    if (size == 0) {
-        clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "postgres: \"postgres_output value\" received empty value"
-                      " in location \"%V\"", &clcf->name);
-
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE, status NGX_HTTP_INTERNAL_SERVER_ERROR", __func__);
+    size_t size = PQgetlength(res, 0, 0);
+    if (!size) {
+        ngx_http_core_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received empty value in location \"%V\"", &clcf->name);
         pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
-
-    b = ngx_create_temp_buf(r->pool, floor(size / 2));
-    if (b == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
-    cl = ngx_alloc_chain_link(r->pool);
-    if (cl == NULL) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-        return NGX_ERROR;
-    }
-
+    ngx_buf_t *b = ngx_create_temp_buf(r->pool, floor(size / 2));
+    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    ngx_chain_t *cl = ngx_alloc_chain_link(r->pool);
+    if (!cl) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
-
     char *value = PQgetvalue(res, 0, 0);
-
     unsigned int start = 0;
-    if (value[start] == '\\')
-        start++;
-    if (value[start] == 'x')
-        start++;
-
+    if (value[start] == '\\') start++;
+    if (value[start] == 'x') start++;
     for (; start < size; start += 2)
         *(b->last++) = hex2bin(value + start);
-    //if (b->last != b->end) {
-    //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_ERROR", __func__);
-    //    return NGX_ERROR;
-    //}
-
+    //if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->next = NULL;
-
-    /* set output response */
-    pgctx->response = cl;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s returning NGX_DONE", __func__);
+    pgctx->response = cl; /* set output response */
     return NGX_DONE;
 }
 
