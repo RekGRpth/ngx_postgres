@@ -42,6 +42,7 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc);
 static ngx_int_t ngx_postgres_process_header(ngx_http_request_t *r);
 static ngx_int_t ngx_postgres_input_filter_init(void *data);
 static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes);
+static ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *, ngx_url_t *);
 
 
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
@@ -171,4 +172,16 @@ static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes) {
     ngx_http_request_t *r = data;
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: ngx_postgres_input_filter should not be called by the upstream");
     return NGX_ERROR;
+}
+
+
+ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *r, ngx_url_t *url) {
+    ngx_http_upstream_main_conf_t *umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+    ngx_http_upstream_srv_conf_t **uscfp = umcf->upstreams.elts;
+    for (ngx_uint_t i = 0; i < umcf->upstreams.nelts; i++) {
+//        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "uscfp[%d]->host = %V", i, &uscfp[i]->host);
+        if (uscfp[i]->host.len != url->host.len || ngx_strncasecmp(uscfp[i]->host.data, url->host.data, url->host.len)) continue;
+        return uscfp[i];
+    }
+    return NULL;
 }

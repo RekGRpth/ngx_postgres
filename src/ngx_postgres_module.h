@@ -172,6 +172,4 @@ typedef struct {
 } ngx_postgres_ctx_t;
 
 
-ngx_http_upstream_srv_conf_t  *ngx_postgres_find_upstream(ngx_http_request_t *, ngx_url_t *);
-
 #endif /* _NGX_POSTGRES_MODULE_H_ */
