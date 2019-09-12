@@ -63,48 +63,65 @@ failed:
 }
 
 
+static const char *PostgresPollingStatusType2string(PostgresPollingStatusType pgrc) {
+    switch (pgrc) {
+        case PGRES_POLLING_FAILED: return "PGRES_POLLING_FAILED";
+        case PGRES_POLLING_READING: return "PGRES_POLLING_READING";
+        case PGRES_POLLING_WRITING: return "PGRES_POLLING_WRITING";
+        case PGRES_POLLING_OK: return "PGRES_POLLING_OK";
+        case PGRES_POLLING_ACTIVE: return "PGRES_POLLING_ACTIVE";
+    }
+    return NULL;
+}
+
+
+static const char *ConnStatusType2string(ConnStatusType pgrc) {
+    switch (pgrc) {
+        case CONNECTION_OK: return "CONNECTION_OK";
+        case CONNECTION_BAD: return "CONNECTION_BAD";
+        case CONNECTION_STARTED: return "CONNECTION_STARTED";
+        case CONNECTION_MADE: return "CONNECTION_MADE";
+        case CONNECTION_AWAITING_RESPONSE: return "CONNECTION_AWAITING_RESPONSE";
+        case CONNECTION_AUTH_OK: return "CONNECTION_AUTH_OK";
+        case CONNECTION_SETENV: return "CONNECTION_SETENV";
+        case CONNECTION_SSL_STARTUP: return "CONNECTION_SSL_STARTUP";
+        case CONNECTION_NEEDED: return "CONNECTION_NEEDED";
+        case CONNECTION_CHECK_WRITABLE: return "CONNECTION_CHECK_WRITABLE";
+        case CONNECTION_CONSUME: return "CONNECTION_CONSUME";
+    }
+    return NULL;
+}
+
+
 static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
     PostgresPollingStatusType pgrc = PQconnectPoll(pgdt->pgconn);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: polling while connecting, rc:%d", (int) pgrc);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: polling while connecting, %s", PostgresPollingStatusType2string(pgrc));
     if (pgrc == PGRES_POLLING_READING || pgrc == PGRES_POLLING_WRITING) {
-        /*
-         * Fix for Linux issue found by chaoslawful (via agentzh):
-         * "According to the source of libpq (around fe-connect.c:1215), during
-         *  the state switch from CONNECTION_STARTED to CONNECTION_MADE, there's
-         *  no socket read/write operations (just a plain getsockopt call and a
-         *  getsockname call). Therefore, for edge-triggered event model, we
-         *  have to call PQconnectPoll one more time (immediately) when we see
-         *  CONNECTION_MADE is returned, or we're very likely to wait for a
-         *  writable event that has already appeared and will never appear
-         *  again :)"
-         */
         if (PQstatus(pgdt->pgconn) == CONNECTION_MADE && u->peer.connection->write->ready) {
             pgrc = PQconnectPoll(pgdt->pgconn);
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: re-polling while connecting, rc:%d", (int) pgrc);
-            if (pgrc == PGRES_POLLING_READING || pgrc == PGRES_POLLING_WRITING) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while connecting, rc:%d", (int) pgrc); return NGX_AGAIN; }
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: re-polling while connecting, %s", PostgresPollingStatusType2string(pgrc));
+            if (pgrc == PGRES_POLLING_READING || pgrc == PGRES_POLLING_WRITING) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while re-connecting, %s", PostgresPollingStatusType2string(pgrc)); return NGX_AGAIN; }
             goto done;
         }
         switch (PQstatus(pgdt->pgconn)) {
-            case CONNECTION_NEEDED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "waiting for connect"); break;
-            case CONNECTION_STARTED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "waiting for connection to be made"); break;
-            case CONNECTION_MADE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connection established"); break;
-            case CONNECTION_AWAITING_RESPONSE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "credentials sent, waiting for response"); break;
-            case CONNECTION_AUTH_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "authenticated"); break;
-            case CONNECTION_SETENV: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "negotiating envinroment"); break;
-            case CONNECTION_SSL_STARTUP: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "negotiating SSL"); break;
-            default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "unknown state: %d", (int) PQstatus(pgdt->pgconn)); return NGX_ERROR;
+            case CONNECTION_NEEDED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_NEEDED"); break;
+            case CONNECTION_STARTED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_STARTED"); break;
+            case CONNECTION_MADE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_MADE"); break;
+            case CONNECTION_AWAITING_RESPONSE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_AWAITING_RESPONSE"); break;
+            case CONNECTION_AUTH_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_AUTH_OK"); break;
+            case CONNECTION_SETENV: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_SETENV"); break;
+            case CONNECTION_SSL_STARTUP: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_SSL_STARTUP"); break;
+            default: ngx_log_debug1(NGX_LOG_ERR, r->connection->log, 0, "unknown state: %s", ConnStatusType2string(PQstatus(pgdt->pgconn))); return NGX_ERROR;
         }
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while connecting, rc:%d", (int) pgrc);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while connecting, %s", PostgresPollingStatusType2string(pgrc));
         return NGX_AGAIN;
     }
 done:
-    /* remove connection timeout from new connection */
-    if (u->peer.connection->write->timer_set) ngx_del_timer(u->peer.connection->write);
+    if (u->peer.connection->write->timer_set) ngx_del_timer(u->peer.connection->write); /* remove connection timeout from new connection */
     if (pgrc != PGRES_POLLING_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: connection failed: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: connected successfully");
-    pgdt->state = state_db_send_query;
     return ngx_postgres_upstream_send_query(r);
 }
 
