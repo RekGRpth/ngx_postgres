@@ -42,7 +42,7 @@ typedef struct {
     ngx_array_t                        *variables;
     ngx_int_t                           status;
     PGresult                           *res;
-} ngx_postgres_ctx_t;
+} ngx_postgres_context_t;
 
 
 void       ngx_postgres_process_events(ngx_http_request_t *);

@@ -45,6 +45,11 @@ typedef enum {
 } ngx_postgres_state_t;
 
 typedef struct {
+    ngx_uint_t                         hash;
+    ngx_uint_t                         used;
+} ngx_postgres_statement_t;
+
+typedef struct {
     ngx_postgres_server_conf_t        *server_conf;
     ngx_http_upstream_t               *upstream;
     ngx_http_request_t                *request;

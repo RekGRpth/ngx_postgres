@@ -114,7 +114,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     peer_data->request = r;
     ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
+    ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     peer_data->server_conf = server_conf;
     if (!(peer_data->statements = ngx_pcalloc(r->pool, server_conf->max_statements * sizeof(ngx_postgres_statement_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     u->peer.data = peer_data;
@@ -160,7 +160,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         peer_data->hash = ngx_hash_key(query->sql.data, query->sql.len);
         *ngx_snprintf(peer_data->stmtName, 32, "ngx_%ul", (unsigned long)peer_data->hash) = '\0';
     }
-    pgctx->var_query = query->sql; /* set $postgres_query */
+    context->var_query = query->sql; /* set $postgres_query */
     return NGX_OK;
 }
 
