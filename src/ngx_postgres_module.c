@@ -672,7 +672,7 @@ static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             name.len++;
 //            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "name = %V", &name);
             ngx_str_t oid = {0, NULL};
-            if (*s++ == ':' && *s++ == ':') for (oid.data = s, oid.len = 0; s < e && is_variable_character(*s); s++, oid.len++);
+            if (s[1] == ':' && s[2] == ':') for (s += 2, oid.data = s, oid.len = 0; s < e && is_variable_character(*s); s++, oid.len++);
             if (!oid.len) { ngx_str_set(&oid, "TEXT"); }
             ngx_postgres_arg_t *arg;
             if (!(arg = ngx_array_push(&query->args))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
