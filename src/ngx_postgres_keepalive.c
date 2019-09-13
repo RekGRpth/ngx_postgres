@@ -39,6 +39,7 @@ typedef struct {
     struct sockaddr                    sockaddr;
     socklen_t                          socklen;
     ngx_str_t                          name;
+    ngx_postgres_statement_t          *statements;
 } ngx_postgres_keepalive_cache_t;
 
 
@@ -54,6 +55,7 @@ ngx_int_t ngx_postgres_keepalive_init(ngx_pool_t *pool, ngx_postgres_upstream_sr
     for (ngx_uint_t i = 0; i < pgscf->max_cached; i++) {
         ngx_queue_insert_head(&pgscf->free, &cached[i].queue);
         cached[i].pgscf = pgscf;
+        if (pgscf->max_statements && !(cached[i].statements = ngx_pcalloc(pool, pgscf->max_statements * sizeof(ngx_postgres_statement_t)))) { ngx_log_error(NGX_LOG_ERR, pool->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     }
     return NGX_OK;
 }
@@ -78,6 +80,7 @@ ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_
     pc->name = &pgdt->name;
     pc->sockaddr = &pgdt->sockaddr;
     pc->socklen = cached->socklen;
+    for (ngx_uint_t j = 0; j < pgdt->pgscf->max_statements; j++) pgdt->statements[j] = cached->statements[j]; /* Inherit list of prepared statements */
     return NGX_DONE;
 }
 
@@ -98,6 +101,7 @@ ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_p
         pc->cached = 1;
         /* we do not need to resume the peer name, because we already take the right value outside */
         pgdt->pgconn = cached->pgconn;
+        for (ngx_uint_t j = 0; j < pgdt->pgscf->max_statements; j++) pgdt->statements[j] = cached->statements[j]; /* Inherit list of prepared statements */
         return NGX_DONE;
     }
     return NGX_DECLINED;
@@ -126,6 +130,7 @@ void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_up
             ngx_queue_remove(q);
             cached = ngx_queue_data(q, ngx_postgres_keepalive_cache_t, queue);
         }
+        for (ngx_uint_t j = 0; j < pgdt->pgscf->max_statements; j++) cached->statements[j] = pgdt->statements[j];
         cached->connection = c;
         ngx_queue_insert_head(&pgdt->pgscf->cache, q);
         c->write->handler = ngx_postgres_keepalive_dummy_handler;

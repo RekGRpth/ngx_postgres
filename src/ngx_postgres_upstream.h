@@ -50,6 +50,7 @@ typedef struct {
     ngx_http_request_t                *request;
     PGconn                            *pgconn;
     ngx_postgres_state_t               state;
+    ngx_uint_t                         hash;
     u_char                             stmtName[32];
     u_char                            *command;
     int                                nParams;
@@ -58,6 +59,7 @@ typedef struct {
     ngx_str_t                          name;
     struct sockaddr                    sockaddr;
     unsigned                           failed;
+    ngx_postgres_statement_t          *statements;
 } ngx_postgres_upstream_peer_data_t;
 
 

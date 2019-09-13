@@ -124,7 +124,7 @@ static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r) {
     if (u->peer.connection->write->timer_set) ngx_del_timer(u->peer.connection->write); /* remove connection timeout from new connection */
     if (poll_status != PGRES_POLLING_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: connection failed: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: connected successfully");
-    pgdt->state = pgdt->pgscf->prepare ? state_db_send_prepare : state_db_send_query;
+    pgdt->state = pgdt->pgscf->max_statements ? state_db_send_prepare : state_db_send_query;
     return ngx_postgres_upstream_send_query(r);
 }
 
@@ -135,19 +135,27 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
     if (!PQconsumeInput(pgdt->pgconn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     if (PQisBusy(pgdt->pgconn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while send query"); return NGX_AGAIN; }
     ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (!pgdt->pgscf->prepare) {
-        ngx_postgres_process_notify(r->connection->log, r->pool, pgdt->pgconn);
+    for (PGresult *res; (res = PQgetResult(pgdt->pgconn)); PQclear(res));
+    ngx_postgres_process_notify(r->connection->log, r->pool, pgdt->pgconn);
+    if (!pgdt->pgscf->max_statements) {
         if (!PQsendQueryParams(pgdt->pgconn, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     } else switch (pgdt->state) {
         case state_db_send_prepare: {
-            for (PGresult *res; (res = PQgetResult(pgdt->pgconn)); PQclear(res));
-            ngx_postgres_process_notify(r->connection->log, r->pool, pgdt->pgconn);
-            if (!PQsendPrepare(pgdt->pgconn, (const char *)pgdt->stmtName, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepare: %s", PQerrorMessage(pgdt->pgconn)); /*PQclear(res); */return NGX_ERROR; }
-            pgdt->state = state_db_send_query;
-        } return NGX_AGAIN;
+            ngx_uint_t n;
+            ngx_flag_t matched = 0;
+            for (n = 0; n < pgdt->pgscf->max_statements && pgdt->statements[n].hash; n++) if (pgdt->statements[n].hash == pgdt->hash) { matched = 1; break; }
+            if (!matched) {
+                if (n == pgdt->pgscf->max_statements) {
+                    for (ngx_uint_t i = 0, used = pgdt->statements[0].used; i < pgdt->pgscf->max_statements; i++) if (pgdt->statements[i].used < used) { used = pgdt->statements[i].used; n = i; }
+                }
+                pgdt->statements[n].hash = pgdt->hash;
+                pgdt->statements[n].used++;
+                if (!PQsendPrepare(pgdt->pgconn, (const char *)pgdt->stmtName, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepare: %s", PQerrorMessage(pgdt->pgconn)); /*PQclear(res); */return NGX_ERROR; }
+                pgdt->state = state_db_send_query;
+                return NGX_DONE;
+            }
+        } /* Fall through. */
         case state_db_send_query: {
-            for (PGresult *res; (res = PQgetResult(pgdt->pgconn)); PQclear(res));
-            ngx_postgres_process_notify(r->connection->log, r->pool, pgdt->pgconn);
             if (!PQsendQueryPrepared(pgdt->pgconn, (const char *)pgdt->stmtName, pgdt->nParams, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
         } break;
         default: { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
