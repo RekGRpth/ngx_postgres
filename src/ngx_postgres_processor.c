@@ -129,14 +129,16 @@ static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r) {
 }
 
 
-static ngx_int_t ngx_postgres_upstream_send_query_internal(ngx_postgres_upstream_peer_data_t *pgdt, ngx_log_t *log) {
-    if (!PQconsumeInput(pgdt->pgconn)) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to consume input: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
-    if (PQisBusy(pgdt->pgconn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "postgres: busy while send query"); return NGX_AGAIN; }
-    for (PGresult *res; (res = PQgetResult(pgdt->pgconn)); PQclear(res)) if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
+    if (!PQconsumeInput(pgdt->pgconn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+    if (PQisBusy(pgdt->pgconn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while send query"); return NGX_AGAIN; }
+    for (PGresult *res; (res = PQgetResult(pgdt->pgconn)); PQclear(res)) if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
 //    ngx_postgres_process_notify(r->connection->log, r->pool, pgdt->pgconn);
     if (!pgdt->pgscf->max_statements) {
-        if (!PQsendQueryParams(pgdt->pgconn, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes, (const char *const *)pgdt->paramValues, NULL, NULL, pgdt->resultFormat)) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to send query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "postgres: query sent successfully");
+        if (!PQsendQueryParams(pgdt->pgconn, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes, (const char *const *)pgdt->paramValues, NULL, NULL, pgdt->resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query sent successfully");
     } else switch (pgdt->state) {
         case state_db_send_prepare: {
             ngx_uint_t n;
@@ -146,28 +148,19 @@ static ngx_int_t ngx_postgres_upstream_send_query_internal(ngx_postgres_upstream
                 if (n == pgdt->pgscf->max_statements) for (ngx_uint_t i = 0, used = pgdt->statements[0].used; i < pgdt->pgscf->max_statements; i++) if (pgdt->statements[i].used < used) { used = pgdt->statements[i].used; n = i; }
                 pgdt->statements[n].hash = pgdt->hash;
                 pgdt->statements[n].used++;
-                if (!PQsendPrepare(pgdt->pgconn, (const char *)pgdt->stmtName, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes)) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to send prepare: %s", PQerrorMessage(pgdt->pgconn)); /*PQclear(res); */return NGX_ERROR; }
-                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "postgres: prepare sent successfully");
+                if (!PQsendPrepare(pgdt->pgconn, (const char *)pgdt->stmtName, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepare: %s", PQerrorMessage(pgdt->pgconn)); /*PQclear(res); */return NGX_ERROR; }
+                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: prepare sent successfully");
                 pgdt->state = state_db_send_query;
-                return NGX_AGAIN;
+                return NGX_DONE;
             }
             pgdt->state = state_db_send_query;
         } /* Fall through. */
         case state_db_send_query: {
-            if (!PQsendQueryPrepared(pgdt->pgconn, (const char *)pgdt->stmtName, pgdt->nParams, (const char *const *)pgdt->paramValues, NULL, NULL, pgdt->resultFormat)) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "postgres: query sent successfully");
+            if (!PQsendQueryPrepared(pgdt->pgconn, (const char *)pgdt->stmtName, pgdt->nParams, (const char *const *)pgdt->paramValues, NULL, NULL, pgdt->resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query sent successfully");
         } break;
-        default: { ngx_log_error(NGX_LOG_ERR, log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        default: { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     }
-    return NGX_DONE;
-}
-
-
-static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
-    ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
-    ngx_int_t rc = ngx_postgres_upstream_send_query_internal(pgdt, r->connection->log);
-    if (rc != NGX_DONE) return rc;
     ngx_add_timer(u->peer.connection->read, r->upstream->conf->read_timeout); /* set result timeout */
     pgdt->state = state_db_get_result;
     return NGX_DONE;
