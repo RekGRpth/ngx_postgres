@@ -189,7 +189,7 @@ static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
-    ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
     pgctx->var_cols = PQnfields(pgctx->res); /* set $postgres_columns */
     pgctx->var_rows = PQntuples(pgctx->res); /* set $postgres_rows */
@@ -198,9 +198,9 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
         size_t affected_len = ngx_strlen(affected);
         if (affected_len) pgctx->var_affected = ngx_atoi((u_char *)affected, affected_len);
     }
-    if (pglcf->rewrites) { /* process rewrites */
-        ngx_postgres_rewrite_conf_t  *rewrite_conf = pglcf->rewrites->elts;
-        for (ngx_uint_t i = 0; i < pglcf->rewrites->nelts; i++) {
+    if (location_conf->rewrites) { /* process rewrites */
+        ngx_postgres_rewrite_conf_t  *rewrite_conf = location_conf->rewrites->elts;
+        for (ngx_uint_t i = 0; i < location_conf->rewrites->nelts; i++) {
             ngx_int_t rc = rewrite_conf[i].handler(r, &rewrite_conf[i]);
             if (rc != NGX_DECLINED) {
                 if (rc >= NGX_HTTP_SPECIAL_RESPONSE) { pgctx->status = rc; return NGX_DONE; }
@@ -209,15 +209,15 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
             }
         }
     }
-    if (pglcf->variables) { /* set custom variables */
-        ngx_postgres_variable_t *pgvar = pglcf->variables->elts;
+    if (location_conf->variables) { /* set custom variables */
+        ngx_postgres_variable_t *pgvar = location_conf->variables->elts;
         ngx_str_t *store = pgctx->variables->elts;
-        for (ngx_uint_t i = 0; i < pglcf->variables->nelts; i++) {
+        for (ngx_uint_t i = 0; i < location_conf->variables->nelts; i++) {
             store[i] = ngx_postgres_variable_set_custom(r, &pgvar[i]);
             if (!store[i].len && pgvar[i].value.required) { pgctx->status = NGX_HTTP_INTERNAL_SERVER_ERROR; ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_DONE; }
         }
     }
-    if (pglcf->output_handler) return pglcf->output_handler(r);
+    if (location_conf->output_handler) return location_conf->output_handler(r);
     return NGX_DONE;
 }
 

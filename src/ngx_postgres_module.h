@@ -149,7 +149,7 @@ typedef struct {
     unsigned                            output_binary:1;
     /* custom variables */
     ngx_array_t                        *variables;
-} ngx_postgres_loc_conf_t;
+} ngx_postgres_location_conf_t;
 
 
 #endif /* _NGX_POSTGRES_MODULE_H_ */

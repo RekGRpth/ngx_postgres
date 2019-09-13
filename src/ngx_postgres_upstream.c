@@ -113,7 +113,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     peer_data->upstream = u;
     peer_data->request = r;
     ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
-    ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
     peer_data->server_conf = server_conf;
     if (!(peer_data->statements = ngx_pcalloc(r->pool, server_conf->max_statements * sizeof(ngx_postgres_statement_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
@@ -121,13 +121,13 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     u->peer.get = ngx_postgres_upstream_get_peer;
     u->peer.free = ngx_postgres_upstream_free_peer;
     ngx_postgres_query_t *query;
-    if (pglcf->query.methods_set & r->method) {
-        query = pglcf->query.methods.elts;
+    if (location_conf->query.methods_set & r->method) {
+        query = location_conf->query.methods.elts;
         ngx_uint_t i;
-        for (i = 0; i < pglcf->query.methods.nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
-        if (i == pglcf->query.methods.nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    } else query = pglcf->query.def;
-    peer_data->resultFormat = pglcf->output_binary;
+        for (i = 0; i < location_conf->query.methods.nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
+        if (i == location_conf->query.methods.nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    } else query = location_conf->query.def;
+    peer_data->resultFormat = location_conf->output_binary;
     if (query->args.nelts == 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1)) {
         ngx_postgres_arg_t *arg = query->args.elts;
         ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[0].index);

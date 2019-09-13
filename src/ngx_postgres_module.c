@@ -121,14 +121,14 @@ static ngx_command_t ngx_postgres_module_commands[] = {
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_postgres_loc_conf_t, upstream.connect_timeout),
+      offsetof(ngx_postgres_location_conf_t, upstream.connect_timeout),
       NULL },
 
     { ngx_string("postgres_result_timeout"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_msec_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_postgres_loc_conf_t, upstream.read_timeout),
+      offsetof(ngx_postgres_location_conf_t, upstream.read_timeout),
       NULL },
 
       ngx_null_command
@@ -444,33 +444,33 @@ static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf) {
 
 
 static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
-    ngx_postgres_loc_conf_t *pglcf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_loc_conf_t));
-    if (!pglcf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NULL; }
-    pglcf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
-    pglcf->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
-    pglcf->rewrites = NGX_CONF_UNSET_PTR;
-    pglcf->output_handler = NGX_CONF_UNSET_PTR;
-    pglcf->variables = NGX_CONF_UNSET_PTR;
+    ngx_postgres_location_conf_t *location_conf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_location_conf_t));
+    if (!location_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NULL; }
+    location_conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
+    location_conf->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
+    location_conf->rewrites = NGX_CONF_UNSET_PTR;
+    location_conf->output_handler = NGX_CONF_UNSET_PTR;
+    location_conf->variables = NGX_CONF_UNSET_PTR;
     /* the hardcoded values */
-    pglcf->upstream.cyclic_temp_file = 0;
-    pglcf->upstream.buffering = 1;
-    pglcf->upstream.ignore_client_abort = 1;
-    pglcf->upstream.send_lowat = 0;
-    pglcf->upstream.bufs.num = 0;
-    pglcf->upstream.busy_buffers_size = 0;
-    pglcf->upstream.max_temp_file_size = 0;
-    pglcf->upstream.temp_file_write_size = 0;
-    pglcf->upstream.intercept_errors = 1;
-    pglcf->upstream.intercept_404 = 1;
-    pglcf->upstream.pass_request_headers = 0;
-    pglcf->upstream.pass_request_body = 0;
-    return pglcf;
+    location_conf->upstream.cyclic_temp_file = 0;
+    location_conf->upstream.buffering = 1;
+    location_conf->upstream.ignore_client_abort = 1;
+    location_conf->upstream.send_lowat = 0;
+    location_conf->upstream.bufs.num = 0;
+    location_conf->upstream.busy_buffers_size = 0;
+    location_conf->upstream.max_temp_file_size = 0;
+    location_conf->upstream.temp_file_write_size = 0;
+    location_conf->upstream.intercept_errors = 1;
+    location_conf->upstream.intercept_404 = 1;
+    location_conf->upstream.pass_request_headers = 0;
+    location_conf->upstream.pass_request_body = 0;
+    return location_conf;
 }
 
 
 static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
-    ngx_postgres_loc_conf_t *prev = parent;
-    ngx_postgres_loc_conf_t *conf = child;
+    ngx_postgres_location_conf_t *prev = parent;
+    ngx_postgres_location_conf_t *conf = child;
     ngx_conf_merge_msec_value(conf->upstream.connect_timeout, prev->upstream.connect_timeout, 10000);
     ngx_conf_merge_msec_value(conf->upstream.read_timeout, prev->upstream.read_timeout, 30000);
     if (!conf->upstream.upstream && !conf->upstream_cv) {
@@ -591,16 +591,16 @@ static char *ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, voi
 
 
 static char *ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_loc_conf_t *pglcf = conf;
-    if (pglcf->upstream.upstream || pglcf->upstream_cv) return "is duplicate";
+    ngx_postgres_location_conf_t *location_conf = conf;
+    if (location_conf->upstream.upstream || location_conf->upstream_cv) return "is duplicate";
     ngx_str_t *value = cf->args->elts;
     if (!value[1].len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty upstream in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
     ngx_http_core_loc_conf_t *clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     clcf->handler = ngx_postgres_handler;
     if (clcf->name.data[clcf->name.len - 1] == '/') clcf->auto_redirect = 1;
     if (ngx_http_script_variables_count(&value[1])) { /* complex value */
-        if (!(pglcf->upstream_cv = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-        ngx_http_compile_complex_value_t ccv = {cf, &value[1], pglcf->upstream_cv, 0, 0, 0};
+        if (!(location_conf->upstream_cv = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        ngx_http_compile_complex_value_t ccv = {cf, &value[1], location_conf->upstream_cv, 0, 0, 0};
         if (ngx_http_compile_complex_value(&ccv) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
     } else { /* simple value */
@@ -608,8 +608,8 @@ static char *ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *co
         ngx_memzero(&url, sizeof(ngx_url_t));
         url.url = value[1];
         url.no_resolve = 1;
-        pglcf->upstream.upstream = ngx_http_upstream_add(cf, &url, 0);
-        if (!pglcf->upstream.upstream) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        location_conf->upstream.upstream = ngx_http_upstream_add(cf, &url, 0);
+        if (!location_conf->upstream.upstream) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
     }
 }
@@ -636,28 +636,28 @@ static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     if (!sql.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty query in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
     ngx_postgres_query_t *query;
     ngx_uint_t methods;
-    ngx_postgres_loc_conf_t *pglcf = conf;
+    ngx_postgres_location_conf_t *location_conf = conf;
     if (cf->args->nelts == 2) { /* default query */
-        if (pglcf->query.def) return "is duplicate";
-        if (!(pglcf->query.def = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (location_conf->query.def) return "is duplicate";
+        if (!(location_conf->query.def = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         methods = 0xFFFF;
-        query = pglcf->query.def;
+        query = location_conf->query.def;
     } else { /* method-specific query */
         methods = 0;
         for (ngx_uint_t i = 1; i < cf->args->nelts - 1; i++) {
             ngx_uint_t j;
             for (j = 0; ngx_postgres_http_methods[j].name.len; j++) {
                 if (ngx_postgres_http_methods[j].name.len == value[i].len && !ngx_strncasecmp(ngx_postgres_http_methods[j].name.data, value[i].data, value[i].len)) {
-                    if (pglcf->query.methods_set & ngx_postgres_http_methods[j].mask) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: method \"%V\" is duplicate in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+                    if (location_conf->query.methods_set & ngx_postgres_http_methods[j].mask) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: method \"%V\" is duplicate in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
                     methods |= ngx_postgres_http_methods[j].mask;
                     break;
                 }
             }
             if (ngx_postgres_http_methods[j].name.len == 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid method \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
         }
-        if (!pglcf->query.methods.elts && ngx_array_init(&pglcf->query.methods, cf->pool, 4, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-        if (!(query = ngx_array_push(&pglcf->query.methods))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-        pglcf->query.methods_set |= methods;
+        if (!location_conf->query.methods.elts && ngx_array_init(&location_conf->query.methods, cf->pool, 4, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (!(query = ngx_array_push(&location_conf->query.methods))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        location_conf->query.methods_set |= methods;
     }
     query->methods = methods;
     if (!ngx_strncmp(sql.data, "file:", sizeof("file:") - 1)) {
@@ -724,15 +724,15 @@ static char *ngx_postgres_conf_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void 
     ngx_uint_t i;
     for (i = 0; e[i].name.len; i++) if (e[i].name.len == what.len && !ngx_strncasecmp(e[i].name.data, what.data, what.len)) break;
     if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid condition \"%V\" in \"%V\" directive", &what, &cmd->name); return NGX_CONF_ERROR; }
-    ngx_postgres_loc_conf_t *pglcf = conf;
+    ngx_postgres_location_conf_t *location_conf = conf;
     ngx_postgres_rewrite_conf_t *rewrite_conf;
-    if (pglcf->rewrites == NGX_CONF_UNSET_PTR) {
-        if (!(pglcf->rewrites = ngx_array_create(cf->pool, 2, sizeof(ngx_postgres_rewrite_conf_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    if (location_conf->rewrites == NGX_CONF_UNSET_PTR) {
+        if (!(location_conf->rewrites = ngx_array_create(cf->pool, 2, sizeof(ngx_postgres_rewrite_conf_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     } else {
-        rewrite_conf = pglcf->rewrites->elts;
-        for (ngx_uint_t j = 0; j < pglcf->rewrites->nelts; j++) if (rewrite_conf[j].key == e[i].key) { rewrite_conf = &rewrite_conf[j]; goto found; }
+        rewrite_conf = location_conf->rewrites->elts;
+        for (ngx_uint_t j = 0; j < location_conf->rewrites->nelts; j++) if (rewrite_conf[j].key == e[i].key) { rewrite_conf = &rewrite_conf[j]; goto found; }
     }
-    rewrite_conf = ngx_array_push(pglcf->rewrites);
+    rewrite_conf = ngx_array_push(location_conf->rewrites);
     if (!rewrite_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     ngx_memzero(rewrite_conf, sizeof(ngx_postgres_rewrite_conf_t));
     rewrite_conf->key = e[i].key;
@@ -775,14 +775,14 @@ found:;
 
 
 static char *ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_loc_conf_t *pglcf = conf;
-    if (pglcf->output_handler != NGX_CONF_UNSET_PTR) return "is duplicate";
+    ngx_postgres_location_conf_t *location_conf = conf;
+    if (location_conf->output_handler != NGX_CONF_UNSET_PTR) return "is duplicate";
     struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
     ngx_str_t *value = cf->args->elts;
     ngx_uint_t i;
-    for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[1].len && !ngx_strncasecmp(e[i].name.data, value[1].data, value[1].len)) { pglcf->output_handler = e[i].handler; break; }
+    for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[1].len && !ngx_strncasecmp(e[i].name.data, value[1].data, value[1].len)) { location_conf->output_handler = e[i].handler; break; }
     if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid output format \"%V\" in \"%V\" directive", &value[1], &cmd->name); return NGX_CONF_ERROR; }
-    pglcf->output_binary = e[i].binary;
+    location_conf->output_binary = e[i].binary;
     return NGX_CONF_OK;
 }
 
@@ -794,11 +794,11 @@ static char *ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *con
     value[1].len--;
     value[1].data++;
     if (!value[3].len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty column in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_postgres_loc_conf_t *pglcf = conf;
-    if (pglcf->variables == NGX_CONF_UNSET_PTR && !(pglcf->variables = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_variable_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-    ngx_postgres_variable_t *pgvar = ngx_array_push(pglcf->variables);
+    ngx_postgres_location_conf_t *location_conf = conf;
+    if (location_conf->variables == NGX_CONF_UNSET_PTR && !(location_conf->variables = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_variable_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    ngx_postgres_variable_t *pgvar = ngx_array_push(location_conf->variables);
     if (!pgvar) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-    pgvar->idx = pglcf->variables->nelts - 1;
+    pgvar->idx = location_conf->variables->nelts - 1;
     if (!(pgvar->var = ngx_http_add_variable(cf, &value[1], NGX_HTTP_VAR_CHANGEABLE))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     if (ngx_http_get_variable_index(cf, &value[1]) == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     if (!pgvar->var->get_handler) {
