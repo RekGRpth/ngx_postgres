@@ -702,7 +702,6 @@ static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             ngx_str_t name;
             for (name.data = s, name.len = 0; s < e && is_variable_character(*s); s++, name.len++);
             if (!name.len) continue;
-//            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "name = %V", &name);
             ngx_str_t oid = {0, NULL};
             if (*s == ':' && *(s+1) == ':') for (s += 2, oid.data = s, oid.len = 0; s < e && is_variable_character(*s); s++, oid.len++);
             if (!oid.len) { p = ngx_copy(p, name.data, name.len); continue; }
@@ -710,12 +709,10 @@ static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             if (!(arg = ngx_array_push(&query->args))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
             if ((ngx_int_t)(arg->index = ngx_http_get_variable_index(cf, &name)) == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid name \"%V\" in \"%V\" directive", &name, &cmd->name); return NGX_CONF_ERROR; }
             if (!(arg->oid = str2oid(&oid))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid oid \"%V\" in \"%V\" directive", &oid, &cmd->name);  return NGX_CONF_ERROR; }
-//            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "oid = %V, oid = %d", &oid, arg->oid);
             p += ngx_sprintf(p, "%d", ++k) - p;
         }
     }
     query->sql.len = p - query->sql.data;
-//    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "query->sql = %V", &query->sql);
     return NGX_CONF_OK;
 }
 

@@ -179,7 +179,6 @@ ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *r, 
     ngx_http_upstream_main_conf_t *umcf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
     ngx_http_upstream_srv_conf_t **uscfp = umcf->upstreams.elts;
     for (ngx_uint_t i = 0; i < umcf->upstreams.nelts; i++) {
-//        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "uscfp[%d]->host = %V", i, &uscfp[i]->host);
         if (uscfp[i]->host.len != url->host.len || ngx_strncasecmp(uscfp[i]->host.data, url->host.data, url->host.len)) continue;
         return uscfp[i];
     }

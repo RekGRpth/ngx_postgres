@@ -70,7 +70,7 @@ ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
 }
 
 
-int hex2bin (const char *s) {
+int hex2bin(const char *s) {
     int ret=0;
     for (int i = 0; i < 2; i++) {
         char c = *s++;

@@ -136,7 +136,6 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         if (!(pgdt->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         *ngx_snprintf(pgdt->command, query->sql.len, "LISTEN %V", &channel) = '\0';
         query->sql.data = pgdt->command;
-//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "channel = %V", &channel);
     } else {
         if (!(pgdt->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         (void) ngx_cpystrn(pgdt->command, query->sql.data, query->sql.len + 1);
@@ -159,8 +158,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         pgdt->hash = ngx_hash_key(query->sql.data, query->sql.len);
         *ngx_snprintf(pgdt->stmtName, 32, "ngx_%ul", (unsigned long)pgdt->hash) = '\0';
     }
-    /* set $postgres_query */
-    pgctx->var_query = query->sql;
+    pgctx->var_query = query->sql; /* set $postgres_query */
     return NGX_OK;
 }
 
@@ -188,8 +186,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     }
     if (pgdt->pgscf->reject && pgdt->pgscf->active_conns >= pgdt->pgscf->max_cached) {
         ngx_log_error(NGX_LOG_INFO, pc->log, 0, "postgres: keepalive connection pool is full, rejecting request to upstream \"%V\"", &peer->name);
-        /* a bit hack-ish way to return error response (setup part) */
-        pc->connection = ngx_get_connection(0, pc->log);
+        pc->connection = ngx_get_connection(0, pc->log); /* a bit hack-ish way to return error response (setup part) */
         return NGX_AGAIN;
     }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PostgreSQL connstring: %s", peer->connstring);
@@ -201,15 +198,13 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
         pgdt->pgconn = NULL;
         return NGX_DECLINED;
     }
-    /* take spot in keepalive connection pool */
-    pgdt->pgscf->active_conns++;
-    /* add the file descriptor (fd) into an nginx connection structure */
-    int fd = PQsocket(pgdt->pgconn);
+    pgdt->pgscf->active_conns++; /* take spot in keepalive connection pool */
+    int fd = PQsocket(pgdt->pgconn); /* add the file descriptor (fd) into an nginx connection structure */
     if (fd == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get connection fd"); goto invalid; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection fd:%d", fd);
     if (!(pc->connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get a free nginx connection"); goto invalid; }
-//    pc->connection->log = pc->log;
-//    pc->connection->log_error = pc->log_error;
+    pc->connection->log = pc->log;
+    pc->connection->log_error = pc->log_error;
     pc->connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
     ngx_event_t *rev = pc->connection->read;
     ngx_event_t *wev = pc->connection->write;

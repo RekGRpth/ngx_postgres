@@ -68,10 +68,10 @@ ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_
     ngx_postgres_keepalive_cache_t *cached = ngx_queue_data(q, ngx_postgres_keepalive_cache_t, queue);
     ngx_queue_insert_head(&pgdt->pgscf->free, q);
     cached->connection->idle = 0;
-//    cached->connection->log = pc->log;
-//    cached->connection->pool->log = pc->log;
-//    cached->connection->read->log = pc->log;
-//    cached->connection->write->log = pc->log;
+    cached->connection->log = pc->log;
+    cached->connection->pool->log = pc->log;
+    cached->connection->read->log = pc->log;
+    cached->connection->write->log = pc->log;
     pgdt->name = cached->name;
     pgdt->sockaddr = cached->sockaddr;
     pgdt->pgconn = cached->pgconn;
@@ -93,10 +93,10 @@ ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_p
         ngx_queue_remove(q);
         ngx_queue_insert_head(&pgdt->pgscf->free, q);
         cached->connection->idle = 0;
-//        cached->connection->log = pc->log;
-//        cached->connection->pool->log = pc->log;
-//        cached->connection->read->log = pc->log;
-//        cached->connection->write->log = pc->log;
+        cached->connection->log = pc->log;
+        cached->connection->pool->log = pc->log;
+        cached->connection->read->log = pc->log;
+        cached->connection->write->log = pc->log;
         pc->connection = cached->connection;
         pc->cached = 1;
         /* we do not need to resume the peer name, because we already take the right value outside */
@@ -137,10 +137,10 @@ void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_up
         c->read->handler = ngx_postgres_keepalive_close_handler;
         c->data = cached;
         c->idle = 1;
-//        c->log = ngx_cycle->log;
-//        c->pool->log = ngx_cycle->log;
-//        c->read->log = ngx_cycle->log;
-//        c->write->log = ngx_cycle->log;
+        c->log = ngx_cycle->log;
+        c->pool->log = ngx_cycle->log;
+        c->read->log = ngx_cycle->log;
+        c->write->log = ngx_cycle->log;
         cached->socklen = pc->socklen;
         ngx_memcpy(&cached->sockaddr, pc->sockaddr, pc->socklen);
         cached->pgconn = pgdt->pgconn;
