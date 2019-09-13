@@ -46,73 +46,70 @@ static ngx_int_t ngx_postgres_add_variables(ngx_conf_t *cf);
 static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf);
 static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf);
 static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
-static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_conf_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_conf_escape(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static char *ngx_postgres_escape_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 
 
 static ngx_command_t ngx_postgres_module_commands[] = {
 
     { ngx_string("postgres_server"),
       NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
-      ngx_postgres_conf_server,
+      ngx_postgres_server_conf,
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
       NULL },
 
     { ngx_string("postgres_keepalive"),
       NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
-      ngx_postgres_conf_keepalive,
+      ngx_postgres_keepalive_conf,
       NGX_HTTP_SRV_CONF_OFFSET,
       0,
       NULL },
 
     { ngx_string("postgres_pass"),
       NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
-      ngx_postgres_conf_pass,
+      ngx_postgres_pass_conf,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
 
     { ngx_string("postgres_query"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|
-          NGX_HTTP_LIF_CONF|NGX_CONF_1MORE,
-      ngx_postgres_conf_query,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_1MORE,
+      ngx_postgres_query_conf,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
 
     { ngx_string("postgres_rewrite"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|
-          NGX_HTTP_LIF_CONF|NGX_CONF_2MORE,
-      ngx_postgres_conf_rewrite,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_2MORE,
+      ngx_postgres_rewrite_conf,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
 
     { ngx_string("postgres_output"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|
-          NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
-      ngx_postgres_conf_output,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      ngx_postgres_output_conf,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
 
     { ngx_string("postgres_set"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE34,
-      ngx_postgres_conf_set,
+      ngx_postgres_set_conf,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
 
     { ngx_string("postgres_escape"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE12,
-      ngx_postgres_conf_escape,
+      ngx_postgres_escape_conf,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -496,7 +493,7 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 }
 
 
-static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
+static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
     ngx_http_upstream_srv_conf_t *uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
     if (!uscf->servers && !(uscf->servers = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_server_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     ngx_postgres_server_t *server = ngx_array_push(uscf->servers);
@@ -543,7 +540,7 @@ static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *
 }
 
 
-static char *ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_conf_t *server_conf = conf;
     if (server_conf->max_cached != 10 /* default */) return "is duplicate";
     if (server_conf->max_statements != 256 /* default */) return "is duplicate";
@@ -589,7 +586,7 @@ static char *ngx_postgres_conf_keepalive(ngx_conf_t *cf, ngx_command_t *cmd, voi
 }
 
 
-static char *ngx_postgres_conf_pass(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_conf_t *location_conf = conf;
     if (location_conf->upstream.upstream || location_conf->upstream_cv) return "is duplicate";
     ngx_str_t *value = cf->args->elts;
@@ -629,7 +626,7 @@ static ngx_uint_t str2oid(ngx_str_t *value) {
 }
 
 
-static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_str_t *value = cf->args->elts;
     ngx_str_t sql = value[cf->args->nelts - 1];
     if (!sql.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty query in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
@@ -716,7 +713,7 @@ static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 }
 
 
-static char *ngx_postgres_conf_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+static char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     struct ngx_postgres_rewrite_enum_t *e = ngx_postgres_rewrite_handlers;
     ngx_str_t *value = cf->args->elts;
     ngx_str_t what = value[cf->args->nelts - 2];
@@ -773,7 +770,7 @@ found:;
 }
 
 
-static char *ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_conf_t *location_conf = conf;
     if (location_conf->output_handler != NGX_CONF_UNSET_PTR) return "is duplicate";
     struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
@@ -786,7 +783,7 @@ static char *ngx_postgres_conf_output(ngx_conf_t *cf, ngx_command_t *cmd, void *
 }
 
 
-static char *ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_str_t *value = cf->args->elts;
     if (value[1].len < 2) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty variable name in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
     if (value[1].data[0] != '$') { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid variable name \"%V\" in \"%V\" directive", &value[1], &cmd->name); }
@@ -821,7 +818,7 @@ static char *ngx_postgres_conf_set(ngx_conf_t *cf, ngx_command_t *cmd, void *con
 }
 
 
-static char *ngx_postgres_conf_escape(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_rewrite_module.c/ngx_http_rewrite_set, Copyright (C) Igor Sysoev */
+static char *ngx_postgres_escape_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_rewrite_module.c/ngx_http_rewrite_set, Copyright (C) Igor Sysoev */
     ngx_str_t *value = cf->args->elts;
     ngx_str_t src = value[cf->args->nelts - 1];
     ngx_uint_t empty;
