@@ -130,7 +130,7 @@ typedef struct {
     ngx_uint_t                          max_cached;
     ngx_uint_t                          max_statements;
     ngx_uint_t                          reject;
-} ngx_postgres_upstream_srv_conf_t;
+} ngx_postgres_srv_conf_t;
 
 typedef struct {
     ngx_uint_t                          hash;
