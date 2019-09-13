@@ -660,6 +660,40 @@ static char *ngx_postgres_conf_query(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         pglcf->query.methods_set |= methods;
     }
     query->methods = methods;
+    if (!ngx_strncmp(sql.data, "file:", sizeof("file:") - 1)) {
+        sql.data += sizeof("file:") - 1;
+        sql.len -= sizeof("file:") - 1;
+        if (ngx_conf_full_name(cf->cycle, &sql, 0) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, "get full name \"%V\" failed", &sql); return NGX_CONF_ERROR; }
+        ngx_fd_t fd = ngx_open_file(sql.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
+        if (fd == NGX_INVALID_FILE) { ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, ngx_open_file_n " \"%V\" failed", &sql); return NGX_CONF_ERROR; }
+        ngx_file_info_t fi;
+        if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) {
+            ngx_conf_log_error(NGX_LOG_ALERT, cf, ngx_errno, ngx_fd_info_n " \"%V\" failed", &sql);
+            if (ngx_close_file(fd) == NGX_FILE_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, ngx_close_file_n " \"%V\" failed", &sql); return NGX_CONF_ERROR; }
+            return NGX_CONF_ERROR;
+        }
+        size_t len = ngx_file_size(&fi);
+        u_char *data = ngx_pnalloc(cf->pool, len);
+        if (!data) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__);
+            if (ngx_close_file(fd) == NGX_FILE_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, ngx_close_file_n " \"%V\" failed", &sql); return NGX_CONF_ERROR; }
+            return NGX_CONF_ERROR;
+        }
+        ssize_t n = ngx_read_fd(fd, data, len);
+        if (n == -1) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, ngx_read_fd_n " \"%V\" failed", &sql);
+            if (ngx_close_file(fd) == NGX_FILE_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, ngx_close_file_n " \"%V\" failed", &sql); return NGX_CONF_ERROR; }
+            return NGX_CONF_ERROR;
+        }
+        if ((size_t) n != len) {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, ngx_read_fd_n " has read only %z of %O from \"%V\"", n, len, &sql);
+            if (ngx_close_file(fd) == NGX_FILE_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, ngx_close_file_n " \"%V\" failed", &sql); return NGX_CONF_ERROR; }
+            return NGX_CONF_ERROR;
+        }
+        if (ngx_close_file(fd) == NGX_FILE_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, ngx_errno, ngx_close_file_n " \"%V\" failed", &sql); return NGX_CONF_ERROR; }
+        sql.data = data;
+        sql.len = len;
+    }
     if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     if (ngx_array_init(&query->args, cf->pool, 4, sizeof(ngx_postgres_arg_t)) != NGX_OK ) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
