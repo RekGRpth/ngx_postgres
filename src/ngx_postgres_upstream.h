@@ -45,7 +45,7 @@ typedef enum {
 } ngx_postgres_state_t;
 
 typedef struct {
-    ngx_postgres_srv_conf_t           *srv_conf;
+    ngx_postgres_server_conf_t        *server_conf;
     ngx_http_upstream_t               *upstream;
     ngx_http_request_t                *request;
     PGconn                            *pgconn;
@@ -67,7 +67,7 @@ typedef struct {
 ngx_int_t   ngx_postgres_upstream_init(ngx_conf_t *, ngx_http_upstream_srv_conf_t *);
 ngx_str_t   PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident);
 ngx_flag_t  ngx_postgres_upstream_is_my_peer(const ngx_peer_connection_t *);
-void        ngx_postgres_upstream_free_connection(ngx_connection_t *, PGconn *, ngx_postgres_srv_conf_t *);
+void        ngx_postgres_upstream_free_connection(ngx_connection_t *, PGconn *, ngx_postgres_server_conf_t *);
 
 
 #endif /* _NGX_HTTP_UPSTREAM_POSTGRES_H_ */

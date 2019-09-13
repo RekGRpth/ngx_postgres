@@ -124,7 +124,7 @@ static ngx_int_t ngx_postgres_upstream_connect(ngx_http_request_t *r) {
     if (u->peer.connection->write->timer_set) ngx_del_timer(u->peer.connection->write); /* remove connection timeout from new connection */
     if (poll_status != PGRES_POLLING_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: connection failed: %s", PQerrorMessage(peer_data->pgconn)); return NGX_ERROR; }
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: connected successfully");
-    peer_data->state = peer_data->srv_conf->max_statements ? state_db_send_prepare : state_db_send_query;
+    peer_data->state = peer_data->server_conf->max_statements ? state_db_send_prepare : state_db_send_query;
     return ngx_postgres_upstream_send_query(r);
 }
 
@@ -136,16 +136,16 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
     if (PQisBusy(peer_data->pgconn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while send query"); return NGX_AGAIN; }
     for (PGresult *res; (res = PQgetResult(peer_data->pgconn)); PQclear(res)) if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
 //    ngx_postgres_process_notify(r->connection->log, r->pool, peer_data->pgconn);
-    if (!peer_data->srv_conf->max_statements) {
+    if (!peer_data->server_conf->max_statements) {
         if (!PQsendQueryParams(peer_data->pgconn, (const char *)peer_data->command, peer_data->nParams, peer_data->paramTypes, (const char *const *)peer_data->paramValues, NULL, NULL, peer_data->resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(peer_data->pgconn)); return NGX_ERROR; }
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query sent successfully");
     } else switch (peer_data->state) {
         case state_db_send_prepare: {
             ngx_uint_t n;
             ngx_flag_t matched = 0;
-            for (n = 0; n < peer_data->srv_conf->max_statements && peer_data->statements[n].hash; n++) if (peer_data->statements[n].hash == peer_data->hash) { matched = 1; break; }
+            for (n = 0; n < peer_data->server_conf->max_statements && peer_data->statements[n].hash; n++) if (peer_data->statements[n].hash == peer_data->hash) { matched = 1; break; }
             if (!matched) {
-                if (n == peer_data->srv_conf->max_statements) for (ngx_uint_t i = 0, used = peer_data->statements[0].used; i < peer_data->srv_conf->max_statements; i++) if (peer_data->statements[i].used < used) { used = peer_data->statements[i].used; n = i; }
+                if (n == peer_data->server_conf->max_statements) for (ngx_uint_t i = 0, used = peer_data->statements[0].used; i < peer_data->server_conf->max_statements; i++) if (peer_data->statements[i].used < used) { used = peer_data->statements[i].used; n = i; }
                 peer_data->statements[n].hash = peer_data->hash;
                 peer_data->statements[n].used++;
                 if (!PQsendPrepare(peer_data->pgconn, (const char *)peer_data->stmtName, (const char *)peer_data->command, peer_data->nParams, peer_data->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepare: %s", PQerrorMessage(peer_data->pgconn)); /*PQclear(res); */return NGX_ERROR; }
