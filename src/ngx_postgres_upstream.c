@@ -81,6 +81,30 @@ ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_
 }
 
 
+static ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident) {
+    ngx_str_t result = ngx_null_string;
+    u_char quote_char = as_ident ? '"' : '\'';
+    ngx_uint_t num_backslashes = 0;
+    ngx_uint_t num_quotes = 0;
+    const u_char *s;
+    for (s = str; (size_t)(s - str) < len && *s != '\0'; ++s) if (*s == quote_char) ++num_quotes; else if (*s == '\\') ++num_backslashes;
+    size_t input_len = s - str;
+    size_t result_size = input_len + num_quotes + 3;
+    if (!as_ident && num_backslashes > 0) result_size += num_backslashes + 2;
+    u_char *rp = ngx_pnalloc(pool, result_size);
+    if (!rp) return result;
+    result.data = rp;
+    if (!as_ident && num_backslashes > 0) { *rp++ = ' '; *rp++ = 'E'; }
+    *rp++ = quote_char;
+    if (!num_quotes && (!num_backslashes || as_ident)) rp = ngx_copy(rp, str, input_len);
+    else for (s = str; (size_t)(s - str) < input_len; ++s) if (*s == quote_char || (!as_ident && *s == '\\')) { *rp++ = *s; *rp++ = *s; } else *rp++ = *s;
+    *rp++ = quote_char;
+    *rp = '\0';
+    result.len = rp - result.data;
+    return result;
+}
+
+
 static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *uscf) {
     ngx_postgres_upstream_peer_data_t *pgdt = ngx_pcalloc(r->pool, sizeof(ngx_postgres_upstream_peer_data_t));
     if (!pgdt) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
@@ -102,19 +126,32 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         for (i = 0; i < pglcf->query.methods.nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
         if (i == pglcf->query.methods.nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     } else query = pglcf->query.def;
-    if (!(pgdt->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    (void) ngx_cpystrn(pgdt->command, query->sql.data, query->sql.len + 1);
-    if (query->args.nelts) {
+    if (query->args.nelts == 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1)) {
         ngx_postgres_arg_t *arg = query->args.elts;
-        pgdt->nParams = query->args.nelts;
-        if (!(pgdt->paramTypes = ngx_pnalloc(r->pool, query->args.nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        if (!(pgdt->paramValues = ngx_pnalloc(r->pool, query->args.nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        for (ngx_uint_t i = 0; i < query->args.nelts; i++) {
-            pgdt->paramTypes[i] = arg[i].oid;
-            ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[i].index);
-            if (!value || !value->data) pgdt->paramValues[i] = NULL; else {
-                if (!(pgdt->paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-                (void) ngx_cpystrn(pgdt->paramValues[i], value->data, value->len + 1);
+        ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[0].index);
+        if (!value || !value->data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "no variable value found for listen"); return NGX_ERROR; }
+        ngx_str_t channel = PQescapeInternal(r->pool, value->data, value->len, 1);
+        if (!channel.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to escape %s: %s", value->data, PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+        query->sql.len = sizeof("LISTEN ") - 1 + channel.len;
+        if (!(pgdt->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        *ngx_snprintf(pgdt->command, query->sql.len, "LISTEN %V", &channel) = '\0';
+        query->sql.data = pgdt->command;
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "channel = %V", &channel);
+    } else {
+        if (!(pgdt->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        (void) ngx_cpystrn(pgdt->command, query->sql.data, query->sql.len + 1);
+        if (query->args.nelts) {
+            ngx_postgres_arg_t *arg = query->args.elts;
+            pgdt->nParams = query->args.nelts;
+            if (!(pgdt->paramTypes = ngx_pnalloc(r->pool, query->args.nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            if (!(pgdt->paramValues = ngx_pnalloc(r->pool, query->args.nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            for (ngx_uint_t i = 0; i < query->args.nelts; i++) {
+                pgdt->paramTypes[i] = arg[i].oid;
+                ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[i].index);
+                if (!value || !value->data) pgdt->paramValues[i] = NULL; else {
+                    if (!(pgdt->paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+                    (void) ngx_cpystrn(pgdt->paramValues[i], value->data, value->len + 1);
+                }
             }
         }
     }
