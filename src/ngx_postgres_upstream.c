@@ -102,10 +102,8 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         for (i = 0; i < pglcf->query.methods.nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
         if (i == pglcf->query.methods.nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     } else query = pglcf->query.def;
-    ngx_str_t sql;
-    if (ngx_http_complex_value(r, &query->sql, &sql) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    if (!(pgdt->command = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    (void) ngx_cpystrn(pgdt->command, sql.data, sql.len + 1);
+    if (!(pgdt->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    (void) ngx_cpystrn(pgdt->command, query->sql.data, query->sql.len + 1);
     if (query->args.nelts) {
         ngx_postgres_arg_t *arg = query->args.elts;
         pgdt->nParams = query->args.nelts;
@@ -120,11 +118,11 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         }
     }
     if (pgscf->max_statements) {
-        pgdt->hash = ngx_hash_key(sql.data, sql.len);
+        pgdt->hash = ngx_hash_key(query->sql.data, query->sql.len);
         *ngx_snprintf(pgdt->stmtName, 32, "ngx_%ul", (unsigned long)pgdt->hash) = '\0';
     }
     /* set $postgres_query */
-    pgctx->var_query = sql;
+    pgctx->var_query = query->sql;
     return NGX_OK;
 }
 
