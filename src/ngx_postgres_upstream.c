@@ -133,7 +133,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[0].index);
         if (!value || !value->data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "no variable value found for listen"); return NGX_ERROR; }
         ngx_str_t channel = PQescapeInternal(r->pool, value->data, value->len, 1);
-        if (!channel.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to escape %s: %s", value->data, PQerrorMessage(peer_data->pgconn)); return NGX_ERROR; }
+        if (!channel.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to escape %s: %s", value->data, PQerrorMessage(peer_data->conn)); return NGX_ERROR; }
         query->sql.len = sizeof("LISTEN ") - 1 + channel.len;
         if (!(peer_data->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         *ngx_snprintf(peer_data->command, query->sql.len, "LISTEN %V", &channel) = '\0';
@@ -193,15 +193,15 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
     }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PostgreSQL connstring: %s", peer->connstring);
     /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
-    peer_data->pgconn = PQconnectStart((const char *)peer->connstring);
-    if (PQstatus(peer_data->pgconn) == CONNECTION_BAD || PQsetnonblocking(peer_data->pgconn, 1) == -1) {
-        ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: connection failed: %s in upstream \"%V\"", PQerrorMessage(peer_data->pgconn), &peer->name);
-        PQfinish(peer_data->pgconn);
-        peer_data->pgconn = NULL;
+    peer_data->conn = PQconnectStart((const char *)peer->connstring);
+    if (PQstatus(peer_data->conn) == CONNECTION_BAD || PQsetnonblocking(peer_data->conn, 1) == -1) {
+        ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: connection failed: %s in upstream \"%V\"", PQerrorMessage(peer_data->conn), &peer->name);
+        PQfinish(peer_data->conn);
+        peer_data->conn = NULL;
         return NGX_DECLINED;
     }
     peer_data->server_conf->active_conns++; /* take spot in keepalive connection pool */
-    int fd = PQsocket(peer_data->pgconn); /* add the file descriptor (fd) into an nginx connection structure */
+    int fd = PQsocket(peer_data->conn); /* add the file descriptor (fd) into an nginx connection structure */
     if (fd == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get connection fd"); goto invalid; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection fd:%d", fd);
     if (!(pc->connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get a free nginx connection"); goto invalid; }
@@ -227,7 +227,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
 bad_add:
     ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to add nginx connection");
 invalid:
-    ngx_postgres_upstream_free_connection(pc->connection, peer_data->pgconn, peer_data->server_conf);
+    ngx_postgres_upstream_free_connection(pc->connection, peer_data->conn, peer_data->server_conf);
     return NGX_ERROR;
 }
 
@@ -236,8 +236,8 @@ static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *dat
     ngx_postgres_peer_data_t *peer_data = data;
     if (peer_data->server_conf->max_cached) ngx_postgres_keepalive_free_peer(pc, peer_data, state);
     if (pc->connection) {
-        ngx_postgres_upstream_free_connection(pc->connection, peer_data->pgconn, peer_data->server_conf);
-        peer_data->pgconn = NULL;
+        ngx_postgres_upstream_free_connection(pc->connection, peer_data->conn, peer_data->server_conf);
+        peer_data->conn = NULL;
         pc->connection = NULL;
     }
 }
@@ -248,8 +248,8 @@ ngx_flag_t ngx_postgres_upstream_is_my_peer(const ngx_peer_connection_t *peer) {
 }
 
 
-void ngx_postgres_upstream_free_connection(ngx_connection_t *c, PGconn *pgconn, ngx_postgres_server_conf_t *server_conf) {
-    PQfinish(pgconn);
+void ngx_postgres_upstream_free_connection(ngx_connection_t *c, PGconn *conn, ngx_postgres_server_conf_t *server_conf) {
+    PQfinish(conn);
     if (c) {
         ngx_event_t *rev = c->read;
         ngx_event_t *wev = c->write;

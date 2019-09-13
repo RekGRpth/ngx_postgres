@@ -430,7 +430,6 @@ static ngx_int_t ngx_postgres_add_variables(ngx_conf_t *cf) {
 static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_server_conf_t *server_conf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_server_conf_t));
     if (!server_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NULL; }
-    server_conf->pool = cf->pool;
     /* enable keepalive (single) by default */
     server_conf->max_cached = 10;
     server_conf->max_statements = 256;

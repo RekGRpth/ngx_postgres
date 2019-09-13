@@ -120,7 +120,6 @@ typedef struct {
 typedef struct {
     ngx_postgres_peers_t               *peers;
     ngx_uint_t                          current;
-    ngx_pool_t                         *pool;
     /* keepalive */
     ngx_flag_t                          single;
     ngx_queue_t                         free;

@@ -35,7 +35,7 @@ typedef struct {
     ngx_queue_t                        queue;
     ngx_postgres_server_conf_t        *server_conf;
     ngx_connection_t                  *connection;
-    PGconn                            *pgconn;
+    PGconn                            *conn;
     struct sockaddr                    sockaddr;
     socklen_t                          socklen;
     ngx_str_t                          name;
@@ -74,7 +74,7 @@ ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_
     cached->connection->write->log = pc->log;
     peer_data->name = cached->name;
     peer_data->sockaddr = cached->sockaddr;
-    peer_data->pgconn = cached->pgconn;
+    peer_data->conn = cached->conn;
     pc->connection = cached->connection;
     pc->cached = 1;
     pc->name = &peer_data->name;
@@ -100,7 +100,7 @@ ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_p
         pc->connection = cached->connection;
         pc->cached = 1;
         /* we do not need to resume the peer name, because we already take the right value outside */
-        peer_data->pgconn = cached->pgconn;
+        peer_data->conn = cached->conn;
         for (ngx_uint_t j = 0; j < peer_data->server_conf->max_statements; j++) peer_data->statements[j] = cached->statements[j]; /* Inherit list of prepared statements */
         return NGX_DONE;
     }
@@ -124,7 +124,7 @@ void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_pe
             q = ngx_queue_last(&peer_data->server_conf->cache);
             ngx_queue_remove(q);
             cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
-            ngx_postgres_upstream_free_connection(cached->connection, cached->pgconn, peer_data->server_conf);
+            ngx_postgres_upstream_free_connection(cached->connection, cached->conn, peer_data->server_conf);
         } else {
             q = ngx_queue_head(&peer_data->server_conf->free);
             ngx_queue_remove(q);
@@ -143,7 +143,7 @@ void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_pe
         c->write->log = ngx_cycle->log;
         cached->socklen = pc->socklen;
         ngx_memcpy(&cached->sockaddr, pc->sockaddr, pc->socklen);
-        cached->pgconn = peer_data->pgconn;
+        cached->conn = peer_data->conn;
         cached->name = peer_data->name;
     }
 }
@@ -156,13 +156,13 @@ static void ngx_postgres_keepalive_close_handler(ngx_event_t *ev) {
     ngx_connection_t *c = ev->data;
     ngx_postgres_cached_t *cached = c->data;
     if (c->close) goto close;
-    if (!PQconsumeInput(cached->pgconn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(cached->pgconn)); goto close; }
-    if (PQisBusy(cached->pgconn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: busy while keepalive"); goto close; }
-    for (PGresult *res; (res = PQgetResult(cached->pgconn)); PQclear(res)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: received result on idle keepalive connection: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); }
-    ngx_postgres_process_notify(c->log, c->pool, cached->pgconn);
+    if (!PQconsumeInput(cached->conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(cached->conn)); goto close; }
+    if (PQisBusy(cached->conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: busy while keepalive"); goto close; }
+    for (PGresult *res; (res = PQgetResult(cached->conn)); PQclear(res)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: received result on idle keepalive connection: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); }
+    ngx_postgres_process_notify(c->log, c->pool, cached->conn);
     return;
 close:
-    ngx_postgres_upstream_free_connection(c, cached->pgconn, cached->server_conf);
+    ngx_postgres_upstream_free_connection(c, cached->conn, cached->server_conf);
     ngx_queue_remove(&cached->queue);
     ngx_queue_insert_head(&cached->server_conf->free, &cached->queue);
 }
@@ -178,6 +178,6 @@ void ngx_postgres_keepalive_cleanup(void *data) {
         ngx_queue_t *q = ngx_queue_head(&server_conf->cache);
         ngx_queue_remove(q);
         ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
-        ngx_postgres_upstream_free_connection(cached->connection, cached->pgconn, server_conf);
+        ngx_postgres_upstream_free_connection(cached->connection, cached->conn, server_conf);
     }
 }
