@@ -56,6 +56,7 @@ typedef struct {
     int                                nParams;
     Oid                               *paramTypes;
     u_char                           **paramValues;
+    ngx_uint_t                         resultFormat;
     ngx_str_t                          name;
     struct sockaddr                    sockaddr;
     unsigned                           failed;

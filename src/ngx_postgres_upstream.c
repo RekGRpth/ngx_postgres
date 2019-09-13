@@ -126,6 +126,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         for (i = 0; i < pglcf->query.methods.nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
         if (i == pglcf->query.methods.nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     } else query = pglcf->query.def;
+    pgdt->resultFormat = pglcf->output_binary;
     if (query->args.nelts == 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1)) {
         ngx_postgres_arg_t *arg = query->args.elts;
         ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[0].index);
