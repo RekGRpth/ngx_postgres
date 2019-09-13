@@ -35,9 +35,9 @@
 
 
 ngx_int_t   ngx_postgres_keepalive_init(ngx_pool_t *, ngx_postgres_srv_conf_t *);
-ngx_int_t   ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *, ngx_postgres_upstream_peer_data_t *);
-ngx_int_t   ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *, ngx_postgres_upstream_peer_data_t *);
-void        ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *, ngx_postgres_upstream_peer_data_t *, ngx_uint_t);
+ngx_int_t   ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *, ngx_postgres_peer_data_t *);
+ngx_int_t   ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *, ngx_postgres_peer_data_t *);
+void        ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *, ngx_postgres_peer_data_t *, ngx_uint_t);
 void        ngx_postgres_keepalive_cleanup(void *);
 
 #endif /* _NGX_POSTGRES_KEEPALIVE_H_ */

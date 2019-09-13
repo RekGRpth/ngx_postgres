@@ -107,17 +107,17 @@ ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_
 
 
 static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *uscf) {
-    ngx_postgres_upstream_peer_data_t *pgdt = ngx_pcalloc(r->pool, sizeof(ngx_postgres_upstream_peer_data_t));
-    if (!pgdt) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    ngx_postgres_peer_data_t *peer_data = ngx_pcalloc(r->pool, sizeof(ngx_postgres_peer_data_t));
+    if (!peer_data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
-    pgdt->upstream = u;
-    pgdt->request = r;
+    peer_data->upstream = u;
+    peer_data->request = r;
     ngx_postgres_srv_conf_t *srv_conf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
     ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    pgdt->srv_conf = srv_conf;
-    if (!(pgdt->statements = ngx_pcalloc(r->pool, srv_conf->max_statements * sizeof(ngx_postgres_statement_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    u->peer.data = pgdt;
+    peer_data->srv_conf = srv_conf;
+    if (!(peer_data->statements = ngx_pcalloc(r->pool, srv_conf->max_statements * sizeof(ngx_postgres_statement_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    u->peer.data = peer_data;
     u->peer.get = ngx_postgres_upstream_get_peer;
     u->peer.free = ngx_postgres_upstream_free_peer;
     ngx_postgres_query_t *query;
@@ -127,38 +127,38 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         for (i = 0; i < pglcf->query.methods.nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
         if (i == pglcf->query.methods.nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     } else query = pglcf->query.def;
-    pgdt->resultFormat = pglcf->output_binary;
+    peer_data->resultFormat = pglcf->output_binary;
     if (query->args.nelts == 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1)) {
         ngx_postgres_arg_t *arg = query->args.elts;
         ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[0].index);
         if (!value || !value->data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "no variable value found for listen"); return NGX_ERROR; }
         ngx_str_t channel = PQescapeInternal(r->pool, value->data, value->len, 1);
-        if (!channel.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to escape %s: %s", value->data, PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
+        if (!channel.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to escape %s: %s", value->data, PQerrorMessage(peer_data->pgconn)); return NGX_ERROR; }
         query->sql.len = sizeof("LISTEN ") - 1 + channel.len;
-        if (!(pgdt->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        *ngx_snprintf(pgdt->command, query->sql.len, "LISTEN %V", &channel) = '\0';
-        query->sql.data = pgdt->command;
+        if (!(peer_data->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        *ngx_snprintf(peer_data->command, query->sql.len, "LISTEN %V", &channel) = '\0';
+        query->sql.data = peer_data->command;
     } else {
-        if (!(pgdt->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        (void) ngx_cpystrn(pgdt->command, query->sql.data, query->sql.len + 1);
+        if (!(peer_data->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        (void) ngx_cpystrn(peer_data->command, query->sql.data, query->sql.len + 1);
         if (query->args.nelts) {
             ngx_postgres_arg_t *arg = query->args.elts;
-            pgdt->nParams = query->args.nelts;
-            if (!(pgdt->paramTypes = ngx_pnalloc(r->pool, query->args.nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-            if (!(pgdt->paramValues = ngx_pnalloc(r->pool, query->args.nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            peer_data->nParams = query->args.nelts;
+            if (!(peer_data->paramTypes = ngx_pnalloc(r->pool, query->args.nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            if (!(peer_data->paramValues = ngx_pnalloc(r->pool, query->args.nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             for (ngx_uint_t i = 0; i < query->args.nelts; i++) {
-                pgdt->paramTypes[i] = arg[i].oid;
+                peer_data->paramTypes[i] = arg[i].oid;
                 ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[i].index);
-                if (!value || !value->data) pgdt->paramValues[i] = NULL; else {
-                    if (!(pgdt->paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-                    (void) ngx_cpystrn(pgdt->paramValues[i], value->data, value->len + 1);
+                if (!value || !value->data) peer_data->paramValues[i] = NULL; else {
+                    if (!(peer_data->paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+                    (void) ngx_cpystrn(peer_data->paramValues[i], value->data, value->len + 1);
                 }
             }
         }
     }
     if (srv_conf->max_statements) {
-        pgdt->hash = ngx_hash_key(query->sql.data, query->sql.len);
-        *ngx_snprintf(pgdt->stmtName, 32, "ngx_%ul", (unsigned long)pgdt->hash) = '\0';
+        peer_data->hash = ngx_hash_key(query->sql.data, query->sql.len);
+        *ngx_snprintf(peer_data->stmtName, 32, "ngx_%ul", (unsigned long)peer_data->hash) = '\0';
     }
     pgctx->var_query = query->sql; /* set $postgres_query */
     return NGX_OK;
@@ -166,42 +166,42 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
 
 
 static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data) {
-    ngx_postgres_upstream_peer_data_t *pgdt = data;
-    pgdt->failed = 0;
-    if (pgdt->srv_conf->max_cached && pgdt->srv_conf->single && ngx_postgres_keepalive_get_peer_single(pc, pgdt) != NGX_DECLINED) { /* re-use keepalive peer */
-        pgdt->state = pgdt->srv_conf->max_statements ? state_db_send_prepare : state_db_send_query;
-        ngx_postgres_process_events(pgdt->request);
+    ngx_postgres_peer_data_t *peer_data = data;
+    peer_data->failed = 0;
+    if (peer_data->srv_conf->max_cached && peer_data->srv_conf->single && ngx_postgres_keepalive_get_peer_single(pc, peer_data) != NGX_DECLINED) { /* re-use keepalive peer */
+        peer_data->state = peer_data->srv_conf->max_statements ? state_db_send_prepare : state_db_send_query;
+        ngx_postgres_process_events(peer_data->request);
         return NGX_AGAIN;
     }
-    if (pgdt->srv_conf->current > pgdt->srv_conf->peers->number - 1) pgdt->srv_conf->current = 0;
-    ngx_postgres_upstream_peer_t *peer = &pgdt->srv_conf->peers->peer[pgdt->srv_conf->current++];
-    pgdt->name = peer->name;
-    pgdt->sockaddr = *peer->sockaddr;
-    pc->name = &pgdt->name;
-    pc->sockaddr = &pgdt->sockaddr;
+    if (peer_data->srv_conf->current > peer_data->srv_conf->peers->number - 1) peer_data->srv_conf->current = 0;
+    ngx_postgres_upstream_peer_t *peer = &peer_data->srv_conf->peers->peer[peer_data->srv_conf->current++];
+    peer_data->name = peer->name;
+    peer_data->sockaddr = *peer->sockaddr;
+    pc->name = &peer_data->name;
+    pc->sockaddr = &peer_data->sockaddr;
     pc->socklen = peer->socklen;
     pc->cached = 0;
-    if (pgdt->srv_conf->max_cached && !pgdt->srv_conf->single && ngx_postgres_keepalive_get_peer_multi(pc, pgdt) != NGX_DECLINED) { /* re-use keepalive peer */
-        pgdt->state = pgdt->srv_conf->max_statements ? state_db_send_prepare : state_db_send_query;
-        ngx_postgres_process_events(pgdt->request);
+    if (peer_data->srv_conf->max_cached && !peer_data->srv_conf->single && ngx_postgres_keepalive_get_peer_multi(pc, peer_data) != NGX_DECLINED) { /* re-use keepalive peer */
+        peer_data->state = peer_data->srv_conf->max_statements ? state_db_send_prepare : state_db_send_query;
+        ngx_postgres_process_events(peer_data->request);
         return NGX_AGAIN;
     }
-    if (pgdt->srv_conf->reject && pgdt->srv_conf->active_conns >= pgdt->srv_conf->max_cached) {
+    if (peer_data->srv_conf->reject && peer_data->srv_conf->active_conns >= peer_data->srv_conf->max_cached) {
         ngx_log_error(NGX_LOG_INFO, pc->log, 0, "postgres: keepalive connection pool is full, rejecting request to upstream \"%V\"", &peer->name);
         pc->connection = ngx_get_connection(0, pc->log); /* a bit hack-ish way to return error response (setup part) */
         return NGX_AGAIN;
     }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PostgreSQL connstring: %s", peer->connstring);
     /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
-    pgdt->pgconn = PQconnectStart((const char *)peer->connstring);
-    if (PQstatus(pgdt->pgconn) == CONNECTION_BAD || PQsetnonblocking(pgdt->pgconn, 1) == -1) {
-        ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: connection failed: %s in upstream \"%V\"", PQerrorMessage(pgdt->pgconn), &peer->name);
-        PQfinish(pgdt->pgconn);
-        pgdt->pgconn = NULL;
+    peer_data->pgconn = PQconnectStart((const char *)peer->connstring);
+    if (PQstatus(peer_data->pgconn) == CONNECTION_BAD || PQsetnonblocking(peer_data->pgconn, 1) == -1) {
+        ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: connection failed: %s in upstream \"%V\"", PQerrorMessage(peer_data->pgconn), &peer->name);
+        PQfinish(peer_data->pgconn);
+        peer_data->pgconn = NULL;
         return NGX_DECLINED;
     }
-    pgdt->srv_conf->active_conns++; /* take spot in keepalive connection pool */
-    int fd = PQsocket(pgdt->pgconn); /* add the file descriptor (fd) into an nginx connection structure */
+    peer_data->srv_conf->active_conns++; /* take spot in keepalive connection pool */
+    int fd = PQsocket(peer_data->pgconn); /* add the file descriptor (fd) into an nginx connection structure */
     if (fd == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get connection fd"); goto invalid; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection fd:%d", fd);
     if (!(pc->connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get a free nginx connection"); goto invalid; }
@@ -222,22 +222,22 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
         if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
         if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
     }
-    pgdt->state = state_db_connect;
+    peer_data->state = state_db_connect;
     return NGX_AGAIN;
 bad_add:
     ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to add nginx connection");
 invalid:
-    ngx_postgres_upstream_free_connection(pc->connection, pgdt->pgconn, pgdt->srv_conf);
+    ngx_postgres_upstream_free_connection(pc->connection, peer_data->pgconn, peer_data->srv_conf);
     return NGX_ERROR;
 }
 
 
 static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
-    ngx_postgres_upstream_peer_data_t *pgdt = data;
-    if (pgdt->srv_conf->max_cached) ngx_postgres_keepalive_free_peer(pc, pgdt, state);
+    ngx_postgres_peer_data_t *peer_data = data;
+    if (peer_data->srv_conf->max_cached) ngx_postgres_keepalive_free_peer(pc, peer_data, state);
     if (pc->connection) {
-        ngx_postgres_upstream_free_connection(pc->connection, pgdt->pgconn, pgdt->srv_conf);
-        pgdt->pgconn = NULL;
+        ngx_postgres_upstream_free_connection(pc->connection, peer_data->pgconn, peer_data->srv_conf);
+        peer_data->pgconn = NULL;
         pc->connection = NULL;
     }
 }

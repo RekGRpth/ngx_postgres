@@ -61,7 +61,7 @@ typedef struct {
     struct sockaddr                    sockaddr;
     unsigned                           failed;
     ngx_postgres_statement_t          *statements;
-} ngx_postgres_upstream_peer_data_t;
+} ngx_postgres_peer_data_t;
 
 
 ngx_int_t   ngx_postgres_upstream_init(ngx_conf_t *, ngx_http_upstream_srv_conf_t *);
