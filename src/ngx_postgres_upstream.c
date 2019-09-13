@@ -29,6 +29,7 @@
 #include "ngx_postgres_keepalive.h"
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_processor.h"
+#include "ngx_postgres_upstream.h"
 
 
 static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *uscf);
