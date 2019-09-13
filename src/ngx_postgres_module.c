@@ -499,10 +499,10 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 
 static char *ngx_postgres_conf_server(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
     ngx_http_upstream_srv_conf_t *uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
-    if (!uscf->servers && !(uscf->servers = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_upstream_server_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-    ngx_postgres_upstream_server_t *server = ngx_array_push(uscf->servers);
+    if (!uscf->servers && !(uscf->servers = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_server_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    ngx_postgres_server_t *server = ngx_array_push(uscf->servers);
     if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-    ngx_memzero(server, sizeof(ngx_postgres_upstream_server_t));
+    ngx_memzero(server, sizeof(ngx_postgres_server_t));
     /* parse the first name:port argument */
     ngx_url_t u;
     ngx_memzero(&u, sizeof(ngx_url_t));
@@ -725,26 +725,26 @@ static char *ngx_postgres_conf_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void 
     for (i = 0; e[i].name.len; i++) if (e[i].name.len == what.len && !ngx_strncasecmp(e[i].name.data, what.data, what.len)) break;
     if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid condition \"%V\" in \"%V\" directive", &what, &cmd->name); return NGX_CONF_ERROR; }
     ngx_postgres_loc_conf_t *pglcf = conf;
-    ngx_postgres_rewrite_conf_t *pgrcf;
+    ngx_postgres_rewrite_conf_t *rewrite_conf;
     if (pglcf->rewrites == NGX_CONF_UNSET_PTR) {
         if (!(pglcf->rewrites = ngx_array_create(cf->pool, 2, sizeof(ngx_postgres_rewrite_conf_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     } else {
-        pgrcf = pglcf->rewrites->elts;
-        for (ngx_uint_t j = 0; j < pglcf->rewrites->nelts; j++) if (pgrcf[j].key == e[i].key) { pgrcf = &pgrcf[j]; goto found; }
+        rewrite_conf = pglcf->rewrites->elts;
+        for (ngx_uint_t j = 0; j < pglcf->rewrites->nelts; j++) if (rewrite_conf[j].key == e[i].key) { rewrite_conf = &rewrite_conf[j]; goto found; }
     }
-    pgrcf = ngx_array_push(pglcf->rewrites);
-    if (!pgrcf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-    ngx_memzero(pgrcf, sizeof(ngx_postgres_rewrite_conf_t));
-    pgrcf->key = e[i].key;
-    pgrcf->handler = e[i].handler;
+    rewrite_conf = ngx_array_push(pglcf->rewrites);
+    if (!rewrite_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    ngx_memzero(rewrite_conf, sizeof(ngx_postgres_rewrite_conf_t));
+    rewrite_conf->key = e[i].key;
+    rewrite_conf->handler = e[i].handler;
 found:;
     ngx_uint_t methods;
     ngx_postgres_rewrite_t *rewrite;
     if (cf->args->nelts == 3) { /* default rewrite */
-        if (pgrcf->def) return "is duplicate";
-        if (!(pgrcf->def = ngx_palloc(cf->pool, sizeof(ngx_postgres_rewrite_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (rewrite_conf->def) return "is duplicate";
+        if (!(rewrite_conf->def = ngx_palloc(cf->pool, sizeof(ngx_postgres_rewrite_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         methods = 0xFFFF;
-        rewrite = pgrcf->def;
+        rewrite = rewrite_conf->def;
     } else { /* method-specific rewrite */
         methods = 0;
         for (i = 1; i < cf->args->nelts - 2; i++) {
@@ -752,16 +752,16 @@ found:;
             ngx_uint_t j;
             for (j = 0; b[j].name.len; j++) {
                 if (b[j].name.len == value[i].len && !ngx_strncasecmp(b[j].name.data, value[i].data, value[i].len)) {
-                    if (pgrcf->methods_set & b[j].mask) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: method \"%V\" for condition \"%V\" is duplicate in \"%V\" directive", &value[i], &what, &cmd->name); return NGX_CONF_ERROR; }
+                    if (rewrite_conf->methods_set & b[j].mask) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: method \"%V\" for condition \"%V\" is duplicate in \"%V\" directive", &value[i], &what, &cmd->name); return NGX_CONF_ERROR; }
                     methods |= b[j].mask;
                     break;
                 }
             }
             if (!b[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid method \"%V\" for condition \"%V\" in \"%V\" directive",  &value[i], &what, &cmd->name); return NGX_CONF_ERROR; }
         }
-        if (!pgrcf->methods.elts && ngx_array_init(&pgrcf->methods, cf->pool, 4, sizeof(ngx_postgres_rewrite_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-        if (!(rewrite = ngx_array_push(&pgrcf->methods))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-        pgrcf->methods_set |= methods;
+        if (!rewrite_conf->methods.elts && ngx_array_init(&rewrite_conf->methods, cf->pool, 4, sizeof(ngx_postgres_rewrite_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (!(rewrite = ngx_array_push(&rewrite_conf->methods))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        rewrite_conf->methods_set |= methods;
     }
     ngx_str_t to = value[cf->args->nelts - 1];
     ngx_uint_t keep_body = 0;

@@ -41,17 +41,17 @@ ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_
     uscf->peer.init = ngx_postgres_upstream_init_peer;
     ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
     if (!uscf->servers || !uscf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &uscf->host, uscf->file_name, uscf->line); return NGX_ERROR; }
-    ngx_postgres_upstream_server_t *server = uscf->servers->elts;
+    ngx_postgres_server_t *server = uscf->servers->elts;
     ngx_uint_t n = 0;
     for (ngx_uint_t i = 0; i < uscf->servers->nelts; i++) n += server[i].naddrs;
-    ngx_postgres_upstream_peers_t *peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_upstream_peers_t) + sizeof(ngx_postgres_upstream_peer_t) * (n - 1));
+    ngx_postgres_peers_t *peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_peers_t) + sizeof(ngx_postgres_peer_t) * (n - 1));
     if (!peers) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     peers->single = (n == 1);
     peers->number = n;
     n = 0;
     for (ngx_uint_t i = 0; i < uscf->servers->nelts; i++) {
         for (ngx_uint_t j = 0; j < server[i].naddrs; j++) {
-            ngx_postgres_upstream_peer_t *peer = &peers->peer[n];
+            ngx_postgres_peer_t *peer = &peers->peer[n];
             peer->sockaddr = server[i].addrs[j].sockaddr;
             peer->socklen = server[i].addrs[j].socklen;
             peer->name = server[i].addrs[j].name;
@@ -174,7 +174,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
         return NGX_AGAIN;
     }
     if (peer_data->server_conf->current > peer_data->server_conf->peers->number - 1) peer_data->server_conf->current = 0;
-    ngx_postgres_upstream_peer_t *peer = &peer_data->server_conf->peers->peer[peer_data->server_conf->current++];
+    ngx_postgres_peer_t *peer = &peer_data->server_conf->peers->peer[peer_data->server_conf->current++];
     peer_data->name = peer->name;
     peer_data->sockaddr = *peer->sockaddr;
     pc->name = &peer_data->name;

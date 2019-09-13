@@ -208,10 +208,10 @@ char *ngx_postgres_interpolate_url(char *redirect, int size, char *variables[10]
 }
 
 
-ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *pgrcf, char *url) {
-    if (pgrcf->methods_set & r->method) { /* method-specific */
-        ngx_postgres_rewrite_t *rewrite = pgrcf->methods.elts;
-        for (ngx_uint_t i = 0; i < pgrcf->methods.nelts; i++) {
+ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf, char *url) {
+    if (rewrite_conf->methods_set & r->method) { /* method-specific */
+        ngx_postgres_rewrite_t *rewrite = rewrite_conf->methods.elts;
+        for (ngx_uint_t i = 0; i < rewrite_conf->methods.nelts; i++) {
             if (rewrite[i].methods & r->method) {
                 if (rewrite[i].location.len > 0) {
                     // write template name into $html
@@ -226,7 +226,7 @@ ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_
                         raw_html->data = rewrite[i].location.data;
                         // bad request 400 on errors
                         // if i return 400 here, pg result is lost :( YF: FIXME
-                        if (pgrcf->key % 2 == 1 && pgrcf->handler == &ngx_postgres_rewrite_valid) return 200;
+                        if (rewrite_conf->key % 2 == 1 && rewrite_conf->handler == &ngx_postgres_rewrite_valid) return 200;
                         else return 200;
                         // redirect to outside url
                     } else {
@@ -266,31 +266,31 @@ ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_
                 return rewrite[i].status;
             }
         }
-    } else if (pgrcf->def) {
+    } else if (rewrite_conf->def) {
         /* default */
-        return pgrcf->def->status;
+        return rewrite_conf->def->status;
     }
     return NGX_DECLINED;
 }
 
 
-ngx_int_t ngx_postgres_rewrite_changes(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *pgrcf) {
+ngx_int_t ngx_postgres_rewrite_changes(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf) {
     ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (pgrcf->key % 2 == 0 && !pgctx->var_affected) return ngx_postgres_rewrite(r, pgrcf, NULL); /* no_changes */
-    if (pgrcf->key % 2 == 1 && pgctx->var_affected > 0) return ngx_postgres_rewrite(r, pgrcf, NULL); /* changes */
+    if (rewrite_conf->key % 2 == 0 && !pgctx->var_affected) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_changes */
+    if (rewrite_conf->key % 2 == 1 && pgctx->var_affected > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* changes */
     return NGX_DECLINED;
 }
 
 
-ngx_int_t ngx_postgres_rewrite_rows(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *pgrcf) {
+ngx_int_t ngx_postgres_rewrite_rows(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf) {
     ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (pgrcf->key % 2 == 0 && !pgctx->var_rows) return ngx_postgres_rewrite(r, pgrcf, NULL); /* no_rows */
-    if (pgrcf->key % 2 == 1 && pgctx->var_rows > 0) return ngx_postgres_rewrite(r, pgrcf, NULL); /* rows */
+    if (rewrite_conf->key % 2 == 0 && !pgctx->var_rows) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_rows */
+    if (rewrite_conf->key % 2 == 1 && pgctx->var_rows > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* rows */
     return NGX_DECLINED;
 }
 
 
-ngx_int_t ngx_postgres_rewrite_valid(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *pgrcf) {
+ngx_int_t ngx_postgres_rewrite_valid(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf) {
     ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
     ngx_str_t redirect;
     redirect.len = 0;
@@ -299,9 +299,9 @@ ngx_int_t ngx_postgres_rewrite_valid(ngx_http_request_t *r, ngx_postgres_rewrite
     char *values[10];
     for (ngx_uint_t i = 0; i < 10; i++) values[i] = columned[i] = variables[i] = NULL;
     // find callback
-    if (pgrcf->methods_set & r->method) {
-        ngx_postgres_rewrite_t *rewrite = pgrcf->methods.elts;
-        for (ngx_uint_t i = 0; i < pgrcf->methods.nelts; i++) if ((rewrite[i].methods & r->method) && rewrite[i].location.len > 0) {
+    if (rewrite_conf->methods_set & r->method) {
+        ngx_postgres_rewrite_t *rewrite = rewrite_conf->methods.elts;
+        for (ngx_uint_t i = 0; i < rewrite_conf->methods.nelts; i++) if ((rewrite[i].methods & r->method) && rewrite[i].location.len > 0) {
             redirect.data = rewrite[i].location.data;
             redirect.len = rewrite[i].location.len;
             break;
@@ -313,7 +313,7 @@ ngx_int_t ngx_postgres_rewrite_valid(ngx_http_request_t *r, ngx_postgres_rewrite
     char *error = ngx_postgres_find_values(values, variables, vars, columned, pgctx, 1);
     char *url = NULL;
     if (redirect.len > 0) url = ngx_postgres_interpolate_url((char *) redirect.data, redirect.len, variables, vars, columned, values, r);
-    if ((pgrcf->key % 2 == 0) && !error) return ngx_postgres_rewrite(r, pgrcf, url); /* no_rows */
-    if ((pgrcf->key % 2 == 1) && error) return ngx_postgres_rewrite(r, pgrcf, url); /* rows */
+    if ((rewrite_conf->key % 2 == 0) && !error) return ngx_postgres_rewrite(r, rewrite_conf, url); /* no_rows */
+    if ((rewrite_conf->key % 2 == 1) && error) return ngx_postgres_rewrite(r, rewrite_conf, url); /* rows */
     return NGX_DECLINED;
 }

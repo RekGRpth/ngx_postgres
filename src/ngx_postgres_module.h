@@ -78,8 +78,7 @@ typedef struct {
 
 typedef struct ngx_postgres_rewrite_conf_s ngx_postgres_rewrite_conf_t;
 
-typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt)
-    (ngx_http_request_t *, ngx_postgres_rewrite_conf_t *);
+typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_http_request_t *, ngx_postgres_rewrite_conf_t *);
 
 struct ngx_postgres_rewrite_conf_s {
     /* condition */
@@ -102,7 +101,7 @@ typedef struct {
     ngx_str_t                           user;
     ngx_str_t                           password;
     ngx_str_t                           application_name;
-} ngx_postgres_upstream_server_t;
+} ngx_postgres_server_t;
 
 typedef struct {
     struct sockaddr                    *sockaddr;
@@ -110,16 +109,16 @@ typedef struct {
     ngx_str_t                           name;
     ngx_str_t                           host;
     u_char                             *connstring;
-} ngx_postgres_upstream_peer_t;
+} ngx_postgres_peer_t;
 
 typedef struct {
     ngx_uint_t                          single;
     ngx_uint_t                          number;
-    ngx_postgres_upstream_peer_t        peer[1];
-} ngx_postgres_upstream_peers_t;
+    ngx_postgres_peer_t                 peer[1];
+} ngx_postgres_peers_t;
 
 typedef struct {
-    ngx_postgres_upstream_peers_t      *peers;
+    ngx_postgres_peers_t               *peers;
     ngx_uint_t                          current;
     ngx_pool_t                         *pool;
     /* keepalive */

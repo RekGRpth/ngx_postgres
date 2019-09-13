@@ -199,9 +199,9 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
         if (affected_len) pgctx->var_affected = ngx_atoi((u_char *)affected, affected_len);
     }
     if (pglcf->rewrites) { /* process rewrites */
-        ngx_postgres_rewrite_conf_t  *pgrcf = pglcf->rewrites->elts;
+        ngx_postgres_rewrite_conf_t  *rewrite_conf = pglcf->rewrites->elts;
         for (ngx_uint_t i = 0; i < pglcf->rewrites->nelts; i++) {
-            ngx_int_t rc = pgrcf[i].handler(r, &pgrcf[i]);
+            ngx_int_t rc = rewrite_conf[i].handler(r, &rewrite_conf[i]);
             if (rc != NGX_DECLINED) {
                 if (rc >= NGX_HTTP_SPECIAL_RESPONSE) { pgctx->status = rc; return NGX_DONE; }
                 pgctx->status = rc;
