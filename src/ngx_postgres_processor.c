@@ -134,9 +134,9 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
     ngx_postgres_upstream_peer_data_t *pgdt = u->peer.data;
     if (!PQconsumeInput(pgdt->pgconn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
     if (PQisBusy(pgdt->pgconn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while send query"); return NGX_AGAIN; }
-    ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     for (PGresult *res; (res = PQgetResult(pgdt->pgconn)); PQclear(res)) if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-    ngx_postgres_process_notify(r->connection->log, r->pool, pgdt->pgconn);
+    ngx_postgres_loc_conf_t *pglcf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+//    ngx_postgres_process_notify(r->connection->log, r->pool, pgdt->pgconn);
     if (!pgdt->pgscf->max_statements) {
         if (!PQsendQueryParams(pgdt->pgconn, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query sent successfully");
@@ -182,7 +182,7 @@ static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r) {
     pgctx->res = res;
     ngx_int_t rc = ngx_postgres_process_response(r);
     PQclear(res);
-    ngx_postgres_process_notify(r->connection->log, r->pool, pgdt->pgconn);
+//    ngx_postgres_process_notify(r->connection->log, r->pool, pgdt->pgconn);
     if (rc != NGX_DONE) return rc;
     pgdt->state = state_db_get_ack;
     return ngx_postgres_upstream_get_ack(r);
@@ -231,7 +231,7 @@ static ngx_int_t ngx_postgres_upstream_get_ack(ngx_http_request_t *r) {
     if (u->peer.connection->read->timer_set) ngx_del_timer(u->peer.connection->read); /* remove result timeout */
     PGresult *res = PQgetResult(pgdt->pgconn);
     if (res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: receiving ACK failed: multiple queries(?)"); PQclear(res); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-    ngx_postgres_process_notify(r->connection->log, r->pool, pgdt->pgconn);
+//    ngx_postgres_process_notify(r->connection->log, r->pool, pgdt->pgconn);
     pgdt->state = state_db_idle;
     return ngx_postgres_upstream_done(r);
 }
@@ -253,6 +253,11 @@ void ngx_postgres_process_notify(ngx_log_t *log, ngx_pool_t *pool, PGconn *pgcon
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, log, 0, "postgres notify: relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
-        ngx_http_push_stream_add_msg_to_channel_my(log, &id, &text, NULL, NULL, 0, pool);
+        switch (ngx_http_push_stream_add_msg_to_channel_my(log, &id, &text, NULL, NULL, 0, pool)) {
+            case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, log, 0, "postgres notify error"); break;
+            case NGX_DECLINED: ngx_log_error(NGX_LOG_ERR, log, 0, "postgres notify declined"); break;
+            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "postgres notify ok"); break;
+            default: ngx_log_error(NGX_LOG_ERR, log, 0, "postgres notify unknown"); break;
+        }
     }
 }

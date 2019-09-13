@@ -156,12 +156,11 @@ static void ngx_postgres_keepalive_close_handler(ngx_event_t *ev) {
     ngx_connection_t *c = ev->data;
     ngx_postgres_keepalive_cache_t *cached = c->data;
     if (c->close) goto close;
-    if (PQconsumeInput(cached->pgconn) && !PQisBusy(cached->pgconn)) {
-        PGresult *res = PQgetResult(cached->pgconn);
-        if (!res) { ngx_postgres_process_notify(c->log, c->pool, cached->pgconn); return; }
-        PQclear(res);
-        ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: received result on idle keepalive connection");
-    }
+    if (!PQconsumeInput(cached->pgconn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(cached->pgconn)); goto close; }
+    if (PQisBusy(cached->pgconn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: busy while keepalive"); goto close; }
+    for (PGresult *res; (res = PQgetResult(cached->pgconn)); PQclear(res)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: received result on idle keepalive connection: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); }
+    ngx_postgres_process_notify(c->log, c->pool, cached->pgconn);
+    return;
 close:
     ngx_postgres_upstream_free_connection(c, cached->pgconn, cached->pgscf);
     ngx_queue_remove(&cached->queue);
