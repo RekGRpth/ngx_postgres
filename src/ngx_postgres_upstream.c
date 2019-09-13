@@ -112,9 +112,10 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         for (ngx_uint_t i = 0; i < query->args.nelts; i++) {
             pgdt->paramTypes[i] = arg[i].oid;
             ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[i].index);
-            if (!value || !value->data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-            if (!(pgdt->paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-            (void) ngx_cpystrn(pgdt->paramValues[i], value->data, value->len + 1);
+            if (!value || !value->data) pgdt->paramValues[i] = NULL; else {
+                if (!(pgdt->paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+                (void) ngx_cpystrn(pgdt->paramValues[i], value->data, value->len + 1);
+            }
         }
     }
     if (pgscf->max_statements) {
