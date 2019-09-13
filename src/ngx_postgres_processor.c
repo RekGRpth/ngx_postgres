@@ -86,7 +86,7 @@ void ngx_postgres_process_events(ngx_http_request_t *r) {
         case state_db_send_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_send_query"); rc = ngx_postgres_upstream_send_query(r); break;
         case state_db_get_result: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_get_result"); rc = ngx_postgres_upstream_get_result(r); break;
         case state_db_get_ack: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_get_ack"); rc = ngx_postgres_upstream_get_ack(r); break;
-        case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_idle, re-using keepalive connection"); rc = ngx_postgres_upstream_send_query(r); break;
+        case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_idle, re-using keepalive connection"); pgdt->state = state_db_send_query; rc = ngx_postgres_upstream_send_query(r); break;
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: unknown state:%d", pgdt->state); goto failed;
     }
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) ngx_postgres_upstream_finalize_request(r, u, rc);
@@ -146,16 +146,15 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
             ngx_flag_t matched = 0;
             for (n = 0; n < pgdt->pgscf->max_statements && pgdt->statements[n].hash; n++) if (pgdt->statements[n].hash == pgdt->hash) { matched = 1; break; }
             if (!matched) {
-                if (n == pgdt->pgscf->max_statements) {
-                    for (ngx_uint_t i = 0, used = pgdt->statements[0].used; i < pgdt->pgscf->max_statements; i++) if (pgdt->statements[i].used < used) { used = pgdt->statements[i].used; n = i; }
-                }
+                if (n == pgdt->pgscf->max_statements) for (ngx_uint_t i = 0, used = pgdt->statements[0].used; i < pgdt->pgscf->max_statements; i++) if (pgdt->statements[i].used < used) { used = pgdt->statements[i].used; n = i; }
                 pgdt->statements[n].hash = pgdt->hash;
                 pgdt->statements[n].used++;
                 if (!PQsendPrepare(pgdt->pgconn, (const char *)pgdt->stmtName, (const char *)pgdt->command, pgdt->nParams, pgdt->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepare: %s", PQerrorMessage(pgdt->pgconn)); /*PQclear(res); */return NGX_ERROR; }
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: prepare sent successfully");
+                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: prepare sent successfully");
                 pgdt->state = state_db_send_query;
                 return NGX_DONE;
             }
+            pgdt->state = state_db_send_query;
         } /* Fall through. */
         case state_db_send_query: {
             if (!PQsendQueryPrepared(pgdt->pgconn, (const char *)pgdt->stmtName, pgdt->nParams, (const char *const *)pgdt->paramValues, NULL, NULL, pglcf->output_binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
@@ -178,12 +177,7 @@ static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r) {
     PGresult *res = PQgetResult(pgdt->pgconn);
     if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s", PQerrorMessage(pgdt->pgconn)); return NGX_ERROR; }
 //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQcmdStatus = %s", PQcmdStatus(res));
-    ExecStatusType exec_status = PQresultStatus(res);
-    if (exec_status != PGRES_COMMAND_OK && exec_status != PGRES_TUPLES_OK) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s: %s", PQresStatus(exec_status), PQerrorMessage(pgdt->pgconn));
-        PQclear(res);
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
+    if (PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); PQclear(res); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: result received successfully, cols:%d rows:%d", PQnfields(res), PQntuples(res));
     ngx_postgres_ctx_t *pgctx = ngx_http_get_module_ctx(r, ngx_postgres_module);
     pgctx->res = res;
