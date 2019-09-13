@@ -136,7 +136,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         if (!(pgdt->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         *ngx_snprintf(pgdt->command, query->sql.len, "LISTEN %V", &channel) = '\0';
         query->sql.data = pgdt->command;
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "channel = %V", &channel);
+//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "channel = %V", &channel);
     } else {
         if (!(pgdt->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         (void) ngx_cpystrn(pgdt->command, query->sql.data, query->sql.len + 1);
