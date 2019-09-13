@@ -82,7 +82,7 @@ ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_
 }
 
 
-static ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident) {
+ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident) {
     ngx_str_t result = ngx_null_string;
     u_char quote_char = as_ident ? '"' : '\'';
     ngx_uint_t num_backslashes = 0;
