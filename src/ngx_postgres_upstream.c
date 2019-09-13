@@ -121,12 +121,12 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     u->peer.get = ngx_postgres_upstream_get_peer;
     u->peer.free = ngx_postgres_upstream_free_peer;
     ngx_postgres_query_t *query;
-    if (location_conf->query.methods_set & r->method) {
-        query = location_conf->query.methods.elts;
+    if (location_conf->methods_set & r->method) {
+        query = location_conf->methods.elts;
         ngx_uint_t i;
-        for (i = 0; i < location_conf->query.methods.nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
-        if (i == location_conf->query.methods.nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    } else query = location_conf->query.def;
+        for (i = 0; i < location_conf->methods.nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
+        if (i == location_conf->methods.nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    } else query = location_conf->def;
     peer_data->resultFormat = location_conf->output_binary;
     if (query->args.nelts == 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1)) {
         ngx_postgres_arg_t *arg = query->args.elts;
