@@ -433,7 +433,7 @@ static void *ngx_postgres_create_server_conf(ngx_conf_t *cf) {
     server_conf->single = 1;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NULL; }
-    cln->handler = ngx_postgres_keepalive_cleanup;
+    cln->handler = ngx_postgres_server_conf_cleanup;
     cln->data = server_conf;
     return server_conf;
 }

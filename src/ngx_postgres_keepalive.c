@@ -168,7 +168,7 @@ close:
 }
 
 
-void ngx_postgres_keepalive_cleanup(void *data) {
+void ngx_postgres_server_conf_cleanup(void *data) {
     ngx_postgres_server_conf_t *server_conf = data;
     /* ngx_queue_empty is broken when used on unitialized queue */
     if (!server_conf->cache.prev) return;
