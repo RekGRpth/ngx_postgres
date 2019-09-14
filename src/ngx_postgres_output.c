@@ -183,7 +183,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
 ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     size_t size = 0;
-    if (context->ntuples == 1 && context->nfields == 1 && (PQftype(context->res, 0) == JSONOID || PQftype(context->res, 0) == JSONBOID)) size = PQgetlength(context->res, 0, 0); else {
+    if (context->ntuples == 1 && context->nfields == 1 && (PQftype(context->res, 0) == JSONOID || PQftype(context->res, 0) == JSONBOID)); else {
         if (context->ntuples > 1) size += 2; // [] + \0
         for (ngx_int_t row = 0; row < context->ntuples; row++) {
             size += sizeof("{}") - 1;
@@ -215,7 +215,7 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     cl->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
-    if (context->ntuples == 1 && context->nfields == 1 && (PQftype(context->res, 0) == JSONOID || PQftype(context->res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(context->res, 0, 0), size); else { /* fill data */
+    if (context->ntuples == 1 && context->nfields == 1 && (PQftype(context->res, 0) == JSONOID || PQftype(context->res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(context->res, 0, 0), PQgetlength(context->res, 0, 0)); else { /* fill data */
         if (context->ntuples > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
         for (ngx_int_t row = 0; row < context->ntuples; row++) {
             if (row > 0) b->last = ngx_copy(b->last, ",", 1);
@@ -233,7 +233,7 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
                             case 'f': case 'F': b->last = ngx_copy(b->last, "false", sizeof("false") - 1); break;
                         } else {
                             b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
-                            if (size > 0) b->last = (u_char *) ngx_escape_json(b->last, (u_char *)PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col));
+                            if (PQgetlength(context->res, row, col) > 0) b->last = (u_char *) ngx_escape_json(b->last, (u_char *)PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col));
                             b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
                         }
                     } else b->last = ngx_copy(b->last, PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col));
