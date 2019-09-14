@@ -618,7 +618,8 @@ static ngx_flag_t is_variable_character(u_char p) {
 
 
 static ngx_uint_t str2oid(ngx_str_t *value) {
-    for (ngx_uint_t i = 0; ngx_postgres_oids[i].name.len; i++) if (ngx_postgres_oids[i].name.len - 3 == value->len && !ngx_strncasecmp(ngx_postgres_oids[i].name.data, value->data, value->len)) return ngx_postgres_oids[i].value;
+    ngx_conf_enum_t *e = ngx_postgres_oids;
+    for (ngx_uint_t i = 0; e[i].name.len; i++) if (e[i].name.len - 3 == value->len && !ngx_strncasecmp(e[i].name.data, value->data, value->len)) return e[i].value;
     return 0;
 }
 
@@ -638,15 +639,16 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     } else { /* method-specific query */
         methods = 0;
         for (ngx_uint_t i = 1; i < cf->args->nelts - 1; i++) {
+            ngx_conf_bitmask_t *b = ngx_postgres_http_methods;
             ngx_uint_t j;
-            for (j = 0; ngx_postgres_http_methods[j].name.len; j++) {
-                if (ngx_postgres_http_methods[j].name.len == value[i].len && !ngx_strncasecmp(ngx_postgres_http_methods[j].name.data, value[i].data, value[i].len)) {
-                    if (location_conf->methods_set & ngx_postgres_http_methods[j].mask) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: method \"%V\" is duplicate in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
-                    methods |= ngx_postgres_http_methods[j].mask;
+            for (j = 0; b[j].name.len; j++) {
+                if (b[j].name.len == value[i].len && !ngx_strncasecmp(b[j].name.data, value[i].data, value[i].len)) {
+                    if (location_conf->methods_set & b[j].mask) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: method \"%V\" is duplicate in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+                    methods |= b[j].mask;
                     break;
                 }
             }
-            if (ngx_postgres_http_methods[j].name.len == 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid method \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+            if (b[j].name.len == 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid method \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
         }
         if (!location_conf->methods.elts && ngx_array_init(&location_conf->methods, cf->pool, 4, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         if (!(query = ngx_array_push(&location_conf->methods))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
