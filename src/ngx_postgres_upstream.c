@@ -159,7 +159,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         peer_data->hash = ngx_hash_key(query->sql.data, query->sql.len);
         *ngx_snprintf(peer_data->stmtName, 32, "ngx_%ul", (unsigned long)peer_data->hash) = '\0';
     }
-    context->var_query = query->sql; /* set $postgres_query */
+    context->query = query->sql; /* set $postgres_query */
     return NGX_OK;
 }
 
