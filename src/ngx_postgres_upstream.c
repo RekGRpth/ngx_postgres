@@ -32,24 +32,24 @@
 #include "ngx_postgres_upstream.h"
 
 
-static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *uscf);
+static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
 static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data);
 static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state);
 
 
-ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *uscf) {
-    uscf->peer.init = ngx_postgres_upstream_init_peer;
-    ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
-    if (!uscf->servers || !uscf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &uscf->host, uscf->file_name, uscf->line); return NGX_ERROR; }
-    ngx_postgres_server_t *server = uscf->servers->elts;
+ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
+    upstream_srv_conf->peer.init = ngx_postgres_upstream_init_peer;
+    ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
+    if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
+    ngx_postgres_server_t *server = upstream_srv_conf->servers->elts;
     ngx_uint_t n = 0;
-    for (ngx_uint_t i = 0; i < uscf->servers->nelts; i++) n += server[i].naddrs;
+    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) n += server[i].naddrs;
     ngx_postgres_peers_t *peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_peers_t) + sizeof(ngx_postgres_peer_t) * (n - 1));
     if (!peers) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     peers->single = (n == 1);
     peers->number = n;
     n = 0;
-    for (ngx_uint_t i = 0; i < uscf->servers->nelts; i++) {
+    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) {
         for (ngx_uint_t j = 0; j < server[i].naddrs; j++) {
             ngx_postgres_peer_t *peer = &peers->peer[n];
             peer->sockaddr = server[i].addrs[j].sockaddr;
@@ -106,13 +106,13 @@ ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_
 }
 
 
-static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *uscf) {
+static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
     ngx_postgres_peer_data_t *peer_data = ngx_pcalloc(r->pool, sizeof(ngx_postgres_peer_data_t));
     if (!peer_data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
     peer_data->upstream = u;
     peer_data->request = r;
-    ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(uscf, ngx_postgres_module);
+    ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     peer_data->server_conf = server_conf;
