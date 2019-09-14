@@ -482,10 +482,10 @@ static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void
     if (conf->handler == NGX_CONF_UNSET_PTR) {
         if (prev->handler == NGX_CONF_UNSET_PTR) { /* default */
             conf->handler = NULL;
-            conf->output_binary = 0;
+            conf->binary = 0;
         } else { /* merge */
             conf->handler = prev->handler;
-            conf->output_binary = prev->output_binary;
+            conf->binary = prev->binary;
         }
     }
     ngx_conf_merge_ptr_value(conf->variables, prev->variables, NULL);
@@ -778,7 +778,7 @@ static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_uint_t i;
     for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[1].len && !ngx_strncasecmp(e[i].name.data, value[1].data, value[1].len)) { location_conf->handler = e[i].handler; break; }
     if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid output format \"%V\" in \"%V\" directive", &value[1], &cmd->name); return NGX_CONF_ERROR; }
-    location_conf->output_binary = e[i].binary;
+    location_conf->binary = e[i].binary;
     return NGX_CONF_OK;
 }
 
