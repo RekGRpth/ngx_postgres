@@ -74,7 +74,7 @@ struct ngx_postgres_rewrite_conf_s {
     ngx_postgres_rewrite_handler_pt     handler;
     /* methods */
     ngx_uint_t                          methods_set;
-    ngx_array_t                         methods; /* method-specific */
+    ngx_array_t                        *methods; /* method-specific */
     ngx_postgres_rewrite_t             *rewrite;     /* default */
 };
 
@@ -121,7 +121,7 @@ typedef struct {
 typedef struct {
     ngx_uint_t                          methods;
     ngx_str_t                           sql;
-    ngx_array_t                         args;
+    ngx_array_t                        *args;
 } ngx_postgres_query_t;
 
 typedef ngx_int_t (*ngx_postgres_output_handler_pt) (ngx_http_request_t *);
@@ -132,7 +132,7 @@ typedef struct {
     ngx_http_complex_value_t           *upstream_cv;
     /* queries */
     ngx_uint_t                          methods_set;
-    ngx_array_t                         methods; /* method-specific */
+    ngx_array_t                        *methods; /* method-specific */
     ngx_postgres_query_t               *query;     /* default */
     /* rewrites */
     ngx_array_t                        *rewrite_conf;

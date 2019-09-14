@@ -473,7 +473,7 @@ static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void
         conf->upstream.upstream = prev->upstream.upstream;
         conf->upstream_cv = prev->upstream_cv;
     }
-    if (!conf->query && !conf->methods.elts) {
+    if (!conf->query && !conf->methods) {
         conf->methods_set = prev->methods_set;
         conf->methods = prev->methods;
         conf->query = prev->query;
@@ -650,8 +650,8 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             }
             if (b[j].name.len == 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid method \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
         }
-        if (!location_conf->methods.elts && ngx_array_init(&location_conf->methods, cf->pool, 4, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-        if (!(query = ngx_array_push(&location_conf->methods))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (!location_conf->methods && !(location_conf->methods = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_query_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (!(query = ngx_array_push(location_conf->methods))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         location_conf->methods_set |= methods;
     }
     query->methods = methods;
@@ -690,7 +690,7 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         sql.len = len;
     }
     if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-    if (ngx_array_init(&query->args, cf->pool, 4, sizeof(ngx_postgres_arg_t)) != NGX_OK ) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    if (!(query->args = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_arg_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
     for (ngx_uint_t k = 0; s < e; ) {
         if ((*p++ = *s++) == '$') {
@@ -701,7 +701,7 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             if (*s == ':' && *(s+1) == ':') for (s += 2, oid.data = s, oid.len = 0; s < e && is_variable_character(*s); s++, oid.len++);
             if (!oid.len) { p = ngx_copy(p, name.data, name.len); continue; }
             ngx_postgres_arg_t *arg;
-            if (!(arg = ngx_array_push(&query->args))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+            if (!(arg = ngx_array_push(query->args))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
             if ((ngx_int_t)(arg->index = ngx_http_get_variable_index(cf, &name)) == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid name \"%V\" in \"%V\" directive", &name, &cmd->name); return NGX_CONF_ERROR; }
             if (!(arg->oid = str2oid(&oid))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid oid \"%V\" in \"%V\" directive", &oid, &cmd->name);  return NGX_CONF_ERROR; }
             p += ngx_sprintf(p, "%d", ++k) - p;
@@ -754,8 +754,8 @@ found:;
             }
             if (!b[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid method \"%V\" for condition \"%V\" in \"%V\" directive",  &value[i], &what, &cmd->name); return NGX_CONF_ERROR; }
         }
-        if (!rewrite_conf->methods.elts && ngx_array_init(&rewrite_conf->methods, cf->pool, 4, sizeof(ngx_postgres_rewrite_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-        if (!(rewrite = ngx_array_push(&rewrite_conf->methods))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (!rewrite_conf->methods && !(rewrite_conf->methods = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_rewrite_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (!(rewrite = ngx_array_push(rewrite_conf->methods))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         rewrite_conf->methods_set |= methods;
     }
     ngx_str_t to = value[cf->args->nelts - 1];

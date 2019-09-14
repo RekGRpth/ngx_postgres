@@ -210,8 +210,8 @@ char *ngx_postgres_interpolate_url(char *redirect, int size, char *variables[10]
 
 ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf, char *url) {
     if (rewrite_conf->methods_set & r->method) { /* method-specific */
-        ngx_postgres_rewrite_t *rewrite = rewrite_conf->methods.elts;
-        for (ngx_uint_t i = 0; i < rewrite_conf->methods.nelts; i++) {
+        ngx_postgres_rewrite_t *rewrite = rewrite_conf->methods->elts;
+        for (ngx_uint_t i = 0; i < rewrite_conf->methods->nelts; i++) {
             if (rewrite[i].methods & r->method) {
                 if (rewrite[i].location.len > 0) {
                     // write template name into $html
@@ -300,8 +300,8 @@ ngx_int_t ngx_postgres_rewrite_valid(ngx_http_request_t *r, ngx_postgres_rewrite
     for (ngx_uint_t i = 0; i < 10; i++) values[i] = columned[i] = variables[i] = NULL;
     // find callback
     if (rewrite_conf->methods_set & r->method) {
-        ngx_postgres_rewrite_t *rewrite = rewrite_conf->methods.elts;
-        for (ngx_uint_t i = 0; i < rewrite_conf->methods.nelts; i++) if ((rewrite[i].methods & r->method) && rewrite[i].location.len > 0) {
+        ngx_postgres_rewrite_t *rewrite = rewrite_conf->methods->elts;
+        for (ngx_uint_t i = 0; i < rewrite_conf->methods->nelts; i++) if ((rewrite[i].methods & r->method) && rewrite[i].location.len > 0) {
             redirect.data = rewrite[i].location.data;
             redirect.len = rewrite[i].location.len;
             break;

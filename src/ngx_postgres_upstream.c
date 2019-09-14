@@ -122,14 +122,14 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     u->peer.free = ngx_postgres_upstream_free_peer;
     ngx_postgres_query_t *query;
     if (location_conf->methods_set & r->method) {
-        query = location_conf->methods.elts;
+        query = location_conf->methods->elts;
         ngx_uint_t i;
-        for (i = 0; i < location_conf->methods.nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
-        if (i == location_conf->methods.nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        for (i = 0; i < location_conf->methods->nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
+        if (i == location_conf->methods->nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     } else query = location_conf->query;
     peer_data->resultFormat = location_conf->binary;
-    if (query->args.nelts == 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1)) {
-        ngx_postgres_arg_t *arg = query->args.elts;
+    if (query->args->nelts == 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1)) {
+        ngx_postgres_arg_t *arg = query->args->elts;
         ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[0].index);
         if (!value || !value->data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "no variable value found for listen"); return NGX_ERROR; }
         ngx_str_t channel = PQescapeInternal(r->pool, value->data, value->len, 1);
@@ -141,12 +141,12 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     } else {
         if (!(peer_data->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         (void) ngx_cpystrn(peer_data->command, query->sql.data, query->sql.len + 1);
-        if (query->args.nelts) {
-            ngx_postgres_arg_t *arg = query->args.elts;
-            peer_data->nParams = query->args.nelts;
-            if (!(peer_data->paramTypes = ngx_pnalloc(r->pool, query->args.nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-            if (!(peer_data->paramValues = ngx_pnalloc(r->pool, query->args.nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-            for (ngx_uint_t i = 0; i < query->args.nelts; i++) {
+        if (query->args->nelts) {
+            ngx_postgres_arg_t *arg = query->args->elts;
+            peer_data->nParams = query->args->nelts;
+            if (!(peer_data->paramTypes = ngx_pnalloc(r->pool, query->args->nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            if (!(peer_data->paramValues = ngx_pnalloc(r->pool, query->args->nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            for (ngx_uint_t i = 0; i < query->args->nelts; i++) {
                 peer_data->paramTypes[i] = arg[i].oid;
                 ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[i].index);
                 if (!value || !value->data) peer_data->paramValues[i] = NULL; else {
