@@ -31,9 +31,9 @@
 
 ngx_int_t ngx_postgres_variable_columns(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (!context || context->var_cols == NGX_ERROR) { v->not_found = 1; return NGX_OK; }
+    if (!context || context->nfields == NGX_ERROR) { v->not_found = 1; return NGX_OK; }
     if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    v->len = ngx_sprintf(v->data, "%i", context->var_cols) - v->data;
+    v->len = ngx_sprintf(v->data, "%i", context->nfields) - v->data;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
@@ -43,9 +43,9 @@ ngx_int_t ngx_postgres_variable_columns(ngx_http_request_t *r, ngx_http_variable
 
 ngx_int_t ngx_postgres_variable_rows(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (!context || context->var_rows == NGX_ERROR) { v->not_found = 1; return NGX_OK; }
+    if (!context || context->ntuples == NGX_ERROR) { v->not_found = 1; return NGX_OK; }
     if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    v->len = ngx_sprintf(v->data, "%i", context->var_rows) - v->data;
+    v->len = ngx_sprintf(v->data, "%i", context->ntuples) - v->data;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
@@ -107,10 +107,10 @@ ngx_str_t ngx_postgres_variable_set_custom(ngx_http_request_t *r, ngx_postgres_v
             return value;
         }
     }
-    if (pgv->row >= context->var_rows || col >= context->var_cols) {
+    if (pgv->row >= context->ntuples || col >= context->nfields) {
         if (pgv->required) {
             ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_set\" for variable \"$%V\" requires value out of range of the received result-set (rows:%d cols:%d) in location \"%V\"", &variable->variable->name, context->var_rows, context->var_cols, &core_loc_conf->name);
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_set\" for variable \"$%V\" requires value out of range of the received result-set (rows:%d cols:%d) in location \"%V\"", &variable->variable->name, context->ntuples, context->nfields, &core_loc_conf->name);
         }
         return value;
     }

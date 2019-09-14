@@ -36,9 +36,9 @@
 
 ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (context->var_rows != 1 || context->var_cols != 1) {
+    if (context->ntuples != 1 || context->nfields != 1) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received %d value(s) instead of expected single value in location \"%V\"", context->var_rows * context->var_cols, &core_loc_conf->name);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received %d value(s) instead of expected single value in location \"%V\"", context->ntuples * context->nfields, &core_loc_conf->name);
         context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
@@ -86,9 +86,9 @@ int hex2bin(const char *s) {
 
 ngx_int_t ngx_postgres_output_hex(ngx_http_request_t *r) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (context->var_rows != 1 || context->var_cols != 1) {
+    if (context->ntuples != 1 || context->nfields != 1) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received %d value(s) instead of expected single value in location \"%V\"", context->var_rows * context->var_cols, &core_loc_conf->name);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received %d value(s) instead of expected single value in location \"%V\"", context->ntuples * context->nfields, &core_loc_conf->name);
         context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
@@ -128,9 +128,9 @@ ngx_int_t ngx_postgres_output_hex(ngx_http_request_t *r) {
 ngx_int_t ngx_postgres_output_text(ngx_http_request_t *r) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     size_t size = 0; /* pre-calculate total length up-front for single buffer allocation */
-    for (ngx_int_t row = 0; row < context->var_rows; row++) for (ngx_int_t col = 0; col < context->var_cols; col++) if (PQgetisnull(context->res, row, col)) size += sizeof("(null)") - 1; else size += PQgetlength(context->res, row, col); /* field string data */
-    size += context->var_rows * context->var_cols - 1; /* delimiters */
-    if (!context->var_rows || !size) return NGX_DONE;
+    for (ngx_int_t row = 0; row < context->ntuples; row++) for (ngx_int_t col = 0; col < context->nfields; col++) if (PQgetisnull(context->res, row, col)) size += sizeof("(null)") - 1; else size += PQgetlength(context->res, row, col); /* field string data */
+    size += context->ntuples * context->nfields - 1; /* delimiters */
+    if (!context->ntuples || !size) return NGX_DONE;
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
     if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_chain_t *cl = ngx_alloc_chain_link(r->pool);
@@ -139,11 +139,11 @@ ngx_int_t ngx_postgres_output_text(ngx_http_request_t *r) {
     b->memory = 1;
     b->tag = r->upstream->output.tag;
     /* fill data */
-    for (ngx_int_t row = 0; row < context->var_rows; row++) {
-        for (ngx_int_t col = 0; col < context->var_cols; col++) {
+    for (ngx_int_t row = 0; row < context->ntuples; row++) {
+        for (ngx_int_t col = 0; col < context->nfields; col++) {
             if (PQgetisnull(context->res, row, col)) b->last = ngx_copy(b->last, "(null)", sizeof("(null)") - 1);
             else if ((size = PQgetlength(context->res, row, col))) b->last = ngx_copy(b->last, PQgetvalue(context->res, row, col), size);
-            if (row != context->var_rows - 1 || col != context->var_cols - 1) b->last = ngx_copy(b->last, "\n", 1);
+            if (row != context->ntuples - 1 || col != context->nfields - 1) b->last = ngx_copy(b->last, "\n", 1);
         }
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
@@ -183,11 +183,11 @@ ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
 ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     size_t size = 0;
-    if (context->var_rows == 1 && context->var_cols == 1 && (PQftype(context->res, 0) == JSONOID || PQftype(context->res, 0) == JSONBOID)) size = PQgetlength(context->res, 0, 0); else {
-        if (context->var_rows > 1) size += 2; // [] + \0
-        for (ngx_int_t row = 0; row < context->var_rows; row++) {
+    if (context->ntuples == 1 && context->nfields == 1 && (PQftype(context->res, 0) == JSONOID || PQftype(context->res, 0) == JSONBOID)) size = PQgetlength(context->res, 0, 0); else {
+        if (context->ntuples > 1) size += 2; // [] + \0
+        for (ngx_int_t row = 0; row < context->ntuples; row++) {
             size += sizeof("{}") - 1;
-            for (ngx_int_t col = 0; col < context->var_cols; col++) {
+            for (ngx_int_t col = 0; col < context->nfields; col++) {
                 if (PQgetisnull(context->res, row, col)) size += sizeof("null") - 1; else {
                     int col_type = PQftype(context->res, col);
                     int col_length = PQgetlength(context->res, row, col);
@@ -205,14 +205,14 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
                 }
             }
         }
-        for (ngx_int_t col = 0; col < context->var_cols; col++) {
+        for (ngx_int_t col = 0; col < context->nfields; col++) {
             char *col_name = PQfname(context->res, col);
-            size += (ngx_strlen(col_name) + 3) * context->var_rows; // extra "":
+            size += (ngx_strlen(col_name) + 3) * context->ntuples; // extra "":
         }
-        size += context->var_rows * (context->var_cols - 1); /* column delimeters */
-        size += context->var_rows - 1;                     /* row delimeters */
+        size += context->ntuples * (context->nfields - 1); /* column delimeters */
+        size += context->ntuples - 1;                     /* row delimeters */
     }
-    if (!context->var_rows || !size) return NGX_DONE;
+    if (!context->ntuples || !size) return NGX_DONE;
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
     if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_chain_t *cl = ngx_alloc_chain_link(r->pool);
@@ -220,12 +220,12 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     cl->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
-    if (context->var_rows == 1 && context->var_cols == 1 && (PQftype(context->res, 0) == JSONOID || PQftype(context->res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(context->res, 0, 0), size); else { /* fill data */
-        if (context->var_rows > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
-        for (ngx_int_t row = 0; row < context->var_rows; row++) {
+    if (context->ntuples == 1 && context->nfields == 1 && (PQftype(context->res, 0) == JSONOID || PQftype(context->res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(context->res, 0, 0), size); else { /* fill data */
+        if (context->ntuples > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
+        for (ngx_int_t row = 0; row < context->ntuples; row++) {
             if (row > 0) b->last = ngx_copy(b->last, ",", 1);
             b->last = ngx_copy(b->last, "{", sizeof("{") - 1);
-            for (ngx_int_t col = 0; col < context->var_cols; col++) {
+            for (ngx_int_t col = 0; col < context->nfields; col++) {
                 if (col > 0) b->last = ngx_copy(b->last, ",", 1);
                 char *col_name = PQfname(context->res, col);
                 b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
@@ -248,7 +248,7 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
             }
             b->last = ngx_copy(b->last, "}", sizeof("}") - 1);
         }
-        if (context->var_rows > 1) b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
+        if (context->ntuples > 1) b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->next = NULL;

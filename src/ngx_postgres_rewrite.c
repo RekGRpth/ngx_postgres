@@ -42,7 +42,7 @@ static char *ngx_postgres_find_values(char *values[10], char *variables[10], int
     int error_in_columns = 0;
     int resolved = 0;
     // check if returned columns match variable
-    for (ngx_int_t col = 0; col < context->var_cols; col++) {
+    for (ngx_int_t col = 0; col < context->nfields; col++) {
         char *col_name = PQfname(context->res, col);
         for (ngx_int_t i = 0; i < vars; i++) {
             if (!ngx_strncmp(variables[i], col_name, ngx_strlen(col_name))) {
@@ -62,8 +62,8 @@ static char *ngx_postgres_find_values(char *values[10], char *variables[10], int
     if ((find_error && !error_in_columns) || resolved < vars) {
         int current = -1;
         // find some json in pg results
-        for (ngx_int_t row = 0; row < context->var_rows && !failed; row++) {
-            for (ngx_int_t col = 0; col < context->var_cols && !failed; col++) {
+        for (ngx_int_t row = 0; row < context->ntuples && !failed; row++) {
+            for (ngx_int_t col = 0; col < context->nfields && !failed; col++) {
                 if (!PQgetisnull(context->res, row, col)) {
                     char *value = PQgetvalue(context->res, row, col);
                     int size = PQgetlength(context->res, row, col);
@@ -284,8 +284,8 @@ ngx_int_t ngx_postgres_rewrite_changes(ngx_http_request_t *r, ngx_postgres_rewri
 
 ngx_int_t ngx_postgres_rewrite_rows(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (rewrite_conf->key % 2 == 0 && !context->var_rows) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_rows */
-    if (rewrite_conf->key % 2 == 1 && context->var_rows > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* rows */
+    if (rewrite_conf->key % 2 == 0 && !context->ntuples) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_rows */
+    if (rewrite_conf->key % 2 == 1 && context->ntuples > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* rows */
     return NGX_DECLINED;
 }
 

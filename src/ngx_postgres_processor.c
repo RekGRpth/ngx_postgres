@@ -191,8 +191,8 @@ static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r) {
 static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    context->var_cols = PQnfields(context->res); /* set $postgres_columns */
-    context->var_rows = PQntuples(context->res); /* set $postgres_rows */
+    context->nfields = PQnfields(context->res); /* set $postgres_columns */
+    context->ntuples = PQntuples(context->res); /* set $postgres_rows */
     if (ngx_strncasecmp((u_char *)PQcmdStatus(context->res), (u_char *)"SELECT", sizeof("SELECT") - 1)) { /* set $postgres_affected */
         char *affected = PQcmdTuples(context->res);
         size_t affected_len = ngx_strlen(affected);
