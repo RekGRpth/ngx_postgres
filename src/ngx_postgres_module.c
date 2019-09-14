@@ -612,17 +612,13 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
 }
 
 
-static ngx_flag_t is_variable_character(char p) {
+static ngx_flag_t is_variable_character(u_char p) {
     return ((p >= '0' && p <= '9') || (p >= 'a' && p <= 'z') || (p >= 'A' && p <= 'Z') || p == '_');
 }
 
 
 static ngx_uint_t str2oid(ngx_str_t *value) {
-    for (ngx_uint_t i = 0; ngx_postgres_oids[i].name.len; i++) {
-        if (ngx_postgres_oids[i].name.len - 3 == value->len && !ngx_strncasecmp(ngx_postgres_oids[i].name.data, value->data, value->len)) {
-            return ngx_postgres_oids[i].value;
-        }
-    }
+    for (ngx_uint_t i = 0; ngx_postgres_oids[i].name.len; i++) if (ngx_postgres_oids[i].name.len - 3 == value->len && !ngx_strncasecmp(ngx_postgres_oids[i].name.data, value->data, value->len)) return ngx_postgres_oids[i].value;
     return 0;
 }
 
