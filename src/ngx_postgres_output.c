@@ -201,16 +201,13 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
                             col_length += ngx_escape_json(NULL, (u_char *)col_value, col_length);
                         }
                     }
-                    size += col_length;  /* field string data */
+                    size += col_length; /* field string data */
                 }
             }
         }
-        for (ngx_int_t col = 0; col < context->nfields; col++) {
-            char *col_name = PQfname(context->res, col);
-            size += (ngx_strlen(col_name) + 3) * context->ntuples; // extra "":
-        }
+        for (ngx_int_t col = 0; col < context->nfields; col++) size += (ngx_strlen(PQfname(context->res, col)) + 3) * context->ntuples; // extra "":
         size += context->ntuples * (context->nfields - 1); /* column delimeters */
-        size += context->ntuples - 1;                     /* row delimeters */
+        size += context->ntuples - 1;                      /* row delimeters */
     }
     if (!context->ntuples || !size) return NGX_DONE;
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
