@@ -43,9 +43,9 @@
 
 
 static ngx_int_t ngx_postgres_add_variables(ngx_conf_t *cf);
-static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf);
-static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf);
-static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
+static void *ngx_postgres_create_server_conf(ngx_conf_t *cf);
+static void *ngx_postgres_create_location_conf(ngx_conf_t *cf);
+static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void *child);
 static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -159,11 +159,11 @@ static ngx_http_module_t ngx_postgres_module_ctx = {
     NULL,                                   /* create main configuration */
     NULL,                                   /* init main configuration */
 
-    ngx_postgres_create_upstream_srv_conf,  /* create server configuration */
+    ngx_postgres_create_server_conf,        /* create server configuration */
     NULL,                                   /* merge server configuration */
 
-    ngx_postgres_create_loc_conf,           /* create location configuration */
-    ngx_postgres_merge_loc_conf             /* merge location configuration */
+    ngx_postgres_create_location_conf,      /* create location configuration */
+    ngx_postgres_merge_location_conf        /* merge location configuration */
 };
 
 ngx_module_t ngx_postgres_module = {
@@ -424,7 +424,7 @@ static ngx_int_t ngx_postgres_add_variables(ngx_conf_t *cf) {
 }
 
 
-static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf) {
+static void *ngx_postgres_create_server_conf(ngx_conf_t *cf) {
     ngx_postgres_server_conf_t *server_conf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_server_conf_t));
     if (!server_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NULL; }
     /* enable keepalive (single) by default */
@@ -439,7 +439,7 @@ static void *ngx_postgres_create_upstream_srv_conf(ngx_conf_t *cf) {
 }
 
 
-static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
+static void *ngx_postgres_create_location_conf(ngx_conf_t *cf) {
     ngx_postgres_location_conf_t *location_conf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_location_conf_t));
     if (!location_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NULL; }
     location_conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
@@ -464,7 +464,7 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
 }
 
 
-static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
+static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void *child) {
     ngx_postgres_location_conf_t *prev = parent;
     ngx_postgres_location_conf_t *conf = child;
     ngx_conf_merge_msec_value(conf->upstream.connect_timeout, prev->upstream.connect_timeout, 10000);
