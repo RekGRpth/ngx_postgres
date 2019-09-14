@@ -111,7 +111,7 @@ ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_p
 void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data, ngx_uint_t state) {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer");
     if (state & NGX_PEER_FAILED) peer_data->failed = 1;
-    if (!peer_data->failed && pc->connection && peer_data->upstream->headers_in.status_n == NGX_HTTP_OK) {
+    if (!peer_data->failed && pc->connection && peer_data->request->upstream->headers_in.status_n == NGX_HTTP_OK) {
         ngx_connection_t *c = pc->connection;
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
