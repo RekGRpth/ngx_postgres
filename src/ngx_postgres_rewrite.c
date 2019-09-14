@@ -173,7 +173,7 @@ char *ngx_postgres_interpolate_url(char *redirect, int size, char *variables[10]
                         while (*n != '"' || *(n - 1) == '\\') n++;
                         // output external string
                     } else if (columned[i]) {
-                        n += strlen(values[i]);
+                        n += ngx_strlen(values[i]);
                     } else {
                         // find unquoted value boundary
                         while (*n != ',' && *n != ' ' && *n != '\n' && *n != '}' && *n != ']') n++;
@@ -239,7 +239,7 @@ ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_
                             int vars = ngx_postgres_find_variables(variables, (char *) rewrite[i].location.data, rewrite[i].location.len);
                             url = ngx_postgres_interpolate_url((char *) rewrite[i].location.data, rewrite[i].location.len, variables, vars, columned, values, r);
                         }
-                        int len = strlen(url);
+                        int len = ngx_strlen(url);
                         // redirect out
                         r->headers_out.location = ngx_list_push(&r->headers_out.headers);
                         u_char *m = ngx_pnalloc(r->pool, len + 1); // !!! BUG !!!
