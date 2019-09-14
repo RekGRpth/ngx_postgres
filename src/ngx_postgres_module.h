@@ -87,7 +87,7 @@ typedef struct {
     ngx_str_t                           user;
     ngx_str_t                           password;
     ngx_str_t                           application_name;
-} ngx_postgres_server_t;
+} ngx_postgres_server_t; // !!! MUST: sizeof(ngx_postgres_server_t) <= sizeof(ngx_http_upstream_server_t) !!!
 
 typedef struct {
     struct sockaddr                    *sockaddr;
