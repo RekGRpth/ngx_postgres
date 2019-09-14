@@ -108,12 +108,12 @@ ngx_int_t ngx_postgres_upstream_test_connect(ngx_connection_t *c) {
 
 
 ngx_int_t ngx_postgres_rewrite_var(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
-    ngx_postgres_rewrite_loc_conf_t *rlcf = ngx_http_get_module_loc_conf(r, ngx_http_rewrite_module);
-    if (!rlcf->uninitialized_variable_warn) { *v = ngx_http_variable_null_value; return NGX_OK; }
-    ngx_http_core_main_conf_t *cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-    ngx_http_variable_t *var = cmcf->variables.elts;
+    ngx_postgres_rewrite_loc_conf_t *rewrite_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_rewrite_module);
+    if (!rewrite_loc_conf->uninitialized_variable_warn) { *v = ngx_http_variable_null_value; return NGX_OK; }
+    ngx_http_core_main_conf_t *core_main_conf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+    ngx_http_variable_t *variable = core_main_conf->variables.elts;
     /* the ngx_http_rewrite_module sets variables directly in r->variables, and they should be handled by ngx_http_get_indexed_variable(), so the handler is called only if the variable is not initialized */
-    ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "using uninitialized \"%V\" variable", &var[data].name);
+    ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "using uninitialized \"%V\" variable", &variable[data].name);
     *v = ngx_http_variable_null_value;
     return NGX_OK;
 }

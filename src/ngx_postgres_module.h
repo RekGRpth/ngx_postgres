@@ -53,8 +53,8 @@ typedef struct {
 } ngx_postgres_value_t;
 
 typedef struct {
-    ngx_uint_t                          idx;
-    ngx_http_variable_t                *var;
+    ngx_uint_t                          index;
+    ngx_http_variable_t                *variable;
     ngx_postgres_value_t                value;
 } ngx_postgres_variable_t;
 

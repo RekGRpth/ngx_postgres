@@ -81,28 +81,28 @@ ngx_int_t ngx_postgres_variable_get_custom(ngx_http_request_t *r, ngx_http_varia
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     if (!context || !context->variables) { v->not_found = 1; return NGX_OK; }
     ngx_str_t *store = context->variables->elts;
-    ngx_postgres_variable_t *pgvar = (ngx_postgres_variable_t *) data; /* idx is always valid */
-    if (!store[pgvar->idx].len) { v->not_found = 1; return NGX_OK; }
+    ngx_postgres_variable_t *variable = (ngx_postgres_variable_t *) data; /* index is always valid */
+    if (!store[variable->index].len) { v->not_found = 1; return NGX_OK; }
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->len = store[pgvar->idx].len;
-    v->data = store[pgvar->idx].data;
+    v->len = store[variable->index].len;
+    v->data = store[variable->index].data;
     return NGX_OK;
 }
 
 
-ngx_str_t ngx_postgres_variable_set_custom(ngx_http_request_t *r, ngx_postgres_variable_t *pgvar) {
+ngx_str_t ngx_postgres_variable_set_custom(ngx_http_request_t *r, ngx_postgres_variable_t *variable) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     ngx_int_t col;
     ngx_str_t value = ngx_null_string;
-    ngx_postgres_value_t *pgv = &pgvar->value;
+    ngx_postgres_value_t *pgv = &variable->value;
     if (pgv->column != NGX_ERROR) /* get column by number */ col = pgv->column; else { /* get column by name */
         col = PQfnumber(context->res, (const char *)pgv->col_name);
         if (col == NGX_ERROR) {
             if (pgv->required) {
                 ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_set\" for variable \"$%V\" requires value from column \"%s\" that wasn't found in the received result-set in location \"%V\"", &pgvar->var->name, pgv->col_name, &core_loc_conf->name);
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_set\" for variable \"$%V\" requires value from column \"%s\" that wasn't found in the received result-set in location \"%V\"", &variable->variable->name, pgv->col_name, &core_loc_conf->name);
             }
             return value;
         }
@@ -110,14 +110,14 @@ ngx_str_t ngx_postgres_variable_set_custom(ngx_http_request_t *r, ngx_postgres_v
     if (pgv->row >= context->var_rows || col >= context->var_cols) {
         if (pgv->required) {
             ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_set\" for variable \"$%V\" requires value out of range of the received result-set (rows:%d cols:%d) in location \"%V\"", &pgvar->var->name, context->var_rows, context->var_cols, &core_loc_conf->name);
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_set\" for variable \"$%V\" requires value out of range of the received result-set (rows:%d cols:%d) in location \"%V\"", &variable->variable->name, context->var_rows, context->var_cols, &core_loc_conf->name);
         }
         return value;
     }
     if (PQgetisnull(context->res, pgv->row, col)) {
         if (pgv->required) {
             ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_set\" for variable \"$%V\" requires non-NULL value in location \"%V\"", &pgvar->var->name, &core_loc_conf->name);
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_set\" for variable \"$%V\" requires non-NULL value in location \"%V\"", &variable->variable->name, &core_loc_conf->name);
         }
         return value;
     }
@@ -125,7 +125,7 @@ ngx_str_t ngx_postgres_variable_set_custom(ngx_http_request_t *r, ngx_postgres_v
     if (!len) {
         if (pgv->required) {
             ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_set\" for variable \"$%V\" requires non-zero length value in location \"%V\"", &pgvar->var->name, &core_loc_conf->name);
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_set\" for variable \"$%V\" requires non-zero length value in location \"%V\"", &variable->variable->name, &core_loc_conf->name);
         }
         return value;
     }

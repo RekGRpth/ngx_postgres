@@ -210,11 +210,11 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
         }
     }
     if (location_conf->variables) { /* set custom variables */
-        ngx_postgres_variable_t *pgvar = location_conf->variables->elts;
+        ngx_postgres_variable_t *variable = location_conf->variables->elts;
         ngx_str_t *store = context->variables->elts;
         for (ngx_uint_t i = 0; i < location_conf->variables->nelts; i++) {
-            store[i] = ngx_postgres_variable_set_custom(r, &pgvar[i]);
-            if (!store[i].len && pgvar[i].value.required) { context->status = NGX_HTTP_INTERNAL_SERVER_ERROR; ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_DONE; }
+            store[i] = ngx_postgres_variable_set_custom(r, &variable[i]);
+            if (!store[i].len && variable[i].value.required) { context->status = NGX_HTTP_INTERNAL_SERVER_ERROR; ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_DONE; }
         }
     }
     if (location_conf->handler) return location_conf->handler(r);
