@@ -729,8 +729,7 @@ static char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void 
         rewrite_conf = location_conf->rewrite_conf->elts;
         for (ngx_uint_t j = 0; j < location_conf->rewrite_conf->nelts; j++) if (rewrite_conf[j].key == e[i].key) { rewrite_conf = &rewrite_conf[j]; goto found; }
     }
-    rewrite_conf = ngx_array_push(location_conf->rewrite_conf);
-    if (!rewrite_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    if (!(rewrite_conf = ngx_array_push(location_conf->rewrite_conf))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     ngx_memzero(rewrite_conf, sizeof(ngx_postgres_rewrite_conf_t));
     rewrite_conf->key = e[i].key;
     rewrite_conf->handler = e[i].handler;
