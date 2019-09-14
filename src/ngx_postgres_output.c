@@ -222,9 +222,8 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
             b->last = ngx_copy(b->last, "{", sizeof("{") - 1);
             for (ngx_int_t col = 0; col < context->nfields; col++) {
                 if (col > 0) b->last = ngx_copy(b->last, ",", 1);
-                char *col_name = PQfname(context->res, col);
                 b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
-                b->last = ngx_copy(b->last, col_name, ngx_strlen(col_name));
+                b->last = ngx_copy(b->last, PQfname(context->res, col), ngx_strlen(PQfname(context->res, col)));
                 b->last = ngx_copy(b->last, "\":", sizeof("\":") - 1);
                 if (PQgetisnull(context->res, row, col)) b->last = ngx_copy(b->last, "null", sizeof("null") - 1); else {
                     if (((PQftype(context->res, col) < INT8OID || PQftype(context->res, col) > INT4OID) && (PQftype(context->res, col) != JSONBOID && PQftype(context->res, col) != JSONOID)) || !PQgetlength(context->res, row, col)) { //not numbers or json
