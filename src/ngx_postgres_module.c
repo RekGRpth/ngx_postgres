@@ -445,7 +445,7 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     location_conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
     location_conf->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
     location_conf->rewrite_conf = NGX_CONF_UNSET_PTR;
-    location_conf->output_handler = NGX_CONF_UNSET_PTR;
+    location_conf->handler = NGX_CONF_UNSET_PTR;
     location_conf->variables = NGX_CONF_UNSET_PTR;
     /* the hardcoded values */
     location_conf->upstream.cyclic_temp_file = 0;
@@ -479,12 +479,12 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
         conf->query = prev->query;
     }
     ngx_conf_merge_ptr_value(conf->rewrite_conf, prev->rewrite_conf, NULL);
-    if (conf->output_handler == NGX_CONF_UNSET_PTR) {
-        if (prev->output_handler == NGX_CONF_UNSET_PTR) { /* default */
-            conf->output_handler = NULL;
+    if (conf->handler == NGX_CONF_UNSET_PTR) {
+        if (prev->handler == NGX_CONF_UNSET_PTR) { /* default */
+            conf->handler = NULL;
             conf->output_binary = 0;
         } else { /* merge */
-            conf->output_handler = prev->output_handler;
+            conf->handler = prev->handler;
             conf->output_binary = prev->output_binary;
         }
     }
@@ -772,11 +772,11 @@ found:;
 
 static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_conf_t *location_conf = conf;
-    if (location_conf->output_handler != NGX_CONF_UNSET_PTR) return "is duplicate";
+    if (location_conf->handler != NGX_CONF_UNSET_PTR) return "is duplicate";
     struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
     ngx_str_t *value = cf->args->elts;
     ngx_uint_t i;
-    for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[1].len && !ngx_strncasecmp(e[i].name.data, value[1].data, value[1].len)) { location_conf->output_handler = e[i].handler; break; }
+    for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[1].len && !ngx_strncasecmp(e[i].name.data, value[1].data, value[1].len)) { location_conf->handler = e[i].handler; break; }
     if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid output format \"%V\" in \"%V\" directive", &value[1], &cmd->name); return NGX_CONF_ERROR; }
     location_conf->output_binary = e[i].binary;
     return NGX_CONF_OK;

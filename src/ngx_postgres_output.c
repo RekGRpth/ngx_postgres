@@ -159,10 +159,10 @@ ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
         ngx_http_clear_content_length(r);
         ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
         r->headers_out.status = context->status ? ngx_abs(context->status) : NGX_HTTP_OK;
-        if (location_conf->output_handler == &ngx_postgres_output_json) {
+        if (location_conf->handler == &ngx_postgres_output_json) {
             ngx_str_set(&r->headers_out.content_type, "application/json");
             r->headers_out.content_type_len = r->headers_out.content_type.len;
-        } else if (location_conf->output_handler) {
+        } else if (location_conf->handler) {
             ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
             r->headers_out.content_type = core_loc_conf->default_type;
             r->headers_out.content_type_len = core_loc_conf->default_type.len;

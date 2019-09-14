@@ -135,7 +135,7 @@ typedef struct {
     /* rewrites */
     ngx_array_t                        *rewrite_conf;
     /* output */
-    ngx_postgres_output_handler_pt      output_handler;
+    ngx_postgres_output_handler_pt      handler;
     unsigned                            output_binary:1;
     /* custom variables */
     ngx_array_t                        *variables;

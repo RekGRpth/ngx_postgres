@@ -217,7 +217,7 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
             if (!store[i].len && pgvar[i].value.required) { context->status = NGX_HTTP_INTERNAL_SERVER_ERROR; ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_DONE; }
         }
     }
-    if (location_conf->output_handler) return location_conf->output_handler(r);
+    if (location_conf->handler) return location_conf->handler(r);
     return NGX_DONE;
 }
 
