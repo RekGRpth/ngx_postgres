@@ -142,8 +142,9 @@ ngx_int_t ngx_postgres_output_text(ngx_http_request_t *r) {
         for (ngx_int_t col = 0; col < context->nfields; col++) {
             if (PQgetisnull(context->res, row, col)) b->last = ngx_copy(b->last, "(null)", sizeof("(null)") - 1);
             else if ((size = PQgetlength(context->res, row, col))) b->last = ngx_copy(b->last, PQgetvalue(context->res, row, col), size);
-            if (row != context->ntuples - 1 || col != context->nfields - 1) b->last = ngx_copy(b->last, "\n", 1);
+            if (row != context->ntuples - 1 && col != context->nfields - 1) b->last = ngx_copy(b->last, "\t", 1);
         }
+        if (row != context->ntuples - 1) b->last = ngx_copy(b->last, "\n", 1);
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->next = NULL;
