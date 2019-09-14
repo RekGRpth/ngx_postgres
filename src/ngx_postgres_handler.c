@@ -49,10 +49,10 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     /* TODO: add support for subrequest in memory by emitting output into u->buffer instead */
     if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: ngx_postgres module does not support subrequests in memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (!location_conf->def && !(location_conf->methods_set & r->method)) {
+    if (!location_conf->query && !(location_conf->methods_set & r->method)) {
         if (location_conf->methods_set) return NGX_HTTP_NOT_ALLOWED;
-        ngx_http_core_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: missing \"postgres_query\" in location \"%V\"", &clcf->name);
+        ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: missing \"postgres_query\" in location \"%V\"", &core_loc_conf->name);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     ngx_int_t rc = ngx_http_discard_request_body(r);
@@ -63,8 +63,8 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
         ngx_str_t host;
         if (ngx_http_complex_value(r, location_conf->upstream_cv, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
         if (!host.len) {
-            ngx_http_core_loc_conf_t *clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location_conf->upstream_cv->value, &clcf->name);
+            ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location_conf->upstream_cv->value, &core_loc_conf->name);
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         ngx_url_t url;

@@ -266,9 +266,9 @@ ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_
                 return rewrite[i].status;
             }
         }
-    } else if (rewrite_conf->def) {
+    } else if (rewrite_conf->rewrite) {
         /* default */
-        return rewrite_conf->def->status;
+        return rewrite_conf->rewrite->status;
     }
     return NGX_DECLINED;
 }

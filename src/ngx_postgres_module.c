@@ -473,10 +473,10 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
         conf->upstream.upstream = prev->upstream.upstream;
         conf->upstream_cv = prev->upstream_cv;
     }
-    if (!conf->def && !conf->methods.elts) {
+    if (!conf->query && !conf->methods.elts) {
         conf->methods_set = prev->methods_set;
         conf->methods = prev->methods;
-        conf->def = prev->def;
+        conf->query = prev->query;
     }
     ngx_conf_merge_ptr_value(conf->rewrite_conf, prev->rewrite_conf, NULL);
     if (conf->output_handler == NGX_CONF_UNSET_PTR) {
@@ -591,9 +591,9 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     if (location_conf->upstream.upstream || location_conf->upstream_cv) return "is duplicate";
     ngx_str_t *value = cf->args->elts;
     if (!value[1].len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: empty upstream in \"%V\" directive", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_http_core_loc_conf_t *clcf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-    clcf->handler = ngx_postgres_handler;
-    if (clcf->name.data[clcf->name.len - 1] == '/') clcf->auto_redirect = 1;
+    ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+    core_loc_conf->handler = ngx_postgres_handler;
+    if (core_loc_conf->name.data[core_loc_conf->name.len - 1] == '/') core_loc_conf->auto_redirect = 1;
     if (ngx_http_script_variables_count(&value[1])) { /* complex value */
         if (!(location_conf->upstream_cv = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         ngx_http_compile_complex_value_t ccv = {cf, &value[1], location_conf->upstream_cv, 0, 0, 0};
@@ -634,10 +634,10 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     ngx_uint_t methods;
     ngx_postgres_location_conf_t *location_conf = conf;
     if (cf->args->nelts == 2) { /* default query */
-        if (location_conf->def) return "is duplicate";
-        if (!(location_conf->def = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (location_conf->query) return "is duplicate";
+        if (!(location_conf->query = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         methods = 0xFFFF;
-        query = location_conf->def;
+        query = location_conf->query;
     } else { /* method-specific query */
         methods = 0;
         for (ngx_uint_t i = 1; i < cf->args->nelts - 1; i++) {
@@ -737,10 +737,10 @@ found:;
     ngx_uint_t methods;
     ngx_postgres_rewrite_t *rewrite;
     if (cf->args->nelts == 3) { /* default rewrite */
-        if (rewrite_conf->def) return "is duplicate";
-        if (!(rewrite_conf->def = ngx_palloc(cf->pool, sizeof(ngx_postgres_rewrite_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (rewrite_conf->rewrite) return "is duplicate";
+        if (!(rewrite_conf->rewrite = ngx_palloc(cf->pool, sizeof(ngx_postgres_rewrite_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         methods = 0xFFFF;
-        rewrite = rewrite_conf->def;
+        rewrite = rewrite_conf->rewrite;
     } else { /* method-specific rewrite */
         methods = 0;
         for (i = 1; i < cf->args->nelts - 2; i++) {
