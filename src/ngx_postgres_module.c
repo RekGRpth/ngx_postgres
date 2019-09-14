@@ -544,11 +544,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
     if (server_conf->max_cached != 10 /* default */) return "is duplicate";
     if (server_conf->max_statements != 256 /* default */) return "is duplicate";
     ngx_str_t *value = cf->args->elts;
-    if (cf->args->nelts == 2 && !ngx_strncmp(value[1].data, "off", sizeof("off") - 1)) {
-        server_conf->max_cached = 0;
-        server_conf->max_statements = 0;
-        return NGX_CONF_OK;
-    }
+    if (cf->args->nelts == 2 && !ngx_strncmp(value[1].data, "off", sizeof("off") - 1)) { server_conf->max_cached = 0; server_conf->max_statements = 0; return NGX_CONF_OK; }
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
         if (!ngx_strncmp(value[i].data, "cached=", sizeof("cached=") - 1)) {
             value[i].len = value[i].len - (sizeof("cached=") - 1);
