@@ -196,7 +196,7 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
     if (ngx_strncasecmp((u_char *)PQcmdStatus(context->res), (u_char *)"SELECT", sizeof("SELECT") - 1)) { /* set $postgres_affected */
         char *affected = PQcmdTuples(context->res);
         size_t affected_len = ngx_strlen(affected);
-        if (affected_len) context->var_affected = ngx_atoi((u_char *)affected, affected_len);
+        if (affected_len) context->cmdTuples = ngx_atoi((u_char *)affected, affected_len);
     }
     if (location_conf->rewrite_conf) { /* process rewrites */
         ngx_postgres_rewrite_conf_t *rewrite_conf = location_conf->rewrite_conf->elts;

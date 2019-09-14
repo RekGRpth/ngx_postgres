@@ -77,7 +77,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     if (!context) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     context->nfields = NGX_ERROR;
     context->ntuples = NGX_ERROR;
-    context->var_affected = NGX_ERROR;
+    context->cmdTuples = NGX_ERROR;
     if (location_conf->variables) {
         if (!(context->variables = ngx_array_create(r->pool, location_conf->variables->nelts, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
         /* fake ngx_array_push'ing */

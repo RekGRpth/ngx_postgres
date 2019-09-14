@@ -37,7 +37,7 @@ typedef struct {
     ngx_chain_t                        *response;
     ngx_int_t                           nfields;
     ngx_int_t                           ntuples;
-    ngx_int_t                           var_affected;
+    ngx_int_t                           cmdTuples;
     ngx_str_t                           var_query;
     ngx_array_t                        *variables;
     ngx_int_t                           status;

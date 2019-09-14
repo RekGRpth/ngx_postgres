@@ -276,8 +276,8 @@ ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_
 
 ngx_int_t ngx_postgres_rewrite_changes(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (rewrite_conf->key % 2 == 0 && !context->var_affected) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_changes */
-    if (rewrite_conf->key % 2 == 1 && context->var_affected > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* changes */
+    if (rewrite_conf->key % 2 == 0 && !context->cmdTuples) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_changes */
+    if (rewrite_conf->key % 2 == 1 && context->cmdTuples > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* changes */
     return NGX_DECLINED;
 }
 
