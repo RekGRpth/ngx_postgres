@@ -3,10 +3,6 @@ About
 `ngx_postgres` is an upstream module that allows `nginx` to communicate directly
 with `PostgreSQL` database.
 
-Response is generated in `rds` format, so it's compatible with `ngx_rds_json`
-and `ngx_drizzle` modules.
-
-
 Community fork
 ==============
 
@@ -49,15 +45,16 @@ Set details about the database server. Additional port parameter is offered to c
 
 postgres_keepalive
 ------------------
-* **syntax**: `postgres_keepalive off | cached=count [mode=single|multi] [overflow=ignore|reject]`
-* **default**: `cached=10 mode=single overflow=ignore`
+* **syntax**: `postgres_keepalive off | cached=count [mode=single|multi] [overflow=ignore|reject] [statements=count]`
+* **default**: `cached=10 cached=single overflow=ignore statements=256`
 * **context**: `upstream`
 
 Configure keepalive parameters:
 
-- `cached`   - maximum number of keepalive connections (per worker process),
-- `mode`     - backend matching mode,
-- `overflow` - either `ignore` the fact that keepalive connection pool is full
+- `cached`     - maximum number of keepalive connections (per worker process),
+- `statements` - maximum number of prepared statements (per db connection),
+- `mode`       - backend matching mode,
+- `overflow`   - either `ignore` the fact that keepalive connection pool is full
   and allow request, but close connection afterwards or `reject` request with
   `503 Service Unavailable` response.
 
@@ -108,19 +105,19 @@ This directive can be used more than once within same context.
 
 postgres_output
 ---------------
-* **syntax**: `postgres_output rds|text|value|binary_value|none`
-* **default**: `rds`
+* **syntax**: `postgres_output json|text|value|binary|none`
+* **default**: `none`
 * **context**: `http`, `server`, `location`, `if location`
 
 Set output format:
 
-- `rds`          - return all values from the result-set in `rds` format
+- `json`         - return all values from the result-set in `json` format
   (with appropriate `Content-Type`),
 - `text`         - return all values from the result-set in text format
   (with default `Content-Type`), values are separated by new line,
 - `value`        - return single value from the result-set in text format
   (with default `Content-Type`),
-- `binary_value` - return single value from the result-set in binary format
+- `binary`       - return single value from the result-set in binary format
   (with default `Content-Type`),
 - `none`         - don't return anything, this should be used only when
   extracting values with `postgres_set` for use with other modules (without
