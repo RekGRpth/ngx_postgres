@@ -507,7 +507,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     u.default_port = 5432; /* PostgreSQL default */
     if (ngx_parse_url(cf->pool, &u) != NGX_OK) {
         if (u.err) ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s in upstream \"%V\"", u.err, &u.url);
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__);
+        else ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__);
         return NGX_CONF_ERROR;
     }
     server->addrs = u.addrs;
