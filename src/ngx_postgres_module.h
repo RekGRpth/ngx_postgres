@@ -29,8 +29,8 @@
 #ifndef _NGX_POSTGRES_MODULE_H_
 #define _NGX_POSTGRES_MODULE_H_
 
+#include <assert.h>
 #include <ngx_http.h>
-
 
 extern ngx_module_t  ngx_postgres_module;
 
@@ -87,7 +87,9 @@ typedef struct {
     ngx_str_t                           user;
     ngx_str_t                           password;
     ngx_str_t                           application_name;
-} ngx_postgres_server_t; // !!! MUST: sizeof(ngx_postgres_server_t) <= sizeof(ngx_http_upstream_server_t) !!!
+} ngx_postgres_server_t;
+
+static_assert(sizeof(ngx_postgres_server_t) <= sizeof(ngx_http_upstream_server_t), "sizeof(ngx_postgres_server_t) <= sizeof(ngx_http_upstream_server_t)");
 
 typedef struct {
     struct sockaddr                    *sockaddr;
