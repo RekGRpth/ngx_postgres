@@ -530,10 +530,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         } else if (!ngx_strncmp(value[i].data, "application_name=", sizeof("application_name=") - 1)) {
             server->application_name.len = value[i].len - (sizeof("application_name=") - 1);
             server->application_name.data = &value[i].data[sizeof("application_name=") - 1];
-        } else {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid parameter \"%V\" in \"postgres_server\"", &value[i]);
-            return NGX_CONF_ERROR;
-        }
+        } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid parameter \"%V\" in \"postgres_server\"", &value[i]); return NGX_CONF_ERROR; }
     }
     upstream_srv_conf->peer.init_upstream = ngx_postgres_upstream_init;
     return NGX_CONF_OK;
