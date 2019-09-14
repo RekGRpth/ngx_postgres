@@ -839,10 +839,10 @@ static char *ngx_postgres_escape_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     }
     ngx_postgres_rewrite_loc_conf_t *rewrite_loc_conf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_rewrite_module);
     if (ngx_postgres_rewrite_value(cf, rewrite_loc_conf, &src) != NGX_CONF_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-    ngx_postgres_escape_t *pge = ngx_http_script_start_code(cf->pool, &rewrite_loc_conf->codes, sizeof(ngx_postgres_escape_t));
-    if (!pge) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
-    pge->code = ngx_postgres_escape_string;
-    pge->empty = empty;
+    ngx_postgres_escape_t *escape = ngx_http_script_start_code(cf->pool, &rewrite_loc_conf->codes, sizeof(ngx_postgres_escape_t));
+    if (!escape) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    escape->code = ngx_postgres_escape_string;
+    escape->empty = empty;
     if (v->set_handler) {
         ngx_http_script_var_handler_code_t *vhcode = ngx_http_script_start_code(cf->pool, &rewrite_loc_conf->codes, sizeof(ngx_http_script_var_handler_code_t));
         if (!vhcode) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }

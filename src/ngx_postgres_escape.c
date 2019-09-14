@@ -34,13 +34,13 @@ uintptr_t ngx_postgres_script_exit_code = (uintptr_t) NULL;
 
 
 void ngx_postgres_escape_string(ngx_http_script_engine_t *e) {
-    ngx_postgres_escape_t *pge;
-    pge = (ngx_postgres_escape_t *) e->ip;
+    ngx_postgres_escape_t *escape;
+    escape = (ngx_postgres_escape_t *) e->ip;
     e->ip += sizeof(ngx_postgres_escape_t);
     ngx_http_variable_value_t *v = e->sp - 1;
     if (!v || v->not_found) { ngx_str_set(v, "NULL"); goto done; }
     if (!v->len) {
-        if (pge->empty) { ngx_str_set(v, "''"); goto done; }
+        if (escape->empty) { ngx_str_set(v, "''"); goto done; }
         else { ngx_str_set(v, "NULL"); goto done; }
     }
     u_char *p = ngx_pnalloc(e->request->pool, 2 * v->len + 2);
