@@ -517,18 +517,20 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     /* parse various options */
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
         if (!ngx_strncmp(value[i].data, "port=", sizeof("port=") - 1)) {
-            server->port = (in_port_t) ngx_atoi(&value[i].data[sizeof("port=") - 1], value[i].len - (sizeof("port=") - 1));
+            ngx_int_t n = ngx_atoi(value[i].data, value[i].len);
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"port\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+            server->port = (ngx_uint_t) n;
         } else if (!ngx_strncmp(value[i].data, "dbname=", sizeof("dbname=") - 1)) {
-            server->dbname.len = value[i].len - (sizeof("dbname=") - 1);
+            if (!(server->dbname.len = value[i].len - (sizeof("dbname=") - 1))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"dbname\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
             server->dbname.data = &value[i].data[sizeof("dbname=") - 1];
         } else if (!ngx_strncmp(value[i].data, "user=", sizeof("user=") - 1)) {
-            server->user.len = value[i].len - (sizeof("user=") - 1);
+            if (!(server->user.len = value[i].len - (sizeof("user=") - 1))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"user\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
             server->user.data = &value[i].data[sizeof("user=") - 1];
         } else if (!ngx_strncmp(value[i].data, "password=", sizeof("password=") - 1)) {
-            server->password.len = value[i].len - (sizeof("password=") - 1);
+            if (!(server->password.len = value[i].len - (sizeof("password=") - 1))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"password\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
             server->password.data = &value[i].data[sizeof("password=") - 1];
         } else if (!ngx_strncmp(value[i].data, "application_name=", sizeof("application_name=") - 1)) {
-            server->application_name.len = value[i].len - (sizeof("application_name=") - 1);
+            if (!(server->application_name.len = value[i].len - (sizeof("application_name=") - 1))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"application_name\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
             server->application_name.data = &value[i].data[sizeof("application_name=") - 1];
         } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid parameter \"%V\" in \"postgres_server\"", &value[i]); return NGX_CONF_ERROR; }
     }
