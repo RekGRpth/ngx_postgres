@@ -71,7 +71,7 @@ ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
 
 
 int hex2bin(const char *s) {
-    int ret=0;
+    int ret = 0;
     for (int i = 0; i < 2; i++) {
         char c = *s++;
         int n = 0;
@@ -116,8 +116,7 @@ ngx_int_t ngx_postgres_output_hex(ngx_http_request_t *r) {
     unsigned int start = 0;
     if (value[start] == '\\') start++;
     if (value[start] == 'x') start++;
-    for (; start < size; start += 2)
-        *(b->last++) = hex2bin(value + start);
+    for (; start < size; start += 2) *(b->last++) = hex2bin(value + start);
     //if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->next = NULL;
     context->response = cl; /* set output response */
