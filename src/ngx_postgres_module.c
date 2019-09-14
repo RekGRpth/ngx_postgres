@@ -606,8 +606,7 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
         ngx_memzero(&url, sizeof(ngx_url_t));
         url.url = value[1];
         url.no_resolve = 1;
-        location_conf->upstream.upstream = ngx_http_upstream_add(cf, &url, 0);
-        if (!location_conf->upstream.upstream) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+        if (!(location_conf->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
     }
 }
