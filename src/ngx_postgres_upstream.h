@@ -55,7 +55,7 @@ typedef struct {
     PGconn                            *conn;
     ngx_postgres_state_t               state;
     ngx_uint_t                         hash;
-    u_char                             stmtName[32];
+    u_char                            *stmtName;
     u_char                            *command;
     int                                nParams;
     Oid                               *paramTypes;

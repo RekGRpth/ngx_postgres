@@ -127,19 +127,23 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         if (i == location_conf->methods->nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     } else query = location_conf->query;
     peer_data->resultFormat = location_conf->binary;
-    if (query->args->nelts == 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1)) {
+    ngx_str_t sql = query->sql;
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: sql = %V", &sql);
+    if (query->args->nelts == 1 && !ngx_strncasecmp(sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1)) {
         ngx_postgres_arg_t *arg = query->args->elts;
-        ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[0].index);
+        ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg->index);
         if (!value || !value->data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "no variable value found for listen"); return NGX_ERROR; }
         ngx_str_t channel = PQescapeInternal(r->pool, value->data, value->len, 1);
         if (!channel.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to escape %s: %s", value->data, PQerrorMessage(peer_data->conn)); return NGX_ERROR; }
-        query->sql.len = sizeof("LISTEN ") - 1 + channel.len;
-        if (!(peer_data->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        *ngx_snprintf(peer_data->command, query->sql.len, "LISTEN %V", &channel) = '\0';
-        query->sql.data = peer_data->command;
+        sql.len = sizeof("LISTEN ") - 1 + channel.len;
+        if (!(peer_data->command = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        u_char *last = ngx_snprintf(peer_data->command, sql.len, "LISTEN %V", &channel);
+        *last = '\0';
+        sql.data = peer_data->command;
+//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: sql = %s", peer_data->command);
     } else {
-        if (!(peer_data->command = ngx_pnalloc(r->pool, query->sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        (void) ngx_cpystrn(peer_data->command, query->sql.data, query->sql.len + 1);
+        if (!(peer_data->command = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        (void) ngx_cpystrn(peer_data->command, sql.data, sql.len + 1);
         if (query->args->nelts) {
             ngx_postgres_arg_t *arg = query->args->elts;
             peer_data->nParams = query->args->nelts;
@@ -154,12 +158,15 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
                 }
             }
         }
+        if (server_conf->max_statements) {
+            peer_data->hash = ngx_hash_key(sql.data, sql.len);
+            if (!(peer_data->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            u_char *last = ngx_snprintf(peer_data->stmtName, 31, "ngx_%ul", (unsigned long)peer_data->hash);
+            *last = '\0';
+//            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: sql = %s:%s", peer_data->stmtName, peer_data->command);
+        }// else ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: sql = %s", peer_data->command);
     }
-    if (server_conf->max_statements) {
-        peer_data->hash = ngx_hash_key(query->sql.data, query->sql.len);
-        *ngx_snprintf(peer_data->stmtName, 32, "ngx_%ul", (unsigned long)peer_data->hash) = '\0';
-    }
-    context->query = query->sql; /* set $postgres_query */
+    context->query = sql; /* set $postgres_query */
     return NGX_OK;
 }
 
