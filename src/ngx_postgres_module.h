@@ -36,11 +36,6 @@ extern ngx_module_t  ngx_postgres_module;
 
 
 typedef struct {
-    ngx_http_script_code_pt             code;
-    ngx_uint_t                          empty;
-} ngx_postgres_escape_t;
-
-typedef struct {
     ngx_uint_t                          oid;
     ngx_uint_t                          index;
 } ngx_postgres_arg_t;
