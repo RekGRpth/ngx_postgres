@@ -35,7 +35,6 @@
 ngx_int_t ngx_postgres_output_value(ngx_http_request_t *);
 ngx_int_t ngx_postgres_output_text(ngx_http_request_t *);
 ngx_int_t ngx_postgres_output_json(ngx_http_request_t *);
-ngx_int_t ngx_postgres_output_hex(ngx_http_request_t *);
 ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *);
 
 #endif /* _NGX_POSTGRES_OUTPUT_H_ */

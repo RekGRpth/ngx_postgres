@@ -399,7 +399,6 @@ struct ngx_postgres_output_enum_t {
     { ngx_string("value"),        0, ngx_postgres_output_value },
     { ngx_string("binary"),       1, ngx_postgres_output_value },
     { ngx_string("json"),         0, ngx_postgres_output_json },
-    { ngx_string("hex"),          0, ngx_postgres_output_hex },
     { ngx_null_string, 0, NULL }
 };
 
