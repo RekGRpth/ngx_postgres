@@ -129,7 +129,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
 ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     size_t size = 0;
-    if (context->ntuples == 1 && context->nfields == 1 && (PQftype(context->res, 0) == JSONOID || PQftype(context->res, 0) == JSONBOID)); else {
+    if (context->ntuples == 1 && context->nfields == 1 && (PQftype(context->res, 0) == JSONOID || PQftype(context->res, 0) == JSONBOID)) size = PQgetlength(context->res, 0, 0); else {
         if (context->ntuples > 1) size += 2; // [] + \0
         for (ngx_int_t row = 0; row < context->ntuples; row++) {
             size += sizeof("{}") - 1;
