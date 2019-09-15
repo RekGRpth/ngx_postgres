@@ -262,7 +262,7 @@ void ngx_postgres_process_notify(ngx_log_t *log, ngx_pool_t *pool, PGconn *conn)
                 u_char *last = ngx_snprintf(command, sizeof("UNLISTEN ") - 1 + channel.len + 1, "UNLISTEN %V", &channel);
                 *last = '\0';
                 if (!PQsendQuery(conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to send unlisten: %s", PQerrorMessage(conn)); return; }
-                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "postgres: unlisten sent successfully");
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "postgres: unlisten %s sent successfully", command);
             } return;
             case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "postgres notify ok"); return;
             default: ngx_log_error(NGX_LOG_ERR, log, 0, "postgres notify unknown"); return;
