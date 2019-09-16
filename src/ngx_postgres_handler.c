@@ -73,10 +73,9 @@ static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
-    ngx_http_upstream_t *u = r->upstream;
     /* override the read/write event handler to our own */
-    u->write_event_handler = ngx_postgres_write_event_handler;
-    u->read_event_handler = ngx_postgres_read_event_handler;
+    r->upstream->write_event_handler = ngx_postgres_write_event_handler;
+    r->upstream->read_event_handler = ngx_postgres_read_event_handler;
     return NGX_OK;
 }
 
