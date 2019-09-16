@@ -42,15 +42,15 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
 //    cached->connection->pool->log = pc->log;
 //    cached->connection->read->log = pc->log;
 //    cached->connection->write->log = pc->log;
-    peer_data->save.name = cached->save.name;
-    peer_data->save.sockaddr = cached->save.sockaddr;
-    peer_data->save.socklen = cached->save.socklen;
-    peer_data->save.conn = cached->save.conn;
-    pc->connection = cached->connection;
     pc->cached = 1;
+    pc->connection = cached->connection;
     pc->name = cached->save.name;
     pc->sockaddr = cached->save.sockaddr;
     pc->socklen = cached->save.socklen;
+    peer_data->save.conn = cached->save.conn;
+    peer_data->save.name = cached->save.name;
+    peer_data->save.sockaddr = cached->save.sockaddr;
+    peer_data->save.socklen = cached->save.socklen;
     for (ngx_uint_t j = 0; j < peer_data->save.server_conf->max_statements; j++) peer_data->save.statements[j] = cached->save.statements[j]; /* Inherit list of prepared statements */
     return NGX_DONE;
 }
@@ -68,8 +68,8 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
 //        cached->connection->pool->log = pc->log;
 //        cached->connection->read->log = pc->log;
 //        cached->connection->write->log = pc->log;
-        pc->connection = cached->connection;
         pc->cached = 1;
+        pc->connection = cached->connection;
         /* we do not need to resume the peer name, because we already take the right value outside */
         peer_data->save.conn = cached->save.conn;
         for (ngx_uint_t j = 0; j < peer_data->save.server_conf->max_statements; j++) peer_data->save.statements[j] = cached->save.statements[j]; /* Inherit list of prepared statements */
@@ -92,10 +92,10 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     peer_data->save.name = peer->name;
     peer_data->save.sockaddr = peer->sockaddr;
     peer_data->save.socklen = peer->socklen;
+    pc->cached = 0;
     pc->name = peer->name;
     pc->sockaddr = peer->sockaddr;
     pc->socklen = peer->socklen;
-    pc->cached = 0;
     if (peer_data->save.server_conf->max_cached && !peer_data->save.server_conf->single && ngx_postgres_peer_multi(pc, peer_data) != NGX_DECLINED) { /* re-use keepalive peer */
         peer_data->state = peer_data->save.server_conf->max_statements ? state_db_send_prepare : state_db_send_query;
         ngx_postgres_process_events(peer_data->request);
@@ -237,18 +237,18 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
         pc->connection = NULL;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer: saving connection %p", cached->connection);
         ngx_queue_insert_head(&peer_data->save.server_conf->cache, q);
-        cached->connection->write->handler = ngx_postgres_write_handler;
-        cached->connection->read->handler = ngx_postgres_read_handler;
         cached->connection->data = cached;
         cached->connection->idle = 1;
+        cached->connection->read->handler = ngx_postgres_read_handler;
+        cached->connection->write->handler = ngx_postgres_write_handler;
 //        cached->connection->log = ngx_cycle->log;
 //        cached->connection->pool->log = ngx_cycle->log;
 //        cached->connection->read->log = ngx_cycle->log;
 //        cached->connection->write->log = ngx_cycle->log;
-        cached->save.socklen = pc->socklen;
-        cached->save.sockaddr = pc->sockaddr;
         cached->save.conn = peer_data->save.conn;
         cached->save.name = peer_data->save.name;
+        cached->save.sockaddr = pc->sockaddr;
+        cached->save.socklen = pc->socklen;
         for (ngx_uint_t j = 0; j < peer_data->save.server_conf->max_statements; j++) cached->save.statements[j] = peer_data->save.statements[j];
     }
 }
