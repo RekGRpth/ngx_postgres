@@ -78,6 +78,17 @@ typedef struct {
     ngx_postgres_statement_t          *statements;
 } ngx_postgres_cached_t;
 
+typedef struct {
+    ngx_chain_t                        *response;
+    ngx_int_t                           nfields;
+    ngx_int_t                           ntuples;
+    ngx_int_t                           cmdTuples;
+    ngx_str_t                           sql;
+    ngx_array_t                        *variables;
+    ngx_int_t                           status;
+    PGresult                           *res;
+} ngx_postgres_context_t;
+
 
 ngx_int_t   ngx_postgres_upstream_init(ngx_conf_t *, ngx_http_upstream_srv_conf_t *);
 ngx_str_t   PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident);

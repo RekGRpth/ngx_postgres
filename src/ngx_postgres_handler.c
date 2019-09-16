@@ -30,6 +30,7 @@
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"
 #include "ngx_postgres_processor.h"
+#include "ngx_postgres_upstream.h"
 
 
 static void ngx_postgres_write_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u);

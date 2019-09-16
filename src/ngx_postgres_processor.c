@@ -134,7 +134,6 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
     if (!PQconsumeInput(peer_data->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(peer_data->conn)); return NGX_ERROR; }
     if (PQisBusy(peer_data->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while send query"); return NGX_AGAIN; }
     for (PGresult *res; (res = PQgetResult(peer_data->conn)); PQclear(res)) if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-//    ngx_postgres_process_notify(r->connection->log, r->pool, peer_data->conn);
     if (!peer_data->server_conf->max_statements || !peer_data->stmtName) {
         if (!PQsendQueryParams(peer_data->conn, (const char *)peer_data->command, peer_data->nParams, peer_data->paramTypes, (const char *const *)peer_data->paramValues, NULL, NULL, peer_data->resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(peer_data->conn)); return NGX_ERROR; }
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query %s sent successfully", peer_data->command);
@@ -180,7 +179,6 @@ static ngx_int_t ngx_postgres_upstream_get_result(ngx_http_request_t *r) {
     context->res = res;
     ngx_int_t rc = ngx_postgres_process_response(r);
     PQclear(res);
-//    ngx_postgres_process_notify(r->connection->log, r->pool, peer_data->conn);
     if (rc != NGX_DONE) return rc;
     peer_data->state = state_db_get_ack;
     return ngx_postgres_upstream_get_ack(r);
@@ -229,7 +227,6 @@ static ngx_int_t ngx_postgres_upstream_get_ack(ngx_http_request_t *r) {
     if (u->peer.connection->read->timer_set) ngx_del_timer(u->peer.connection->read); /* remove result timeout */
     PGresult *res = PQgetResult(peer_data->conn);
     if (res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: receiving ACK failed: multiple queries(?)"); PQclear(res); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-//    ngx_postgres_process_notify(r->connection->log, r->pool, peer_data->conn);
     peer_data->state = state_db_idle;
     return ngx_postgres_upstream_done(r);
 }
@@ -242,30 +239,4 @@ static ngx_int_t ngx_postgres_upstream_done(ngx_http_request_t *r) {
     context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     ngx_postgres_finalize_upstream(r, u, context->status >= NGX_HTTP_SPECIAL_RESPONSE ? context->status : NGX_OK);
     return NGX_DONE;
-}
-
-
-void ngx_postgres_process_notify(ngx_log_t *log, ngx_pool_t *pool, PGconn *conn) {
-    for (PGnotify *notify; (notify = PQnotifies(conn)); PQfreemem(notify)) {
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, log, 0, "postgres notify: relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
-        ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
-        ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
-        switch (ngx_http_push_stream_add_msg_to_channel_my(log, &id, &text, NULL, NULL, 0, pool)) {
-            case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, log, 0, "postgres notify error"); return;
-            case NGX_DECLINED: {
-                ngx_log_error(NGX_LOG_ERR, log, 0, "postgres notify declined");
-                ngx_str_t channel = PQescapeInternal(pool, id.data, id.len, 1);
-                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to escape %V", id); return; }
-                u_char *command = ngx_pnalloc(pool, sizeof("UNLISTEN ") - 1 + channel.len + 1);
-                if (!command) { ngx_log_error(NGX_LOG_ERR, log, 0, "%s:%d", __FILE__, __LINE__); return; }
-                u_char *last = ngx_snprintf(command, sizeof("UNLISTEN ") - 1 + channel.len, "UNLISTEN %V", &channel);
-                if (last != command + sizeof("UNLISTEN ") - 1 + channel.len) { ngx_log_error(NGX_LOG_ERR, log, 0, "%s:%d", __FILE__, __LINE__); return; }
-                *last = '\0';
-                if (!PQsendQuery(conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to send unlisten: %s", PQerrorMessage(conn)); return; }
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "postgres: unlisten %s sent successfully", command);
-            } return;
-            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, log, 0, "postgres notify ok"); return;
-            default: ngx_log_error(NGX_LOG_ERR, log, 0, "postgres notify unknown"); return;
-        }
-    }
 }

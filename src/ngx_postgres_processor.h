@@ -29,24 +29,9 @@
 #ifndef _NGX_POSTGRES_PROCESSOR_H_
 #define _NGX_POSTGRES_PROCESSOR_H_
 
-#include <libpq-fe.h>
 #include <ngx_http.h>
 
 
-typedef struct {
-    ngx_chain_t                        *response;
-    ngx_int_t                           nfields;
-    ngx_int_t                           ntuples;
-    ngx_int_t                           cmdTuples;
-    ngx_str_t                           sql;
-    ngx_array_t                        *variables;
-    ngx_int_t                           status;
-    PGresult                           *res;
-} ngx_postgres_context_t;
-
-
 void       ngx_postgres_process_events(ngx_http_request_t *);
-void       ngx_postgres_process_notify(ngx_log_t *log, ngx_pool_t *pool, PGconn *conn);
-ngx_int_t  ngx_http_push_stream_add_msg_to_channel_my(ngx_log_t *log, ngx_str_t *id, ngx_str_t *text, ngx_str_t *event_id, ngx_str_t *event_type, ngx_flag_t store_messages, ngx_pool_t *temp_pool);
 
 #endif /* _NGX_POSTGRES_PROCESSOR_H_ */
