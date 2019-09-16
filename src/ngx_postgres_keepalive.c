@@ -43,8 +43,8 @@ typedef struct {
 } ngx_postgres_cached_t;
 
 
-static void ngx_postgres_keepalive_dummy_handler(ngx_event_t *ev);
-static void ngx_postgres_keepalive_close_handler(ngx_event_t *ev);
+static void ngx_postgres_write_handler(ngx_event_t *ev);
+static void ngx_postgres_read_handler(ngx_event_t *ev);
 
 
 ngx_int_t ngx_postgres_keepalive_init(ngx_pool_t *pool, ngx_postgres_server_conf_t *server_conf) {
@@ -133,8 +133,8 @@ void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_pe
         for (ngx_uint_t j = 0; j < peer_data->server_conf->max_statements; j++) cached->statements[j] = peer_data->statements[j];
         cached->connection = c;
         ngx_queue_insert_head(&peer_data->server_conf->cache, q);
-        c->write->handler = ngx_postgres_keepalive_dummy_handler;
-        c->read->handler = ngx_postgres_keepalive_close_handler;
+        c->write->handler = ngx_postgres_write_handler;
+        c->read->handler = ngx_postgres_read_handler;
         c->data = cached;
         c->idle = 1;
         c->log = ngx_cycle->log;
@@ -149,10 +149,10 @@ void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_pe
 }
 
 
-static void ngx_postgres_keepalive_dummy_handler(ngx_event_t *ev) { }
+static void ngx_postgres_write_handler(ngx_event_t *ev) { }
 
 
-static void ngx_postgres_keepalive_close_handler(ngx_event_t *ev) {
+static void ngx_postgres_read_handler(ngx_event_t *ev) {
     ngx_connection_t *c = ev->data;
     ngx_postgres_cached_t *cached = c->data;
     if (c->close) goto close;
