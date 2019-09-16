@@ -610,9 +610,9 @@ static ngx_flag_t is_variable_character(u_char p) {
 }
 
 
-static ngx_uint_t str2oid(ngx_str_t *value) {
+static ngx_uint_t type2oid(ngx_str_t *type) {
     ngx_conf_enum_t *e = ngx_postgres_oids;
-    for (ngx_uint_t i = 0; e[i].name.len; i++) if (e[i].name.len - 3 == value->len && !ngx_strncasecmp(e[i].name.data, value->data, value->len)) return e[i].value;
+    for (ngx_uint_t i = 0; e[i].name.len; i++) if (e[i].name.len - 3 == type->len && !ngx_strncasecmp(e[i].name.data, type->data, type->len)) return e[i].value;
     return 0;
 }
 
@@ -684,23 +684,34 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     }
     if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     if (!(query->params = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_param_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+    if (!(query->ids = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_param_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
     for (ngx_uint_t k = 0; s < e; *p++ = *s++) {
         if (*s == '$') {
             ngx_str_t name;
             for (name.data = ++s, name.len = 0; s < e && is_variable_character(*s); s++, name.len++);
             if (!name.len) { *p++ = '$'; continue; }
-            ngx_str_t oid = {0, NULL};
-            if (*s == ':' && *(s+1) == ':') for (s += 2, oid.data = s, oid.len = 0; s < e && is_variable_character(*s); s++, oid.len++);
-            if (!oid.len) { *p++ = '$'; p = ngx_copy(p, name.data, name.len); continue; }
-            ngx_postgres_param_t *param;
-            if (!(param = ngx_array_push(query->params))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+            ngx_str_t type = {0, NULL};
+            if (s[0] == ':' && s[1] == ':') for (s += 2, type.data = s, type.len = 0; s < e && is_variable_character(*s); s++, type.len++);
+            if (!type.len) { *p++ = '$'; p = ngx_copy(p, name.data, name.len); continue; }
             ngx_int_t index = ngx_http_get_variable_index(cf, &name);
             if (index == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid name \"%V\" in \"%V\" directive", &name, &cmd->name); return NGX_CONF_ERROR; }
-            param->index = (ngx_uint_t) index;
-            if (!(param->oid = str2oid(&oid))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid oid \"%V\" in \"%V\" directive", &oid, &cmd->name);  return NGX_CONF_ERROR; }
-            k++;
-            if (param->oid == IDOID) { *p++ = '%'; *p++ = 'V'; } else p += ngx_sprintf(p, "$%d", k) - p;
+            ngx_uint_t oid = type2oid(&type);
+            if (!oid) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid oid \"%V\" in \"%V\" directive", &oid, &cmd->name);  return NGX_CONF_ERROR; }
+            if (oid == IDOID) {
+                ngx_postgres_param_t *id = ngx_array_push(query->ids);
+                if (!id) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+                id->index = (ngx_uint_t) index;
+                id->oid = oid;
+                *p++ = '%';
+                *p++ = 'V';
+            } else {
+                ngx_postgres_param_t *param = ngx_array_push(query->params);
+                if (!param) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
+                param->index = (ngx_uint_t) index;
+                param->oid = oid;
+                p += ngx_sprintf(p, "$%d", ++k) - p;
+            }
             if (s >= e) break;
         }
     }
