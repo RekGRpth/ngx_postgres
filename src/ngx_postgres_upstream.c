@@ -42,17 +42,16 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     cached->connection->pool->log = pc->log;
     cached->connection->read->log = pc->log;
     cached->connection->write->log = pc->log;
-//    peer_data->save.name = cached->save.name;
-//    peer_data->save.sockaddr = cached->save.sockaddr;
-//    peer_data->save.socklen = cached->save.socklen;
-//    peer_data->save.conn = cached->save.conn;
+    peer_data->save.name = cached->save.name;
+    peer_data->save.sockaddr = cached->save.sockaddr;
+    peer_data->save.socklen = cached->save.socklen;
+    peer_data->save.conn = cached->save.conn;
     pc->connection = cached->connection;
     pc->cached = 1;
     pc->name = cached->save.name;
     pc->sockaddr = cached->save.sockaddr;
     pc->socklen = cached->save.socklen;
-    peer_data->save = cached->save;
-//    for (ngx_uint_t j = 0; j < peer_data->save.server_conf->max_statements; j++) peer_data->save.statements[j] = cached->save.statements[j]; /* Inherit list of prepared statements */
+    for (ngx_uint_t j = 0; j < peer_data->save.server_conf->max_statements; j++) peer_data->save.statements[j] = cached->save.statements[j]; /* Inherit list of prepared statements */
     return NGX_DONE;
 }
 
@@ -72,9 +71,8 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         pc->connection = cached->connection;
         pc->cached = 1;
         /* we do not need to resume the peer name, because we already take the right value outside */
-//        peer_data->save.conn = cached->save.conn;
-//        for (ngx_uint_t j = 0; j < peer_data->save.server_conf->max_statements; j++) peer_data->save.statements[j] = cached->save.statements[j]; /* Inherit list of prepared statements */
-        peer_data->save = cached->save;
+        peer_data->save.conn = cached->save.conn;
+        for (ngx_uint_t j = 0; j < peer_data->save.server_conf->max_statements; j++) peer_data->save.statements[j] = cached->save.statements[j]; /* Inherit list of prepared statements */
         return NGX_DONE;
     }
     return NGX_DECLINED;
@@ -250,11 +248,10 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
         cached->connection->pool->log = ngx_cycle->log;
         cached->connection->read->log = ngx_cycle->log;
         cached->connection->write->log = ngx_cycle->log;
-//        cached->save.socklen = pc->socklen;
-//        cached->save.sockaddr = pc->sockaddr;
-//        cached->save.conn = peer_data->save.conn;
-//        cached->save.name = peer_data->save.name;
-        cached->save = peer_data->save;
+        cached->save.socklen = pc->socklen;
+        cached->save.sockaddr = pc->sockaddr;
+        cached->save.conn = peer_data->save.conn;
+        cached->save.name = peer_data->save.name;
     }
 }
 
