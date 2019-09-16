@@ -38,7 +38,7 @@ typedef struct {
     ngx_int_t                           nfields;
     ngx_int_t                           ntuples;
     ngx_int_t                           cmdTuples;
-    ngx_str_t                           query;
+    ngx_str_t                           sql;
     ngx_array_t                        *variables;
     ngx_int_t                           status;
     PGresult                           *res;

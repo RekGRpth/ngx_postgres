@@ -67,12 +67,12 @@ ngx_int_t ngx_postgres_variable_affected(ngx_http_request_t *r, ngx_http_variabl
 
 ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (!context || !context->query.len) { v->not_found = 1; return NGX_OK; }
+    if (!context || !context->sql.len) { v->not_found = 1; return NGX_OK; }
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->len = context->query.len;
-    v->data = context->query.data;
+    v->len = context->sql.len;
+    v->data = context->sql.data;
     return NGX_OK;
 }
 
