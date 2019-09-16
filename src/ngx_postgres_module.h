@@ -38,7 +38,7 @@ extern ngx_module_t  ngx_postgres_module;
 typedef struct {
     ngx_uint_t                          oid;
     ngx_uint_t                          index;
-} ngx_postgres_arg_t;
+} ngx_postgres_param_t;
 
 typedef struct {
     ngx_int_t                           row;
@@ -116,7 +116,7 @@ typedef struct {
 typedef struct {
     ngx_uint_t                          methods;
     ngx_str_t                           sql;
-    ngx_array_t                        *args;
+    ngx_array_t                        *params;
 } ngx_postgres_query_t;
 
 typedef ngx_int_t (*ngx_postgres_output_handler_pt) (ngx_http_request_t *);

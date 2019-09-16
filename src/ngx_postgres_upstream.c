@@ -137,14 +137,14 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         u_char *last = ngx_snprintf(peer_data->stmtName, 31, "ngx_%ul", (unsigned long)peer_data->hash);
         *last = '\0';
     }
-    if (query->args->nelts) {
-        ngx_postgres_arg_t *arg = query->args->elts;
-        peer_data->nParams = query->args->nelts;
-        if (!(peer_data->paramTypes = ngx_pnalloc(r->pool, query->args->nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        if (!(peer_data->paramValues = ngx_pnalloc(r->pool, query->args->nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        for (ngx_uint_t i = 0; i < query->args->nelts; i++) {
-            peer_data->paramTypes[i] = arg[i].oid;
-            ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, arg[i].index);
+    if (query->params->nelts) {
+        ngx_postgres_param_t *param = query->params->elts;
+        peer_data->nParams = query->params->nelts;
+        if (!(peer_data->paramTypes = ngx_pnalloc(r->pool, query->params->nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        if (!(peer_data->paramValues = ngx_pnalloc(r->pool, query->params->nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        for (ngx_uint_t i = 0; i < query->params->nelts; i++) {
+            peer_data->paramTypes[i] = param[i].oid;
+            ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, param[i].index);
             if (!value || !value->data) peer_data->paramValues[i] = NULL; else {
                 if (!(peer_data->paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
                 (void) ngx_cpystrn(peer_data->paramValues[i], value->data, value->len + 1);
