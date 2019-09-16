@@ -50,18 +50,22 @@ typedef struct {
 } ngx_postgres_statement_t;
 
 typedef struct {
-    int                                nParams;
-    ngx_http_request_t                *request;
     ngx_postgres_server_conf_t        *server_conf;
     ngx_postgres_statement_t          *statements;
-    ngx_postgres_state_t               state;
     ngx_str_t                         *name;
-    ngx_uint_t                         hash;
-    ngx_uint_t                         resultFormat;
-    Oid                               *paramTypes;
     PGconn                            *conn;
     socklen_t                          socklen;
     struct sockaddr                   *sockaddr;
+} ngx_postgres_save_t;
+
+typedef struct {
+    int                                nParams;
+    ngx_http_request_t                *request;
+    ngx_postgres_save_t                save;
+    ngx_postgres_state_t               state;
+    ngx_uint_t                         hash;
+    ngx_uint_t                         resultFormat;
+    Oid                               *paramTypes;
     u_char                            *command;
     u_char                           **paramValues;
     u_char                            *stmtName;
@@ -70,13 +74,8 @@ typedef struct {
 
 typedef struct {
     ngx_connection_t                  *connection;
-    ngx_postgres_server_conf_t        *server_conf;
-    ngx_postgres_statement_t          *statements;
+    ngx_postgres_save_t                save;
     ngx_queue_t                        queue;
-    ngx_str_t                         *name;
-    PGconn                            *conn;
-    socklen_t                          socklen;
-    struct sockaddr                   *sockaddr;
 } ngx_postgres_cached_t;
 
 typedef struct {
