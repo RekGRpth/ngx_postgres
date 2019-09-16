@@ -33,87 +33,20 @@
 #include "ngx_postgres_upstream.h"
 
 
-static void ngx_postgres_write_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u);
-static void ngx_postgres_read_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u);
-static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r);
-static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r);
-static void ngx_postgres_abort_request(ngx_http_request_t *r);
-static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc);
-static ngx_int_t ngx_postgres_process_header(ngx_http_request_t *r);
-static ngx_int_t ngx_postgres_input_filter_init(void *data);
-static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes);
-static ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *, ngx_url_t *);
-static ngx_int_t ngx_postgres_test_connect(ngx_connection_t *);
-
-
-ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
-    /* TODO: add support for subrequest in memory by emitting output into u->buffer instead */
-    if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: ngx_postgres module does not support subrequests in memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (!location_conf->query && !(location_conf->methods_set & r->method)) {
-        if (location_conf->methods_set) return NGX_HTTP_NOT_ALLOWED;
-        ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: missing \"postgres_query\" in location \"%V\"", &core_loc_conf->name);
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+ngx_int_t ngx_postgres_test_connect(ngx_connection_t *c) {
+#if (NGX_HAVE_KQUEUE)
+    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
+        if (c->write->pending_eof) { (void) ngx_connection_error(c, c->write->kq_errno, "kevent() reported that connect() failed"); return NGX_ERROR; }
+    } else
+#endif
+    {
+        int err = 0;
+        socklen_t len = sizeof(int);
+        /* BSDs and Linux return 0 and set a pending error in err, Solaris returns -1 and sets errno */
+        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1) err = ngx_errno;
+        if (err) { (void) ngx_connection_error(c, err, "connect() failed"); return NGX_ERROR; }
     }
-    ngx_int_t rc = ngx_http_discard_request_body(r);
-    if (rc != NGX_OK) return rc;
-    if (ngx_http_upstream_create(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-    ngx_http_upstream_t *u = r->upstream;
-    if (location_conf->upstream_cv) { /* use complex value */
-        ngx_str_t host;
-        if (ngx_http_complex_value(r, location_conf->upstream_cv, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-        if (!host.len) {
-            ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location_conf->upstream_cv->value, &core_loc_conf->name);
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-        ngx_url_t url;
-        ngx_memzero(&url, sizeof(ngx_url_t));
-        url.host = host;
-        url.no_resolve = 1;
-        if (!(location_conf->upstream.upstream = ngx_postgres_find_upstream(r, &url))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: upstream name \"%V\" not found", &host); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-    }
-    ngx_postgres_context_t *context = ngx_pcalloc(r->pool, sizeof(ngx_postgres_context_t));
-    if (!context) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-    context->nfields = NGX_ERROR;
-    context->ntuples = NGX_ERROR;
-    context->cmdTuples = NGX_ERROR;
-    if (location_conf->variables) {
-        if (!(context->variables = ngx_array_create(r->pool, location_conf->variables->nelts, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-        /* fake ngx_array_push'ing */
-        context->variables->nelts = location_conf->variables->nelts;
-        ngx_memzero(context->variables->elts, context->variables->nelts * context->variables->size);
-    }
-    ngx_http_set_ctx(r, context, ngx_postgres_module);
-    u->schema.len = sizeof("postgres://") - 1;
-    u->schema.data = (u_char *) "postgres://";
-    u->output.tag = (ngx_buf_tag_t) &ngx_postgres_module;
-    u->conf = &location_conf->upstream;
-    u->create_request = ngx_postgres_create_request;
-    u->reinit_request = ngx_postgres_reinit_request;
-    u->process_header = ngx_postgres_process_header;
-    u->abort_request = ngx_postgres_abort_request;
-    u->finalize_request = ngx_postgres_finalize_request;
-    /* we bypass the upstream input filter mechanism in ngx_http_upstream_process_headers */
-    u->input_filter_init = ngx_postgres_input_filter_init;
-    u->input_filter = ngx_postgres_input_filter;
-    u->input_filter_ctx = NULL;
-    r->main->count++;
-    ngx_http_upstream_init(r);
-    /* override the read/write event handler to our own */
-    u->write_event_handler = ngx_postgres_write_event_handler;
-    u->read_event_handler = ngx_postgres_read_event_handler;
-    /* a bit hack-ish way to return error response (clean-up part) */
-    if (u->peer.connection && !u->peer.connection->fd) {
-        ngx_connection_t *c = u->peer.connection;
-        u->peer.connection = NULL;
-        if (c->write->timer_set) ngx_del_timer(c->write);
-        if (c->pool) ngx_destroy_pool(c->pool);
-        ngx_free_connection(c);
-        ngx_postgres_finalize_upstream(r, u, NGX_HTTP_SERVICE_UNAVAILABLE);
-    }
-    return NGX_DONE;
+    return NGX_OK;
 }
 
 
@@ -184,20 +117,74 @@ ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *r, 
 }
 
 
-ngx_int_t ngx_postgres_test_connect(ngx_connection_t *c) {
-#if (NGX_HAVE_KQUEUE)
-    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
-        if (c->write->pending_eof) { (void) ngx_connection_error(c, c->write->kq_errno, "kevent() reported that connect() failed"); return NGX_ERROR; }
-    } else
-#endif
-    {
-        int err = 0;
-        socklen_t len = sizeof(int);
-        /* BSDs and Linux return 0 and set a pending error in err, Solaris returns -1 and sets errno */
-        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1) err = ngx_errno;
-        if (err) { (void) ngx_connection_error(c, err, "connect() failed"); return NGX_ERROR; }
+ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
+    /* TODO: add support for subrequest in memory by emitting output into u->buffer instead */
+    if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: ngx_postgres module does not support subrequests in memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    if (!location_conf->query && !(location_conf->methods_set & r->method)) {
+        if (location_conf->methods_set) return NGX_HTTP_NOT_ALLOWED;
+        ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: missing \"postgres_query\" in location \"%V\"", &core_loc_conf->name);
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-    return NGX_OK;
+    ngx_int_t rc = ngx_http_discard_request_body(r);
+    if (rc != NGX_OK) return rc;
+    if (ngx_http_upstream_create(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+    ngx_http_upstream_t *u = r->upstream;
+    if (location_conf->upstream_cv) { /* use complex value */
+        ngx_str_t host;
+        if (ngx_http_complex_value(r, location_conf->upstream_cv, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+        if (!host.len) {
+            ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location_conf->upstream_cv->value, &core_loc_conf->name);
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+        ngx_url_t url;
+        ngx_memzero(&url, sizeof(ngx_url_t));
+        url.host = host;
+        url.no_resolve = 1;
+        if (!(location_conf->upstream.upstream = ngx_postgres_find_upstream(r, &url))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: upstream name \"%V\" not found", &host); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+    }
+    ngx_postgres_context_t *context = ngx_pcalloc(r->pool, sizeof(ngx_postgres_context_t));
+    if (!context) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+    context->nfields = NGX_ERROR;
+    context->ntuples = NGX_ERROR;
+    context->cmdTuples = NGX_ERROR;
+    if (location_conf->variables) {
+        if (!(context->variables = ngx_array_create(r->pool, location_conf->variables->nelts, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+        /* fake ngx_array_push'ing */
+        context->variables->nelts = location_conf->variables->nelts;
+        ngx_memzero(context->variables->elts, context->variables->nelts * context->variables->size);
+    }
+    ngx_http_set_ctx(r, context, ngx_postgres_module);
+    u->schema.len = sizeof("postgres://") - 1;
+    u->schema.data = (u_char *) "postgres://";
+    u->output.tag = (ngx_buf_tag_t) &ngx_postgres_module;
+    u->conf = &location_conf->upstream;
+    u->create_request = ngx_postgres_create_request;
+    u->reinit_request = ngx_postgres_reinit_request;
+    u->process_header = ngx_postgres_process_header;
+    u->abort_request = ngx_postgres_abort_request;
+    u->finalize_request = ngx_postgres_finalize_request;
+    /* we bypass the upstream input filter mechanism in ngx_http_upstream_process_headers */
+    u->input_filter_init = ngx_postgres_input_filter_init;
+    u->input_filter = ngx_postgres_input_filter;
+    u->input_filter_ctx = NULL;
+    r->main->count++;
+    ngx_http_upstream_init(r);
+    /* override the read/write event handler to our own */
+    u->write_event_handler = ngx_postgres_write_event_handler;
+    u->read_event_handler = ngx_postgres_read_event_handler;
+    /* a bit hack-ish way to return error response (clean-up part) */
+    if (u->peer.connection && !u->peer.connection->fd) {
+        ngx_connection_t *c = u->peer.connection;
+        u->peer.connection = NULL;
+        if (c->write->timer_set) ngx_del_timer(c->write);
+        if (c->pool) ngx_destroy_pool(c->pool);
+        ngx_free_connection(c);
+        ngx_postgres_finalize_upstream(r, u, NGX_HTTP_SERVICE_UNAVAILABLE);
+    }
+    return NGX_DONE;
 }
 
 
