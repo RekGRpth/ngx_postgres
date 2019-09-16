@@ -41,6 +41,7 @@ static void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *, ngx_postgr
 static ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *, ngx_postgres_peer_data_t *);
 static ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *, ngx_postgres_peer_data_t *);
 static ngx_int_t ngx_postgres_keepalive_init(ngx_pool_t *, ngx_postgres_server_conf_t *);
+static ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident);
 
 
 ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
@@ -88,7 +89,7 @@ ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_
 }
 
 
-ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident) {
+static ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident) {
     ngx_str_t result = ngx_null_string;
     u_char quote_char = as_ident ? '"' : '\'';
     ngx_uint_t num_backslashes = 0;
