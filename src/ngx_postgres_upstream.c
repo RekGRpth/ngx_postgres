@@ -218,12 +218,6 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer");
     if (state & NGX_PEER_FAILED) peer_data->failed = 1;
     if (!peer_data->failed && pc->connection && peer_data->request->upstream->headers_in.status_n == NGX_HTTP_OK) {
-        ngx_connection_t *c = pc->connection;
-        if (c->read->timer_set) ngx_del_timer(c->read);
-        if (c->write->timer_set) ngx_del_timer(c->write);
-        if (c->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->write, NGX_WRITE_EVENT, 0) != NGX_OK) return;
-        pc->connection = NULL;
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer: saving connection %p", c);
         ngx_queue_t *q;
         ngx_postgres_cached_t *cached;
         if (ngx_queue_empty(&peer_data->server_conf->free)) { /* connection pool is already full */
@@ -237,16 +231,21 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
             cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
         }
         for (ngx_uint_t j = 0; j < peer_data->server_conf->max_statements; j++) cached->statements[j] = peer_data->statements[j];
-        cached->connection = c;
+        cached->connection = pc->connection;
+        if (cached->connection->read->timer_set) ngx_del_timer(cached->connection->read);
+        if (cached->connection->write->timer_set) ngx_del_timer(cached->connection->write);
+        if (cached->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(cached->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) return;
+        pc->connection = NULL;
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer: saving connection %p", cached->connection);
         ngx_queue_insert_head(&peer_data->server_conf->cache, q);
-        c->write->handler = ngx_postgres_write_handler;
-        c->read->handler = ngx_postgres_read_handler;
-        c->data = cached;
-        c->idle = 1;
-        c->log = ngx_cycle->log;
-        c->pool->log = ngx_cycle->log;
-        c->read->log = ngx_cycle->log;
-        c->write->log = ngx_cycle->log;
+        cached->connection->write->handler = ngx_postgres_write_handler;
+        cached->connection->read->handler = ngx_postgres_read_handler;
+        cached->connection->data = cached;
+        cached->connection->idle = 1;
+        cached->connection->log = ngx_cycle->log;
+        cached->connection->pool->log = ngx_cycle->log;
+        cached->connection->read->log = ngx_cycle->log;
+        cached->connection->write->log = ngx_cycle->log;
         cached->socklen = pc->socklen;
         cached->sockaddr = pc->sockaddr;
         cached->conn = peer_data->conn;
