@@ -135,7 +135,7 @@ static ngx_int_t ngx_postgres_upstream_send_query(ngx_http_request_t *r) {
     if (PQisBusy(peer_data->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while send query"); return NGX_AGAIN; }
     for (PGresult *res; (res = PQgetResult(peer_data->conn)); PQclear(res)) if (PQresultStatus(res) != PGRES_COMMAND_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
 //    ngx_postgres_process_notify(r->connection->log, r->pool, peer_data->conn);
-    if (!peer_data->server_conf->max_statements) {
+    if (!peer_data->server_conf->max_statements || !peer_data->stmtName) {
         if (!PQsendQueryParams(peer_data->conn, (const char *)peer_data->command, peer_data->nParams, peer_data->paramTypes, (const char *const *)peer_data->paramValues, NULL, NULL, peer_data->resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(peer_data->conn)); return NGX_ERROR; }
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query %s sent successfully", peer_data->command);
     } else switch (peer_data->state) {

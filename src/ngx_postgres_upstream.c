@@ -168,7 +168,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     context->sql = sql; /* set $postgres_query */
     if (!(peer_data->command = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     (void) ngx_cpystrn(peer_data->command, sql.data, sql.len + 1);
-    if (server_conf->max_statements) {
+    if (server_conf->max_statements && !query->listen) {
         peer_data->hash = ngx_hash_key(sql.data, sql.len);
         if (!(peer_data->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         u_char *last = ngx_snprintf(peer_data->stmtName, 31, "ngx_%ul", (unsigned long)peer_data->hash);
