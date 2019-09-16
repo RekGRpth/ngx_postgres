@@ -123,8 +123,8 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 //    pc->connection->log = pc->log;
 //    pc->connection->log_error = pc->log_error;
     pc->connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
-//    pc->connection->read->log = pc->log;
-//    pc->connection->write->log = pc->log;
+    pc->connection->read->log = pc->log;
+    pc->connection->write->log = pc->log;
     /* register the connection with postgres connection fd into the nginx event model */
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         if (ngx_add_conn(pc->connection) != NGX_OK) goto bad_add;
