@@ -31,9 +31,9 @@
 #include "ngx_postgres_upstream.h"
 
 
-static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
-static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data);
-static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state);
+static ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
+static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
+static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_uint_t state);
 static void ngx_postgres_write_handler(ngx_event_t *ev);
 static void ngx_postgres_read_handler(ngx_event_t *ev);
 static void ngx_postgres_process_notify(ngx_log_t *log, ngx_pool_t *pool, PGconn *conn);
@@ -45,7 +45,7 @@ static ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t le
 
 
 ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
-    upstream_srv_conf->peer.init = ngx_postgres_upstream_init_peer;
+    upstream_srv_conf->peer.init = ngx_postgres_peer_init;
     ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
     if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
     ngx_postgres_server_t *server = upstream_srv_conf->servers->elts;
@@ -113,7 +113,7 @@ static ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t le
 }
 
 
-static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
+static ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
     ngx_postgres_peer_data_t *peer_data = ngx_pcalloc(r->pool, sizeof(ngx_postgres_peer_data_t));
     if (!peer_data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
@@ -124,8 +124,8 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
     peer_data->server_conf = server_conf;
     if (!(peer_data->statements = ngx_pcalloc(r->pool, server_conf->max_statements * sizeof(ngx_postgres_statement_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     u->peer.data = peer_data;
-    u->peer.get = ngx_postgres_upstream_get_peer;
-    u->peer.free = ngx_postgres_upstream_free_peer;
+    u->peer.get = ngx_postgres_peer_get;
+    u->peer.free = ngx_postgres_peer_free;
     ngx_postgres_query_t *query;
     if (location_conf->methods_set & r->method) {
         query = location_conf->methods->elts;
@@ -185,7 +185,7 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
 }
 
 
-static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void *data) {
+static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_peer_data_t *peer_data = data;
     peer_data->failed = 0;
     if (peer_data->server_conf->max_cached && peer_data->server_conf->single && ngx_postgres_keepalive_get_peer_single(pc, peer_data) != NGX_DECLINED) { /* re-use keepalive peer */
@@ -252,7 +252,7 @@ invalid:
 }
 
 
-static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
+static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
     ngx_postgres_peer_data_t *peer_data = data;
     if (peer_data->server_conf->max_cached) ngx_postgres_keepalive_free_peer(pc, peer_data, state);
     if (pc->connection) {
@@ -264,7 +264,7 @@ static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *dat
 
 
 ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *peer) {
-    return (peer->get == ngx_postgres_upstream_get_peer);
+    return (peer->get == ngx_postgres_peer_get);
 }
 
 
