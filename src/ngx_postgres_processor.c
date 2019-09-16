@@ -256,7 +256,7 @@ void ngx_postgres_process_notify(ngx_log_t *log, ngx_pool_t *pool, PGconn *conn)
             case NGX_DECLINED: {
                 ngx_log_error(NGX_LOG_ERR, log, 0, "postgres notify declined");
                 ngx_str_t channel = PQescapeInternal(pool, id.data, id.len, 1);
-                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to escape %V: %s", id, PQerrorMessage(conn)); return; }
+                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to escape %V", id); return; }
                 u_char *command = ngx_pnalloc(pool, sizeof("UNLISTEN ") - 1 + channel.len + 1);
                 if (!command) { ngx_log_error(NGX_LOG_ERR, log, 0, "%s:%d", __FILE__, __LINE__); return; }
                 u_char *last = ngx_snprintf(command, sizeof("UNLISTEN ") - 1 + channel.len + 1, "UNLISTEN %V", &channel);

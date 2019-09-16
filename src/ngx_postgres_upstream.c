@@ -134,14 +134,37 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         for (ngx_uint_t i = 0; i < query->params->nelts; i++) {
             peer_data->paramTypes[i] = param[i].oid;
             ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, param[i].index);
-            if (!value || !value->data) peer_data->paramValues[i] = NULL; else {
+            if (!value || !value->data || !value->len) peer_data->paramValues[i] = NULL; else {
                 if (!(peer_data->paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
                 (void) ngx_cpystrn(peer_data->paramValues[i], value->data, value->len + 1);
             }
         }
     }
-    peer_data->resultFormat = location_conf->binary;
     ngx_str_t sql = query->sql;
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: sql = `%V`", &sql);
+    if (query->ids->nelts) {
+        ngx_uint_t *id = query->ids->elts;
+        ngx_str_t *ids = ngx_pnalloc(r->pool, query->ids->nelts * sizeof(ngx_str_t));
+        if (!ids) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        sql.len = query->sql.len - 2 * query->ids->nelts;
+        for (ngx_uint_t i = 0; i < query->ids->nelts; i++) {
+            ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, id[i]);
+            if (!value || !value->data || !value->len) { ngx_str_set(&ids[i], "NULL"); } else {
+                ids[i] = PQescapeInternal(r->pool, value->data, value->len, 1);
+                if (!ids[i].len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to escape %*.*s", value->len, value->len, value->data); return NGX_ERROR; }
+                sql.len += ids[i].len;
+            }
+        }
+        if (!(sql.data = ngx_pnalloc(r->pool, sql.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        switch (query->ids->nelts - 1) {
+//            case 0: if ((len = ngx_snprintf(sql.data, sql.len, (const char *)query->sql.data, &ids[0]) - sql.data) != sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%ul!=%ul, %s:%d", len, sql.len, __FILE__, __LINE__); return NGX_ERROR; } break;
+            case 0: if (ngx_snprintf(sql.data, sql.len, (const char *)query->sql.data, &ids[0]) != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; } break;
+            case 1: if (ngx_snprintf(sql.data, sql.len, (const char *)query->sql.data, &ids[0], &ids[1]) != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; } break;
+            case 2: if (ngx_snprintf(sql.data, sql.len, (const char *)query->sql.data, &ids[0], &ids[1], &ids[2]) != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; } break;
+        }
+    }
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: sql = `%V`", &sql);
+    peer_data->resultFormat = location_conf->binary;
     context->sql = sql; /* set $postgres_query */
     if (!(peer_data->command = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     (void) ngx_cpystrn(peer_data->command, sql.data, sql.len + 1);
