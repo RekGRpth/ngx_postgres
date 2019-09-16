@@ -38,10 +38,10 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
     ngx_queue_insert_head(&peer_data->save.server_conf->free, q);
     cached->connection->idle = 0;
-    cached->connection->log = pc->log;
-    cached->connection->pool->log = pc->log;
-    cached->connection->read->log = pc->log;
-    cached->connection->write->log = pc->log;
+//    cached->connection->log = pc->log;
+//    cached->connection->pool->log = pc->log;
+//    cached->connection->read->log = pc->log;
+//    cached->connection->write->log = pc->log;
     peer_data->save.name = cached->save.name;
     peer_data->save.sockaddr = cached->save.sockaddr;
     peer_data->save.socklen = cached->save.socklen;
@@ -64,10 +64,10 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         ngx_queue_remove(q);
         ngx_queue_insert_head(&peer_data->save.server_conf->free, q);
         cached->connection->idle = 0;
-        cached->connection->log = pc->log;
-        cached->connection->pool->log = pc->log;
-        cached->connection->read->log = pc->log;
-        cached->connection->write->log = pc->log;
+//        cached->connection->log = pc->log;
+//        cached->connection->pool->log = pc->log;
+//        cached->connection->read->log = pc->log;
+//        cached->connection->write->log = pc->log;
         pc->connection = cached->connection;
         pc->cached = 1;
         /* we do not need to resume the peer name, because we already take the right value outside */
@@ -120,11 +120,11 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (fd == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get connection fd"); goto invalid; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection fd:%d", fd);
     if (!(pc->connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get a free nginx connection"); goto invalid; }
-    pc->connection->log = pc->log;
-    pc->connection->log_error = pc->log_error;
+//    pc->connection->log = pc->log;
+//    pc->connection->log_error = pc->log_error;
     pc->connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
-    pc->connection->read->log = pc->log;
-    pc->connection->write->log = pc->log;
+//    pc->connection->read->log = pc->log;
+//    pc->connection->write->log = pc->log;
     /* register the connection with postgres connection fd into the nginx event model */
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         if (ngx_add_conn(pc->connection) != NGX_OK) goto bad_add;
@@ -241,10 +241,10 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
         cached->connection->read->handler = ngx_postgres_read_handler;
         cached->connection->data = cached;
         cached->connection->idle = 1;
-        cached->connection->log = ngx_cycle->log;
-        cached->connection->pool->log = ngx_cycle->log;
-        cached->connection->read->log = ngx_cycle->log;
-        cached->connection->write->log = ngx_cycle->log;
+//        cached->connection->log = ngx_cycle->log;
+//        cached->connection->pool->log = ngx_cycle->log;
+//        cached->connection->read->log = ngx_cycle->log;
+//        cached->connection->write->log = ngx_cycle->log;
         cached->save.socklen = pc->socklen;
         cached->save.sockaddr = pc->sockaddr;
         cached->save.conn = peer_data->save.conn;
