@@ -232,7 +232,6 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
             ngx_queue_remove(q);
             cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
         }
-        for (ngx_uint_t j = 0; j < peer_data->save.server_conf->max_statements; j++) cached->save.statements[j] = peer_data->save.statements[j];
         cached->connection = pc->connection;
         if (cached->connection->read->timer_set) ngx_del_timer(cached->connection->read);
         if (cached->connection->write->timer_set) ngx_del_timer(cached->connection->write);
@@ -252,6 +251,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
         cached->save.sockaddr = pc->sockaddr;
         cached->save.conn = peer_data->save.conn;
         cached->save.name = peer_data->save.name;
+        for (ngx_uint_t j = 0; j < peer_data->save.server_conf->max_statements; j++) cached->save.statements[j] = peer_data->save.statements[j];
     }
 }
 
