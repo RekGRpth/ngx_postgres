@@ -90,7 +90,7 @@ typedef struct {
 } ngx_postgres_context_t;
 
 
-ngx_int_t   ngx_postgres_upstream_init(ngx_conf_t *, ngx_http_upstream_srv_conf_t *);
+ngx_int_t   ngx_postgres_init_upstream(ngx_conf_t *, ngx_http_upstream_srv_conf_t *);
 ngx_flag_t  ngx_postgres_upstream_is_my_peer(const ngx_peer_connection_t *);
 void        ngx_postgres_upstream_free_connection(ngx_connection_t *, PGconn *, ngx_postgres_server_conf_t *);
 ngx_int_t   ngx_http_push_stream_add_msg_to_channel_my(ngx_log_t *log, ngx_str_t *id, ngx_str_t *text, ngx_str_t *event_id, ngx_str_t *event_type, ngx_flag_t store_messages, ngx_pool_t *temp_pool);

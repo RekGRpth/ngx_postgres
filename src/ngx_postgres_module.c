@@ -359,13 +359,13 @@ ngx_conf_enum_t ngx_postgres_oids[] = {
     { ngx_null_string, 0 }
 };
 
-ngx_conf_enum_t ngx_postgres_upstream_mode_options[] = {
+ngx_conf_enum_t ngx_postgres_mode_options[] = {
     { ngx_string("multi"),  0 },
     { ngx_string("single"), 1 },
     { ngx_null_string, 0 }
 };
 
-ngx_conf_enum_t ngx_postgres_upstream_overflow_options[] = {
+ngx_conf_enum_t ngx_postgres_overflow_options[] = {
     { ngx_string("ignore"), 0 },
     { ngx_string("reject"), 1 },
     { ngx_null_string, 0 }
@@ -536,7 +536,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
             server->application_name.data = value[i].data;
         } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid parameter \"%V\" in \"postgres_server\"", &value[i]); return NGX_CONF_ERROR; }
     }
-    upstream_srv_conf->peer.init_upstream = ngx_postgres_upstream_init;
+    upstream_srv_conf->peer.init_upstream = ngx_postgres_init_upstream;
     return NGX_CONF_OK;
 }
 
@@ -564,14 +564,14 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             value[i].len = value[i].len - (sizeof("mode=") - 1);
             value[i].data = &value[i].data[sizeof("mode=") - 1];
             ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_upstream_mode_options;
+            ngx_conf_enum_t *e = ngx_postgres_mode_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { server_conf->single = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"mode\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
         } else if (!ngx_strncmp(value[i].data, "overflow=", sizeof("overflow=") - 1)) {
             value[i].len = value[i].len - (sizeof("overflow=") - 1);
             value[i].data = &value[i].data[sizeof("overflow=") - 1];
             ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_upstream_overflow_options;
+            ngx_conf_enum_t *e = ngx_postgres_overflow_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { server_conf->reject = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"overflow\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
         } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid parameter \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
