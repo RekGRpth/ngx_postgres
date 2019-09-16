@@ -247,7 +247,7 @@ static ngx_int_t ngx_postgres_upstream_get_peer(ngx_peer_connection_t *pc, void 
 bad_add:
     ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to add nginx connection");
 invalid:
-    ngx_postgres_upstream_free_connection(pc->connection, peer_data->conn, peer_data->server_conf);
+    ngx_postgres_free_connection(pc->connection, peer_data->conn, peer_data->server_conf);
     return NGX_ERROR;
 }
 
@@ -256,19 +256,19 @@ static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *dat
     ngx_postgres_peer_data_t *peer_data = data;
     if (peer_data->server_conf->max_cached) ngx_postgres_keepalive_free_peer(pc, peer_data, state);
     if (pc->connection) {
-        ngx_postgres_upstream_free_connection(pc->connection, peer_data->conn, peer_data->server_conf);
+        ngx_postgres_free_connection(pc->connection, peer_data->conn, peer_data->server_conf);
         peer_data->conn = NULL;
         pc->connection = NULL;
     }
 }
 
 
-ngx_flag_t ngx_postgres_upstream_is_my_peer(const ngx_peer_connection_t *peer) {
+ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *peer) {
     return (peer->get == ngx_postgres_upstream_get_peer);
 }
 
 
-void ngx_postgres_upstream_free_connection(ngx_connection_t *c, PGconn *conn, ngx_postgres_server_conf_t *server_conf) {
+void ngx_postgres_free_connection(ngx_connection_t *c, PGconn *conn, ngx_postgres_server_conf_t *server_conf) {
     PQfinish(conn);
     if (c) {
         ngx_event_t *rev = c->read;
@@ -369,7 +369,7 @@ static void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_post
             q = ngx_queue_last(&peer_data->server_conf->cache);
             ngx_queue_remove(q);
             cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
-            ngx_postgres_upstream_free_connection(cached->connection, cached->conn, peer_data->server_conf);
+            ngx_postgres_free_connection(cached->connection, cached->conn, peer_data->server_conf);
         } else {
             q = ngx_queue_head(&peer_data->server_conf->free);
             ngx_queue_remove(q);
@@ -407,7 +407,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     ngx_postgres_process_notify(c->log, c->pool, cached->conn);
     return;
 close:
-    ngx_postgres_upstream_free_connection(c, cached->conn, cached->server_conf);
+    ngx_postgres_free_connection(c, cached->conn, cached->server_conf);
     ngx_queue_remove(&cached->queue);
     ngx_queue_insert_head(&cached->server_conf->free, &cached->queue);
 }
