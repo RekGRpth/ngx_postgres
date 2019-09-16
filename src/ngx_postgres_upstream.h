@@ -59,17 +59,21 @@ typedef struct {
 } ngx_postgres_save_t;
 
 typedef struct {
-    int                                nParams;
-    ngx_http_request_t                *request;
-    ngx_postgres_save_t                save;
-    ngx_postgres_state_t               state;
+    ngx_uint_t                         nParams;
     ngx_uint_t                         hash;
     ngx_uint_t                         resultFormat;
     Oid                               *paramTypes;
     u_char                            *command;
     u_char                           **paramValues;
     u_char                            *stmtName;
-    unsigned                           failed;
+} ngx_postgres_send_t;
+
+typedef struct {
+    ngx_http_request_t                *request;
+    ngx_postgres_save_t                save;
+    ngx_postgres_send_t                send;
+    ngx_postgres_state_t               state;
+    ngx_uint_t                         failed;
 } ngx_postgres_peer_data_t;
 
 typedef struct {

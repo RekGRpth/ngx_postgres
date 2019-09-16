@@ -289,15 +289,15 @@ static ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream
     } else query = location_conf->query;
     if (query->params->nelts) {
         ngx_postgres_param_t *param = query->params->elts;
-        peer_data->nParams = query->params->nelts;
-        if (!(peer_data->paramTypes = ngx_pnalloc(r->pool, query->params->nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        if (!(peer_data->paramValues = ngx_pnalloc(r->pool, query->params->nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        peer_data->send.nParams = query->params->nelts;
+        if (!(peer_data->send.paramTypes = ngx_pnalloc(r->pool, query->params->nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        if (!(peer_data->send.paramValues = ngx_pnalloc(r->pool, query->params->nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         for (ngx_uint_t i = 0; i < query->params->nelts; i++) {
-            peer_data->paramTypes[i] = param[i].oid;
+            peer_data->send.paramTypes[i] = param[i].oid;
             ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, param[i].index);
-            if (!value || !value->data || !value->len) peer_data->paramValues[i] = NULL; else {
-                if (!(peer_data->paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-                (void) ngx_cpystrn(peer_data->paramValues[i], value->data, value->len + 1);
+            if (!value || !value->data || !value->len) peer_data->send.paramValues[i] = NULL; else {
+                if (!(peer_data->send.paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+                (void) ngx_cpystrn(peer_data->send.paramValues[i], value->data, value->len + 1);
             }
         }
     }
@@ -325,14 +325,14 @@ static ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream
         }
     }
 //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: sql = `%V`", &sql);
-    peer_data->resultFormat = location_conf->binary;
+    peer_data->send.resultFormat = location_conf->binary;
     context->sql = sql; /* set $postgres_query */
-    if (!(peer_data->command = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    (void) ngx_cpystrn(peer_data->command, sql.data, sql.len + 1);
+    if (!(peer_data->send.command = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    (void) ngx_cpystrn(peer_data->send.command, sql.data, sql.len + 1);
     if (server_conf->max_statements && !query->listen) {
-        peer_data->hash = ngx_hash_key(sql.data, sql.len);
-        if (!(peer_data->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        u_char *last = ngx_snprintf(peer_data->stmtName, 31, "ngx_%ul", (unsigned long)peer_data->hash);
+        peer_data->send.hash = ngx_hash_key(sql.data, sql.len);
+        if (!(peer_data->send.stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        u_char *last = ngx_snprintf(peer_data->send.stmtName, 31, "ngx_%ul", (unsigned long)peer_data->send.hash);
         *last = '\0';
     }
     return NGX_OK;
