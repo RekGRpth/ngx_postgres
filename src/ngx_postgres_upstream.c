@@ -126,17 +126,6 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
         for (i = 0; i < location_conf->methods->nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
         if (i == location_conf->methods->nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     } else query = location_conf->query;
-    peer_data->resultFormat = location_conf->binary;
-    ngx_str_t sql = query->sql;
-    context->sql = sql; /* set $postgres_query */
-    if (!(peer_data->command = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    (void) ngx_cpystrn(peer_data->command, sql.data, sql.len + 1);
-    if (server_conf->max_statements) {
-        peer_data->hash = ngx_hash_key(sql.data, sql.len);
-        if (!(peer_data->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        u_char *last = ngx_snprintf(peer_data->stmtName, 31, "ngx_%ul", (unsigned long)peer_data->hash);
-        *last = '\0';
-    }
     if (query->params->nelts) {
         ngx_postgres_param_t *param = query->params->elts;
         peer_data->nParams = query->params->nelts;
@@ -150,6 +139,17 @@ static ngx_int_t ngx_postgres_upstream_init_peer(ngx_http_request_t *r, ngx_http
                 (void) ngx_cpystrn(peer_data->paramValues[i], value->data, value->len + 1);
             }
         }
+    }
+    peer_data->resultFormat = location_conf->binary;
+    ngx_str_t sql = query->sql;
+    context->sql = sql; /* set $postgres_query */
+    if (!(peer_data->command = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    (void) ngx_cpystrn(peer_data->command, sql.data, sql.len + 1);
+    if (server_conf->max_statements) {
+        peer_data->hash = ngx_hash_key(sql.data, sql.len);
+        if (!(peer_data->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        u_char *last = ngx_snprintf(peer_data->stmtName, 31, "ngx_%ul", (unsigned long)peer_data->hash);
+        *last = '\0';
     }
     return NGX_OK;
 }
