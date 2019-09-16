@@ -47,8 +47,8 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     peer_data->conn = cached->conn;
     pc->connection = cached->connection;
     pc->cached = 1;
-    pc->name = &peer_data->name;
-    pc->sockaddr = &peer_data->sockaddr;
+    pc->name = peer_data->name;
+    pc->sockaddr = peer_data->sockaddr;
     pc->socklen = cached->socklen;
     for (ngx_uint_t j = 0; j < peer_data->server_conf->max_statements; j++) peer_data->statements[j] = cached->statements[j]; /* Inherit list of prepared statements */
     return NGX_DONE;
@@ -59,7 +59,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
     ngx_queue_t *cache = &peer_data->server_conf->cache;
     for (ngx_queue_t *q = ngx_queue_head(cache); q != ngx_queue_sentinel(cache); q = ngx_queue_next(q)) {
         ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
-        if (ngx_memn2cmp((u_char *) &cached->sockaddr, (u_char *) pc->sockaddr, cached->socklen, pc->socklen)) continue;
+        if (ngx_memn2cmp((u_char *) cached->sockaddr, (u_char *) pc->sockaddr, cached->socklen, pc->socklen)) continue;
         ngx_queue_remove(q);
         ngx_queue_insert_head(&peer_data->server_conf->free, q);
         cached->connection->idle = 0;
@@ -89,9 +89,9 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (peer_data->server_conf->current > peer_data->server_conf->peers->number - 1) peer_data->server_conf->current = 0;
     ngx_postgres_peer_t *peer = &peer_data->server_conf->peers->peer[peer_data->server_conf->current++];
     peer_data->name = peer->name;
-    peer_data->sockaddr = *peer->sockaddr;
-    pc->name = &peer_data->name;
-    pc->sockaddr = &peer_data->sockaddr;
+    peer_data->sockaddr = peer->sockaddr;
+    pc->name = peer_data->name;
+    pc->sockaddr = peer_data->sockaddr;
     pc->socklen = peer->socklen;
     pc->cached = 0;
     if (peer_data->server_conf->max_cached && !peer_data->server_conf->single && ngx_postgres_peer_multi(pc, peer_data) != NGX_DECLINED) { /* re-use keepalive peer */
@@ -221,7 +221,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
         ngx_connection_t *c = pc->connection;
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
-        if (c->write->active && (ngx_event_flags & NGX_USE_LEVEL_EVENT) && ngx_del_event(c->write, NGX_WRITE_EVENT, 0) != NGX_OK) return;
+        if (c->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->write, NGX_WRITE_EVENT, 0) != NGX_OK) return;
         pc->connection = NULL;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer: saving connection %p", c);
         ngx_queue_t *q;
@@ -248,7 +248,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
         c->read->log = ngx_cycle->log;
         c->write->log = ngx_cycle->log;
         cached->socklen = pc->socklen;
-        ngx_memcpy(&cached->sockaddr, pc->sockaddr, pc->socklen);
+        cached->sockaddr = pc->sockaddr;
         cached->conn = peer_data->conn;
         cached->name = peer_data->name;
     }
@@ -369,7 +369,7 @@ ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_
             ngx_postgres_peer_t *peer = &peers->peer[n];
             peer->sockaddr = server[i].addrs[j].sockaddr;
             peer->socklen = server[i].addrs[j].socklen;
-            peer->name = server[i].addrs[j].name;
+            peer->name = &server[i].addrs[j].name;
             if (!(peer->host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             if (!(peer->host.len = ngx_sock_ntop(peer->sockaddr, peer->socklen, peer->host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
             size_t len = server[i].family == AF_UNIX ? sizeof("host=%s") - 1 - 1 + peer->host.len - 5 : sizeof("hostaddr=%V") - 1 - 1 + peer->host.len;

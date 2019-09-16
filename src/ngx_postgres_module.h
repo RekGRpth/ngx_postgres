@@ -89,7 +89,7 @@ static_assert(sizeof(ngx_postgres_server_t) <= sizeof(ngx_http_upstream_server_t
 typedef struct {
     struct sockaddr                    *sockaddr;
     socklen_t                           socklen;
-    ngx_str_t                           name;
+    ngx_str_t                          *name;
     ngx_str_t                           host;
     u_char                             *connstring;
 } ngx_postgres_peer_t;

@@ -61,8 +61,8 @@ typedef struct {
     Oid                               *paramTypes;
     u_char                           **paramValues;
     ngx_uint_t                         resultFormat;
-    ngx_str_t                          name;
-    struct sockaddr                    sockaddr;
+    ngx_str_t                         *name;
+    struct sockaddr                   *sockaddr;
     unsigned                           failed;
     ngx_postgres_statement_t          *statements;
 } ngx_postgres_peer_data_t;
@@ -72,21 +72,21 @@ typedef struct {
     ngx_postgres_server_conf_t        *server_conf;
     ngx_connection_t                  *connection;
     PGconn                            *conn;
-    struct sockaddr                    sockaddr;
+    struct sockaddr                   *sockaddr;
     socklen_t                          socklen;
-    ngx_str_t                          name;
+    ngx_str_t                         *name;
     ngx_postgres_statement_t          *statements;
 } ngx_postgres_cached_t;
 
 typedef struct {
-    ngx_chain_t                        *response;
-    ngx_int_t                           nfields;
-    ngx_int_t                           ntuples;
-    ngx_int_t                           cmdTuples;
-    ngx_str_t                           sql;
-    ngx_array_t                        *variables;
-    ngx_int_t                           status;
-    PGresult                           *res;
+    ngx_chain_t                       *response;
+    ngx_int_t                          nfields;
+    ngx_int_t                          ntuples;
+    ngx_int_t                          cmdTuples;
+    ngx_str_t                          sql;
+    ngx_array_t                       *variables;
+    ngx_int_t                          status;
+    PGresult                          *res;
 } ngx_postgres_context_t;
 
 
