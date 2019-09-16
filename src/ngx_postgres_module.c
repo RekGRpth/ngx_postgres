@@ -39,88 +39,6 @@
 #define NGX_CONF_TAKE34  (NGX_CONF_TAKE3|NGX_CONF_TAKE4)
 
 
-static ngx_int_t ngx_postgres_add_variables(ngx_conf_t *cf);
-static void *ngx_postgres_create_server_conf(ngx_conf_t *cf);
-static void *ngx_postgres_create_location_conf(ngx_conf_t *cf);
-static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void *child);
-static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-static void ngx_postgres_server_conf_cleanup(void *);
-
-
-static ngx_command_t ngx_postgres_module_commands[] = {
-
-    { ngx_string("postgres_server"),
-      NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
-      ngx_postgres_server_conf,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      0,
-      NULL },
-
-    { ngx_string("postgres_keepalive"),
-      NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
-      ngx_postgres_keepalive_conf,
-      NGX_HTTP_SRV_CONF_OFFSET,
-      0,
-      NULL },
-
-    { ngx_string("postgres_pass"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
-      ngx_postgres_pass_conf,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      0,
-      NULL },
-
-    { ngx_string("postgres_query"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_1MORE,
-      ngx_postgres_query_conf,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      0,
-      NULL },
-
-    { ngx_string("postgres_rewrite"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_2MORE,
-      ngx_postgres_rewrite_conf,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      0,
-      NULL },
-
-    { ngx_string("postgres_output"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
-      ngx_postgres_output_conf,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      0,
-      NULL },
-
-    { ngx_string("postgres_set"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE34,
-      ngx_postgres_set_conf,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      0,
-      NULL },
-
-    { ngx_string("postgres_connect_timeout"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_msec_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_postgres_location_conf_t, upstream.connect_timeout),
-      NULL },
-
-    { ngx_string("postgres_result_timeout"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_msec_slot,
-      NGX_HTTP_LOC_CONF_OFFSET,
-      offsetof(ngx_postgres_location_conf_t, upstream.read_timeout),
-      NULL },
-
-      ngx_null_command
-};
-
 static ngx_http_variable_t ngx_postgres_module_variables[] = {
 
     { ngx_string("postgres_columns"), NULL,
@@ -142,35 +60,6 @@ static ngx_http_variable_t ngx_postgres_module_variables[] = {
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
 
-static ngx_http_module_t ngx_postgres_module_ctx = {
-    ngx_postgres_add_variables,             /* preconfiguration */
-    NULL,                                   /* postconfiguration */
-
-    NULL,                                   /* create main configuration */
-    NULL,                                   /* init main configuration */
-
-    ngx_postgres_create_server_conf,        /* create server configuration */
-    NULL,                                   /* merge server configuration */
-
-    ngx_postgres_create_location_conf,      /* create location configuration */
-    ngx_postgres_merge_location_conf        /* merge location configuration */
-};
-
-ngx_module_t ngx_postgres_module = {
-    NGX_MODULE_V1,
-    &ngx_postgres_module_ctx,      /* module context */
-    ngx_postgres_module_commands,  /* module directives */
-    NGX_HTTP_MODULE,               /* module type */
-    NULL,                          /* init master */
-    NULL,                          /* init module */
-    NULL,                          /* init process */
-    NULL,                          /* init thread */
-    NULL,                          /* exit thread */
-    NULL,                          /* exit process */
-    NULL,                          /* exit master */
-    NGX_MODULE_V1_PADDING
-};
-
 ngx_conf_bitmask_t ngx_postgres_http_methods[] = {
    { ngx_string("GET"),       NGX_HTTP_GET },
    { ngx_string("HEAD"),      NGX_HTTP_HEAD },
@@ -186,7 +75,7 @@ ngx_conf_bitmask_t ngx_postgres_http_methods[] = {
    { ngx_string("LOCK"),      NGX_HTTP_LOCK },
    { ngx_string("UNLOCK"),    NGX_HTTP_UNLOCK },
    { ngx_string("PATCH"),     NGX_HTTP_PATCH },
-    { ngx_null_string, 0 }
+   { ngx_null_string, 0 }
 };
 
 #define IDOID 9999
@@ -413,6 +302,19 @@ static ngx_int_t ngx_postgres_add_variables(ngx_conf_t *cf) {
         variable->data = v->data;
     }
     return NGX_OK;
+}
+
+
+static void ngx_postgres_server_conf_cleanup(void *data) {
+    ngx_postgres_server_conf_t *server_conf = data;
+    if (!server_conf->cache.prev) return; /* ngx_queue_empty is broken when used on unitialized queue */
+    server_conf->max_cached = 0; /* just to be on the safe-side */
+    while (!ngx_queue_empty(&server_conf->cache)) {
+        ngx_queue_t *q = ngx_queue_head(&server_conf->cache);
+        ngx_queue_remove(q);
+        ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
+        ngx_postgres_free_connection(cached->connection, cached->conn, server_conf);
+    }
 }
 
 
@@ -824,14 +726,99 @@ static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *con
 }
 
 
-void ngx_postgres_server_conf_cleanup(void *data) {
-    ngx_postgres_server_conf_t *server_conf = data;
-    if (!server_conf->cache.prev) return; /* ngx_queue_empty is broken when used on unitialized queue */
-    server_conf->max_cached = 0; /* just to be on the safe-side */
-    while (!ngx_queue_empty(&server_conf->cache)) {
-        ngx_queue_t *q = ngx_queue_head(&server_conf->cache);
-        ngx_queue_remove(q);
-        ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
-        ngx_postgres_free_connection(cached->connection, cached->conn, server_conf);
-    }
-}
+static ngx_command_t ngx_postgres_module_commands[] = {
+
+    { ngx_string("postgres_server"),
+      NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
+      ngx_postgres_server_conf,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("postgres_keepalive"),
+      NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
+      ngx_postgres_keepalive_conf,
+      NGX_HTTP_SRV_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("postgres_pass"),
+      NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      ngx_postgres_pass_conf,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("postgres_query"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_1MORE,
+      ngx_postgres_query_conf,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("postgres_rewrite"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_2MORE,
+      ngx_postgres_rewrite_conf,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("postgres_output"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      ngx_postgres_output_conf,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("postgres_set"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE34,
+      ngx_postgres_set_conf,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("postgres_connect_timeout"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_postgres_location_conf_t, upstream.connect_timeout),
+      NULL },
+
+    { ngx_string("postgres_result_timeout"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_msec_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_postgres_location_conf_t, upstream.read_timeout),
+      NULL },
+
+      ngx_null_command
+};
+
+static ngx_http_module_t ngx_postgres_module_ctx = {
+    ngx_postgres_add_variables,             /* preconfiguration */
+    NULL,                                   /* postconfiguration */
+
+    NULL,                                   /* create main configuration */
+    NULL,                                   /* init main configuration */
+
+    ngx_postgres_create_server_conf,        /* create server configuration */
+    NULL,                                   /* merge server configuration */
+
+    ngx_postgres_create_location_conf,      /* create location configuration */
+    ngx_postgres_merge_location_conf        /* merge location configuration */
+};
+
+ngx_module_t ngx_postgres_module = {
+    NGX_MODULE_V1,
+    &ngx_postgres_module_ctx,      /* module context */
+    ngx_postgres_module_commands,  /* module directives */
+    NGX_HTTP_MODULE,               /* module type */
+    NULL,                          /* init master */
+    NULL,                          /* init module */
+    NULL,                          /* init process */
+    NULL,                          /* init thread */
+    NULL,                          /* exit thread */
+    NULL,                          /* exit process */
+    NULL,                          /* exit master */
+    NGX_MODULE_V1_PADDING
+};
