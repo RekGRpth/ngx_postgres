@@ -387,6 +387,51 @@ static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void
 }
 
 
+static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
+    upstream_srv_conf->peer.init = ngx_postgres_peer_init;
+    ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
+    if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
+    ngx_postgres_server_t *server = upstream_srv_conf->servers->elts;
+    ngx_uint_t n = 0;
+    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) n += server[i].naddrs;
+    ngx_postgres_peers_t *peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_peers_t) + sizeof(ngx_postgres_peer_t) * (n - 1));
+    if (!peers) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    peers->single = (n == 1);
+    peers->number = n;
+    n = 0;
+    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) {
+        for (ngx_uint_t j = 0; j < server[i].naddrs; j++) {
+            ngx_postgres_peer_t *peer = &peers->peer[n];
+            peer->sockaddr = server[i].addrs[j].sockaddr;
+            peer->socklen = server[i].addrs[j].socklen;
+            peer->name = &server[i].addrs[j].name;
+            if (!(peer->host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            if (!(peer->host.len = ngx_sock_ntop(peer->sockaddr, peer->socklen, peer->host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            size_t len = server[i].family == AF_UNIX ? sizeof("host=%s") - 1 - 1 + peer->host.len - 5 : sizeof("hostaddr=%V") - 1 - 1 + peer->host.len;
+            len += sizeof(" port=%d") - 1 - 1 + sizeof("65535") - 1;
+            if (server[i].dbname.len) len += sizeof(" dbname=%V") - 1 - 1 + server[i].dbname.len;
+            if (server[i].user.len) len += sizeof(" user=%V") - 1 - 1 + server[i].user.len;
+            if (server[i].password.len) len += sizeof(" password=%V") - 1 - 1 + server[i].password.len;
+            if (server[i].application_name.len) len += sizeof(" application_name=%V") - 1 - 1 + server[i].application_name.len;
+            if (!(peer->connstring = ngx_pnalloc(cf->pool, len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+            u_char *last = peer->connstring;
+            last = server[i].family == AF_UNIX ? ngx_snprintf(last, sizeof("host=%s") - 1 - 1 + peer->host.len - 5, "host=%s", &peer->host.data[5]) : ngx_snprintf(last, sizeof("hostaddr=%V") - 1 - 1 + peer->host.len, "hostaddr=%V", &peer->host);
+            last = ngx_snprintf(last, sizeof(" port=%d") - 1 - 1 + sizeof("65535") - 1, " port=%d", server[i].port);
+            if (server[i].dbname.len) last = ngx_snprintf(last, sizeof(" dbname=%V") - 1 - 1 + server[i].dbname.len, " dbname=%V", &server[i].dbname);
+            if (server[i].user.len) last = ngx_snprintf(last, sizeof(" user=%V") - 1 - 1 + server[i].user.len, " user=%V", &server[i].user);
+            if (server[i].password.len) last = ngx_snprintf(last, sizeof(" password=%V") - 1 - 1 + server[i].password.len, " password=%V", &server[i].password);
+            if (server[i].application_name.len) last = ngx_snprintf(last, sizeof(" application_name=%V") - 1 - 1 + server[i].application_name.len, " application_name=%V", &server[i].application_name);
+            *last = '\0';
+            n++;
+        }
+    }
+    server_conf->peers = peers;
+    server_conf->active_conns = 0;
+    if (server_conf->max_cached) return ngx_postgres_init(cf->pool, server_conf);
+    return NGX_OK;
+}
+
+
 static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
     ngx_http_upstream_srv_conf_t *upstream_srv_conf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
     if (!upstream_srv_conf->servers && !(upstream_srv_conf->servers = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_server_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
