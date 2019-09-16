@@ -255,14 +255,12 @@ void ngx_postgres_process_notify(ngx_log_t *log, ngx_pool_t *pool, PGconn *conn)
             case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, log, 0, "postgres notify error"); return;
             case NGX_DECLINED: {
                 ngx_log_error(NGX_LOG_ERR, log, 0, "postgres notify declined");
-                u_char *channel = (u_char *)PQescapeIdentifier(conn, (const char *)id.data, id.len);
-                if (!channel) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to escape %V: %s", id, PQerrorMessage(conn)); return; }
-                size_t len = ngx_strlen(channel);
-                u_char *command = ngx_pnalloc(pool, sizeof("UNLISTEN ") - 1 + len + 1);
+                ngx_str_t channel = PQescapeInternal(pool, id.data, id.len, 1);
+                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to escape %V: %s", id, PQerrorMessage(conn)); return; }
+                u_char *command = ngx_pnalloc(pool, sizeof("UNLISTEN ") - 1 + channel.len + 1);
                 if (!command) { ngx_log_error(NGX_LOG_ERR, log, 0, "%s:%d", __FILE__, __LINE__); return; }
-                u_char *last = ngx_snprintf(command, sizeof("UNLISTEN ") - 1 + len + 1, "UNLISTEN %s", channel);
+                u_char *last = ngx_snprintf(command, sizeof("UNLISTEN ") - 1 + channel.len + 1, "UNLISTEN %V", &channel);
                 *last = '\0';
-                PQfreemem(channel);
                 if (!PQsendQuery(conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, log, 0, "postgres: failed to send unlisten: %s", PQerrorMessage(conn)); return; }
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "postgres: unlisten %s sent successfully", command);
             } return;
