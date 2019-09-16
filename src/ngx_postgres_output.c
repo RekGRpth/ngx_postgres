@@ -56,14 +56,14 @@ ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
         return NGX_DONE;
     }
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
-    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_chain_t *cl = ngx_alloc_chain_link(r->pool);
-    if (!cl) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (!cl) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
     b->last = ngx_copy(b->last, PQgetvalue(context->res, 0, 0), size);
-    if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->next = NULL;
     context->response = cl; /* set output response */
     return NGX_DONE;
@@ -77,9 +77,9 @@ ngx_int_t ngx_postgres_output_text(ngx_http_request_t *r) {
     size += context->ntuples * context->nfields - 1; /* delimiters */
     if (!context->ntuples || !size) return NGX_DONE;
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
-    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_chain_t *cl = ngx_alloc_chain_link(r->pool);
-    if (!cl) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (!cl) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
@@ -92,7 +92,7 @@ ngx_int_t ngx_postgres_output_text(ngx_http_request_t *r) {
         }
         if (row != context->ntuples - 1) b->last = ngx_copy(b->last, "\n", 1);
     }
-    if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->next = NULL;
     context->response = cl; /* set output response */
     return NGX_DONE;
@@ -155,9 +155,9 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     }
     if (!context->ntuples || !size) return NGX_DONE;
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
-    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_chain_t *cl = ngx_alloc_chain_link(r->pool);
-    if (!cl) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (!cl) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
@@ -188,7 +188,7 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
         }
         if (context->ntuples > 1) b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
     }
-    if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     cl->next = NULL;
     context->response = cl; /* set output response */
     return NGX_DONE;
