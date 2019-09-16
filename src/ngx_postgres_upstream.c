@@ -123,19 +123,17 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pc->connection->log = pc->log;
     pc->connection->log_error = pc->log_error;
     pc->connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
-    ngx_event_t *rev = pc->connection->read;
-    ngx_event_t *wev = pc->connection->write;
-    rev->log = pc->log;
-    wev->log = pc->log;
+    pc->connection->read->log = pc->log;
+    pc->connection->write->log = pc->log;
     /* register the connection with postgres connection fd into the nginx event model */
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         if (ngx_add_conn(pc->connection) != NGX_OK) goto bad_add;
     } else if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
-        if (ngx_add_event(rev, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) goto bad_add;
-        if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_CLEAR_EVENT) != NGX_OK) goto bad_add;
+        if (ngx_add_event(pc->connection->read, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) goto bad_add;
+        if (ngx_add_event(pc->connection->write, NGX_WRITE_EVENT, NGX_CLEAR_EVENT) != NGX_OK) goto bad_add;
     } else {
-        if (ngx_add_event(rev, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
-        if (ngx_add_event(wev, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
+        if (ngx_add_event(pc->connection->read, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
+        if (ngx_add_event(pc->connection->write, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
     }
     peer_data->state = state_db_connect;
     return NGX_AGAIN;
