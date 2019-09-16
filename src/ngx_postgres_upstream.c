@@ -37,6 +37,10 @@ static void ngx_postgres_upstream_free_peer(ngx_peer_connection_t *pc, void *dat
 static void ngx_postgres_write_handler(ngx_event_t *ev);
 static void ngx_postgres_read_handler(ngx_event_t *ev);
 static void ngx_postgres_process_notify(ngx_log_t *log, ngx_pool_t *pool, PGconn *conn);
+static void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *, ngx_postgres_peer_data_t *, ngx_uint_t);
+static ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *, ngx_postgres_peer_data_t *);
+static ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *, ngx_postgres_peer_data_t *);
+static ngx_int_t ngx_postgres_keepalive_init(ngx_pool_t *, ngx_postgres_server_conf_t *);
 
 
 ngx_int_t ngx_postgres_upstream_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
@@ -287,7 +291,7 @@ void ngx_postgres_upstream_free_connection(ngx_connection_t *c, PGconn *conn, ng
 }
 
 
-ngx_int_t ngx_postgres_keepalive_init(ngx_pool_t *pool, ngx_postgres_server_conf_t *server_conf) {
+static ngx_int_t ngx_postgres_keepalive_init(ngx_pool_t *pool, ngx_postgres_server_conf_t *server_conf) {
     ngx_postgres_cached_t *cached = ngx_pcalloc(pool, sizeof(ngx_postgres_cached_t) * server_conf->max_cached);
     if (!cached) { ngx_log_error(NGX_LOG_ERR, pool->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_queue_init(&server_conf->cache);
@@ -301,7 +305,7 @@ ngx_int_t ngx_postgres_keepalive_init(ngx_pool_t *pool, ngx_postgres_server_conf
 }
 
 
-ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data) {
+static ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data) {
     if (ngx_queue_empty(&peer_data->server_conf->cache)) return NGX_DECLINED;
     ngx_queue_t *q = ngx_queue_head(&peer_data->server_conf->cache);
     ngx_queue_remove(q);
@@ -325,7 +329,7 @@ ngx_int_t ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *pc, ngx_
 }
 
 
-ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data) {
+static ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data) {
     ngx_queue_t *cache = &peer_data->server_conf->cache;
     for (ngx_queue_t *q = ngx_queue_head(cache); q != ngx_queue_sentinel(cache); q = ngx_queue_next(q)) {
         ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
@@ -348,7 +352,7 @@ ngx_int_t ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *pc, ngx_p
 }
 
 
-void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data, ngx_uint_t state) {
+static void ngx_postgres_keepalive_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data, ngx_uint_t state) {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer");
     if (state & NGX_PEER_FAILED) peer_data->failed = 1;
     if (!peer_data->failed && pc->connection && peer_data->request->upstream->headers_in.status_n == NGX_HTTP_OK) {
