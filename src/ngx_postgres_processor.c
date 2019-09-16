@@ -170,11 +170,9 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
-    ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_context_t *context;
-    u->headers_in.status_n = NGX_HTTP_OK; /* flag for keepalive */
-    context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    ngx_postgres_finalize_upstream(r, u, context->status >= NGX_HTTP_SPECIAL_RESPONSE ? context->status : NGX_OK);
+    r->upstream->headers_in.status_n = NGX_HTTP_OK; /* flag for keepalive */
+    ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
+    ngx_postgres_finalize_upstream(r, r->upstream, context->status >= NGX_HTTP_SPECIAL_RESPONSE ? context->status : NGX_OK);
     return NGX_DONE;
 }
 
@@ -213,9 +211,8 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
 
 
 void ngx_postgres_process_events(ngx_http_request_t *r) {
-    ngx_http_upstream_t *u = r->upstream;
-    if (!ngx_postgres_is_my_peer(&u->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: trying to connect to something that is not PostgreSQL database"); goto failed; }
-    ngx_postgres_peer_data_t *peer_data = u->peer.data;
+    if (!ngx_postgres_is_my_peer(&r->upstream->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: trying to connect to something that is not PostgreSQL database"); goto failed; }
+    ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
     ngx_int_t rc;
     switch (peer_data->state) {
         case state_db_connect: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_connect"); rc = ngx_postgres_connect(r); break;
@@ -226,9 +223,9 @@ void ngx_postgres_process_events(ngx_http_request_t *r) {
         case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_idle, re-using keepalive connection"); peer_data->state = state_db_send_query; rc = ngx_postgres_send_query(r); break;
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: unknown state:%d", peer_data->state); goto failed;
     }
-    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) ngx_postgres_finalize_upstream(r, u, rc);
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) ngx_postgres_finalize_upstream(r, r->upstream, rc);
     else if (rc == NGX_ERROR) goto failed;
     return;
 failed:
-    ngx_postgres_next_upstream(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+    ngx_postgres_next_upstream(r, r->upstream, NGX_HTTP_UPSTREAM_FT_ERROR);
 }

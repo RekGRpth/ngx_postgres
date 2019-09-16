@@ -129,7 +129,6 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     ngx_int_t rc = ngx_http_discard_request_body(r);
     if (rc != NGX_OK) return rc;
     if (ngx_http_upstream_create(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-    ngx_http_upstream_t *u = r->upstream;
     if (location_conf->upstream_cv) { /* use complex value */
         ngx_str_t host;
         if (ngx_http_complex_value(r, location_conf->upstream_cv, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
@@ -156,32 +155,32 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
         ngx_memzero(context->variables->elts, context->variables->nelts * context->variables->size);
     }
     ngx_http_set_ctx(r, context, ngx_postgres_module);
-    u->schema.len = sizeof("postgres://") - 1;
-    u->schema.data = (u_char *) "postgres://";
-    u->output.tag = (ngx_buf_tag_t) &ngx_postgres_module;
-    u->conf = &location_conf->upstream;
-    u->create_request = ngx_postgres_create_request;
-    u->reinit_request = ngx_postgres_reinit_request;
-    u->process_header = ngx_postgres_process_header;
-    u->abort_request = ngx_postgres_abort_request;
-    u->finalize_request = ngx_postgres_finalize_request;
+    r->upstream->schema.len = sizeof("postgres://") - 1;
+    r->upstream->schema.data = (u_char *) "postgres://";
+    r->upstream->output.tag = (ngx_buf_tag_t) &ngx_postgres_module;
+    r->upstream->conf = &location_conf->upstream;
+    r->upstream->create_request = ngx_postgres_create_request;
+    r->upstream->reinit_request = ngx_postgres_reinit_request;
+    r->upstream->process_header = ngx_postgres_process_header;
+    r->upstream->abort_request = ngx_postgres_abort_request;
+    r->upstream->finalize_request = ngx_postgres_finalize_request;
     /* we bypass the upstream input filter mechanism in ngx_http_upstream_process_headers */
-    u->input_filter_init = ngx_postgres_input_filter_init;
-    u->input_filter = ngx_postgres_input_filter;
-    u->input_filter_ctx = NULL;
+    r->upstream->input_filter_init = ngx_postgres_input_filter_init;
+    r->upstream->input_filter = ngx_postgres_input_filter;
+    r->upstream->input_filter_ctx = NULL;
     r->main->count++;
     ngx_http_upstream_init(r);
     /* override the read/write event handler to our own */
-    u->write_event_handler = ngx_postgres_write_event_handler;
-    u->read_event_handler = ngx_postgres_read_event_handler;
+    r->upstream->write_event_handler = ngx_postgres_write_event_handler;
+    r->upstream->read_event_handler = ngx_postgres_read_event_handler;
     /* a bit hack-ish way to return error response (clean-up part) */
-    if (u->peer.connection && !u->peer.connection->fd) {
-        ngx_connection_t *c = u->peer.connection;
-        u->peer.connection = NULL;
-        if (c->write->timer_set) ngx_del_timer(c->write);
-        if (c->pool) ngx_destroy_pool(c->pool);
-        ngx_free_connection(c);
-        ngx_postgres_finalize_upstream(r, u, NGX_HTTP_SERVICE_UNAVAILABLE);
+    if (r->upstream->peer.connection && !r->upstream->peer.connection->fd) {
+        ngx_connection_t *connection = r->upstream->peer.connection;
+        r->upstream->peer.connection = NULL;
+        if (connection->write->timer_set) ngx_del_timer(connection->write);
+        if (connection->pool) ngx_destroy_pool(connection->pool);
+        ngx_free_connection(connection);
+        ngx_postgres_finalize_upstream(r, r->upstream, NGX_HTTP_SERVICE_UNAVAILABLE);
     }
     return NGX_DONE;
 }
