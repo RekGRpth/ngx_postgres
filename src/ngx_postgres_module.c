@@ -51,6 +51,7 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 static char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static void ngx_postgres_server_conf_cleanup(void *);
 
 
 static ngx_command_t ngx_postgres_module_commands[] = {
@@ -821,4 +822,17 @@ static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *con
         if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid requirement option \"%V\" in \"%V\" directive", &value[4], &cmd->name); return NGX_CONF_ERROR; }
     }
     return NGX_CONF_OK;
+}
+
+
+void ngx_postgres_server_conf_cleanup(void *data) {
+    ngx_postgres_server_conf_t *server_conf = data;
+    if (!server_conf->cache.prev) return; /* ngx_queue_empty is broken when used on unitialized queue */
+    server_conf->max_cached = 0; /* just to be on the safe-side */
+    while (!ngx_queue_empty(&server_conf->cache)) {
+        ngx_queue_t *q = ngx_queue_head(&server_conf->cache);
+        ngx_queue_remove(q);
+        ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
+        ngx_postgres_upstream_free_connection(cached->connection, cached->conn, server_conf);
+    }
 }

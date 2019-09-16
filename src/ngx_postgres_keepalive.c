@@ -31,18 +31,6 @@
 #include "ngx_postgres_processor.h"
 
 
-typedef struct {
-    ngx_queue_t                        queue;
-    ngx_postgres_server_conf_t        *server_conf;
-    ngx_connection_t                  *connection;
-    PGconn                            *conn;
-    struct sockaddr                    sockaddr;
-    socklen_t                          socklen;
-    ngx_str_t                          name;
-    ngx_postgres_statement_t          *statements;
-} ngx_postgres_cached_t;
-
-
 static void ngx_postgres_write_handler(ngx_event_t *ev);
 static void ngx_postgres_read_handler(ngx_event_t *ev);
 
@@ -165,19 +153,4 @@ close:
     ngx_postgres_upstream_free_connection(c, cached->conn, cached->server_conf);
     ngx_queue_remove(&cached->queue);
     ngx_queue_insert_head(&cached->server_conf->free, &cached->queue);
-}
-
-
-void ngx_postgres_server_conf_cleanup(void *data) {
-    ngx_postgres_server_conf_t *server_conf = data;
-    /* ngx_queue_empty is broken when used on unitialized queue */
-    if (!server_conf->cache.prev) return;
-    /* just to be on the safe-side */
-    server_conf->max_cached = 0;
-    while (!ngx_queue_empty(&server_conf->cache)) {
-        ngx_queue_t *q = ngx_queue_head(&server_conf->cache);
-        ngx_queue_remove(q);
-        ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
-        ngx_postgres_upstream_free_connection(cached->connection, cached->conn, server_conf);
-    }
 }
