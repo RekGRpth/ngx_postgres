@@ -63,6 +63,7 @@ typedef struct {
     ngx_uint_t                         resultFormat;
     ngx_str_t                         *name;
     struct sockaddr                   *sockaddr;
+    socklen_t                          socklen;
     unsigned                           failed;
     ngx_postgres_statement_t          *statements;
 } ngx_postgres_peer_data_t;
