@@ -101,7 +101,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         ngx_postgres_process_events(peer_data->request);
         return NGX_AGAIN;
     }
-    if (peer_data->save.server_conf->reject && peer_data->save.server_conf->active_conns >= peer_data->save.server_conf->max_cached) {
+    if (peer_data->save.server_conf->reject && peer_data->save.server_conf->cached >= peer_data->save.server_conf->max_cached) {
         ngx_log_error(NGX_LOG_INFO, pc->log, 0, "postgres: keepalive connection pool is full, rejecting request to upstream \"%V\"", &peer->name);
         pc->connection = ngx_get_connection(0, pc->log); /* a bit hack-ish way to return error response (setup part) */
         return NGX_AGAIN;
@@ -115,7 +115,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         peer_data->save.conn = NULL;
         return NGX_DECLINED;
     }
-    peer_data->save.server_conf->active_conns++; /* take spot in keepalive connection pool */
+    peer_data->save.server_conf->cached++; /* take spot in keepalive connection pool */
     int fd = PQsocket(peer_data->save.conn); /* add the file descriptor (fd) into an nginx connection structure */
     if (fd == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get connection fd"); goto invalid; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection fd:%d", fd);
@@ -372,5 +372,5 @@ void ngx_postgres_free_connection(ngx_connection_t *c, ngx_postgres_save_t *save
         ngx_free_connection(c);
         c->fd = (ngx_socket_t) -1;
     }
-    save->server_conf->active_conns--; /* free spot in keepalive connection pool */
+    save->server_conf->cached--; /* free spot in keepalive connection pool */
 }

@@ -426,7 +426,7 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
         }
     }
     server_conf->peers = peers;
-    server_conf->active_conns = 0;
+    server_conf->cached = 0;
     if (server_conf->max_cached) return ngx_postgres_init(cf->pool, server_conf);
     return NGX_OK;
 }
