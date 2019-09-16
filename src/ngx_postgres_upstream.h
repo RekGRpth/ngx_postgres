@@ -67,6 +67,17 @@ typedef struct {
     ngx_postgres_statement_t          *statements;
 } ngx_postgres_peer_data_t;
 
+typedef struct {
+    ngx_queue_t                        queue;
+    ngx_postgres_server_conf_t        *server_conf;
+    ngx_connection_t                  *connection;
+    PGconn                            *conn;
+    struct sockaddr                    sockaddr;
+    socklen_t                          socklen;
+    ngx_str_t                          name;
+    ngx_postgres_statement_t          *statements;
+} ngx_postgres_cached_t;
+
 
 ngx_int_t   ngx_postgres_upstream_init(ngx_conf_t *, ngx_http_upstream_srv_conf_t *);
 ngx_str_t   PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident);

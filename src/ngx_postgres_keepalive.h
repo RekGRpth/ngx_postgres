@@ -33,18 +33,6 @@
 #include "ngx_postgres_upstream.h"
 
 
-typedef struct {
-    ngx_queue_t                        queue;
-    ngx_postgres_server_conf_t        *server_conf;
-    ngx_connection_t                  *connection;
-    PGconn                            *conn;
-    struct sockaddr                    sockaddr;
-    socklen_t                          socklen;
-    ngx_str_t                          name;
-    ngx_postgres_statement_t          *statements;
-} ngx_postgres_cached_t;
-
-
 ngx_int_t   ngx_postgres_keepalive_init(ngx_pool_t *, ngx_postgres_server_conf_t *);
 ngx_int_t   ngx_postgres_keepalive_get_peer_single(ngx_peer_connection_t *, ngx_postgres_peer_data_t *);
 ngx_int_t   ngx_postgres_keepalive_get_peer_multi(ngx_peer_connection_t *, ngx_postgres_peer_data_t *);
