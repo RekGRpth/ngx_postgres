@@ -30,7 +30,6 @@
 
 #include <ngx_http.h>
 
-#include "ngx_postgres_module.h"
 #include "ngx_postgres_upstream.h"
 
 
