@@ -28,10 +28,10 @@
 
 #include <postgresql/server/catalog/pg_type_d.h>
 
+#include "ngx_postgres_handler.h"
 #include "ngx_postgres_output.h"
 #include "ngx_postgres_processor.h"
 #include "ngx_postgres_upstream.h"
-#include "ngx_postgres_util.h"
 #include "ngx_postgres_variable.h"
 
 
