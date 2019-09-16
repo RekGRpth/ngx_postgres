@@ -190,7 +190,10 @@ ngx_conf_bitmask_t ngx_postgres_http_methods[] = {
     { ngx_null_string, 0 }
 };
 
+#define IDOID 9999
+
 ngx_conf_enum_t ngx_postgres_oids[] = {
+    { ngx_string("IDOID"),  IDOID },
     { ngx_string("BOOLOID"),  BOOLOID },
     { ngx_string("BYTEAOID"),  BYTEAOID },
     { ngx_string("CHAROID"),  CHAROID },
@@ -682,24 +685,26 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     if (!(query->args = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_arg_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
-    for (ngx_uint_t k = 0; s < e; ) {
-        if ((*p++ = *s++) == '$') {
+    for (ngx_uint_t k = 0; s < e; *p++ = *s++) {
+        if (*s == '$') {
             ngx_str_t name;
-            for (name.data = s, name.len = 0; s < e && is_variable_character(*s); s++, name.len++);
-            if (!name.len) continue;
+            for (name.data = ++s, name.len = 0; s < e && is_variable_character(*s); s++, name.len++);
+            if (!name.len) { *p++ = '$'; continue; }
             ngx_str_t oid = {0, NULL};
             if (*s == ':' && *(s+1) == ':') for (s += 2, oid.data = s, oid.len = 0; s < e && is_variable_character(*s); s++, oid.len++);
-            if (!oid.len) { p = ngx_copy(p, name.data, name.len); continue; }
+            if (!oid.len) { *p++ = '$'; p = ngx_copy(p, name.data, name.len); continue; }
             ngx_postgres_arg_t *arg;
             if (!(arg = ngx_array_push(query->args))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
             ngx_int_t index = ngx_http_get_variable_index(cf, &name);
             if (index == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid name \"%V\" in \"%V\" directive", &name, &cmd->name); return NGX_CONF_ERROR; }
             arg->index = (ngx_uint_t) index;
             if (!(arg->oid = str2oid(&oid))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid oid \"%V\" in \"%V\" directive", &oid, &cmd->name);  return NGX_CONF_ERROR; }
-            p += ngx_sprintf(p, "%d", ++k) - p;
+            if (arg->oid == IDOID) { *p++ = '%'; *p++ = 'V'; } else p += ngx_sprintf(p, "$%d", ++k) - p;
+            if (s >= e) break;
         }
     }
     query->sql.len = p - query->sql.data;
+    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sql = `%V`", &query->sql);
     return NGX_CONF_OK;
 }
 
