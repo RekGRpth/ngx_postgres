@@ -90,23 +90,6 @@ void ngx_postgres_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, n
 }
 
 
-ngx_int_t ngx_postgres_upstream_test_connect(ngx_connection_t *c) {
-#if (NGX_HAVE_KQUEUE)
-    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
-        if (c->write->pending_eof) { (void) ngx_connection_error(c, c->write->kq_errno, "kevent() reported that connect() failed"); return NGX_ERROR; }
-    } else
-#endif
-    {
-        int err = 0;
-        socklen_t len = sizeof(int);
-        /* BSDs and Linux return 0 and set a pending error in err, Solaris returns -1 and sets errno */
-        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1) err = ngx_errno;
-        if (err) { (void) ngx_connection_error(c, err, "connect() failed"); return NGX_ERROR; }
-    }
-    return NGX_OK;
-}
-
-
 ngx_int_t ngx_postgres_rewrite_var(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_rewrite_loc_conf_t *rewrite_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_rewrite_module);
     if (!rewrite_loc_conf->uninitialized_variable_warn) { *v = ngx_http_variable_null_value; return NGX_OK; }

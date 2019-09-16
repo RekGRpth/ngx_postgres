@@ -43,6 +43,7 @@ static ngx_int_t ngx_postgres_process_header(ngx_http_request_t *r);
 static ngx_int_t ngx_postgres_input_filter_init(void *data);
 static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes);
 static ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *, ngx_url_t *);
+static ngx_int_t ngx_postgres_upstream_test_connect(ngx_connection_t *);
 
 
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
@@ -180,4 +181,21 @@ ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *r, 
     ngx_http_upstream_srv_conf_t **s = m->upstreams.elts;
     for (ngx_uint_t i = 0; i < m->upstreams.nelts; i++) if (s[i]->host.len == url->host.len && !ngx_strncasecmp(s[i]->host.data, url->host.data, url->host.len)) return s[i];
     return NULL;
+}
+
+
+ngx_int_t ngx_postgres_upstream_test_connect(ngx_connection_t *c) {
+#if (NGX_HAVE_KQUEUE)
+    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
+        if (c->write->pending_eof) { (void) ngx_connection_error(c, c->write->kq_errno, "kevent() reported that connect() failed"); return NGX_ERROR; }
+    } else
+#endif
+    {
+        int err = 0;
+        socklen_t len = sizeof(int);
+        /* BSDs and Linux return 0 and set a pending error in err, Solaris returns -1 and sets errno */
+        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1) err = ngx_errno;
+        if (err) { (void) ngx_connection_error(c, err, "connect() failed"); return NGX_ERROR; }
+    }
+    return NGX_OK;
 }
