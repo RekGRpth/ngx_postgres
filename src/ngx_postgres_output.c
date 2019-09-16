@@ -120,8 +120,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
     if (!context->response) return NGX_DONE;
     ngx_int_t rc = ngx_http_output_filter(r, context->response);
     if (rc == NGX_ERROR || rc > NGX_OK) return rc;
-    ngx_http_upstream_t *u = r->upstream;
-    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &context->response, u->output.tag);
+    ngx_chain_update_chains(r->pool, &r->upstream->free_bufs, &r->upstream->busy_bufs, &context->response, r->upstream->output.tag);
     return rc;
 }
 
