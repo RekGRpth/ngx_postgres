@@ -89,11 +89,11 @@ void ngx_postgres_process_events(ngx_http_request_t *r) {
         case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_idle, re-using keepalive connection"); peer_data->state = state_db_send_query; rc = ngx_postgres_upstream_send_query(r); break;
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: unknown state:%d", peer_data->state); goto failed;
     }
-    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) ngx_postgres_upstream_finalize_request(r, u, rc);
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) ngx_postgres_finalize_upstream(r, u, rc);
     else if (rc == NGX_ERROR) goto failed;
     return;
 failed:
-    ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+    ngx_postgres_next_upstream(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
 }
 
 
@@ -240,8 +240,7 @@ static ngx_int_t ngx_postgres_upstream_done(ngx_http_request_t *r) {
     ngx_postgres_context_t *context;
     u->headers_in.status_n = NGX_HTTP_OK; /* flag for keepalive */
     context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (context->status >= NGX_HTTP_SPECIAL_RESPONSE) ngx_postgres_upstream_finalize_request(r, u, context->status);
-    else ngx_postgres_upstream_finalize_request(r, u, NGX_OK);
+    ngx_postgres_finalize_upstream(r, u, context->status >= NGX_HTTP_SPECIAL_RESPONSE ? context->status : NGX_OK);
     return NGX_DONE;
 }
 

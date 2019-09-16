@@ -110,7 +110,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
         if (c->write->timer_set) ngx_del_timer(c->write);
         if (c->pool) ngx_destroy_pool(c->pool);
         ngx_free_connection(c);
-        ngx_postgres_upstream_finalize_request(r, u, NGX_HTTP_SERVICE_UNAVAILABLE);
+        ngx_postgres_finalize_upstream(r, u, NGX_HTTP_SERVICE_UNAVAILABLE);
     }
     return NGX_DONE;
 }
@@ -118,16 +118,16 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
 
 static void ngx_postgres_write_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
     u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
-    if (u->peer.connection->write->timedout) { ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); return; }
-    if (ngx_postgres_upstream_test_connect(u->peer.connection) != NGX_OK) { ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); return; }
+    if (u->peer.connection->write->timedout) { ngx_postgres_next_upstream(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); return; }
+    if (ngx_postgres_upstream_test_connect(u->peer.connection) != NGX_OK) { ngx_postgres_next_upstream(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); return; }
     ngx_postgres_process_events(r);
 }
 
 
 static void ngx_postgres_read_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
     u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
-    if (u->peer.connection->read->timedout) { ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); return; }
-    if (ngx_postgres_upstream_test_connect(u->peer.connection) != NGX_OK) { ngx_postgres_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); return; }
+    if (u->peer.connection->read->timedout) { ngx_postgres_next_upstream(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); return; }
+    if (ngx_postgres_upstream_test_connect(u->peer.connection) != NGX_OK) { ngx_postgres_next_upstream(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); return; }
     ngx_postgres_process_events(r);
 }
 
@@ -200,7 +200,7 @@ ngx_int_t ngx_postgres_upstream_test_connect(ngx_connection_t *c) {
 }
 
 
-void ngx_postgres_upstream_finalize_request(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t rc) {
+void ngx_postgres_finalize_upstream(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t rc) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "finalize http upstream request: %i", rc);
     if (u->cleanup) *u->cleanup = NULL;
     if (u->resolved && u->resolved->ctx) {
@@ -227,7 +227,7 @@ void ngx_postgres_upstream_finalize_request(ngx_http_request_t *r, ngx_http_upst
 }
 
 
-void ngx_postgres_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t ft_type) {
+void ngx_postgres_next_upstream(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t ft_type) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http next upstream, %xi", ft_type);
     ngx_uint_t state = ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404 ? NGX_PEER_NEXT : NGX_PEER_FAILED;
     if (ft_type != NGX_HTTP_UPSTREAM_FT_NOLIVE) u->peer.free(&u->peer, u->peer.data, state);
@@ -241,10 +241,10 @@ void ngx_postgres_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, n
             default: status = NGX_HTTP_BAD_GATEWAY; /* NGX_HTTP_UPSTREAM_FT_BUSY_LOCK and NGX_HTTP_UPSTREAM_FT_MAX_WAITING never reach here */
         }
     }
-    if (r->connection->error) { ngx_postgres_upstream_finalize_request(r, u, NGX_HTTP_CLIENT_CLOSED_REQUEST); return; }
+    if (r->connection->error) { ngx_postgres_finalize_upstream(r, u, NGX_HTTP_CLIENT_CLOSED_REQUEST); return; }
     if (status) {
         u->state->status = status;
-        if (!u->peer.tries || !(u->conf->next_upstream & ft_type)) { ngx_postgres_upstream_finalize_request(r, u, status); return; }
+        if (!u->peer.tries || !(u->conf->next_upstream & ft_type)) { ngx_postgres_finalize_upstream(r, u, status); return; }
     }
     if (u->peer.connection) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "close http upstream connection: %d", u->peer.connection->fd);
@@ -252,5 +252,5 @@ void ngx_postgres_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, n
         ngx_close_connection(u->peer.connection);
     }
     if (!status) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "%s:%d", __FILE__, __LINE__); status = NGX_HTTP_INTERNAL_SERVER_ERROR; /* TODO: ngx_http_upstream_connect(r, u); */ }
-    return ngx_postgres_upstream_finalize_request(r, u, status);
+    return ngx_postgres_finalize_upstream(r, u, status);
 }
