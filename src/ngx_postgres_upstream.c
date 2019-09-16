@@ -270,16 +270,15 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
 static ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
     ngx_postgres_peer_data_t *peer_data = ngx_pcalloc(r->pool, sizeof(ngx_postgres_peer_data_t));
     if (!peer_data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    ngx_http_upstream_t *u = r->upstream;
     peer_data->request = r;
     ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     peer_data->save.server_conf = server_conf;
     if (!(peer_data->save.statements = ngx_pcalloc(r->pool, server_conf->max_statements * sizeof(ngx_postgres_statement_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    u->peer.data = peer_data;
-    u->peer.get = ngx_postgres_peer_get;
-    u->peer.free = ngx_postgres_peer_free;
+    r->upstream->peer.data = peer_data;
+    r->upstream->peer.get = ngx_postgres_peer_get;
+    r->upstream->peer.free = ngx_postgres_peer_free;
     ngx_postgres_query_t *query;
     if (location_conf->methods_set & r->method) {
         query = location_conf->methods->elts;
