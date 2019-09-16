@@ -31,7 +31,7 @@
 
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"
-#include "ngx_postgres_keepalive.h"
+#include "ngx_postgres_upstream.h"
 
 
 ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {

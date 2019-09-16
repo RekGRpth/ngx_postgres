@@ -24,8 +24,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "ngx_postgres_keepalive.h"
 #include "ngx_postgres_module.h"
+#include "ngx_postgres_upstream.h"
 #include "ngx_postgres_variable.h"
 
 

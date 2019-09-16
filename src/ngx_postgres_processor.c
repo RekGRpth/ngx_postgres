@@ -32,6 +32,7 @@
 #include "ngx_postgres_output.h"
 #include "ngx_postgres_processor.h"
 #include "ngx_postgres_upstream.h"
+#include "ngx_postgres_upstream.h"
 #include "ngx_postgres_variable.h"
 
 

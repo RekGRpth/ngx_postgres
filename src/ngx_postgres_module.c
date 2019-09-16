@@ -29,7 +29,6 @@
 #include <postgresql/server/catalog/pg_type_d.h>
 
 #include "ngx_postgres_handler.h"
-#include "ngx_postgres_keepalive.h"
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"
 #include "ngx_postgres_rewrite.h"
