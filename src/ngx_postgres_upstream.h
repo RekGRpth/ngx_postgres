@@ -73,7 +73,7 @@ typedef struct {
     ngx_postgres_save_t                save;
     ngx_postgres_send_t                send;
     ngx_postgres_state_t               state;
-    ngx_uint_t                         failed;
+    ngx_flag_t                         failed;
 } ngx_postgres_peer_data_t;
 
 typedef struct {

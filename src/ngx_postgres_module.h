@@ -129,7 +129,7 @@ typedef struct {
     ngx_postgres_output_handler_pt      handler;
     ngx_postgres_query_t               *query;     /* default */
     ngx_uint_t                          methods_set;
-    unsigned                            binary:1;
+    ngx_flag_t                          binary;
 } ngx_postgres_location_conf_t;
 
 
