@@ -403,22 +403,19 @@ ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *peer) {
 void ngx_postgres_free_connection(ngx_connection_t *c, ngx_postgres_save_t *save) {
     PQfinish(save->conn);
     if (c) {
-        ngx_event_t *rev = c->read;
-        ngx_event_t *wev = c->write;
-        if (rev->timer_set) ngx_del_timer(rev);
-        if (wev->timer_set) ngx_del_timer(wev);
+        if (c->read->timer_set) ngx_del_timer(c->read);
+        if (c->write->timer_set) ngx_del_timer(c->write);
         if (ngx_del_conn) ngx_del_conn(c, NGX_CLOSE_EVENT); else {
-            if (rev->active || rev->disabled) ngx_del_event(rev, NGX_READ_EVENT, NGX_CLOSE_EVENT);
-            if (wev->active || wev->disabled) ngx_del_event(wev, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
+            if (c->read->active || c->read->disabled) ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
+            if (c->write->active || c->write->disabled) ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
         }
-        if (rev->posted) { ngx_delete_posted_event(rev); }
-        if (wev->posted) { ngx_delete_posted_event(wev); }
-        rev->closed = 1;
-        wev->closed = 1;
+        if (c->read->posted) { ngx_delete_posted_event(c->read); }
+        if (c->write->posted) { ngx_delete_posted_event(c->write); }
+        c->read->closed = 1;
+        c->write->closed = 1;
         if (c->pool) ngx_destroy_pool(c->pool);
         ngx_free_connection(c);
         c->fd = (ngx_socket_t) -1;
     }
-    /* free spot in keepalive connection pool */
-    save->server_conf->active_conns--;
+    save->server_conf->active_conns--; /* free spot in keepalive connection pool */
 }
