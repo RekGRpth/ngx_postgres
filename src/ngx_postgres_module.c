@@ -323,7 +323,7 @@ static void *ngx_postgres_create_server_conf(ngx_conf_t *cf) {
     if (!server_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s:%d", __FILE__, __LINE__); return NULL; }
     /* enable keepalive (single) by default */
     server_conf->max_save = 10;
-    server_conf->max_statements = 256;
+    server_conf->max_prepare = 256;
     server_conf->single = 1;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s:%d", __FILE__, __LINE__); return NULL; }
@@ -491,9 +491,9 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
 static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_conf_t *server_conf = conf;
     if (server_conf->max_save != 10 /* default */) return "is duplicate";
-    if (server_conf->max_statements != 256 /* default */) return "is duplicate";
+    if (server_conf->max_prepare != 256 /* default */) return "is duplicate";
     ngx_str_t *value = cf->args->elts;
-    if (cf->args->nelts == 2 && !ngx_strncmp(value[1].data, "off", sizeof("off") - 1)) { server_conf->max_save = 0; server_conf->max_statements = 0; return NGX_CONF_OK; }
+    if (cf->args->nelts == 2 && !ngx_strncmp(value[1].data, "off", sizeof("off") - 1)) { server_conf->max_save = 0; server_conf->max_prepare = 0; return NGX_CONF_OK; }
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
         if (!ngx_strncmp(value[i].data, "save=", sizeof("save=") - 1)) {
             value[i].len = value[i].len - (sizeof("save=") - 1);
@@ -501,12 +501,12 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             ngx_int_t n = ngx_atoi(value[i].data, value[i].len);
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"save\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
             server_conf->max_save = (ngx_uint_t) n;
-        } else if (!ngx_strncmp(value[i].data, "statements=", sizeof("statements=") - 1)) {
-            value[i].len = value[i].len - (sizeof("statements=") - 1);
-            value[i].data = &value[i].data[sizeof("statements=") - 1];
+        } else if (!ngx_strncmp(value[i].data, "prepare=", sizeof("prepare=") - 1)) {
+            value[i].len = value[i].len - (sizeof("prepare=") - 1);
+            value[i].data = &value[i].data[sizeof("prepare=") - 1];
             ngx_int_t n = ngx_atoi(value[i].data, value[i].len);
-            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"statements\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
-            server_conf->max_statements = (ngx_uint_t) n;
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"prepare\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+            server_conf->max_prepare = (ngx_uint_t) n;
         } else if (!ngx_strncmp(value[i].data, "mode=", sizeof("mode=") - 1)) {
             value[i].len = value[i].len - (sizeof("mode=") - 1);
             value[i].data = &value[i].data[sizeof("mode=") - 1];

@@ -106,7 +106,7 @@ typedef struct {
     ngx_uint_t                          save;
     ngx_uint_t                          current;
     ngx_uint_t                          max_save;
-    ngx_uint_t                          max_statements;
+    ngx_uint_t                          max_prepare;
     ngx_uint_t                          reject;
 } ngx_postgres_server_conf_t;
 

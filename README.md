@@ -45,14 +45,14 @@ Set details about the database server. Additional port parameter is offered to c
 
 postgres_keepalive
 ------------------
-* **syntax**: `postgres_keepalive off | cached=count [mode=single|multi] [overflow=ignore|reject] [statements=count]`
-* **default**: `cached=10 cached=single overflow=ignore statements=256`
+* **syntax**: `postgres_keepalive off | save=count [mode=single|multi] [overflow=ignore|reject] [prepare=count]`
+* **default**: `save=10 mode=single overflow=ignore prepare=256`
 * **context**: `upstream`
 
 Configure keepalive parameters:
 
-- `cached`     - maximum number of keepalive connections (per worker process),
-- `statements` - maximum number of prepared statements (per db connection),
+- `save`       - maximum number of keepalive connections (per worker process),
+- `prepare`    - maximum number of prepared statements (per db connection),
 - `mode`       - backend matching mode,
 - `overflow`   - either `ignore` the fact that keepalive connection pool is full
   and allow request, but close connection afterwards or `reject` request with
