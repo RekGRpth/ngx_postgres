@@ -312,8 +312,8 @@ static void ngx_postgres_server_conf_cleanup(void *data) {
     while (!ngx_queue_empty(&server_conf->busy)) {
         ngx_queue_t *q = ngx_queue_head(&server_conf->busy);
         ngx_queue_remove(q);
-        ngx_postgres_save_t *cached = ngx_queue_data(q, ngx_postgres_save_t, queue);
-        ngx_postgres_free_connection(cached->connection, &cached->common);
+        ngx_postgres_save_t *save = ngx_queue_data(q, ngx_postgres_save_t, queue);
+        ngx_postgres_free_connection(save->connection, &save->common);
     }
 }
 
@@ -426,7 +426,7 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
         }
     }
     server_conf->peers = peers;
-    server_conf->cached = 0;
+    server_conf->save = 0;
     if (server_conf->max_cached) return ngx_postgres_init(cf->pool, server_conf);
     return NGX_OK;
 }
@@ -495,11 +495,11 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
     ngx_str_t *value = cf->args->elts;
     if (cf->args->nelts == 2 && !ngx_strncmp(value[1].data, "off", sizeof("off") - 1)) { server_conf->max_cached = 0; server_conf->max_statements = 0; return NGX_CONF_OK; }
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
-        if (!ngx_strncmp(value[i].data, "cached=", sizeof("cached=") - 1)) {
-            value[i].len = value[i].len - (sizeof("cached=") - 1);
-            value[i].data = &value[i].data[sizeof("cached=") - 1];
+        if (!ngx_strncmp(value[i].data, "save=", sizeof("save=") - 1)) {
+            value[i].len = value[i].len - (sizeof("save=") - 1);
+            value[i].data = &value[i].data[sizeof("save=") - 1];
             ngx_int_t n = ngx_atoi(value[i].data, value[i].len);
-            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"cached\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"save\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
             server_conf->max_cached = (ngx_uint_t) n;
         } else if (!ngx_strncmp(value[i].data, "statements=", sizeof("statements=") - 1)) {
             value[i].len = value[i].len - (sizeof("statements=") - 1);
