@@ -217,17 +217,17 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer");
     if (state & NGX_PEER_FAILED) peer_data->failed = 1;
     if (!peer_data->failed && pc->connection && peer_data->request->upstream->headers_in.status_n == NGX_HTTP_OK) {
-        ngx_queue_t *q;
         ngx_postgres_cached_t *cached;
+        ngx_queue_t *q;
         if (ngx_queue_empty(&peer_data->save.server_conf->free)) { /* connection pool is already full */
             q = ngx_queue_last(&peer_data->save.server_conf->cache);
-            ngx_queue_remove(q);
             cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
+            ngx_queue_remove(q);
             ngx_postgres_free_connection(cached->connection, &cached->save);
         } else {
             q = ngx_queue_head(&peer_data->save.server_conf->free);
-            ngx_queue_remove(q);
             cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
+            ngx_queue_remove(q);
         }
         cached->connection = pc->connection;
         if (cached->connection->read->timer_set) ngx_del_timer(cached->connection->read);
