@@ -57,8 +57,7 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
 
 
 static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data) {
-    ngx_queue_t *cache = &peer_data->save.server_conf->cache;
-    for (ngx_queue_t *q = ngx_queue_head(cache); q != ngx_queue_sentinel(cache); q = ngx_queue_next(q)) {
+    for (ngx_queue_t *q = ngx_queue_head(&peer_data->save.server_conf->cache); q != ngx_queue_sentinel(&peer_data->save.server_conf->cache); q = ngx_queue_next(q)) {
         ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
         if (ngx_memn2cmp((u_char *) cached->save.sockaddr, (u_char *) pc->sockaddr, cached->save.socklen, pc->socklen)) continue;
         ngx_queue_remove(q);
