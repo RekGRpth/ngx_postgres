@@ -101,7 +101,7 @@ typedef struct {
 typedef struct {
     ngx_flag_t                          single;
     ngx_postgres_peers_t               *peers;
-    ngx_queue_t                         cache;
+    ngx_queue_t                         busy;
     ngx_queue_t                         free;
     ngx_uint_t                          cached;
     ngx_uint_t                          current;

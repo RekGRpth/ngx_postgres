@@ -32,8 +32,8 @@
 
 
 static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data) {
-    if (ngx_queue_empty(&peer_data->save.server_conf->cache)) return NGX_DECLINED;
-    ngx_queue_t *q = ngx_queue_head(&peer_data->save.server_conf->cache);
+    if (ngx_queue_empty(&peer_data->save.server_conf->busy)) return NGX_DECLINED;
+    ngx_queue_t *q = ngx_queue_head(&peer_data->save.server_conf->busy);
     ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
     ngx_queue_remove(q);
     ngx_queue_insert_head(&peer_data->save.server_conf->free, q);
@@ -57,7 +57,7 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
 
 
 static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data) {
-    for (ngx_queue_t *q = ngx_queue_head(&peer_data->save.server_conf->cache); q != ngx_queue_sentinel(&peer_data->save.server_conf->cache); q = ngx_queue_next(q)) {
+    for (ngx_queue_t *q = ngx_queue_head(&peer_data->save.server_conf->busy); q != ngx_queue_sentinel(&peer_data->save.server_conf->busy); q = ngx_queue_next(q)) {
         ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
         if (ngx_memn2cmp((u_char *) cached->save.sockaddr, (u_char *) pc->sockaddr, cached->save.socklen, pc->socklen)) continue;
         ngx_queue_remove(q);
@@ -220,7 +220,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
         ngx_postgres_cached_t *cached;
         ngx_queue_t *q;
         if (ngx_queue_empty(&peer_data->save.server_conf->free)) { /* connection pool is already full */
-            q = ngx_queue_last(&peer_data->save.server_conf->cache);
+            q = ngx_queue_last(&peer_data->save.server_conf->busy);
             cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
             ngx_queue_remove(q);
             ngx_postgres_free_connection(cached->connection, &cached->save);
@@ -235,7 +235,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
         if (cached->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(cached->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) return;
         pc->connection = NULL;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer: saving connection %p", cached->connection);
-        ngx_queue_insert_head(&peer_data->save.server_conf->cache, q);
+        ngx_queue_insert_head(&peer_data->save.server_conf->busy, q);
         cached->connection->data = cached;
         cached->connection->idle = 1;
         cached->connection->read->handler = ngx_postgres_read_handler;
@@ -338,7 +338,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 ngx_int_t ngx_postgres_init(ngx_pool_t *pool, ngx_postgres_server_conf_t *server_conf) {
     ngx_postgres_cached_t *cached = ngx_pcalloc(pool, sizeof(ngx_postgres_cached_t) * server_conf->max_cached);
     if (!cached) { ngx_log_error(NGX_LOG_ERR, pool->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    ngx_queue_init(&server_conf->cache);
+    ngx_queue_init(&server_conf->busy);
     ngx_queue_init(&server_conf->free);
     for (ngx_uint_t i = 0; i < server_conf->max_cached; i++) {
         ngx_queue_insert_head(&server_conf->free, &cached[i].queue);
