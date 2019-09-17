@@ -312,7 +312,7 @@ static void ngx_postgres_server_conf_cleanup(void *data) {
     while (!ngx_queue_empty(&server_conf->busy)) {
         ngx_queue_t *q = ngx_queue_head(&server_conf->busy);
         ngx_queue_remove(q);
-        ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
+        ngx_postgres_save_t *cached = ngx_queue_data(q, ngx_postgres_save_t, queue);
         ngx_postgres_free_connection(cached->connection, &cached->common);
     }
 }

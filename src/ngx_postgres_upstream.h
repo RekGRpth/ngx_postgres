@@ -70,7 +70,7 @@ typedef struct {
 
 typedef struct {
     ngx_http_request_t                *request;
-    ngx_postgres_common_t                common;
+    ngx_postgres_common_t              common;
     ngx_postgres_send_t                send;
     ngx_postgres_state_t               state;
     ngx_flag_t                         failed;
@@ -78,9 +78,9 @@ typedef struct {
 
 typedef struct {
     ngx_connection_t                  *connection;
-    ngx_postgres_common_t                common;
+    ngx_postgres_common_t              common;
     ngx_queue_t                        queue;
-} ngx_postgres_cached_t;
+} ngx_postgres_save_t;
 
 typedef struct {
     ngx_array_t                       *variables;
