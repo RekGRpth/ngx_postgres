@@ -397,7 +397,7 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
     ngx_postgres_peers_t *peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_peers_t) + sizeof(ngx_postgres_peer_t) * (n - 1));
     if (!peers) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     peers->single = (n == 1);
-    peers->number = n;
+    peers->count = n;
     n = 0;
     for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) {
         for (ngx_uint_t j = 0; j < server[i].naddrs; j++) {
