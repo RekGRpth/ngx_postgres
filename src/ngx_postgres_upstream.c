@@ -34,8 +34,8 @@
 static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data) {
     if (ngx_queue_empty(&peer_data->save.server_conf->cache)) return NGX_DECLINED;
     ngx_queue_t *q = ngx_queue_head(&peer_data->save.server_conf->cache);
-    ngx_queue_remove(q);
     ngx_postgres_cached_t *cached = ngx_queue_data(q, ngx_postgres_cached_t, queue);
+    ngx_queue_remove(q);
     ngx_queue_insert_head(&peer_data->save.server_conf->free, q);
     cached->connection->idle = 0;
 //    cached->connection->log = pc->log;
