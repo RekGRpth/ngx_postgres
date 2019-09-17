@@ -130,10 +130,10 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     } else if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
         if (ngx_add_event(pc->connection->read, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) goto bad_add;
         if (ngx_add_event(pc->connection->write, NGX_WRITE_EVENT, NGX_CLEAR_EVENT) != NGX_OK) goto bad_add;
-    } else {
+    } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
         if (ngx_add_event(pc->connection->read, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
         if (ngx_add_event(pc->connection->write, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
-    }
+    } else goto bad_add;
     peer_data->state = state_db_connect;
     return NGX_AGAIN;
 bad_add:
@@ -236,7 +236,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
         save->connection = pc->connection;
         if (save->connection->read->timer_set) ngx_del_timer(save->connection->read);
         if (save->connection->write->timer_set) ngx_del_timer(save->connection->write);
-        if (save->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(save->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) return;
+//        if (save->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(save->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) return;
         pc->connection = NULL;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer: saving connection %p", save->connection);
         ngx_queue_insert_head(&peer_data->common.server_conf->busy, queue);
