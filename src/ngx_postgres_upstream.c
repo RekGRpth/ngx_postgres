@@ -114,6 +114,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         peer_data->common.conn = NULL;
         return NGX_DECLINED;
     }
+//    PQtrace(peer_data->common.conn, stderr);
     peer_data->common.server_conf->save++; /* take spot in keepalive connection pool */
     int fd = PQsocket(peer_data->common.conn); /* add the file descriptor (fd) into an nginx connection structure */
     if (fd == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get connection fd"); goto invalid; }
@@ -179,21 +180,21 @@ void ngx_postgres_process_notify(ngx_connection_t *c, ngx_postgres_common_t *com
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
         switch (ngx_http_push_stream_add_msg_to_channel_my(c->log, &id, &text, NULL, NULL, 0, c->pool)) {
-            case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: notify error"); return;
+            case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: notify error"); continue;
             case NGX_DECLINED: {
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: notify declined");
                 ngx_str_t channel = PQescapeInternal(c->pool, id.data, id.len, 1);
-                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to escape %V", id); return; }
+                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to escape %V", id); continue; }
                 u_char *command = ngx_pnalloc(c->pool, sizeof("UNLISTEN ") - 1 + channel.len + 1);
-                if (!command) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return; }
+                if (!command) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: %s:%d", __FILE__, __LINE__); continue; }
                 u_char *last = ngx_snprintf(command, sizeof("UNLISTEN ") - 1 + channel.len, "UNLISTEN %V", &channel);
-                if (last != command + sizeof("UNLISTEN ") - 1 + channel.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return; }
+                if (last != command + sizeof("UNLISTEN ") - 1 + channel.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: %s:%d", __FILE__, __LINE__); continue; }
                 *last = '\0';
-                if (!PQsendQuery(common->conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to send unlisten: %s", PQerrorMessage(common->conn)); return; }
+                if (!PQsendQuery(common->conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to send unlisten: %s", PQerrorMessage(common->conn)); continue; }
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: unlisten %s sent successfully", command);
-            } return;
-            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: notify ok"); return;
-            default: ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: notify unknown"); return;
+            } continue;
+            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: notify ok"); continue;
+            default: ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: notify unknown"); continue;
         }
     }
 }
