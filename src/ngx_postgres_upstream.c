@@ -144,7 +144,9 @@ invalid:
 }
 
 
-static void ngx_postgres_write_handler(ngx_event_t *ev) { }
+static void ngx_postgres_write_handler(ngx_event_t *ev) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "postgres: %s", __func__);
+}
 
 
 static ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident) {
@@ -198,6 +200,7 @@ void ngx_postgres_process_notify(ngx_connection_t *c, ngx_postgres_common_t *com
 
 
 static void ngx_postgres_read_handler(ngx_event_t *ev) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "postgres: %s", __func__);
     ngx_connection_t *c = ev->data;
     ngx_postgres_save_t *save = c->data;
     if (c->close) goto close;
