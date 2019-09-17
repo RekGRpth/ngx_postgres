@@ -47,11 +47,11 @@ typedef enum {
 typedef struct {
     ngx_uint_t                         hash;
     ngx_uint_t                         used;
-} ngx_postgres_statement_t;
+} ngx_postgres_prepare_t;
 
 typedef struct {
     ngx_postgres_server_conf_t        *server_conf;
-    ngx_postgres_statement_t          *prepare;
+    ngx_postgres_prepare_t            *prepare;
     ngx_str_t                         *name;
     PGconn                            *conn;
     socklen_t                          socklen;
