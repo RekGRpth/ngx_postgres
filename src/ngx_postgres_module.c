@@ -310,9 +310,9 @@ static void ngx_postgres_server_conf_cleanup(void *data) {
     if (!server_conf->busy.prev) return; /* ngx_queue_empty is broken when used on unitialized queue */
     server_conf->max_cached = 0; /* just to be on the safe-side */
     while (!ngx_queue_empty(&server_conf->busy)) {
-        ngx_queue_t *q = ngx_queue_head(&server_conf->busy);
-        ngx_queue_remove(q);
-        ngx_postgres_save_t *save = ngx_queue_data(q, ngx_postgres_save_t, queue);
+        ngx_queue_t *queue = ngx_queue_head(&server_conf->busy);
+        ngx_queue_remove(queue);
+        ngx_postgres_save_t *save = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         ngx_postgres_free_connection(save->connection, &save->common);
     }
 }
