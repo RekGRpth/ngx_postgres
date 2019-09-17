@@ -94,7 +94,7 @@ typedef struct {
 
 typedef struct {
     ngx_postgres_peer_t                 peer[1];
-    ngx_uint_t                          count;
+    ngx_uint_t                          max_peer;
     ngx_uint_t                          single;
 } ngx_postgres_peers_t;
 
