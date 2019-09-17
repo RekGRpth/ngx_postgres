@@ -192,7 +192,7 @@ void ngx_postgres_process_notify(ngx_connection_t *c, ngx_postgres_common_t *com
                 *last = '\0';
                 if (!PQsendQuery(common->conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to send unlisten: %s", PQerrorMessage(common->conn)); continue; }
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: unlisten %s sent successfully", command);
-            } continue;
+            } return;
             case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: notify ok"); continue;
             default: ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: notify unknown"); continue;
         }
