@@ -105,7 +105,7 @@ typedef struct {
     ngx_queue_t                         free;
     ngx_uint_t                          save;
     ngx_uint_t                          current;
-    ngx_uint_t                          max_cached;
+    ngx_uint_t                          max_save;
     ngx_uint_t                          max_statements;
     ngx_uint_t                          reject;
 } ngx_postgres_server_conf_t;
