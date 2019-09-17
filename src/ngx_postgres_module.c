@@ -661,7 +661,7 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         }
     }
     query->sql.len = p - query->sql.data;
-    query->listen =  (query->ids->nelts == 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1)) ? 1 : 0;
+    query->listen =  !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1);
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: sql = `%V`", &query->sql);
     return NGX_CONF_OK;
 }
