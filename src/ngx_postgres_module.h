@@ -99,15 +99,15 @@ typedef struct {
 } ngx_postgres_peers_t;
 
 typedef struct {
+    ngx_flag_t                          prepare;
+    ngx_flag_t                          reject;
     ngx_flag_t                          single;
     ngx_postgres_peers_t               *peers;
     ngx_queue_t                         busy;
     ngx_queue_t                         free;
-    ngx_uint_t                          save;
-    ngx_uint_t                          peer;
     ngx_uint_t                          max_save;
-    ngx_uint_t                          max_prepare;
-    ngx_uint_t                          reject;
+    ngx_uint_t                          peer;
+    ngx_uint_t                          save;
 } ngx_postgres_server_conf_t;
 
 typedef struct {

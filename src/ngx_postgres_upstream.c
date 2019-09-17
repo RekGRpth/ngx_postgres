@@ -51,7 +51,6 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     peer_data->common.name = save->common.name;
     peer_data->common.sockaddr = save->common.sockaddr;
     peer_data->common.socklen = save->common.socklen;
-    for (ngx_uint_t j = 0; j < peer_data->common.server_conf->max_prepare; j++) peer_data->common.prepare[j] = save->common.prepare[j]; /* Inherit list of prepared statements */
     return NGX_DONE;
 }
 
@@ -71,7 +70,6 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         pc->connection = save->connection;
         /* we do not need to resume the peer name, because we already take the right value outside */
         peer_data->common.conn = save->common.conn;
-        for (ngx_uint_t j = 0; j < peer_data->common.server_conf->max_prepare; j++) peer_data->common.prepare[j] = save->common.prepare[j]; /* Inherit list of prepared statements */
         return NGX_DONE;
     }
     return NGX_DECLINED;
@@ -82,7 +80,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_peer_data_t *peer_data = data;
     peer_data->failed = 0;
     if (peer_data->common.server_conf->max_save && peer_data->common.server_conf->single && ngx_postgres_peer_single(pc, peer_data) != NGX_DECLINED) { /* re-use keepalive peer */
-        peer_data->state = peer_data->common.server_conf->max_prepare ? state_db_send_prepare : state_db_send_query;
+        peer_data->state = peer_data->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query;
         ngx_postgres_process_events(peer_data->request);
         return NGX_AGAIN;
     }
@@ -96,7 +94,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pc->sockaddr = peer->sockaddr;
     pc->socklen = peer->socklen;
     if (peer_data->common.server_conf->max_save && !peer_data->common.server_conf->single && ngx_postgres_peer_multi(pc, peer_data) != NGX_DECLINED) { /* re-use keepalive peer */
-        peer_data->state = peer_data->common.server_conf->max_prepare ? state_db_send_prepare : state_db_send_query;
+        peer_data->state = peer_data->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query;
         ngx_postgres_process_events(peer_data->request);
         return NGX_AGAIN;
     }
@@ -207,7 +205,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     if (c->close) goto close;
     if (!PQconsumeInput(save->common.conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(save->common.conn)); goto close; }
     if (PQisBusy(save->common.conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: busy while keepalive"); goto close; }
-    for (PGresult *res; (res = PQgetResult(save->common.conn)); PQclear(res)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: received result on idle keepalive connection: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); }
+    for (PGresult *res; (res = PQgetResult(save->common.conn)); PQclear(res)) ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: received result on idle keepalive connection: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
     ngx_postgres_process_notify(c, &save->common);
     return;
 close:
@@ -253,7 +251,6 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
         save->common.name = peer_data->common.name;
         save->common.sockaddr = pc->sockaddr;
         save->common.socklen = pc->socklen;
-        for (ngx_uint_t j = 0; j < peer_data->common.server_conf->max_prepare; j++) save->common.prepare[j] = peer_data->common.prepare[j];
     }
 }
 
@@ -277,7 +274,6 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     peer_data->common.server_conf = server_conf;
-    if (!(peer_data->common.prepare = ngx_pcalloc(r->pool, server_conf->max_prepare * sizeof(ngx_postgres_prepare_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     r->upstream->peer.data = peer_data;
     r->upstream->peer.get = ngx_postgres_peer_get;
     r->upstream->peer.free = ngx_postgres_peer_free;
@@ -330,7 +326,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     context->sql = sql; /* set $postgres_query */
     if (!(peer_data->send.command = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     (void) ngx_cpystrn(peer_data->send.command, sql.data, sql.len + 1);
-    if (server_conf->max_prepare && !query->listen) {
+    if (server_conf->prepare && !query->listen) {
         peer_data->send.hash = ngx_hash_key(sql.data, sql.len);
         if (!(peer_data->send.stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         u_char *last = ngx_snprintf(peer_data->send.stmtName, 31, "ngx_%ul", (unsigned long)peer_data->send.hash);
@@ -348,7 +344,6 @@ ngx_int_t ngx_postgres_init(ngx_pool_t *pool, ngx_postgres_server_conf_t *server
     for (ngx_uint_t i = 0; i < server_conf->max_save; i++) {
         ngx_queue_insert_head(&server_conf->free, &save[i].queue);
         save[i].common.server_conf = server_conf;
-        if (server_conf->max_prepare && !(save[i].common.prepare = ngx_pcalloc(pool, server_conf->max_prepare * sizeof(ngx_postgres_prepare_t)))) { ngx_log_error(NGX_LOG_ERR, pool->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     }
     return NGX_OK;
 }
