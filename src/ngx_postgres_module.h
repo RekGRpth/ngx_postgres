@@ -116,6 +116,7 @@ typedef struct {
     ngx_flag_t                          listen;
     ngx_str_t                           sql;
     ngx_uint_t                          methods;
+    ngx_uint_t                          percent;
 } ngx_postgres_query_t;
 
 typedef ngx_int_t (*ngx_postgres_output_handler_pt) (ngx_http_request_t *);
