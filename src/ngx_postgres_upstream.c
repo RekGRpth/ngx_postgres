@@ -224,7 +224,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
     ngx_postgres_save_t *save;
     ngx_queue_t *queue;
     if (ngx_queue_empty(&peer_data->common.server_conf->free)) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection pool is already full");
+        ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: connection pool is already full");
         queue = ngx_queue_last(&peer_data->common.server_conf->busy);
         save = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         ngx_queue_remove(queue);
