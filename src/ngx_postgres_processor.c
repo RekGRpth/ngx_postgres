@@ -172,7 +172,12 @@ static ngx_int_t ngx_postgres_get_ack(ngx_http_request_t *r) {
     if (PQisBusy(peer_data->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while get ack"); return NGX_AGAIN; }
     if (r->upstream->peer.connection->read->timer_set) ngx_del_timer(r->upstream->peer.connection->read); /* remove result timeout */
     PGresult *res = PQgetResult(peer_data->common.conn);
-    if (res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: receiving ACK failed: multiple queries(?)"); PQclear(res); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+    if (res) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: receiving ACK failed: multiple queries(?)");
+        PQclear(res);
+        ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
+        context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
     peer_data->state = state_db_idle;
     return ngx_postgres_done(r);
 }
@@ -185,13 +190,20 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     if (PQisBusy(peer_data->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while receiving result"); return NGX_AGAIN; }
     PGresult *res = PQgetResult(peer_data->common.conn);
     if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
-    if (PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); PQclear(res); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+    if (PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
+        PQclear(res);
+        ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
+        context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        goto ret;
+    }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: result received successfully, cols:%d rows:%d", PQnfields(res), PQntuples(res));
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     context->res = res;
     ngx_int_t rc = ngx_postgres_process_response(r);
     PQclear(res);
     if (rc != NGX_DONE) return rc;
+ret:
     peer_data->state = state_db_get_ack;
     return ngx_postgres_get_ack(r);
 }
