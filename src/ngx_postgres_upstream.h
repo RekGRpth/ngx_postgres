@@ -92,7 +92,7 @@ ngx_int_t ngx_http_push_stream_add_msg_to_channel_my(ngx_log_t *log, ngx_str_t *
 ngx_int_t ngx_http_push_stream_delete_channel_my(ngx_log_t *log, ngx_str_t *id, u_char *text, size_t len, ngx_pool_t *pool);
 ngx_int_t ngx_postgres_init(ngx_pool_t *pool, ngx_postgres_server_conf_t *server_conf);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
-void ngx_postgres_free_connection(ngx_connection_t *, ngx_postgres_common_t *, ngx_postgres_common_t *);
+void ngx_postgres_free_connection(ngx_connection_t *, ngx_postgres_common_t *, ngx_postgres_common_t *, ngx_flag_t);
 
 
 #endif /* _NGX_HTTP_UPSTREAM_POSTGRES_H_ */
