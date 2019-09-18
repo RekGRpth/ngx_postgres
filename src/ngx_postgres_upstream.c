@@ -101,7 +101,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         return NGX_AGAIN;
     }
     if (peer_data->common.server_conf->reject && peer_data->common.server_conf->save >= peer_data->common.server_conf->max_save) {
-        ngx_log_error(NGX_LOG_INFO, pc->log, 0, "postgres: keepalive connection pool is full, rejecting request to upstream \"%V\"", &peer->name);
+        ngx_log_error(NGX_LOG_INFO, pc->log, 0, "postgres: keepalive connection pool is full, rejecting request to upstream \"%V\"", peer->name);
         pc->connection = ngx_get_connection(0, pc->log); /* a bit hack-ish way to return error response (setup part) */
         return NGX_AGAIN;
     }
@@ -109,7 +109,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
     peer_data->common.conn = PQconnectStart((const char *)peer->connstring);
     if (PQstatus(peer_data->common.conn) == CONNECTION_BAD || PQsetnonblocking(peer_data->common.conn, 1) == -1) {
-        ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: connection failed: %s in upstream \"%V\"", PQerrorMessage(peer_data->common.conn), &peer->name);
+        ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: connection failed: %s in upstream \"%V\"", PQerrorMessage(peer_data->common.conn), peer->name);
         PQfinish(peer_data->common.conn);
         peer_data->common.conn = NULL;
         return NGX_DECLINED;
