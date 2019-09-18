@@ -330,6 +330,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: sql = `%V`", &sql);
     peer_data->send.command = sql.data;
     peer_data->send.resultFormat = location_conf->binary;
+    sql.len = last - sql.data;
     context->sql = sql; /* set $postgres_query */
     if (server_conf->prepare && !query->listen) {
         if (!(peer_data->send.stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
