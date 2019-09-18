@@ -220,40 +220,39 @@ close:
 static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data, ngx_uint_t state) {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer");
     if (state & NGX_PEER_FAILED) peer_data->failed = 1;
-    if (!peer_data->failed && pc->connection && peer_data->request->upstream->headers_in.status_n == NGX_HTTP_OK) {
-        ngx_postgres_save_t *save;
-        ngx_queue_t *queue;
-        if (ngx_queue_empty(&peer_data->common.server_conf->free)) {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection pool is already full");
-            queue = ngx_queue_last(&peer_data->common.server_conf->busy);
-            save = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-            ngx_queue_remove(queue);
-            ngx_postgres_free_connection(save->connection, &save->common);
-        } else {
-            queue = ngx_queue_head(&peer_data->common.server_conf->free);
-            save = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-            ngx_queue_remove(queue);
-        }
-        save->connection = pc->connection;
-        if (save->connection->read->timer_set) ngx_del_timer(save->connection->read);
-        if (save->connection->write->timer_set) ngx_del_timer(save->connection->write);
+    if (peer_data->failed || !pc->connection || peer_data->request->upstream->headers_in.status_n != NGX_HTTP_OK) return;
+    ngx_postgres_save_t *save;
+    ngx_queue_t *queue;
+    if (ngx_queue_empty(&peer_data->common.server_conf->free)) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection pool is already full");
+        queue = ngx_queue_last(&peer_data->common.server_conf->busy);
+        save = ngx_queue_data(queue, ngx_postgres_save_t, queue);
+        ngx_queue_remove(queue);
+        ngx_postgres_free_connection(save->connection, &save->common);
+    } else {
+        queue = ngx_queue_head(&peer_data->common.server_conf->free);
+        save = ngx_queue_data(queue, ngx_postgres_save_t, queue);
+        ngx_queue_remove(queue);
+    }
+    save->connection = pc->connection;
+    if (save->connection->read->timer_set) ngx_del_timer(save->connection->read);
+    if (save->connection->write->timer_set) ngx_del_timer(save->connection->write);
 //        if (save->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(save->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) return;
-        pc->connection = NULL;
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer: saving connection %p", save->connection);
-        ngx_queue_insert_head(&peer_data->common.server_conf->busy, queue);
-        save->connection->data = save;
-        save->connection->idle = 1;
-        save->connection->read->handler = ngx_postgres_read_handler;
-        save->connection->write->handler = ngx_postgres_write_handler;
+    pc->connection = NULL;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer: saving connection %p", save->connection);
+    ngx_queue_insert_head(&peer_data->common.server_conf->busy, queue);
+    save->connection->data = save;
+    save->connection->idle = 1;
+    save->connection->read->handler = ngx_postgres_read_handler;
+    save->connection->write->handler = ngx_postgres_write_handler;
 //        save->connection->log = ngx_cycle->log;
 //        save->connection->pool->log = ngx_cycle->log;
 //        save->connection->read->log = ngx_cycle->log;
 //        save->connection->write->log = ngx_cycle->log;
-        save->common.conn = peer_data->common.conn;
-        save->common.name = peer_data->common.name;
-        save->common.sockaddr = pc->sockaddr;
-        save->common.socklen = pc->socklen;
-    }
+    save->common.conn = peer_data->common.conn;
+    save->common.name = peer_data->common.name;
+    save->common.sockaddr = pc->sockaddr;
+    save->common.socklen = pc->socklen;
 }
 
 
