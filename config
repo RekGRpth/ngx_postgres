@@ -156,7 +156,7 @@ if test -n "$ngx_module_link"; then
     ngx_module_name=ngx_postgres_module
     ngx_module_srcs="$NGX_SRCS"
     ngx_module_deps="$NGX_DEPS"
-    ngx_module_libs="$ngx_feature_libs"
+    ngx_module_libs="$ngx_feature_libs -lavcall"
     ngx_module_incs="$ngx_feature_path"
     . auto/module
 else
@@ -164,7 +164,7 @@ else
     NGX_ADDON_SRCS="$NGX_ADDON_SRCS $NGX_SRCS"
     NGX_ADDON_DEPS="$NGX_ADDON_DEPS $NGX_DEPS"
     CORE_INCS="$CORE_INCS $ngx_feature_path"
-    CORE_LIBS="$CORE_LIBS $ngx_feature_libs"
+    CORE_LIBS="$CORE_LIBS $ngx_feature_libs -lavcall"
 fi
 
 have=NGX_POSTGRES_MODULE . auto/have

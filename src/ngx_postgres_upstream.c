@@ -26,6 +26,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <avcall.h>
+
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_processor.h"
 #include "ngx_postgres_upstream.h"
@@ -314,12 +316,15 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
             }
         }
         if (!(sql.data = ngx_pnalloc(r->pool, sql.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        switch (query->ids->nelts - 1) {
-//            case 0: if ((len = ngx_snprintf(sql.data, sql.len, (const char *)query->sql.data, &ids[0]) - sql.data) != sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %ul!=%ul, %s:%d", len, sql.len, __FILE__, __LINE__); return NGX_ERROR; } break;
-            case 0: if (ngx_snprintf(sql.data, sql.len, (const char *)query->sql.data, &ids[0]) != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; } break;
-            case 1: if (ngx_snprintf(sql.data, sql.len, (const char *)query->sql.data, &ids[0], &ids[1]) != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; } break;
-            case 2: if (ngx_snprintf(sql.data, sql.len, (const char *)query->sql.data, &ids[0], &ids[1], &ids[2]) != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; } break;
-        }
+        av_alist alist;
+        u_char *last = NULL;
+        av_start_ptr(alist, &ngx_snprintf, u_char *, &last);
+        if (av_ptr(alist, u_char *, sql.data)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        if (av_ulong(alist, sql.len)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        if (av_ptr(alist, char *, query->sql.data)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        for (ngx_uint_t i = 0; i < query->ids->nelts; i++) if (av_ptr(alist, ngx_str_t *, &ids[i])) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        if (av_call(alist)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        if (last != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     }
 //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: sql = `%V`", &sql);
     peer_data->send.resultFormat = location_conf->binary;
