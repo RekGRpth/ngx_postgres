@@ -367,8 +367,8 @@ static void *ngx_postgres_create_location_conf(ngx_conf_t *cf) {
 static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void *child) {
     ngx_postgres_location_conf_t *prev = parent;
     ngx_postgres_location_conf_t *conf = child;
-    ngx_conf_merge_msec_value(conf->upstream.connect_timeout, prev->upstream.connect_timeout, 10000);
-    ngx_conf_merge_msec_value(conf->upstream.read_timeout, prev->upstream.read_timeout, 30000);
+    ngx_conf_merge_msec_value(conf->upstream.connect_timeout, prev->upstream.connect_timeout, 60000);
+    ngx_conf_merge_msec_value(conf->upstream.read_timeout, prev->upstream.read_timeout, 60000);
     if (!conf->upstream.upstream && !conf->upstream_cv) {
         conf->upstream.upstream = prev->upstream.upstream;
         conf->upstream_cv = prev->upstream_cv;

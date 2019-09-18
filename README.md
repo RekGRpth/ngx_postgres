@@ -160,7 +160,7 @@ disabled by prefixing `$unescaped` string with `=` sign.
 postgres_connect_timeout
 ------------------------
 * **syntax**: `postgres_connect_timeout timeout`
-* **default**: `10s`
+* **default**: `60s`
 * **context**: `http`, `server`, `location`
 
 Set timeout for connecting to the database.
@@ -169,7 +169,7 @@ Set timeout for connecting to the database.
 postgres_result_timeout
 -----------------------
 * **syntax**: `postgres_result_timeout timeout`
-* **default**: `30s`
+* **default**: `60s`
 * **context**: `http`, `server`, `location`
 
 Set timeout for receiving result from the database.
