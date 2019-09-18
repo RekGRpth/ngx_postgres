@@ -311,8 +311,8 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
             if (!value || !value->data || !value->len) { ngx_str_set(&ids[i], "NULL"); } else {
                 ids[i] = PQescapeInternal(r->pool, value->data, value->len, 1);
                 if (!ids[i].len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to escape %*.*s", value->len, value->len, value->data); return NGX_ERROR; }
-                sql.len += ids[i].len;
             }
+            sql.len += ids[i].len;
         }
     }
     if (!(sql.data = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
