@@ -312,6 +312,7 @@ static ngx_int_t ngx_postgres_add_variables(ngx_conf_t *cf) {
 
 
 static void ngx_postgres_server_conf_cleanup(void *data) {
+    ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "postgres: %s", __func__);
     ngx_postgres_server_conf_t *server_conf = data;
     if (!server_conf->busy.prev) return; /* ngx_queue_empty is broken when used on unitialized queue */
     server_conf->max_save = 0; /* just to be on the safe-side */

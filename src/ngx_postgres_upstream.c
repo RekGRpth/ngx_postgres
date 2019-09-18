@@ -218,7 +218,7 @@ close:
 
 
 static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data, ngx_uint_t state) {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: %s", __func__);
     if (state & NGX_PEER_FAILED) peer_data->failed = 1;
     if (peer_data->failed || !pc->connection || peer_data->request->upstream->headers_in.status_n != NGX_HTTP_OK) return;
     ngx_postgres_save_t *save;
@@ -257,6 +257,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
 
 
 static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: %s", __func__);
     ngx_postgres_peer_data_t *peer_data = data;
     if (peer_data->common.server_conf->max_save) ngx_postgres_free_peer(pc, peer_data, state);
     if (pc->connection) {
@@ -358,6 +359,7 @@ ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *peer) {
 
 
 void ngx_postgres_free_connection(ngx_connection_t *c, ngx_postgres_common_t *common, ngx_postgres_common_t *listen) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: %s", __func__);
     if (listen) {
         PGresult *res = PQexec(common->conn, "with s as (select pg_listening_channels()) select array_to_string(array_agg(format($$listen %I$$, s.pg_listening_channels)), ';') from s");
         if (res) {
