@@ -359,6 +359,15 @@ ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *peer) {
 
 
 void ngx_postgres_free_connection(ngx_connection_t *c, ngx_postgres_common_t *common) {
+    PGresult *res = PQexec(common->conn, "select pg_listening_channels()");
+    if (res) {
+        if (PQresultStatus(res) == PGRES_TUPLES_OK) for (int row = 0; row < PQntuples(res); row++) {
+            ngx_str_t id = { PQgetlength(res, row, 0), (u_char *)PQgetvalue(res, row, 0) };
+            ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: channel = %V", &id);
+            ngx_http_push_stream_delete_channel_my(c->log, &id, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, c->pool);
+        }
+        PQclear(res);
+    }
     PQfinish(common->conn);
     if (c) {
         if (c->read->timer_set) ngx_del_timer(c->read);
