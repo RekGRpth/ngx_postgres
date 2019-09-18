@@ -639,7 +639,7 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     if (!(query->ids = ngx_array_create(cf->pool, 4, sizeof(ngx_uint_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_CONF_ERROR; }
     u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
     for (ngx_uint_t k = 0; s < e; *p++ = *s++) {
-        if (*s == '$') {
+        if (*s == '%') *p++ = '%'; else if (*s == '$') {
             ngx_str_t name;
             for (name.data = ++s, name.len = 0; s < e && is_variable_character(*s); s++, name.len++);
             if (!name.len) { *p++ = '$'; continue; }
