@@ -179,23 +179,28 @@ void ngx_postgres_process_notify(ngx_connection_t *c, ngx_postgres_common_t *com
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: notify: relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
-        switch (ngx_http_push_stream_add_msg_to_channel_my(c->log, &id, &text, NULL, NULL, 0, c->pool)) {
-            case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: notify error"); continue;
+        ngx_pool_t *temp_pool = ngx_create_pool(4096, c->log);
+        if (!temp_pool) continue;
+        switch (ngx_http_push_stream_add_msg_to_channel_my(c->log, &id, &text, NULL, NULL, 0, temp_pool)) {
+            case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: notify error"); break;
             case NGX_DECLINED: {
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: notify declined");
                 ngx_str_t channel = PQescapeInternal(c->pool, id.data, id.len, 1);
-                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to escape %V", id); continue; }
+                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to escape %V", id); break; }
                 u_char *command = ngx_pnalloc(c->pool, sizeof("UNLISTEN ") - 1 + channel.len + 1);
-                if (!command) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: %s:%d", __FILE__, __LINE__); continue; }
+                if (!command) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: %s:%d", __FILE__, __LINE__); break; }
                 u_char *last = ngx_snprintf(command, sizeof("UNLISTEN ") - 1 + channel.len, "UNLISTEN %V", &channel);
-                if (last != command + sizeof("UNLISTEN ") - 1 + channel.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: %s:%d", __FILE__, __LINE__); continue; }
+                if (last != command + sizeof("UNLISTEN ") - 1 + channel.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: %s:%d", __FILE__, __LINE__); break; }
                 *last = '\0';
-                if (!PQsendQuery(common->conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to send unlisten: %s", PQerrorMessage(common->conn)); continue; }
+                if (!PQsendQuery(common->conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to send unlisten: %s", PQerrorMessage(common->conn)); break; }
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: unlisten %s sent successfully", command);
-            } return;
-            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: notify ok"); continue;
-            default: ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: notify unknown"); continue;
+                ngx_destroy_pool(temp_pool);
+                return;
+            };
+            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: notify ok"); break;
+            default: ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: notify unknown"); break;
         }
+        ngx_destroy_pool(temp_pool);
     }
 }
 
@@ -378,7 +383,11 @@ void ngx_postgres_free_connection(ngx_connection_t *c, ngx_postgres_common_t *co
             if (PQresultStatus(res) == PGRES_TUPLES_OK) for (int row = 0; row < PQntuples(res); row++) {
                 ngx_str_t id = { PQgetlength(res, row, 0), (u_char *)PQgetvalue(res, row, 0) };
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: delete channel = %V", &id);
-                ngx_http_push_stream_delete_channel_my(c->log, &id, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, c->pool);
+                ngx_pool_t *temp_pool = ngx_create_pool(4096, c->log);
+                if (temp_pool) {
+                    ngx_http_push_stream_delete_channel_my(c->log, &id, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, temp_pool);
+                    ngx_destroy_pool(temp_pool);
+                }
             }
             PQclear(res);
         }
