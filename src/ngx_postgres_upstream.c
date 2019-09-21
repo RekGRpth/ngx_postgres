@@ -50,6 +50,7 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     pc->sockaddr = save->common.sockaddr;
     pc->socklen = save->common.socklen;
     peer_data->common.conn = save->common.conn;
+    peer_data->common.prepare = save->common.prepare;
     peer_data->common.name = save->common.name;
     peer_data->common.sockaddr = save->common.sockaddr;
     peer_data->common.socklen = save->common.socklen;
@@ -72,6 +73,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         pc->connection = save->connection;
         /* we do not need to resume the peer name, because we already take the right value outside */
         peer_data->common.conn = save->common.conn;
+        peer_data->common.prepare = save->common.prepare;
         return NGX_DONE;
     }
     return NGX_DECLINED;
@@ -135,6 +137,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         if (ngx_add_event(pc->connection->read, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
         if (ngx_add_event(pc->connection->write, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
     } else goto bad_add;
+    ngx_queue_init(peer_data->common.prepare);
     peer_data->state = state_db_connect;
     return NGX_AGAIN;
 bad_add:
@@ -255,6 +258,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
 //        save->connection->read->log = ngx_cycle->log;
 //        save->connection->write->log = ngx_cycle->log;
     save->common.conn = peer_data->common.conn;
+    save->common.prepare = peer_data->common.prepare;
     save->common.name = peer_data->common.name;
     save->common.sockaddr = pc->sockaddr;
     save->common.socklen = pc->socklen;
@@ -276,6 +280,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
     ngx_postgres_peer_data_t *peer_data = ngx_pcalloc(r->pool, sizeof(ngx_postgres_peer_data_t));
     if (!peer_data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (!(peer_data->common.prepare = ngx_pcalloc(r->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     peer_data->request = r;
     ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
@@ -338,7 +343,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     context->sql = sql; /* set $postgres_query */
     if (server_conf->prepare && !query->listen) {
         if (!(peer_data->send.stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-        u_char *last = ngx_snprintf(peer_data->send.stmtName, 31, "ngx_%ul", (unsigned long)ngx_hash_key(sql.data, sql.len));
+        u_char *last = ngx_snprintf(peer_data->send.stmtName, 31, "ngx_%ul", (unsigned long)(peer_data->send.hash = ngx_hash_key(sql.data, sql.len)));
         *last = '\0';
     }
     return NGX_OK;
@@ -353,6 +358,7 @@ ngx_int_t ngx_postgres_init(ngx_pool_t *pool, ngx_postgres_server_conf_t *server
     for (ngx_uint_t i = 0; i < server_conf->max_save; i++) {
         ngx_queue_insert_head(&server_conf->free, &save[i].queue);
         save[i].common.server_conf = server_conf;
+//        ngx_queue_init(&save[i].common.prepare);
     }
     return NGX_OK;
 }
