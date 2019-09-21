@@ -102,12 +102,14 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     size += context->ntuples - 1; // value new line
     for (ngx_int_t row = 0; row < context->ntuples; row++) for (ngx_int_t col = 0; col < context->nfields; col++) {
         if (PQgetisnull(context->res, row, col)) size += location_conf->output.null.len; else {
-            if (location_conf->output.quote) size++;
-            if (PQgetlength(context->res, row, col)) {
-                if (location_conf->output.escape) size += ngx_postgres_count((u_char *)PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col), location_conf->output.escape);
-                else size += PQgetlength(context->res, row, col);
-            }
-            if (location_conf->output.quote) size++;
+            if ((PQftype(context->res, col) < INT8OID || PQftype(context->res, col) > INT4OID) && (PQftype(context->res, col) != JSONBOID && PQftype(context->res, col) != JSONOID)) { //not numbers or json
+                if (location_conf->output.quote) size++;
+                if (PQgetlength(context->res, row, col)) {
+                    if (location_conf->output.escape) size += ngx_postgres_count((u_char *)PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col), location_conf->output.escape);
+                    else size += PQgetlength(context->res, row, col);
+                }
+                if (location_conf->output.quote) size++;
+            } else size += PQgetlength(context->res, row, col);
         }
     }
     if (!size) return NGX_DONE;
@@ -133,12 +135,14 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
         for (ngx_int_t col = 0; col < context->nfields; col++) {
             if (col > 0) *b->last++ = location_conf->output.delimiter;
             if (PQgetisnull(context->res, row, col)) b->last = ngx_copy(b->last, location_conf->output.null.data, location_conf->output.null.len); else {
-                if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
-                if (PQgetlength(context->res, row, col)) {
-                    if (location_conf->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col), location_conf->output.escape);
-                    else b->last = ngx_copy(b->last, (u_char *)PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col));
-                }
-                if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
+                 if ((PQftype(context->res, col) < INT8OID || PQftype(context->res, col) > INT4OID) && (PQftype(context->res, col) != JSONBOID && PQftype(context->res, col) != JSONOID)) { //not numbers or json
+                    if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
+                    if (PQgetlength(context->res, row, col)) {
+                        if (location_conf->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col), location_conf->output.escape);
+                        else b->last = ngx_copy(b->last, (u_char *)PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col));
+                    }
+                    if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
+                } else if (PQgetlength(context->res, row, col)) b->last = ngx_copy(b->last, (u_char *)PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col));
             }
         }
     }

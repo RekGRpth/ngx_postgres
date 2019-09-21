@@ -124,6 +124,7 @@ typedef ngx_int_t (*ngx_postgres_output_handler_pt) (ngx_http_request_t *);
 typedef struct {
     ngx_flag_t                          binary;
     ngx_flag_t                          header;
+    ngx_flag_t                          string_quote_only;
     ngx_postgres_output_handler_pt      handler;
     ngx_str_t                           null;
     u_char                              delimiter;

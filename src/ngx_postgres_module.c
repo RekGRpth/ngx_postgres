@@ -354,6 +354,7 @@ static void *ngx_postgres_create_location_conf(ngx_conf_t *cf) {
     location_conf->upstream.upstream_conf.read_timeout = NGX_CONF_UNSET_MSEC;
     location_conf->rewrite_conf = NGX_CONF_UNSET_PTR;
     location_conf->output.header = 1;
+    location_conf->output.string_quote_only = 1;
     location_conf->variables = NGX_CONF_UNSET_PTR;
     /* the hardcoded values */
     location_conf->upstream.upstream_conf.cyclic_temp_file = 0;
@@ -770,6 +771,13 @@ static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
             ngx_conf_enum_t *e = ngx_postgres_output_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { location_conf->output.header = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"header\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+        } else if (!ngx_strncmp(value[i].data, "string_quote_only=", sizeof("string_quote_only=") - 1)) {
+            value[i].len = value[i].len - (sizeof("string_quote_only=") - 1);
+            value[i].data = &value[i].data[sizeof("string_quote_only=") - 1];
+            ngx_uint_t j;
+            ngx_conf_enum_t *e = ngx_postgres_output_options;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { location_conf->output.string_quote_only = e[j].value; break; }
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"string_quote_only\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
         } else if (!ngx_strncmp(value[i].data, "quote=", sizeof("quote=") - 1)) {
             value[i].len = value[i].len - (sizeof("quote=") - 1);
             if (!value[i].len || value[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"quote\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
