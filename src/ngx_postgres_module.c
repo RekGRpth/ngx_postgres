@@ -262,13 +262,17 @@ ngx_conf_enum_t ngx_postgres_overflow_options[] = {
 
 ngx_conf_enum_t ngx_postgres_prepare_options[] = {
     { ngx_string("off"), 0 },
+    { ngx_string("no"), 0 },
     { ngx_string("on"), 1 },
+    { ngx_string("yes"), 1 },
     { ngx_null_string, 0 }
 };
 
 ngx_conf_enum_t ngx_postgres_output_options[] = {
     { ngx_string("off"), 0 },
+    { ngx_string("no"), 0 },
     { ngx_string("on"), 1 },
+    { ngx_string("yes"), 1 },
     { ngx_null_string, 0 }
 };
 
@@ -499,7 +503,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
     ngx_postgres_server_conf_t *server_conf = conf;
     if (server_conf->max_save != 10 /* default */) return "is duplicate";
     ngx_str_t *value = cf->args->elts;
-    if (cf->args->nelts == 2 && !ngx_strncmp(value[1].data, "off", sizeof("off") - 1)) { server_conf->max_save = 0; server_conf->prepare = 0; return NGX_CONF_OK; }
+    if (cf->args->nelts == 2 && (!ngx_strncmp(value[1].data, "off", sizeof("off") - 1) || !ngx_strncmp(value[1].data, "no", sizeof("no") - 1))) { server_conf->max_save = 0; server_conf->prepare = 0; return NGX_CONF_OK; }
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
         if (!ngx_strncmp(value[i].data, "save=", sizeof("save=") - 1)) {
             value[i].len = value[i].len - (sizeof("save=") - 1);
