@@ -72,10 +72,18 @@ ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
 
 static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    size_t size = 0; /* pre-calculate total length up-front for single buffer allocation */
-    for (ngx_int_t row = 0; row < context->ntuples; row++) for (ngx_int_t col = 0; col < context->nfields; col++) if (PQgetisnull(context->res, row, col)) size += sizeof("(null)") - 1; else size += PQgetlength(context->res, row, col); /* field string data */
-    size += context->ntuples * context->nfields - 1; /* delimiters */
-    if (!context->ntuples || !size) return NGX_DONE;
+    if (!context->ntuples || !context->nfields) return NGX_DONE;
+    size_t size = 0;
+    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    if (location_conf->output.header) {
+        size += context->nfields - 1; // header delimiters
+        size += 1; // header new line
+        for (ngx_int_t col = 0; col < context->nfields; col++) size += ngx_strlen(PQfname(context->res, col));
+    }
+    size += context->ntuples * (context->nfields - 1); // value delimiters
+    size += context->ntuples - 1; // value new line
+    for (ngx_int_t row = 0; row < context->ntuples; row++) for (ngx_int_t col = 0; col < context->nfields; col++) size += PQgetisnull(context->res, row, col) ? location_conf->output.null.len : (size_t)PQgetlength(context->res, row, col);
+    if (!size) return NGX_DONE;
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
     if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_chain_t *chain = ngx_alloc_chain_link(r->pool);
@@ -83,14 +91,20 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     chain->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
-    /* fill data */
-    for (ngx_int_t row = 0; row < context->ntuples; row++) {
+    if (location_conf->output.header) {
         for (ngx_int_t col = 0; col < context->nfields; col++) {
-            if (PQgetisnull(context->res, row, col)) b->last = ngx_copy(b->last, "(null)", sizeof("(null)") - 1);
-            else if ((size = PQgetlength(context->res, row, col))) b->last = ngx_copy(b->last, PQgetvalue(context->res, row, col), size);
-            if (row != context->ntuples - 1 && col != context->nfields - 1) b->last = ngx_copy(b->last, "\t", 1);
+            if (col > 0) *b->last++ = location_conf->output.delimiter;
+            b->last = ngx_copy(b->last, PQfname(context->res, col), ngx_strlen(PQfname(context->res, col)));
         }
-        if (row != context->ntuples - 1) b->last = ngx_copy(b->last, "\n", 1);
+        *b->last++ = '\n';
+    }
+    for (ngx_int_t row = 0; row < context->ntuples; row++) {
+        if (row > 0) *b->last++ = '\n';
+        for (ngx_int_t col = 0; col < context->nfields; col++) {
+            if (col > 0) *b->last++ = location_conf->output.delimiter;
+            if (PQgetisnull(context->res, row, col)) b->last = ngx_copy(b->last, location_conf->output.null.data, location_conf->output.null.len);
+            else if (PQgetlength(context->res, row, col)) b->last = ngx_copy(b->last, PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col));
+        }
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     chain->next = NULL;
@@ -165,8 +179,8 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
             }
         }
         for (ngx_int_t col = 0; col < context->nfields; col++) size += (ngx_strlen(PQfname(context->res, col)) + 3) * context->ntuples; // extra "":
-        size += context->ntuples * (context->nfields - 1); /* column delimeters */
-        size += context->ntuples - 1;                      /* row delimeters */
+        size += context->ntuples * (context->nfields - 1); /* column delimiters */
+        size += context->ntuples - 1;                      /* row delimiters */
     }
     if (!context->ntuples || !size) return NGX_DONE;
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
