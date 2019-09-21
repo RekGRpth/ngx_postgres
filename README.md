@@ -45,14 +45,14 @@ Set details about the database server. Additional port parameter is offered to c
 
 postgres_keepalive
 ------------------
-* **syntax**: `postgres_keepalive off | save=count [mode=single|multi] [overflow=ignore|reject] [prepare=count]`
+* **syntax**: `postgres_keepalive off|no | save=count [mode=single|multi] [overflow=ignore|reject] [prepare=on|yes|off|no]`
 * **default**: `save=10 mode=single overflow=ignore prepare=256`
 * **context**: `upstream`
 
 Configure keepalive parameters:
 
 - `save`       - maximum number of keepalive connections (per worker process),
-- `prepare`    - maximum number of prepared statements (per db connection),
+- `prepare`    - use or not prepared statements,
 - `mode`       - backend matching mode,
 - `overflow`   - either `ignore` the fact that keepalive connection pool is full
   and allow request, but close connection afterwards or `reject` request with
@@ -105,7 +105,7 @@ This directive can be used more than once within same context.
 
 postgres_output
 ---------------
-* **syntax**: `postgres_output json|text|value|binary|none`
+* **syntax**: `postgres_output json|text|csv|value|binary|none`
 * **default**: `none`
 * **context**: `http`, `server`, `location`, `if location`
 
@@ -113,11 +113,13 @@ Set output format:
 
 - `json`         - return all values from the result-set in `json` format
   (with appropriate `Content-Type`),
-- `text`         - return all values from the result-set in text format
-  (with default `Content-Type`), values are separated by new line,
-- `value`        - return single value from the result-set in text format
+- `text`         - return all values from the result-set in `text` format
+  (with appropriate `Content-Type`), values are separated by new line,
+- `csv`          - return all values from the result-set in `csv` format
+  (with appropriate `Content-Type`), values are separated by new line,
+- `value`        - return single value from the result-set in `text` format
   (with default `Content-Type`),
-- `binary`       - return single value from the result-set in binary format
+- `binary`       - return single value from the result-set in `binary` format
   (with default `Content-Type`),
 - `none`         - don't return anything, this should be used only when
   extracting values with `postgres_set` for use with other modules (without
