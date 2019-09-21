@@ -78,11 +78,11 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     if (location_conf->output.header) {
         size += context->nfields - 1; // header delimiters
         size += 1; // header new line
-        for (ngx_int_t col = 0; col < context->nfields; col++) size += ngx_strlen(PQfname(context->res, col));
+        for (ngx_int_t col = 0; col < context->nfields; col++) size += ngx_strlen(PQfname(context->res, col)) + (location_conf->output.quote ? 2 : 0);
     }
     size += context->ntuples * (context->nfields - 1); // value delimiters
     size += context->ntuples - 1; // value new line
-    for (ngx_int_t row = 0; row < context->ntuples; row++) for (ngx_int_t col = 0; col < context->nfields; col++) size += PQgetisnull(context->res, row, col) ? location_conf->output.null.len : (size_t)PQgetlength(context->res, row, col);
+    for (ngx_int_t row = 0; row < context->ntuples; row++) for (ngx_int_t col = 0; col < context->nfields; col++) size += PQgetisnull(context->res, row, col) ? location_conf->output.null.len : (size_t)PQgetlength(context->res, row, col) + (location_conf->output.quote ? 2 : 0);
     if (!size) return NGX_DONE;
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
     if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
@@ -94,7 +94,9 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     if (location_conf->output.header) {
         for (ngx_int_t col = 0; col < context->nfields; col++) {
             if (col > 0) *b->last++ = location_conf->output.delimiter;
+            if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
             b->last = ngx_copy(b->last, PQfname(context->res, col), ngx_strlen(PQfname(context->res, col)));
+            if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
         }
         *b->last++ = '\n';
     }
@@ -102,8 +104,11 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
         if (row > 0) *b->last++ = '\n';
         for (ngx_int_t col = 0; col < context->nfields; col++) {
             if (col > 0) *b->last++ = location_conf->output.delimiter;
-            if (PQgetisnull(context->res, row, col)) b->last = ngx_copy(b->last, location_conf->output.null.data, location_conf->output.null.len);
-            else if (PQgetlength(context->res, row, col)) b->last = ngx_copy(b->last, PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col));
+            if (PQgetisnull(context->res, row, col)) b->last = ngx_copy(b->last, location_conf->output.null.data, location_conf->output.null.len); else {
+                if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
+                if (PQgetlength(context->res, row, col)) b->last = ngx_copy(b->last, PQgetvalue(context->res, row, col), PQgetlength(context->res, row, col));
+                if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
+            }
         }
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
