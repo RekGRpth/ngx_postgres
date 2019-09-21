@@ -122,15 +122,26 @@ typedef struct {
 typedef ngx_int_t (*ngx_postgres_output_handler_pt) (ngx_http_request_t *);
 
 typedef struct {
+    ngx_flag_t                          binary;
+    ngx_flag_t                          header;
+    ngx_postgres_output_handler_pt      handler;
+    ngx_str_t                           null;
+    u_char                              delimiter;
+    u_char                              escape;
+    u_char                              quote;
+} ngx_postgres_output_t;
+
+typedef struct {
     ngx_array_t                        *methods; /* method-specific */
     ngx_array_t                        *rewrite_conf;
     ngx_array_t                        *variables;
+//    ngx_flag_t                          binary;
     ngx_http_complex_value_t           *upstream_cv;
     ngx_http_upstream_conf_t            upstream;
-    ngx_postgres_output_handler_pt      handler;
+//    ngx_postgres_output_handler_pt      handler;
+    ngx_postgres_output_t               output;
     ngx_postgres_query_t               *query;     /* default */
     ngx_uint_t                          methods_set;
-    ngx_flag_t                          binary;
 } ngx_postgres_location_conf_t;
 
 

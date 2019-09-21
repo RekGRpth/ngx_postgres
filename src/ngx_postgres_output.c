@@ -70,7 +70,7 @@ ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
 }
 
 
-ngx_int_t ngx_postgres_output_csv(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     size_t size = 0; /* pre-calculate total length up-front for single buffer allocation */
     for (ngx_int_t row = 0; row < context->ntuples; row++) for (ngx_int_t col = 0; col < context->nfields; col++) if (PQgetisnull(context->res, row, col)) size += sizeof("(null)") - 1; else size += PQgetlength(context->res, row, col); /* field string data */
@@ -99,19 +99,32 @@ ngx_int_t ngx_postgres_output_csv(ngx_http_request_t *r) {
 }
 
 
+ngx_int_t ngx_postgres_output_text(ngx_http_request_t *r) {
+    return ngx_postgres_output_text_csv(r);
+}
+
+
+ngx_int_t ngx_postgres_output_csv(ngx_http_request_t *r) {
+    return ngx_postgres_output_text_csv(r);
+}
+
+
 ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     if (!r->header_sent) {
         ngx_http_clear_content_length(r);
         ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
         r->headers_out.status = context->status ? ngx_abs(context->status) : NGX_HTTP_OK;
-        if (location_conf->handler == &ngx_postgres_output_json) {
+        if (location_conf->output.handler == &ngx_postgres_output_json) {
             ngx_str_set(&r->headers_out.content_type, "application/json");
             r->headers_out.content_type_len = r->headers_out.content_type.len;
-        } else if (location_conf->handler == &ngx_postgres_output_csv) {
+        } else if (location_conf->output.handler == &ngx_postgres_output_text) {
+            ngx_str_set(&r->headers_out.content_type, "text/plain");
+            r->headers_out.content_type_len = r->headers_out.content_type.len;
+        } else if (location_conf->output.handler == &ngx_postgres_output_csv) {
             ngx_str_set(&r->headers_out.content_type, "text/csv");
             r->headers_out.content_type_len = r->headers_out.content_type.len;
-        } else if (location_conf->handler) {
+        } else if (location_conf->output.handler) {
             ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
             r->headers_out.content_type = core_loc_conf->default_type;
             r->headers_out.content_type_len = core_loc_conf->default_type.len;

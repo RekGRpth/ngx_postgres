@@ -266,6 +266,12 @@ ngx_conf_enum_t ngx_postgres_prepare_options[] = {
     { ngx_null_string, 0 }
 };
 
+ngx_conf_enum_t ngx_postgres_output_options[] = {
+    { ngx_string("off"), 0 },
+    { ngx_string("on"), 1 },
+    { ngx_null_string, 0 }
+};
+
 ngx_conf_enum_t ngx_postgres_requirement_options[] = {
     { ngx_string("optional"), 0 },
     { ngx_string("required"), 1 },
@@ -292,6 +298,7 @@ struct ngx_postgres_output_enum_t {
     ngx_postgres_output_handler_pt      handler;
 } ngx_postgres_output_handlers[] = {
     { ngx_string("none"),         0, NULL },
+    { ngx_string("text") ,        0, ngx_postgres_output_text },
     { ngx_string("csv") ,         0, ngx_postgres_output_csv },
     { ngx_string("value"),        0, ngx_postgres_output_value },
     { ngx_string("binary"),       1, ngx_postgres_output_value },
@@ -346,7 +353,7 @@ static void *ngx_postgres_create_location_conf(ngx_conf_t *cf) {
     location_conf->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
     location_conf->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
     location_conf->rewrite_conf = NGX_CONF_UNSET_PTR;
-    location_conf->handler = NGX_CONF_UNSET_PTR;
+    location_conf->output.header = 1;
     location_conf->variables = NGX_CONF_UNSET_PTR;
     /* the hardcoded values */
     location_conf->upstream.cyclic_temp_file = 0;
@@ -380,15 +387,7 @@ static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void
         conf->query = prev->query;
     }
     ngx_conf_merge_ptr_value(conf->rewrite_conf, prev->rewrite_conf, NULL);
-    if (conf->handler == NGX_CONF_UNSET_PTR) {
-        if (prev->handler == NGX_CONF_UNSET_PTR) { /* default */
-            conf->handler = NULL;
-            conf->binary = 0;
-        } else { /* merge */
-            conf->handler = prev->handler;
-            conf->binary = prev->binary;
-        }
-    }
+    if (!conf->output.handler && prev->output.handler) conf->output = prev->output;
     ngx_conf_merge_ptr_value(conf->variables, prev->variables, NULL);
     return NGX_CONF_OK;
 }
@@ -736,13 +735,53 @@ found:;
 
 static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_conf_t *location_conf = conf;
-    if (location_conf->handler != NGX_CONF_UNSET_PTR) return "is duplicate";
+    if (location_conf->output.handler) return "is duplicate";
     struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
     ngx_str_t *value = cf->args->elts;
     ngx_uint_t i;
-    for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[1].len && !ngx_strncasecmp(e[i].name.data, value[1].data, value[1].len)) { location_conf->handler = e[i].handler; break; }
+    for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[1].len && !ngx_strncasecmp(e[i].name.data, value[1].data, value[1].len)) { location_conf->output.handler = e[i].handler; break; }
     if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid output format \"%V\" in \"%V\" directive", &value[1], &cmd->name); return NGX_CONF_ERROR; }
-    location_conf->binary = e[i].binary;
+    location_conf->output.binary = e[i].binary;
+    if (cf->args->nelts > 2 && location_conf->output.handler != ngx_postgres_output_text && location_conf->output.handler != ngx_postgres_output_csv) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid extra parameters for output format \"%V\" in \"%V\" directive", &value[1], &cmd->name); return NGX_CONF_ERROR; }
+    if (location_conf->output.handler == ngx_postgres_output_text) {
+        location_conf->output.delimiter = '\t';
+        ngx_str_set(&location_conf->output.null, "\\N");
+    } else if (location_conf->output.handler == ngx_postgres_output_csv) {
+        location_conf->output.delimiter = ',';
+        ngx_str_set(&location_conf->output.null, "");
+        location_conf->output.quote = '"';
+        location_conf->output.escape = '"';
+    }
+    for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
+        if (!ngx_strncmp(value[i].data, "delimiter=", sizeof("delimiter=") - 1)) {
+            value[i].len = value[i].len - (sizeof("delimiter=") - 1);
+            if (!value[i].len || value[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"delimiter\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+            value[i].data = &value[i].data[sizeof("delimiter=") - 1];
+            location_conf->output.delimiter = *value[i].data;
+        } else if (!ngx_strncmp(value[i].data, "null=", sizeof("null=") - 1)) {
+            value[i].len = value[i].len - (sizeof("null=") - 1);
+            if (!(location_conf->output.null.len = value[i].len)) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"null\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+            value[i].data = &value[i].data[sizeof("null=") - 1];
+            location_conf->output.null.data = value[i].data;
+        } else if (!ngx_strncmp(value[i].data, "header=", sizeof("header=") - 1)) {
+            value[i].len = value[i].len - (sizeof("header=") - 1);
+            value[i].data = &value[i].data[sizeof("header=") - 1];
+            ngx_uint_t j;
+            ngx_conf_enum_t *e = ngx_postgres_output_options;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { location_conf->output.header = e[j].value; break; }
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"header\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+        } else if (!ngx_strncmp(value[i].data, "quote=", sizeof("quote=") - 1)) {
+            value[i].len = value[i].len - (sizeof("quote=") - 1);
+            if (!value[i].len || value[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"quote\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+            value[i].data = &value[i].data[sizeof("quote=") - 1];
+            location_conf->output.quote = *value[i].data;
+        } else if (!ngx_strncmp(value[i].data, "escape=", sizeof("escape=") - 1)) {
+            value[i].len = value[i].len - (sizeof("escape=") - 1);
+            if (!value[i].len || value[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid \"escape\" value \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+            value[i].data = &value[i].data[sizeof("escape=") - 1];
+            location_conf->output.escape = *value[i].data;
+        } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: invalid parameter \"%V\" in \"%V\" directive", &value[i], &cmd->name); return NGX_CONF_ERROR; }
+    }
     return NGX_CONF_OK;
 }
 
@@ -820,7 +859,7 @@ static ngx_command_t ngx_postgres_module_commands[] = {
       NULL },
 
     { ngx_string("postgres_output"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_1MORE,
       ngx_postgres_output_conf,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
