@@ -292,7 +292,7 @@ struct ngx_postgres_output_enum_t {
     ngx_postgres_output_handler_pt      handler;
 } ngx_postgres_output_handlers[] = {
     { ngx_string("none"),         0, NULL },
-    { ngx_string("text") ,        0, ngx_postgres_output_text },
+    { ngx_string("csv") ,         0, ngx_postgres_output_csv },
     { ngx_string("value"),        0, ngx_postgres_output_value },
     { ngx_string("binary"),       1, ngx_postgres_output_value },
     { ngx_string("json"),         0, ngx_postgres_output_json },
