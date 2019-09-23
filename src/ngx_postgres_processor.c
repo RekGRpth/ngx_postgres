@@ -88,7 +88,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 ngx_postgres_prepare_t *prepare = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_postgres_prepare_t));
                 if (!prepare) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
                 prepare->hash = peer_data->send.hash;
-                ngx_queue_init(&prepare->queue);
+//                ngx_queue_init(&prepare->queue);
                 ngx_queue_insert_head(peer_data->common.prepare, &prepare->queue);
                 peer_data->state = state_db_send_query;
                 return NGX_DONE;

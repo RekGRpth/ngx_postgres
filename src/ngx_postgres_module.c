@@ -343,6 +343,7 @@ static void *ngx_postgres_create_server_conf(ngx_conf_t *cf) {
     server_conf->max_save = 10;
     server_conf->single = 1;
     server_conf->prepare = 1;
+    server_conf->pool = cf->pool;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: %s:%d", __FILE__, __LINE__); return NULL; }
     cln->handler = ngx_postgres_server_conf_cleanup;
@@ -438,7 +439,7 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
     }
     server_conf->peers = peers;
     server_conf->save = 0;
-    if (server_conf->max_save) return ngx_postgres_init(cf->pool, server_conf);
+    if (server_conf->max_save) return ngx_postgres_init(server_conf);
     return NGX_OK;
 }
 

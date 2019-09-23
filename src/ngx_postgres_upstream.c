@@ -137,7 +137,6 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         if (ngx_add_event(pc->connection->read, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
         if (ngx_add_event(pc->connection->write, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) goto bad_add;
     } else goto bad_add;
-    ngx_queue_init(peer_data->common.prepare);
     peer_data->state = state_db_connect;
     return NGX_AGAIN;
 bad_add:
@@ -280,9 +279,10 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
     ngx_postgres_peer_data_t *peer_data = ngx_pcalloc(r->pool, sizeof(ngx_postgres_peer_data_t));
     if (!peer_data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    if (!(peer_data->common.prepare = ngx_pcalloc(r->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
-    peer_data->request = r;
     peer_data->common.server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
+    if (!(peer_data->common.prepare = ngx_pcalloc(peer_data->common.server_conf->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    ngx_queue_init(peer_data->common.prepare);
+    peer_data->request = r;
     r->upstream->peer.data = peer_data;
     r->upstream->peer.get = ngx_postgres_peer_get;
     r->upstream->peer.free = ngx_postgres_peer_free;
@@ -349,15 +349,14 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 }
 
 
-ngx_int_t ngx_postgres_init(ngx_pool_t *pool, ngx_postgres_server_conf_t *server_conf) {
-    ngx_postgres_save_t *save = ngx_pcalloc(pool, sizeof(ngx_postgres_save_t) * server_conf->max_save);
-    if (!save) { ngx_log_error(NGX_LOG_ERR, pool->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+ngx_int_t ngx_postgres_init(ngx_postgres_server_conf_t *server_conf) {
+    ngx_postgres_save_t *save = ngx_pcalloc(server_conf->pool, sizeof(ngx_postgres_save_t) * server_conf->max_save);
+    if (!save) { ngx_log_error(NGX_LOG_ERR, server_conf->pool->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_queue_init(&server_conf->busy);
     ngx_queue_init(&server_conf->free);
     for (ngx_uint_t i = 0; i < server_conf->max_save; i++) {
         ngx_queue_insert_head(&server_conf->free, &save[i].queue);
         save[i].common.server_conf = server_conf;
-//        ngx_queue_init(&save[i].common.prepare);
     }
     return NGX_OK;
 }
