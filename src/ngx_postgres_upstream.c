@@ -282,14 +282,12 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     if (!peer_data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     if (!(peer_data->common.prepare = ngx_pcalloc(r->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     peer_data->request = r;
-    ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
-    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    peer_data->common.server_conf = server_conf;
+    peer_data->common.server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
     r->upstream->peer.data = peer_data;
     r->upstream->peer.get = ngx_postgres_peer_get;
     r->upstream->peer.free = ngx_postgres_peer_free;
     ngx_postgres_query_t *query;
+    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location_conf->methods_set & r->method) {
         query = location_conf->methods->elts;
         ngx_uint_t i;
@@ -340,8 +338,9 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     peer_data->send.command = sql.data;
     peer_data->send.resultFormat = location_conf->output.binary;
 //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: sql = `%V`", &sql);
+    ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     context->sql = sql; /* set $postgres_query */
-    if (server_conf->prepare && !query->listen) {
+    if (peer_data->common.server_conf->prepare && !query->listen) {
         if (!(peer_data->send.stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
         u_char *last = ngx_snprintf(peer_data->send.stmtName, 31, "ngx_%ul", (unsigned long)(peer_data->send.hash = ngx_hash_key(sql.data, sql.len)));
         *last = '\0';
