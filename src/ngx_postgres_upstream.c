@@ -123,7 +123,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection fd:%d", fd);
     if (!(pc->connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get a free nginx connection"); goto invalid; }
     pc->connection->log = peer_data->request->connection->log;
-    pc->connection->pool->log = peer_data->request->connection->log;
+//    pc->connection->pool->log = peer_data->request->connection->log;
 //    pc->connection->log_error = peer_data->request->connection->log_error;
     pc->connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
     pc->connection->read->log = peer_data->request->connection->log;
