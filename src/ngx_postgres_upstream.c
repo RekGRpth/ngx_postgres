@@ -40,10 +40,10 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     ngx_queue_remove(queue);
     ngx_queue_insert_head(&peer_data->common.server_conf->free, queue);
     save->connection->idle = 0;
-//    save->connection->log = pc->log;
-//    save->connection->pool->log = pc->log;
-//    save->connection->read->log = pc->log;
-//    save->connection->write->log = pc->log;
+    save->connection->log = peer_data->request->connection->log;
+    save->connection->pool->log = peer_data->request->connection->log;
+    save->connection->read->log = peer_data->request->connection->log;
+    save->connection->write->log = peer_data->request->connection->log;
     pc->cached = 1;
     pc->connection = save->connection;
     pc->name = save->common.name;
@@ -65,10 +65,10 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         ngx_queue_remove(queue);
         ngx_queue_insert_head(&peer_data->common.server_conf->free, queue);
         save->connection->idle = 0;
-//        save->connection->log = pc->log;
-//        save->connection->pool->log = pc->log;
-//        save->connection->read->log = pc->log;
-//        save->connection->write->log = pc->log;
+        save->connection->log = peer_data->request->connection->log;
+        save->connection->pool->log = peer_data->request->connection->log;
+        save->connection->read->log = peer_data->request->connection->log;
+        save->connection->write->log = peer_data->request->connection->log;
         pc->cached = 1;
         pc->connection = save->connection;
         /* we do not need to resume the peer name, because we already take the right value outside */
@@ -122,11 +122,12 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (fd == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get connection fd"); goto invalid; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: connection fd:%d", fd);
     if (!(pc->connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: failed to get a free nginx connection"); goto invalid; }
-//    pc->connection->log = pc->log;
-//    pc->connection->log_error = pc->log_error;
+    pc->connection->log = peer_data->request->connection->log;
+    pc->connection->pool->log = peer_data->request->connection->log;
+//    pc->connection->log_error = peer_data->request->connection->log_error;
     pc->connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
-    pc->connection->read->log = pc->log;
-    pc->connection->write->log = pc->log;
+    pc->connection->read->log = peer_data->request->connection->log;
+    pc->connection->write->log = peer_data->request->connection->log;
     /* register the connection with postgres connection fd into the nginx event model */
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         if (ngx_add_conn(pc->connection) != NGX_OK) goto bad_add;
@@ -252,10 +253,10 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
     save->connection->idle = 1;
     save->connection->read->handler = ngx_postgres_read_handler;
     save->connection->write->handler = ngx_postgres_write_handler;
-//        save->connection->log = ngx_cycle->log;
-//        save->connection->pool->log = ngx_cycle->log;
-//        save->connection->read->log = ngx_cycle->log;
-//        save->connection->write->log = ngx_cycle->log;
+    save->connection->log = pc->log;
+    save->connection->pool->log = pc->log;
+    save->connection->read->log = pc->log;
+    save->connection->write->log = pc->log;
     save->common.conn = peer_data->common.conn;
     save->common.prepare = peer_data->common.prepare;
     save->common.name = peer_data->common.name;
