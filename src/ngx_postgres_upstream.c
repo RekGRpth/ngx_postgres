@@ -211,7 +211,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "postgres: %s", __func__);
     ngx_connection_t *c = ev->data;
     ngx_postgres_save_t *save = c->data;
-    if (c->close) goto close;
+    if (c->close) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: c->close"); goto close; }
     if (!PQconsumeInput(save->common.conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(save->common.conn)); goto close; }
     if (PQisBusy(save->common.conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "postgres: busy while keepalive"); goto close; }
     for (PGresult *res; (res = PQgetResult(save->common.conn)); PQclear(res)) ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: received result on idle keepalive connection: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
