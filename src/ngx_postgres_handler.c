@@ -34,6 +34,7 @@
 
 
 ngx_int_t ngx_postgres_test_connect(ngx_connection_t *c) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: %s", __func__);
 #if (NGX_HAVE_KQUEUE)
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
         if (c->write->pending_eof) { (void) ngx_connection_error(c, c->write->kq_errno, "kevent() reported that connect() failed"); return NGX_ERROR; }
@@ -69,12 +70,14 @@ static void ngx_postgres_read_event_handler(ngx_http_request_t *r, ngx_http_upst
 
 
 static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     r->upstream->request_bufs = NULL;
     return NGX_OK;
 }
 
 
 static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     /* override the read/write event handler to our own */
     r->upstream->write_event_handler = ngx_postgres_write_event_handler;
     r->upstream->read_event_handler = ngx_postgres_read_event_handler;
@@ -82,10 +85,13 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
 }
 
 
-static void ngx_postgres_abort_request(ngx_http_request_t *r) { }
+static void ngx_postgres_abort_request(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
+}
 
 
 static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s %i", __func__, rc);
     if (rc == NGX_OK) ngx_postgres_output_chain(r);
 }
 
@@ -111,6 +117,7 @@ static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes) {
 
 
 ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *r, ngx_url_t *url) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     ngx_http_upstream_main_conf_t *m = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
     ngx_http_upstream_srv_conf_t **s = m->upstreams.elts;
     for (ngx_uint_t i = 0; i < m->upstreams.nelts; i++) if (s[i]->host.len == url->host.len && !ngx_strncasecmp(s[i]->host.data, url->host.data, url->host.len)) return s[i];
@@ -119,6 +126,7 @@ ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *r, 
 
 
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     /* TODO: add support for subrequest in memory by emitting output into u->buffer instead */
     if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: ngx_postgres module does not support subrequests in memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);

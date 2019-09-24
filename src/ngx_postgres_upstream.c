@@ -34,6 +34,7 @@
 
 
 static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: %s", __func__);
     if (ngx_queue_empty(&peer_data->common.server_conf->busy)) return NGX_DECLINED;
     ngx_queue_t *queue = ngx_queue_head(&peer_data->common.server_conf->busy);
     ngx_postgres_save_t *save = ngx_queue_data(queue, ngx_postgres_save_t, queue);
@@ -59,6 +60,7 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
 
 
 static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: %s", __func__);
     for (ngx_queue_t *queue = ngx_queue_head(&peer_data->common.server_conf->busy); queue != ngx_queue_sentinel(&peer_data->common.server_conf->busy); queue = ngx_queue_next(queue)) {
         ngx_postgres_save_t *save = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ngx_memn2cmp((u_char *) save->common.sockaddr, (u_char *) pc->sockaddr, save->common.socklen, pc->socklen)) continue;
@@ -81,6 +83,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
 
 
 static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: %s", __func__);
     ngx_postgres_peer_data_t *peer_data = data;
     peer_data->failed = 0;
     if (peer_data->common.server_conf->max_save && peer_data->common.server_conf->single && ngx_postgres_peer_single(pc, peer_data) != NGX_DECLINED) { /* re-use keepalive peer */
@@ -178,6 +181,7 @@ static ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t le
 
 
 void ngx_postgres_process_notify(ngx_connection_t *c, ngx_postgres_common_t *common) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: %s", __func__);
     for (PGnotify *notify; (notify = PQnotifies(common->conn)); PQfreemem(notify)) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: notify: relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
@@ -245,7 +249,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
     save->connection = pc->connection;
     if (save->connection->read->timer_set) ngx_del_timer(save->connection->read);
     if (save->connection->write->timer_set) ngx_del_timer(save->connection->write);
-//        if (save->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(save->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) return;
+    if (save->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(save->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return; }
     pc->connection = NULL;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer: saving connection %p", save->connection);
     ngx_queue_insert_head(&peer_data->common.server_conf->busy, queue);
@@ -278,6 +282,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
 
 
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     ngx_postgres_peer_data_t *peer_data = ngx_pcalloc(r->pool, sizeof(ngx_postgres_peer_data_t));
     if (!peer_data) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     peer_data->common.server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
@@ -351,6 +356,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 
 
 ngx_int_t ngx_postgres_init(ngx_postgres_server_conf_t *server_conf) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, server_conf->pool->log, 0, "postgres: %s", __func__);
     ngx_postgres_save_t *save = ngx_pcalloc(server_conf->pool, sizeof(ngx_postgres_save_t) * server_conf->max_save);
     if (!save) { ngx_log_error(NGX_LOG_ERR, server_conf->pool->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
     ngx_queue_init(&server_conf->busy);

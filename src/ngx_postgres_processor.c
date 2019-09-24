@@ -68,6 +68,7 @@ static const char *ConnStatusType2string(ConnStatusType status) {
 
 
 static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
     if (!PQconsumeInput(peer_data->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
     if (PQisBusy(peer_data->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while send query"); return NGX_AGAIN; }
@@ -107,6 +108,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
     PostgresPollingStatusType poll_status = PQconnectPoll(peer_data->common.conn);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: polling while connecting, %s", PostgresPollingStatusType2string(poll_status));
@@ -137,6 +139,7 @@ static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     context->nfields = PQnfields(context->res); /* set $postgres_columns */
@@ -171,6 +174,7 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     r->upstream->headers_in.status_n = NGX_HTTP_OK; /* flag for keepalive */
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     ngx_postgres_finalize_upstream(r, r->upstream, context->status >= NGX_HTTP_SPECIAL_RESPONSE ? context->status : NGX_OK);
@@ -179,6 +183,7 @@ static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_get_ack(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
     if (!PQconsumeInput(peer_data->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
     if (PQisBusy(peer_data->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while get ack"); return NGX_AGAIN; }
@@ -196,6 +201,7 @@ static ngx_int_t ngx_postgres_get_ack(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
     if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write); /* remove connection timeout from re-used keepalive connection */
     if (!PQconsumeInput(peer_data->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
@@ -222,6 +228,7 @@ ret:
 
 
 void ngx_postgres_process_events(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
     if (!ngx_postgres_is_my_peer(&r->upstream->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: trying to connect to something that is not PostgreSQL database"); goto failed; }
     ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
     ngx_int_t rc;
