@@ -214,7 +214,7 @@ void ngx_postgres_finalize_upstream(ngx_http_request_t *r, ngx_http_upstream_t *
         ngx_close_connection(u->peer.connection);
     }
     u->peer.connection = NULL;
-    if (u->pipe && u->pipe->temp_file) ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: http upstream temp fd: %d", u->pipe->temp_file->file.fd);
+    if (u->pipe && u->pipe->temp_file) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: http upstream temp fd: %d", u->pipe->temp_file->file.fd); }
     if (u->header_sent && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE)) rc = 0;
     if (rc == NGX_DECLINED) return;
     if (!rc) rc = ngx_http_send_special(r, NGX_HTTP_LAST);

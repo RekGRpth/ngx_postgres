@@ -35,6 +35,7 @@
 #include "ngx_postgres_variable.h"
 
 
+#if (NGX_DEBUG)
 static const char *PostgresPollingStatusType2string(PostgresPollingStatusType status) {
     switch (status) {
         case PGRES_POLLING_FAILED: return "PGRES_POLLING_FAILED";
@@ -65,6 +66,7 @@ static const char *ConnStatusType2string(ConnStatusType status) {
     }
     return NULL;
 }
+#endif
 
 
 static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
