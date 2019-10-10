@@ -89,7 +89,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 if (!PQsendPrepare(peer_data->common.conn, (const char *)peer_data->send.stmtName, (const char *)peer_data->send.command, peer_data->send.nParams, peer_data->send.paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepare: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: prepare %s:%s sent successfully", peer_data->send.stmtName, peer_data->send.command);
                 ngx_postgres_prepare_t *prepare = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_postgres_prepare_t));
-                if (!prepare) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+                if (!prepare) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                 prepare->hash = peer_data->send.hash;
 //                ngx_queue_init(&prepare->queue);
                 ngx_queue_insert_head(peer_data->common.prepare, &prepare->queue);
@@ -101,7 +101,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             if (!PQsendQueryPrepared(peer_data->common.conn, (const char *)peer_data->send.stmtName, peer_data->send.nParams, (const char *const *)peer_data->send.paramValues, NULL, NULL, peer_data->send.resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query %s:%s sent successfully", peer_data->send.stmtName, peer_data->send.command);
         } break;
-        default: { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+        default: { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer_data->state"); return NGX_ERROR; }
     }
     ngx_add_timer(r->upstream->peer.connection->read, r->upstream->conf->read_timeout); /* set result timeout */
     peer_data->state = state_db_get_result;
@@ -167,7 +167,7 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
         ngx_str_t *store = context->variables->elts;
         for (ngx_uint_t i = 0; i < location_conf->variables->nelts; i++) {
             store[i] = ngx_postgres_variable_set_custom(r, &variable[i]);
-            if (!store[i].len && variable[i].value.required) { context->status = NGX_HTTP_INTERNAL_SERVER_ERROR; ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_DONE; }
+            if (!store[i].len && variable[i].value.required) { context->status = NGX_HTTP_INTERNAL_SERVER_ERROR; ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_variable_set_custom"); return NGX_DONE; }
         }
     }
     if (location_conf->output.handler) return location_conf->output.handler(r);

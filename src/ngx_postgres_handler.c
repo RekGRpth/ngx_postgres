@@ -138,10 +138,10 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     }
     ngx_int_t rc = ngx_http_discard_request_body(r);
     if (rc != NGX_OK) return rc;
-    if (ngx_http_upstream_create(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+    if (ngx_http_upstream_create(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_upstream_create != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     if (location_conf->upstream.complex_value) { /* use complex value */
         ngx_str_t host;
-        if (ngx_http_complex_value(r, location_conf->upstream.complex_value, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+        if (ngx_http_complex_value(r, location_conf->upstream.complex_value, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_complex_value != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
         if (!host.len) {
             ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location_conf->upstream.complex_value->value, &core_loc_conf->name);
@@ -154,12 +154,12 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
         if (!(location_conf->upstream.upstream_conf.upstream = ngx_postgres_find_upstream(r, &url))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: upstream name \"%V\" not found", &host); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     }
     ngx_postgres_context_t *context = ngx_pcalloc(r->pool, sizeof(ngx_postgres_context_t));
-    if (!context) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+    if (!context) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     context->nfields = NGX_ERROR;
     context->ntuples = NGX_ERROR;
     context->cmdTuples = NGX_ERROR;
     if (location_conf->variables) {
-        if (!(context->variables = ngx_array_create(r->pool, location_conf->variables->nelts, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+        if (!(context->variables = ngx_array_create(r->pool, location_conf->variables->nelts, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_create"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
         /* fake ngx_array_push'ing */
         context->variables->nelts = location_conf->variables->nelts;
         ngx_memzero(context->variables->elts, context->variables->nelts * context->variables->size);
@@ -244,6 +244,6 @@ void ngx_postgres_next_upstream(ngx_http_request_t *r, ngx_http_upstream_t *u, n
         if (u->peer.connection->pool) ngx_destroy_pool(u->peer.connection->pool);
         ngx_close_connection(u->peer.connection);
     }
-    if (!status) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); status = NGX_HTTP_INTERNAL_SERVER_ERROR; /* TODO: ngx_http_upstream_connect(r, u); */ }
+    if (!status) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!status"); status = NGX_HTTP_INTERNAL_SERVER_ERROR; /* TODO: ngx_http_upstream_connect(r, u); */ }
     return ngx_postgres_finalize_upstream(r, u, status);
 }

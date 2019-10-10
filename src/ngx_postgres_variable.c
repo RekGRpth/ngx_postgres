@@ -32,7 +32,7 @@
 ngx_int_t ngx_postgres_variable_columns(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     if (!context || context->nfields == NGX_ERROR) { v->not_found = 1; return NGX_OK; }
-    if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
     v->len = ngx_sprintf(v->data, "%i", context->nfields) - v->data;
     v->valid = 1;
     v->no_cacheable = 0;
@@ -44,7 +44,7 @@ ngx_int_t ngx_postgres_variable_columns(ngx_http_request_t *r, ngx_http_variable
 ngx_int_t ngx_postgres_variable_rows(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     if (!context || context->ntuples == NGX_ERROR) { v->not_found = 1; return NGX_OK; }
-    if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
     v->len = ngx_sprintf(v->data, "%i", context->ntuples) - v->data;
     v->valid = 1;
     v->no_cacheable = 0;
@@ -56,7 +56,7 @@ ngx_int_t ngx_postgres_variable_rows(ngx_http_request_t *r, ngx_http_variable_va
 ngx_int_t ngx_postgres_variable_affected(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     if (!context || context->cmdTuples == NGX_ERROR) { v->not_found = 1; return NGX_OK; }
-    if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return NGX_ERROR; }
+    if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
     v->len = ngx_sprintf(v->data, "%i", context->cmdTuples) - v->data;
     v->valid = 1;
     v->no_cacheable = 0;
@@ -129,7 +129,7 @@ ngx_str_t ngx_postgres_variable_set_custom(ngx_http_request_t *r, ngx_postgres_v
         }
         return value;
     }
-    if (!(value.data = ngx_pnalloc(r->pool, len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: %s:%d", __FILE__, __LINE__); return value; }
+    if (!(value.data = ngx_pnalloc(r->pool, len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return value; }
     ngx_memcpy(value.data, PQgetvalue(context->res, pgv->row, col), len);
     value.len = len;
     return value;
