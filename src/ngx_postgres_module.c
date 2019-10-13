@@ -450,8 +450,8 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     /* parse the first name:port argument */
     ngx_url_t u;
     ngx_memzero(&u, sizeof(ngx_url_t));
-    ngx_str_t *value = cf->args->elts;
-    u.url = value[1];
+    ngx_str_t *elts = cf->args->elts;
+    u.url = elts[1];
     u.default_port = 5432; /* PostgreSQL default */
     if (ngx_parse_url(cf->pool, &u) != NGX_OK) { if (u.err) return u.err; return "ngx_parse_url != NGX_OK"; }
     server->addrs = u.addrs;
@@ -460,32 +460,32 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     server->family = u.family;
     /* parse various options */
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (value[i].len == sizeof("port=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"port=", sizeof("port=") - 1)) {
-            value[i].len = value[i].len - (sizeof("port=") - 1);
-            value[i].data = &value[i].data[sizeof("port=") - 1];
-            ngx_int_t n = ngx_atoi(value[i].data, value[i].len);
+        if (elts[i].len > sizeof("port=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"port=", sizeof("port=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("port=") - 1);
+            elts[i].data = &elts[i].data[sizeof("port=") - 1];
+            ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
             if (n == NGX_ERROR) return "ngx_atoi == NGX_ERROR";
             server->port = (ngx_uint_t) n;
-        } else if (value[i].len == sizeof("dbname=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"dbname=", sizeof("dbname=") - 1)) {
-            value[i].len = value[i].len - (sizeof("dbname=") - 1);
-            if (!(server->dbname.len = value[i].len)) return "!server->dbname.len";
-            value[i].data = &value[i].data[sizeof("dbname=") - 1];
-            server->dbname.data = value[i].data;
-        } else if (value[i].len == sizeof("user=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"user=", sizeof("user=") - 1)) {
-            value[i].len = value[i].len - (sizeof("user=") - 1);
-            if (!(server->user.len = value[i].len)) return "!server->user.len";
-            value[i].data = &value[i].data[sizeof("user=") - 1];
-            server->user.data = value[i].data;
-        } else if (value[i].len == sizeof("password=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"password=", sizeof("password=") - 1)) {
-            value[i].len = value[i].len - (sizeof("password=") - 1);
-            if (!(server->password.len = value[i].len)) return "!server->password.len";
-            value[i].data = &value[i].data[sizeof("password=") - 1];
-            server->password.data = value[i].data;
-        } else if (value[i].len == sizeof("application_name=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"application_name=", sizeof("application_name=") - 1)) {
-            value[i].len = value[i].len - (sizeof("application_name=") - 1);
-            if (!(server->application_name.len = value[i].len)) return "!server->application_name.len";
-            value[i].data = &value[i].data[sizeof("application_name=") - 1];
-            server->application_name.data = value[i].data;
+        } else if (elts[i].len > sizeof("dbname=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"dbname=", sizeof("dbname=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("dbname=") - 1);
+            if (!(server->dbname.len = elts[i].len)) return "!server->dbname.len";
+            elts[i].data = &elts[i].data[sizeof("dbname=") - 1];
+            server->dbname.data = elts[i].data;
+        } else if (elts[i].len > sizeof("user=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"user=", sizeof("user=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("user=") - 1);
+            if (!(server->user.len = elts[i].len)) return "!server->user.len";
+            elts[i].data = &elts[i].data[sizeof("user=") - 1];
+            server->user.data = elts[i].data;
+        } else if (elts[i].len > sizeof("password=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"password=", sizeof("password=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("password=") - 1);
+            if (!(server->password.len = elts[i].len)) return "!server->password.len";
+            elts[i].data = &elts[i].data[sizeof("password=") - 1];
+            server->password.data = elts[i].data;
+        } else if (elts[i].len > sizeof("application_name=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"application_name=", sizeof("application_name=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("application_name=") - 1);
+            if (!(server->application_name.len = elts[i].len)) return "!server->application_name.len";
+            elts[i].data = &elts[i].data[sizeof("application_name=") - 1];
+            server->application_name.data = elts[i].data;
         } else return "invalid parameter";
     }
     upstream_srv_conf->peer.init_upstream = ngx_postgres_init_upstream;
@@ -496,35 +496,35 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
 static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_conf_t *server_conf = conf;
     if (server_conf->max_save != 10 /* default */) return "is duplicate";
-    ngx_str_t *value = cf->args->elts;
-    if (cf->args->nelts == 2 && ((value[1].len == sizeof("off") - 1 && !ngx_strncasecmp(value[1].data, (u_char *)"off", sizeof("off") - 1)) || (value[1].len == sizeof("no") - 1 && !ngx_strncasecmp(value[1].data, (u_char *)"no", sizeof("no") - 1)))) { server_conf->max_save = 0; server_conf->prepare = 0; return NGX_CONF_OK; }
+    ngx_str_t *elts = cf->args->elts;
+    if (cf->args->nelts == 2 && ((elts[1].len == sizeof("off") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"off", sizeof("off") - 1)) || (elts[1].len == sizeof("no") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"no", sizeof("no") - 1)))) { server_conf->max_save = 0; server_conf->prepare = 0; return NGX_CONF_OK; }
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
-        if (value[i].len == sizeof("save=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"save=", sizeof("save=") - 1)) {
-            value[i].len = value[i].len - (sizeof("save=") - 1);
-            value[i].data = &value[i].data[sizeof("save=") - 1];
-            ngx_int_t n = ngx_atoi(value[i].data, value[i].len);
+        if (elts[i].len > sizeof("save=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"save=", sizeof("save=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("save=") - 1);
+            elts[i].data = &elts[i].data[sizeof("save=") - 1];
+            ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
             if (n == NGX_ERROR) return "ngx_atoi == NGX_ERROR";
             server_conf->max_save = (ngx_uint_t) n;
-        } else if (value[i].len == sizeof("mode=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"mode=", sizeof("mode=") - 1)) {
-            value[i].len = value[i].len - (sizeof("mode=") - 1);
-            value[i].data = &value[i].data[sizeof("mode=") - 1];
+        } else if (elts[i].len > sizeof("mode=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"mode=", sizeof("mode=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("mode=") - 1);
+            elts[i].data = &elts[i].data[sizeof("mode=") - 1];
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_mode_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { server_conf->single = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server_conf->single = e[j].value; break; }
             if (!e[j].name.len) return "invalid mode";
-        } else if (value[i].len == sizeof("overflow=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
-            value[i].len = value[i].len - (sizeof("overflow=") - 1);
-            value[i].data = &value[i].data[sizeof("overflow=") - 1];
+        } else if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("overflow=") - 1);
+            elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_overflow_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { server_conf->reject = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server_conf->reject = e[j].value; break; }
             if (!e[j].name.len) return "invalid overflow";
-        } else if (value[i].len == sizeof("prepare=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"prepare=", sizeof("prepare=") - 1)) {
-            value[i].len = value[i].len - (sizeof("prepare=") - 1);
-            value[i].data = &value[i].data[sizeof("prepare=") - 1];
+        } else if (elts[i].len > sizeof("prepare=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare=", sizeof("prepare=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("prepare=") - 1);
+            elts[i].data = &elts[i].data[sizeof("prepare=") - 1];
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_prepare_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { server_conf->prepare = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server_conf->prepare = e[j].value; break; }
             if (!e[j].name.len) return "invalid prepare";
         } else return "invalid parameter";
     }
@@ -535,20 +535,20 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_conf_t *location_conf = conf;
     if (location_conf->upstream.upstream_conf.upstream || location_conf->upstream.complex_value) return "is duplicate";
-    ngx_str_t *value = cf->args->elts;
-    if (!value[1].len) return "empty upstream";
+    ngx_str_t *elts = cf->args->elts;
+    if (!elts[1].len) return "empty upstream";
     ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     core_loc_conf->handler = ngx_postgres_handler;
     if (core_loc_conf->name.data[core_loc_conf->name.len - 1] == '/') core_loc_conf->auto_redirect = 1;
-    if (ngx_http_script_variables_count(&value[1])) { /* complex value */
+    if (ngx_http_script_variables_count(&elts[1])) { /* complex value */
         if (!(location_conf->upstream.complex_value = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t)))) return "!ngx_palloc";
-        ngx_http_compile_complex_value_t ccv = {cf, &value[1], location_conf->upstream.complex_value, 0, 0, 0};
+        ngx_http_compile_complex_value_t ccv = {cf, &elts[1], location_conf->upstream.complex_value, 0, 0, 0};
         if (ngx_http_compile_complex_value(&ccv) != NGX_OK) return "ngx_http_compile_complex_value != NGX_OK";
         return NGX_CONF_OK;
     } else { /* simple value */
         ngx_url_t url;
         ngx_memzero(&url, sizeof(ngx_url_t));
-        url.url = value[1];
+        url.url = elts[1];
         url.no_resolve = 1;
         if (!(location_conf->upstream.upstream_conf.upstream = ngx_http_upstream_add(cf, &url, 0))) return "!ngx_http_upstream_add";
         return NGX_CONF_OK;
@@ -569,8 +569,8 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
 
 
 static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_str_t *value = cf->args->elts;
-    ngx_str_t sql = value[cf->args->nelts - 1];
+    ngx_str_t *elts = cf->args->elts;
+    ngx_str_t sql = elts[cf->args->nelts - 1];
     if (!sql.len) return "empty query";
     ngx_postgres_query_t *query;
     ngx_uint_t methods;
@@ -586,7 +586,7 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             ngx_conf_bitmask_t *b = ngx_postgres_http_methods;
             ngx_uint_t j;
             for (j = 0; b[j].name.len; j++) {
-                if (b[j].name.len == value[i].len && !ngx_strncasecmp(b[j].name.data, value[i].data, value[i].len)) {
+                if (b[j].name.len == elts[i].len && !ngx_strncasecmp(b[j].name.data, elts[i].data, elts[i].len)) {
                     if (location_conf->methods_set & b[j].mask) return "method is duplicate";
                     methods |= b[j].mask;
                     break;
@@ -599,7 +599,7 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         location_conf->methods_set |= methods;
     }
     query->methods = methods;
-    if (sql.len == sizeof("file:") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file:", sizeof("file:") - 1)) {
+    if (sql.len > sizeof("file:") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file:", sizeof("file:") - 1)) {
         sql.data += sizeof("file:") - 1;
         sql.len -= sizeof("file:") - 1;
         if (ngx_conf_full_name(cf->cycle, &sql, 0) != NGX_OK) return "ngx_conf_full_name != NGX_OK";
@@ -654,7 +654,7 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         }
     }
     query->sql.len = p - query->sql.data;
-    query->listen = query->sql.len == sizeof("LISTEN ") - 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1);
+    query->listen = query->sql.len > sizeof("LISTEN ") - 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1);
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: sql = `%V`", &query->sql);
     return NGX_CONF_OK;
 }
@@ -662,8 +662,8 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 
 static char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     struct ngx_postgres_rewrite_enum_t *e = ngx_postgres_rewrite_handlers;
-    ngx_str_t *value = cf->args->elts;
-    ngx_str_t what = value[cf->args->nelts - 2];
+    ngx_str_t *elts = cf->args->elts;
+    ngx_str_t what = elts[cf->args->nelts - 2];
     ngx_uint_t i;
     for (i = 0; e[i].name.len; i++) if (e[i].name.len == what.len && !ngx_strncasecmp(e[i].name.data, what.data, what.len)) break;
     if (!e[i].name.len) return "invalid condition";
@@ -693,7 +693,7 @@ found:;
             ngx_conf_bitmask_t *b = ngx_postgres_http_methods;
             ngx_uint_t j;
             for (j = 0; b[j].name.len; j++) {
-                if (b[j].name.len == value[i].len && !ngx_strncasecmp(b[j].name.data, value[i].data, value[i].len)) {
+                if (b[j].name.len == elts[i].len && !ngx_strncasecmp(b[j].name.data, elts[i].data, elts[i].len)) {
                     if (rewrite_conf->methods_set & b[j].mask) return "method is duplicate";
                     methods |= b[j].mask;
                     break;
@@ -705,7 +705,7 @@ found:;
         if (!(rewrite = ngx_array_push(rewrite_conf->methods))) return "!ngx_array_push";
         rewrite_conf->methods_set |= methods;
     }
-    ngx_str_t to = value[cf->args->nelts - 1];
+    ngx_str_t to = elts[cf->args->nelts - 1];
     ngx_uint_t keep_body = 0;
     if (to.data[0] == '=') { keep_body = 1; to.len--; to.data++; }
     rewrite->methods = methods;
@@ -720,9 +720,9 @@ static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_postgres_location_conf_t *location_conf = conf;
     if (location_conf->output.handler) return "is duplicate";
     struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
-    ngx_str_t *value = cf->args->elts;
+    ngx_str_t *elts = cf->args->elts;
     ngx_uint_t i;
-    for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[1].len && !ngx_strncasecmp(e[i].name.data, value[1].data, value[1].len)) { location_conf->output.handler = e[i].handler; break; }
+    for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[1].len && !ngx_strncasecmp(e[i].name.data, elts[1].data, elts[1].len)) { location_conf->output.handler = e[i].handler; break; }
     if (!e[i].name.len) return "invalid output format";
     location_conf->output.binary = e[i].binary;
     if (cf->args->nelts > 2 && location_conf->output.handler != ngx_postgres_output_text && location_conf->output.handler != ngx_postgres_output_csv) return "invalid extra parameters for output format";
@@ -736,40 +736,40 @@ static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         location_conf->output.escape = '"';
     }
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (value[i].len == sizeof("delimiter=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"delimiter=", sizeof("delimiter=") - 1)) {
-            value[i].len = value[i].len - (sizeof("delimiter=") - 1);
-            if (!value[i].len || value[i].len > 1) return "invalid delimiter";
-            value[i].data = &value[i].data[sizeof("delimiter=") - 1];
-            location_conf->output.delimiter = *value[i].data;
-        } else if (value[i].len == sizeof("null=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"null=", sizeof("null=") - 1)) {
-            value[i].len = value[i].len - (sizeof("null=") - 1);
-            if (!(location_conf->output.null.len = value[i].len)) return "invalid null";
-            value[i].data = &value[i].data[sizeof("null=") - 1];
-            location_conf->output.null.data = value[i].data;
-        } else if (value[i].len == sizeof("header=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"header=", sizeof("header=") - 1)) {
-            value[i].len = value[i].len - (sizeof("header=") - 1);
-            value[i].data = &value[i].data[sizeof("header=") - 1];
+        if (elts[i].len > sizeof("delimiter=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"delimiter=", sizeof("delimiter=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("delimiter=") - 1);
+            if (!elts[i].len || elts[i].len > 1) return "invalid delimiter";
+            elts[i].data = &elts[i].data[sizeof("delimiter=") - 1];
+            location_conf->output.delimiter = *elts[i].data;
+        } else if (elts[i].len > sizeof("null=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"null=", sizeof("null=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("null=") - 1);
+            if (!(location_conf->output.null.len = elts[i].len)) return "invalid null";
+            elts[i].data = &elts[i].data[sizeof("null=") - 1];
+            location_conf->output.null.data = elts[i].data;
+        } else if (elts[i].len > sizeof("header=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"header=", sizeof("header=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("header=") - 1);
+            elts[i].data = &elts[i].data[sizeof("header=") - 1];
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_output_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { location_conf->output.header = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location_conf->output.header = e[j].value; break; }
             if (!e[j].name.len) return "invalid header";
-        } else if (value[i].len == sizeof("string_quote_only=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"string_quote_only=", sizeof("string_quote_only=") - 1)) {
-            value[i].len = value[i].len - (sizeof("string_quote_only=") - 1);
-            value[i].data = &value[i].data[sizeof("string_quote_only=") - 1];
+        } else if (elts[i].len > sizeof("string_quote_only=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"string_quote_only=", sizeof("string_quote_only=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("string_quote_only=") - 1);
+            elts[i].data = &elts[i].data[sizeof("string_quote_only=") - 1];
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_output_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == value[i].len && !ngx_strncasecmp(e[j].name.data, value[i].data, value[i].len)) { location_conf->output.string_quote_only = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location_conf->output.string_quote_only = e[j].value; break; }
             if (!e[j].name.len) return "invalid string_quote_only";
-        } else if (value[i].len == sizeof("quote=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"quote=", sizeof("quote=") - 1)) {
-            value[i].len = value[i].len - (sizeof("quote=") - 1);
-            if (!value[i].len || value[i].len > 1) return "invalid quote";
-            value[i].data = &value[i].data[sizeof("quote=") - 1];
-            location_conf->output.quote = *value[i].data;
-        } else if (value[i].len == sizeof("escape=") - 1 && !ngx_strncasecmp(value[i].data, (u_char *)"escape=", sizeof("escape=") - 1)) {
-            value[i].len = value[i].len - (sizeof("escape=") - 1);
-            if (!value[i].len || value[i].len > 1) return "invalid escape";
-            value[i].data = &value[i].data[sizeof("escape=") - 1];
-            location_conf->output.escape = *value[i].data;
+        } else if (elts[i].len > sizeof("quote=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"quote=", sizeof("quote=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("quote=") - 1);
+            if (!elts[i].len || elts[i].len > 1) return "invalid quote";
+            elts[i].data = &elts[i].data[sizeof("quote=") - 1];
+            location_conf->output.quote = *elts[i].data;
+        } else if (elts[i].len > sizeof("escape=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"escape=", sizeof("escape=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("escape=") - 1);
+            if (!elts[i].len || elts[i].len > 1) return "invalid escape";
+            elts[i].data = &elts[i].data[sizeof("escape=") - 1];
+            location_conf->output.escape = *elts[i].data;
         } else return "invalid parameter";
     }
     return NGX_CONF_OK;
@@ -777,34 +777,34 @@ static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
 
 
 static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_str_t *value = cf->args->elts;
-    if (value[1].len < 2) return "empty variable name";
-    if (value[1].data[0] != '$') return "invalid variable name";
-    value[1].len--;
-    value[1].data++;
-    if (!value[3].len) return "empty column";
+    ngx_str_t *elts = cf->args->elts;
+    if (elts[1].len < 2) return "empty variable name";
+    if (elts[1].data[0] != '$') return "invalid variable name";
+    elts[1].len--;
+    elts[1].data++;
+    if (!elts[3].len) return "empty column";
     ngx_postgres_location_conf_t *location_conf = conf;
     if (location_conf->variables == NGX_CONF_UNSET_PTR && !(location_conf->variables = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_variable_t)))) return "!ngx_array_create";
     ngx_postgres_variable_t *variable = ngx_array_push(location_conf->variables);
     if (!variable) return "!ngx_array_push";
     variable->index = location_conf->variables->nelts - 1;
-    if (!(variable->variable = ngx_http_add_variable(cf, &value[1], NGX_HTTP_VAR_CHANGEABLE))) return "!ngx_http_add_variable";
-    if (ngx_http_get_variable_index(cf, &value[1]) == NGX_ERROR) return "ngx_http_get_variable_index == NGX_ERROR";
+    if (!(variable->variable = ngx_http_add_variable(cf, &elts[1], NGX_HTTP_VAR_CHANGEABLE))) return "!ngx_http_add_variable";
+    if (ngx_http_get_variable_index(cf, &elts[1]) == NGX_ERROR) return "ngx_http_get_variable_index == NGX_ERROR";
     if (!variable->variable->get_handler) {
         variable->variable->get_handler = ngx_postgres_variable_get_custom;
         variable->variable->data = (uintptr_t) variable;
     }
-    if ((variable->value.row = ngx_atoi(value[2].data, value[2].len)) == NGX_ERROR) return "invalid row number";
-    if ((variable->value.column = ngx_atoi(value[3].data, value[3].len)) == NGX_ERROR) { /* get column by name */
-        if (!(variable->value.col_name = ngx_pnalloc(cf->pool, value[3].len + 1))) return "!ngx_pnalloc";
-        (void) ngx_cpystrn(variable->value.col_name, value[3].data, value[3].len + 1);
+    if ((variable->value.row = ngx_atoi(elts[2].data, elts[2].len)) == NGX_ERROR) return "invalid row number";
+    if ((variable->value.column = ngx_atoi(elts[3].data, elts[3].len)) == NGX_ERROR) { /* get column by name */
+        if (!(variable->value.col_name = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "!ngx_pnalloc";
+        (void) ngx_cpystrn(variable->value.col_name, elts[3].data, elts[3].len + 1);
     }
     if (cf->args->nelts == 4) { /* default value */
         variable->value.required = 0;
     } else { /* user-specified value */
         ngx_conf_enum_t *e = ngx_postgres_requirement_options;
         ngx_uint_t i;
-        for (i = 0; e[i].name.len; i++) if (e[i].name.len == value[4].len && !ngx_strncasecmp(e[i].name.data, value[4].data, value[4].len)) { variable->value.required = e[i].value; break; }
+        for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[4].len && !ngx_strncasecmp(e[i].name.data, elts[4].data, elts[4].len)) { variable->value.required = e[i].value; break; }
         if (!e[i].name.len) return "invalid requirement option";
     }
     return NGX_CONF_OK;
