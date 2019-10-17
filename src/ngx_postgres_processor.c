@@ -74,7 +74,10 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
     if (!PQconsumeInput(peer_data->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
     if (PQisBusy(peer_data->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while send query"); return NGX_AGAIN; }
-    for (PGresult *res; (res = PQgetResult(peer_data->common.conn)); PQclear(res)) ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: received result on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
+    for (PGresult *res; (res = PQgetResult(peer_data->common.conn)); PQclear(res)) {
+        if (PQresultStatus(res) == PGRES_FATAL_ERROR) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: received error on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res)); return NGX_ERROR; }
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: received result on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
+    }
     if (!peer_data->send.stmtName) {
         if (!PQsendQueryParams(peer_data->common.conn, (const char *)peer_data->send.command, peer_data->send.nParams, peer_data->send.paramTypes, (const char *const *)peer_data->send.paramValues, NULL, NULL, peer_data->send.resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query %s sent successfully", peer_data->send.command);
