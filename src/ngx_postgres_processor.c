@@ -90,6 +90,12 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
             context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
             peer_data->state = state_db_idle;
+            if (peer_data->send.stmtName) {
+                for (ngx_queue_t *queue = ngx_queue_head(peer_data->common.prepare); queue != ngx_queue_sentinel(peer_data->common.prepare); queue = ngx_queue_next(queue)) {
+                    ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
+                    if (prepare->hash == peer_data->send.hash) { ngx_queue_remove(queue); break; }
+                }
+            }
             return ngx_postgres_done(r);
         }
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: received result on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
