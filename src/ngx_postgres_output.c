@@ -184,6 +184,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
             r->headers_out.content_type_len = core_loc_conf->default_type.len;
         }
         r->headers_out.content_type_lowcase = NULL;
+        if (context->response) r->headers_out.content_length_n = context->response->buf->end - context->response->buf->start;
         ngx_int_t rc = ngx_http_send_header(r);
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return rc;
     }
