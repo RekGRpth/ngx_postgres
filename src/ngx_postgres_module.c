@@ -499,7 +499,13 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
     ngx_str_t *elts = cf->args->elts;
     if (cf->args->nelts == 2 && ((elts[1].len == sizeof("off") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"off", sizeof("off") - 1)) || (elts[1].len == sizeof("no") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"no", sizeof("no") - 1)))) { server_conf->max_save = 0; server_conf->prepare = 0; return NGX_CONF_OK; }
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
-        if (elts[i].len > sizeof("save=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"save=", sizeof("save=") - 1)) {
+        if (elts[i].len > sizeof("requests=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"requests=", sizeof("requests=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("requests=") - 1);
+            elts[i].data = &elts[i].data[sizeof("requests=") - 1];
+            ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
+            if (n == NGX_ERROR) return "ngx_atoi == NGX_ERROR";
+            server_conf->max_requests = (ngx_uint_t) n;
+        } else if (elts[i].len > sizeof("save=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"save=", sizeof("save=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("save=") - 1);
             elts[i].data = &elts[i].data[sizeof("save=") - 1];
             ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);

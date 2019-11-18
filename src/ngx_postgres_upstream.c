@@ -51,8 +51,9 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     pc->sockaddr = save->common.sockaddr;
     pc->socklen = save->common.socklen;
     peer_data->common.conn = save->common.conn;
-    peer_data->common.prepare = save->common.prepare;
     peer_data->common.name = save->common.name;
+    peer_data->common.prepare = save->common.prepare;
+    peer_data->common.requests = save->common.requests;
     peer_data->common.sockaddr = save->common.sockaddr;
     peer_data->common.socklen = save->common.socklen;
     return NGX_DONE;
@@ -76,6 +77,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         /* we do not need to resume the peer name, because we already take the right value outside */
         peer_data->common.conn = save->common.conn;
         peer_data->common.prepare = save->common.prepare;
+        peer_data->common.requests = save->common.requests;
         return NGX_DONE;
     }
     return NGX_DECLINED;
@@ -250,19 +252,21 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
     if (save->connection->write->timer_set) ngx_del_timer(save->connection->write);
     if (save->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(save->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_del_event != NGX_OK"); return; }
     pc->connection = NULL;
+    if (peer_data->common.requests > peer_data->common.server_conf->max_requests) { ngx_postgres_free_connection(save->connection, &save->common, NULL, 1); return; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: free keepalive peer: saving connection %p", save->connection);
     ngx_queue_insert_head(&peer_data->common.server_conf->busy, queue);
     save->connection->data = save;
     save->connection->idle = 1;
-    save->connection->read->handler = ngx_postgres_read_handler;
-    save->connection->write->handler = ngx_postgres_write_handler;
     save->connection->log = ngx_cycle->log;
     save->connection->pool->log = ngx_cycle->log;
+    save->connection->read->handler = ngx_postgres_read_handler;
     save->connection->read->log = ngx_cycle->log;
+    save->connection->write->handler = ngx_postgres_write_handler;
     save->connection->write->log = ngx_cycle->log;
     save->common.conn = peer_data->common.conn;
-    save->common.prepare = peer_data->common.prepare;
     save->common.name = peer_data->common.name;
+    save->common.prepare = peer_data->common.prepare;
+    if (save->common.server_conf->max_requests) save->common.requests = peer_data->common.requests + 1;
     save->common.sockaddr = pc->sockaddr;
     save->common.socklen = pc->socklen;
 }

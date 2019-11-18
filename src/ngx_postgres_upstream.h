@@ -53,6 +53,7 @@ typedef struct {
     ngx_postgres_server_conf_t        *server_conf;
     ngx_queue_t                       *prepare;
     ngx_str_t                         *name;
+    ngx_uint_t                         requests;
     PGconn                            *conn;
     socklen_t                          socklen;
     struct sockaddr                   *sockaddr;
