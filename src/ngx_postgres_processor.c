@@ -70,7 +70,7 @@ static const char *ConnStatusType2string(ConnStatusType status) {
 
 
 static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     r->upstream->headers_in.status_n = NGX_HTTP_OK; /* flag for keepalive */
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     ngx_postgres_finalize_upstream(r, r->upstream, context->status >= NGX_HTTP_SPECIAL_RESPONSE ? context->status : NGX_OK);
@@ -79,13 +79,13 @@ static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
-    if (!PQconsumeInput(peer_data->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
-    if (PQisBusy(peer_data->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while send query"); return NGX_AGAIN; }
+    if (!PQconsumeInput(peer_data->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to consume input: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
+    if (PQisBusy(peer_data->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "busy while send query"); return NGX_AGAIN; }
     for (PGresult *res; (res = PQgetResult(peer_data->common.conn)); PQclear(res)) {
         if (PQresultStatus(res) == PGRES_FATAL_ERROR) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: received error on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "received error on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
             PQclear(res);
             ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
             context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -98,11 +98,11 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             }
             return ngx_postgres_done(r);
         }
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: received result on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "received result on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
     }
     if (!peer_data->send.stmtName) {
-        if (!PQsendQueryParams(peer_data->common.conn, (const char *)peer_data->send.command, peer_data->send.nParams, peer_data->send.paramTypes, (const char *const *)peer_data->send.paramValues, NULL, NULL, peer_data->send.resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send query: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query %s sent successfully", peer_data->send.command);
+        if (!PQsendQueryParams(peer_data->common.conn, (const char *)peer_data->send.command, peer_data->send.nParams, peer_data->send.paramTypes, (const char *const *)peer_data->send.paramValues, NULL, NULL, peer_data->send.resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to send query: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query %s sent successfully", peer_data->send.command);
     } else switch (peer_data->state) {
         case state_db_send_prepare: {
             ngx_uint_t hash = 0;
@@ -111,8 +111,8 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 if (prepare->hash == peer_data->send.hash) { hash = prepare->hash; break; }
             }
             if (hash) peer_data->state = state_db_send_query; else {
-                if (!PQsendPrepare(peer_data->common.conn, (const char *)peer_data->send.stmtName, (const char *)peer_data->send.command, peer_data->send.nParams, peer_data->send.paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepare: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
-                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: prepare %s:%s sent successfully", peer_data->send.stmtName, peer_data->send.command);
+                if (!PQsendPrepare(peer_data->common.conn, (const char *)peer_data->send.stmtName, (const char *)peer_data->send.command, peer_data->send.nParams, peer_data->send.paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to send prepare: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "prepare %s:%s sent successfully", peer_data->send.stmtName, peer_data->send.command);
                 ngx_postgres_prepare_t *prepare = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_postgres_prepare_t));
                 if (!prepare) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                 prepare->hash = peer_data->send.hash;
@@ -122,8 +122,8 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             }
         } // fall through
         case state_db_send_query: {
-            if (!PQsendQueryPrepared(peer_data->common.conn, (const char *)peer_data->send.stmtName, peer_data->send.nParams, (const char *const *)peer_data->send.paramValues, NULL, NULL, peer_data->send.resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to send prepared query: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: query %s:%s sent successfully", peer_data->send.stmtName, peer_data->send.command);
+            if (!PQsendQueryPrepared(peer_data->common.conn, (const char *)peer_data->send.stmtName, peer_data->send.nParams, (const char *const *)peer_data->send.paramValues, NULL, NULL, peer_data->send.resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to send prepared query: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query %s:%s sent successfully", peer_data->send.stmtName, peer_data->send.command);
         } break;
         default: { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer_data->state"); return NGX_ERROR; }
     }
@@ -134,38 +134,38 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
     PostgresPollingStatusType poll_status = PQconnectPoll(peer_data->common.conn);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: polling while connecting, %s", PostgresPollingStatusType2string(poll_status));
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "polling while connecting, %s", PostgresPollingStatusType2string(poll_status));
     if (poll_status == PGRES_POLLING_READING || poll_status == PGRES_POLLING_WRITING) {
         if (PQstatus(peer_data->common.conn) == CONNECTION_MADE && r->upstream->peer.connection->write->ready) {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: re-polling while connecting");
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "re-polling while connecting");
             return ngx_postgres_connect(r);
         }
         switch (PQstatus(peer_data->common.conn)) {
-            case CONNECTION_NEEDED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: CONNECTION_NEEDED"); break;
-            case CONNECTION_STARTED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: CONNECTION_STARTED"); break;
-            case CONNECTION_MADE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: CONNECTION_MADE"); break;
-            case CONNECTION_AWAITING_RESPONSE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: CONNECTION_AWAITING_RESPONSE"); break;
-            case CONNECTION_AUTH_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: CONNECTION_AUTH_OK"); break;
-            case CONNECTION_SETENV: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: CONNECTION_SETENV"); break;
-            case CONNECTION_SSL_STARTUP: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: CONNECTION_SSL_STARTUP"); break;
-            default: ngx_log_debug1(NGX_LOG_ERR, r->connection->log, 0, "postgres: unknown state: %s", ConnStatusType2string(PQstatus(peer_data->common.conn))); return NGX_ERROR;
+            case CONNECTION_NEEDED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_NEEDED"); break;
+            case CONNECTION_STARTED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_STARTED"); break;
+            case CONNECTION_MADE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_MADE"); break;
+            case CONNECTION_AWAITING_RESPONSE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_AWAITING_RESPONSE"); break;
+            case CONNECTION_AUTH_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_AUTH_OK"); break;
+            case CONNECTION_SETENV: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_SETENV"); break;
+            case CONNECTION_SSL_STARTUP: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "CONNECTION_SSL_STARTUP"); break;
+            default: ngx_log_debug1(NGX_LOG_ERR, r->connection->log, 0, "unknown state: %s", ConnStatusType2string(PQstatus(peer_data->common.conn))); return NGX_ERROR;
         }
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while connecting");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "busy while connecting");
         return NGX_AGAIN;
     }
     if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write); /* remove connection timeout from new connection */
-    if (poll_status != PGRES_POLLING_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: connection failed: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: connected successfully");
+    if (poll_status != PGRES_POLLING_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "connection failed: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connected successfully");
     peer_data->state = peer_data->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query;
     return ngx_postgres_send_query(r);
 }
 
 
 static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     context->nfields = PQnfields(context->res); /* set $postgres_columns */
@@ -200,14 +200,14 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_get_ack(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
-    if (!PQconsumeInput(peer_data->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
-    if (PQisBusy(peer_data->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while get ack"); return NGX_AGAIN; }
+    if (!PQconsumeInput(peer_data->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to consume input: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
+    if (PQisBusy(peer_data->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "busy while get ack"); return NGX_AGAIN; }
     if (r->upstream->peer.connection->read->timer_set) ngx_del_timer(r->upstream->peer.connection->read); /* remove result timeout */
     PGresult *res = PQgetResult(peer_data->common.conn);
     if (res) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: receiving ACK failed: multiple queries(?)");
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "receiving ACK failed: multiple queries(?)");
         PQclear(res);
         ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
         context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -218,21 +218,21 @@ static ngx_int_t ngx_postgres_get_ack(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
     if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write); /* remove connection timeout from re-used keepalive connection */
-    if (!PQconsumeInput(peer_data->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to consume input: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
-    if (PQisBusy(peer_data->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: busy while receiving result"); return NGX_AGAIN; }
+    if (!PQconsumeInput(peer_data->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to consume input: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
+    if (PQisBusy(peer_data->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "busy while receiving result"); return NGX_AGAIN; }
     PGresult *res = PQgetResult(peer_data->common.conn);
-    if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
+    if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to receive result: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
     if (PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: failed to receive result: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to receive result: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
         PQclear(res);
         ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
         context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         goto ret;
     }
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: result received successfully, cols:%d rows:%d", PQnfields(res), PQntuples(res));
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "result received successfully, cols:%d rows:%d", PQnfields(res), PQntuples(res));
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     context->res = res;
     ngx_int_t rc = ngx_postgres_process_response(r);
@@ -245,18 +245,18 @@ ret:
 
 
 void ngx_postgres_process_events(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: %s", __func__);
-    if (!ngx_postgres_is_my_peer(&r->upstream->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: trying to connect to something that is not PostgreSQL database"); goto failed; }
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    if (!ngx_postgres_is_my_peer(&r->upstream->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "trying to connect to something that is not PostgreSQL database"); goto failed; }
     ngx_postgres_peer_data_t *peer_data = r->upstream->peer.data;
     ngx_int_t rc;
     switch (peer_data->state) {
-        case state_db_connect: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: state_db_connect"); rc = ngx_postgres_connect(r); break;
-        case state_db_send_prepare: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: state_db_send_prepare"); rc = ngx_postgres_send_query(r); break;
-        case state_db_send_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: state_db_send_query"); rc = ngx_postgres_send_query(r); break;
-        case state_db_get_result: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: state_db_get_result"); rc = ngx_postgres_get_result(r); break;
-        case state_db_get_ack: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: state_db_get_ack"); rc = ngx_postgres_get_ack(r); break;
-        case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "postgres: state_db_idle, re-using keepalive connection"); peer_data->state = peer_data->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query; rc = ngx_postgres_send_query(r); break;
-        default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: unknown state:%d", peer_data->state); goto failed;
+        case state_db_connect: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_connect"); rc = ngx_postgres_connect(r); break;
+        case state_db_send_prepare: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_send_prepare"); rc = ngx_postgres_send_query(r); break;
+        case state_db_send_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_send_query"); rc = ngx_postgres_send_query(r); break;
+        case state_db_get_result: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_get_result"); rc = ngx_postgres_get_result(r); break;
+        case state_db_get_ack: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_get_ack"); rc = ngx_postgres_get_ack(r); break;
+        case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_idle, re-using keepalive connection"); peer_data->state = peer_data->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query; rc = ngx_postgres_send_query(r); break;
+        default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "unknown state:%d", peer_data->state); goto failed;
     }
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) ngx_postgres_finalize_upstream(r, r->upstream, rc);
     else if (rc == NGX_ERROR) goto failed;

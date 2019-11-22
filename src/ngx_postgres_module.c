@@ -320,7 +320,7 @@ static ngx_int_t ngx_postgres_add_variables(ngx_conf_t *cf) {
 
 
 static void ngx_postgres_server_conf_cleanup(void *data) {
-//    ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "postgres: %s", __func__);
+//    ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "%s", __func__);
     ngx_postgres_server_conf_t *server_conf = data;
     if (!server_conf->busy.prev) return; /* ngx_queue_empty is broken when used on unitialized queue */
     server_conf->max_save = 0; /* just to be on the safe-side */
@@ -399,7 +399,7 @@ static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void
 static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
     upstream_srv_conf->peer.init = ngx_postgres_peer_init;
     ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
-    if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
+    if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
     ngx_postgres_server_t *server = upstream_srv_conf->servers->elts;
     ngx_uint_t n = 0;
     for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) n += server[i].naddrs;
@@ -667,7 +667,7 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     }
     query->sql.len = p - query->sql.data;
     query->listen = query->sql.len > sizeof("LISTEN ") - 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1);
-//    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "postgres: sql = `%V`", &query->sql);
+//    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sql = `%V`", &query->sql);
     return NGX_CONF_OK;
 }
 

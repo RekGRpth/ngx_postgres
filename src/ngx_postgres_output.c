@@ -38,20 +38,20 @@ ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     if (context->ntuples != 1 || context->nfields != 1) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received %d value(s) instead of expected single value in location \"%V\"", context->ntuples * context->nfields, &core_loc_conf->name);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_output value\" received %d value(s) instead of expected single value in location \"%V\"", context->ntuples * context->nfields, &core_loc_conf->name);
         context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
     if (PQgetisnull(context->res, 0, 0)) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received NULL value in location \"%V\"", &core_loc_conf->name);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_output value\" received NULL value in location \"%V\"", &core_loc_conf->name);
         context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
     size_t size = PQgetlength(context->res, 0, 0);
     if (!size) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "postgres: \"postgres_output value\" received empty value in location \"%V\"", &core_loc_conf->name);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_output value\" received empty value in location \"%V\"", &core_loc_conf->name);
         context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
