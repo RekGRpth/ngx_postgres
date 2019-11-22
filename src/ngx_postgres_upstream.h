@@ -50,6 +50,7 @@ typedef struct {
 } ngx_postgres_prepare_t;
 
 typedef struct {
+    ngx_event_t                        timeout;
     ngx_postgres_server_conf_t        *server_conf;
     ngx_queue_t                       *prepare;
     ngx_str_t                         *name;

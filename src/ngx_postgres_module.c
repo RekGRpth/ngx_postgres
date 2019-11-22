@@ -505,6 +505,12 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
             if (n == NGX_ERROR) return "ngx_atoi == NGX_ERROR";
             server_conf->max_requests = (ngx_uint_t) n;
+        } else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
+            elts[i].data = &elts[i].data[sizeof("timeout=") - 1];
+            ngx_int_t n = ngx_parse_time(&elts[i], 0);
+            if (n == NGX_ERROR) return "ngx_parse_time == NGX_ERROR";
+            server_conf->timeout = (ngx_msec_t) n;
         } else if (elts[i].len > sizeof("save=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"save=", sizeof("save=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("save=") - 1);
             elts[i].data = &elts[i].data[sizeof("save=") - 1];

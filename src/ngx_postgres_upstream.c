@@ -56,6 +56,7 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     peer_data->common.requests = save->common.requests;
     peer_data->common.sockaddr = save->common.sockaddr;
     peer_data->common.socklen = save->common.socklen;
+    peer_data->common.timeout = save->common.timeout;
     return NGX_DONE;
 }
 
@@ -78,6 +79,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         peer_data->common.conn = save->common.conn;
         peer_data->common.prepare = save->common.prepare;
         peer_data->common.requests = save->common.requests;
+        peer_data->common.timeout = save->common.timeout;
         return NGX_DONE;
     }
     return NGX_DECLINED;
@@ -230,6 +232,16 @@ close:
 }
 
 
+static void ngx_postgres_timeout(ngx_event_t *ev) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "postgres: %s", __func__);
+    if (ev->timer_set) ngx_del_timer(ev);
+    ngx_postgres_save_t *save = ev->data;
+    ngx_postgres_free_connection(save->connection, &save->common, NULL, 1);
+    ngx_queue_remove(&save->queue);
+    ngx_queue_insert_head(&save->common.server_conf->free, &save->queue);
+}
+
+
 static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_data_t *peer_data, ngx_uint_t state) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "postgres: %s", __func__);
     if (state & NGX_PEER_FAILED) peer_data->failed = 1;
@@ -269,6 +281,13 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
     if (save->common.server_conf->max_requests) save->common.requests = peer_data->common.requests + 1;
     save->common.sockaddr = pc->sockaddr;
     save->common.socklen = pc->socklen;
+    save->common.timeout = peer_data->common.timeout;
+    if (save->common.server_conf->timeout && !save->common.timeout.timer_set) {
+        save->common.timeout.log = ngx_cycle->log;
+        save->common.timeout.data = save;
+        save->common.timeout.handler = ngx_postgres_timeout;
+        ngx_add_timer(&save->common.timeout, save->common.server_conf->timeout);
+    }
 }
 
 
@@ -379,6 +398,7 @@ ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *peer) {
 
 void ngx_postgres_free_connection(ngx_connection_t *c, ngx_postgres_common_t *common, ngx_postgres_common_t *listen, ngx_flag_t delete) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "postgres: %s", __func__);
+    if (common->timeout.timer_set) ngx_del_timer(&common->timeout);
     if (listen) {
         PGresult *res = PQexec(common->conn, "with s as (select pg_listening_channels()) select array_to_string(array_agg(format($$listen %I$$, s.pg_listening_channels)), ';') from s");
         if (res) {
