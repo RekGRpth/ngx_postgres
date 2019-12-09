@@ -776,14 +776,16 @@ static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
             ngx_conf_enum_t *e = ngx_postgres_output_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location_conf->output.string_quote_only = e[j].value; break; }
             if (!e[j].name.len) return "invalid string_quote_only";
-        } else if (elts[i].len > sizeof("quote=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"quote=", sizeof("quote=") - 1)) {
+        } else if (elts[i].len >= sizeof("quote=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"quote=", sizeof("quote=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("quote=") - 1);
-            if (!elts[i].len || elts[i].len > 1) return "invalid quote";
+            if (!elts[i].len) { location_conf->output.quote = '\0'; continue; }
+            else if (elts[i].len > 1) return "invalid quote";
             elts[i].data = &elts[i].data[sizeof("quote=") - 1];
             location_conf->output.quote = *elts[i].data;
-        } else if (elts[i].len > sizeof("escape=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"escape=", sizeof("escape=") - 1)) {
+        } else if (elts[i].len >= sizeof("escape=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"escape=", sizeof("escape=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("escape=") - 1);
-            if (!elts[i].len || elts[i].len > 1) return "invalid escape";
+            if (!elts[i].len) { location_conf->output.escape = '\0'; continue; }
+            else if (elts[i].len > 1) return "invalid escape";
             elts[i].data = &elts[i].data[sizeof("escape=") - 1];
             location_conf->output.escape = *elts[i].data;
         } else return "invalid parameter";
