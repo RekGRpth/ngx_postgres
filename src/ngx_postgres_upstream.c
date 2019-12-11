@@ -57,6 +57,7 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     peer_data->common.sockaddr = save->common.sockaddr;
     peer_data->common.socklen = save->common.socklen;
     peer_data->common.timeout = save->common.timeout;
+    if (peer_data->common.timeout.timer_set) ngx_del_timer(&peer_data->common.timeout);
     return NGX_DONE;
 }
 
@@ -80,6 +81,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         peer_data->common.prepare = save->common.prepare;
         peer_data->common.requests = save->common.requests;
         peer_data->common.timeout = save->common.timeout;
+        if (peer_data->common.timeout.timer_set) ngx_del_timer(&peer_data->common.timeout);
         return NGX_DONE;
     }
     return NGX_DECLINED;
