@@ -236,7 +236,6 @@ close:
 
 static void ngx_postgres_timeout(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
-    if (ev->timer_set) ngx_del_timer(ev);
     ngx_postgres_save_t *save = ev->data;
     ngx_postgres_free_connection(save->connection, &save->common, NULL, 1);
     ngx_queue_remove(&save->queue);
@@ -266,7 +265,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
     if (save->connection->write->timer_set) ngx_del_timer(save->connection->write);
     if (save->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(save->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_del_event != NGX_OK"); return; }
     pc->connection = NULL;
-    if (peer_data->common.requests > peer_data->common.server_conf->max_requests) { ngx_postgres_free_connection(save->connection, &save->common, NULL, 1); return; }
+    if (peer_data->common.server_conf->max_requests && peer_data->common.requests >= peer_data->common.server_conf->max_requests - 1) { ngx_postgres_free_connection(save->connection, &save->common, NULL, 1); return; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "free keepalive peer: saving connection %p", save->connection);
     ngx_queue_insert_head(&peer_data->common.server_conf->busy, queue);
     save->connection->data = save;
@@ -280,10 +279,11 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
     save->common.conn = peer_data->common.conn;
     save->common.name = peer_data->common.name;
     save->common.prepare = peer_data->common.prepare;
-    if (save->common.server_conf->max_requests) save->common.requests = peer_data->common.requests + 1;
+    save->common.requests = peer_data->common.requests;
     save->common.sockaddr = pc->sockaddr;
     save->common.socklen = pc->socklen;
     save->common.timeout = peer_data->common.timeout;
+    if (save->common.server_conf->max_requests) save->common.requests++;
     if (save->common.server_conf->timeout && !save->common.timeout.timer_set) {
         save->common.timeout.log = ngx_cycle->log;
         save->common.timeout.data = save;
