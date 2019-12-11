@@ -260,12 +260,12 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
         save = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         ngx_queue_remove(queue);
     }
+    if (pc->connection->read->timer_set) ngx_del_timer(pc->connection->read);
+    if (pc->connection->write->timer_set) ngx_del_timer(pc->connection->write);
+    if (pc->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(pc->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_del_event != NGX_OK"); return; }
+    if (peer_data->common.server_conf->max_requests && peer_data->common.requests >= peer_data->common.server_conf->max_requests - 1) return;
     save->connection = pc->connection;
-    if (save->connection->read->timer_set) ngx_del_timer(save->connection->read);
-    if (save->connection->write->timer_set) ngx_del_timer(save->connection->write);
-    if (save->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(save->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_del_event != NGX_OK"); return; }
     pc->connection = NULL;
-    if (peer_data->common.server_conf->max_requests && peer_data->common.requests >= peer_data->common.server_conf->max_requests - 1) { ngx_postgres_free_connection(save->connection, &save->common, NULL, 1); return; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "free keepalive peer: saving connection %p", save->connection);
     ngx_queue_insert_head(&peer_data->common.server_conf->busy, queue);
     save->connection->data = save;
