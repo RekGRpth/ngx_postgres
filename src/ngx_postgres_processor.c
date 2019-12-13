@@ -160,6 +160,17 @@ static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
     if (poll_status != PGRES_POLLING_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "connection failed: %s", PQerrorMessage(peer_data->common.conn)); return NGX_ERROR; }
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connected successfully");
     peer_data->state = peer_data->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query;
+    const char *charset = PQparameterStatus(peer_data->common.conn, "client_encoding");
+    if (charset) {
+        ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
+        context->charset.len = ngx_strlen(charset);
+        if (context->charset.len == sizeof("UTF8") - 1 && !ngx_strncasecmp((u_char *)charset, (u_char *)"UTF8", sizeof("UTF8") - 1)) {
+            ngx_str_set(&context->charset, "utf-8");
+        } else {
+            if (!(context->charset.data = ngx_pnalloc(r->pool, context->charset.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+            ngx_memcpy(context->charset.data, charset, context->charset.len);
+        }
+    }
     return ngx_postgres_send_query(r);
 }
 
