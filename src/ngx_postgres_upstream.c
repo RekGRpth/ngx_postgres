@@ -51,6 +51,7 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     pc->name = save->common.name;
     pc->sockaddr = save->common.sockaddr;
     pc->socklen = save->common.socklen;
+    peer_data->common.charset = save->common.charset;
     peer_data->common.conn = save->common.conn;
     peer_data->common.name = save->common.name;
     peer_data->common.prepare = save->common.prepare;
@@ -79,6 +80,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         pc->cached = 1;
         pc->connection = save->connection;
         /* we do not need to resume the peer name, because we already take the right value outside */
+        peer_data->common.charset = save->common.charset;
         peer_data->common.conn = save->common.conn;
         peer_data->common.prepare = save->common.prepare;
         peer_data->common.requests = save->common.requests;
@@ -278,6 +280,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
     save->connection->read->log = ngx_cycle->log;
     save->connection->write->handler = ngx_postgres_write_handler;
     save->connection->write->log = ngx_cycle->log;
+    save->common.charset = peer_data->common.charset;
     save->common.conn = peer_data->common.conn;
     save->common.name = peer_data->common.name;
     save->common.prepare = peer_data->common.prepare;

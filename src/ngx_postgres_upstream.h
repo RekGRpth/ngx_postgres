@@ -53,6 +53,7 @@ typedef struct {
     ngx_event_t                        timeout;
     ngx_postgres_server_conf_t        *server_conf;
     ngx_queue_t                       *prepare;
+    ngx_str_t                          charset;
     ngx_str_t                         *name;
     ngx_uint_t                         requests;
     PGconn                            *conn;
@@ -91,7 +92,6 @@ typedef struct {
     ngx_int_t                          nfields;
     ngx_int_t                          ntuples;
     ngx_int_t                          status;
-    ngx_str_t                          charset;
     ngx_str_t                          sql;
     PGresult                          *res;
 } ngx_postgres_context_t;
