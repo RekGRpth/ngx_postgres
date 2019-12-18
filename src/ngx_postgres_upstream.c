@@ -40,6 +40,7 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     ngx_postgres_save_t *save = ngx_queue_data(queue, ngx_postgres_save_t, queue);
     ngx_queue_remove(queue);
     ngx_queue_insert_head(&peer_data->common.server_conf->free, queue);
+    if (!save->connection) return NGX_DECLINED;
     save->connection->idle = 0;
     save->connection->log = pc->log;
     save->connection->pool->log = pc->log;
@@ -69,6 +70,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         if (ngx_memn2cmp((u_char *) save->common.sockaddr, (u_char *) pc->sockaddr, save->common.socklen, pc->socklen)) continue;
         ngx_queue_remove(queue);
         ngx_queue_insert_head(&peer_data->common.server_conf->free, queue);
+        if (!save->connection) continue;
         save->connection->idle = 0;
         save->connection->log = pc->log;
         save->connection->pool->log = pc->log;
