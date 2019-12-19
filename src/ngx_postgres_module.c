@@ -339,7 +339,6 @@ static void *ngx_postgres_create_server_conf(ngx_conf_t *cf) {
     ngx_postgres_server_conf_t *server_conf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_server_conf_t));
     if (!server_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     server_conf->max_save = 10;
-    server_conf->single = 1; /* enable keepalive (single) by default */
     server_conf->prepare = 1;
     ngx_queue_init(&server_conf->busy);
     ngx_queue_init(&server_conf->free);
