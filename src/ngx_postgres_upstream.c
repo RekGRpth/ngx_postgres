@@ -229,10 +229,10 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     if (!PQconsumeInput(ps->common.conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "failed to consume input: %s", PQerrorMessage(ps->common.conn)); goto close; }
     if (PQisBusy(ps->common.conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "busy while keepalive"); goto close; }
     for (PGresult *res; (res = PQgetResult(ps->common.conn)); PQclear(res)) ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ev->log, 0, "received result on idle keepalive connection: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
-    ngx_postgres_process_notify(c, &ps->common);
+    ngx_postgres_process_notify(ps->common.connection, &ps->common);
     return;
 close:
-    ngx_postgres_free_connection(c, &ps->common, NULL, 0);
+    ngx_postgres_free_connection(ps->common.connection, &ps->common, NULL, 0);
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
 }
@@ -286,11 +286,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     ngx_postgres_data_t *pd = data;
     if (state & NGX_PEER_FAILED) pd->failed = 1;
     if (pd->common.server_conf->max_save) ngx_postgres_free_peer(pd);
-    if (pd->common.connection) {
-        ngx_postgres_free_connection(pd->common.connection, &pd->common, NULL, 1);
-        pd->common.conn = NULL;
-        pd->common.connection = NULL;
-    }
+    if (pd->common.connection) ngx_postgres_free_connection(pd->common.connection, &pd->common, NULL, 1);
     pc->connection = NULL;
 }
 
@@ -402,6 +398,7 @@ void ngx_postgres_free_connection(ngx_connection_t *c, ngx_postgres_common_t *co
         }
     }
     PQfinish(common->conn);
+    common->conn = NULL;
     if (c) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
@@ -418,4 +415,5 @@ void ngx_postgres_free_connection(ngx_connection_t *c, ngx_postgres_common_t *co
         c->fd = (ngx_socket_t) -1;
     }
     common->server_conf->save--; /* free spot in keepalive connection pool */
+    common->connection = NULL;
 }
