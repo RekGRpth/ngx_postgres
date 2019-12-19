@@ -449,16 +449,16 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     if (!server) return "!ngx_array_push";
     ngx_memzero(server, sizeof(ngx_postgres_server_t));
     /* parse the first name:port argument */
-    ngx_url_t u;
-    ngx_memzero(&u, sizeof(ngx_url_t));
+    ngx_url_t url;
+    ngx_memzero(&url, sizeof(ngx_url_t));
     ngx_str_t *elts = cf->args->elts;
-    u.url = elts[1];
-    u.default_port = 5432; /* PostgreSQL default */
-    if (ngx_parse_url(cf->pool, &u) != NGX_OK) { if (u.err) return u.err; return "ngx_parse_url != NGX_OK"; }
-    server->addrs = u.addrs;
-    server->naddrs = u.naddrs;
-    server->port = u.family == AF_UNIX ? u.default_port : u.port;
-    server->family = u.family;
+    url.url = elts[1];
+    url.default_port = 5432; /* PostgreSQL default */
+    if (ngx_parse_url(cf->pool, &url) != NGX_OK) { if (url.err) return url.err; return "ngx_parse_url != NGX_OK"; }
+    server->addrs = url.addrs;
+    server->naddrs = url.naddrs;
+    server->port = url.family == AF_UNIX ? url.default_port : url.port;
+    server->family = url.family;
     /* parse various options */
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
         if (elts[i].len > sizeof("port=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"port=", sizeof("port=") - 1)) {
