@@ -405,14 +405,13 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
     ngx_postgres_server_t *elts = upstream_srv_conf->servers->elts;
     ngx_uint_t n = 0;
     for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) n += elts[i].naddrs;
-    ngx_postgres_peers_t *peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_peers_t) + sizeof(ngx_postgres_peer_t) * (n - 1));
-    if (!peers) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-    peers->single = (n == 1);
-    peers->max_peer = n;
+    if (!(server_conf->peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_peers_t) + sizeof(ngx_postgres_peer_t) * (n - 1)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+    server_conf->peers->single = (n == 1);
+    server_conf->peers->max_peer = n;
     n = 0;
     for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) {
         for (ngx_uint_t j = 0; j < elts[i].naddrs; j++) {
-            ngx_postgres_peer_t *peer = &peers->peer[n];
+            ngx_postgres_peer_t *peer = &server_conf->peers->peer[n];
             peer->sockaddr = elts[i].addrs[j].sockaddr;
             peer->socklen = elts[i].addrs[j].socklen;
             peer->name = &elts[i].addrs[j].name;
@@ -436,7 +435,6 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
             n++;
         }
     }
-    server_conf->peers = peers;
     server_conf->save = 0;
     if (!server_conf->max_save) return NGX_OK;
     ngx_postgres_save_t *save;
