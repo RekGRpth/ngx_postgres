@@ -407,7 +407,7 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
     for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) n += elts[i].naddrs;
     if (!(server_conf->peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_peers_t) + sizeof(ngx_postgres_peer_t) * (n - 1)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     server_conf->peers->single = (n == 1);
-    server_conf->peers->max_peer = n;
+    server_conf->max_peer = n;
     n = 0;
     for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) {
         for (ngx_uint_t j = 0; j < elts[i].naddrs; j++) {

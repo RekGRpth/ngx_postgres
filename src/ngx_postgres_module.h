@@ -94,7 +94,6 @@ typedef struct {
 
 typedef struct {
     ngx_postgres_peer_t                 peer[1];
-    ngx_uint_t                          max_peer;
     ngx_uint_t                          single;
 } ngx_postgres_peers_t;
 
@@ -106,6 +105,7 @@ typedef struct {
     ngx_postgres_peers_t               *peers;
     ngx_queue_t                         busy;
     ngx_queue_t                         free;
+    ngx_uint_t                          max_peer;
     ngx_uint_t                          max_requests;
     ngx_uint_t                          max_save;
     ngx_uint_t                          peer;
