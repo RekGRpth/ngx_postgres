@@ -330,7 +330,7 @@ static void ngx_postgres_server_conf_cleanup(void *data) {
         ngx_queue_t *queue = ngx_queue_head(&server_conf->busy);
         ngx_queue_remove(queue);
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-        ngx_postgres_free_connection(ps->common.connection, &ps->common, NULL, 0);
+        ngx_postgres_free_connection(&ps->common, NULL, 0);
     }
 }
 
@@ -400,7 +400,7 @@ static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void
 static void ngx_postgres_timeout(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
     ngx_postgres_save_t *ps = ev->data;
-    ngx_postgres_free_connection(ps->common.connection, &ps->common, NULL, 1);
+    ngx_postgres_free_connection(&ps->common, NULL, 1);
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
 }

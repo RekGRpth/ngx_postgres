@@ -155,7 +155,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 bad_add:
     ngx_log_error(NGX_LOG_ERR, pc->log, 0, "failed to add nginx connection");
 invalid:
-    ngx_postgres_free_connection(pd->common.connection, &pd->common, NULL, 0);
+    ngx_postgres_free_connection(&pd->common, NULL, 0);
     return NGX_ERROR;
 }
 
@@ -232,7 +232,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     ngx_postgres_process_notify(ps->common.connection, &ps->common);
     return;
 close:
-    ngx_postgres_free_connection(ps->common.connection, &ps->common, NULL, 0);
+    ngx_postgres_free_connection(&ps->common, NULL, 0);
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
 }
@@ -248,7 +248,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         queue = ngx_queue_last(&pd->common.server_conf->busy);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         ngx_queue_remove(queue);
-        ngx_postgres_free_connection(ps->common.connection, &ps->common, &pd->common, 1);
+        ngx_postgres_free_connection(&ps->common, &pd->common, 1);
     } else {
         queue = ngx_queue_head(&pd->common.server_conf->free);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
@@ -286,7 +286,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     ngx_postgres_data_t *pd = data;
     if (state & NGX_PEER_FAILED) pd->failed = 1;
     if (pd->common.server_conf->max_save) ngx_postgres_free_peer(pd);
-    if (pd->common.connection) ngx_postgres_free_connection(pd->common.connection, &pd->common, NULL, 1);
+    if (pd->common.connection) ngx_postgres_free_connection(&pd->common, NULL, 1);
     pc->connection = NULL;
 }
 
@@ -368,29 +368,30 @@ ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *peer) {
 }
 
 
-void ngx_postgres_free_connection(ngx_connection_t *c, ngx_postgres_common_t *common, ngx_postgres_common_t *listen, ngx_flag_t delete) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_common_t *listen, ngx_flag_t delete) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s", __func__);
     if (listen) {
         PGresult *res = PQexec(common->conn, "with s as (select pg_listening_channels()) select array_to_string(array_agg(format($$listen %I$$, s.pg_listening_channels)), ';') from s");
         if (res) {
             if (PQresultStatus(res) == PGRES_TUPLES_OK) {
                 if (!PQsendQuery(listen->conn, PQgetvalue(res, 0, 0))) {
-                    ngx_log_error(NGX_LOG_ERR, c->log, 0, "failed to send relisten: %s", PQerrorMessage(listen->conn));
+                    ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "failed to send relisten: %s", PQerrorMessage(listen->conn));
                 } else {
-                    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "relisten %s sent successfully", PQgetvalue(res, 0, 0));
+                    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "relisten %s sent successfully", PQgetvalue(res, 0, 0));
                 }
             }
             PQclear(res);
         }
-    } else if (delete) {
+    }
+    if (delete) {
         PGresult *res = PQexec(common->conn, "select pg_listening_channels()");
         if (res) {
             if (PQresultStatus(res) == PGRES_TUPLES_OK) for (int row = 0; row < PQntuples(res); row++) {
                 ngx_str_t id = { PQgetlength(res, row, 0), (u_char *)PQgetvalue(res, row, 0) };
-                ngx_log_error(NGX_LOG_ERR, c->log, 0, "delete channel = %V", &id);
-                ngx_pool_t *temp_pool = ngx_create_pool(4096, c->log);
+                ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "delete channel = %V", &id);
+                ngx_pool_t *temp_pool = ngx_create_pool(4096, common->connection->log);
                 if (temp_pool) {
-                    ngx_http_push_stream_delete_channel_my(c->log, &id, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, temp_pool);
+                    ngx_http_push_stream_delete_channel_my(common->connection->log, &id, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, temp_pool);
                     ngx_destroy_pool(temp_pool);
                 }
             }
@@ -399,21 +400,19 @@ void ngx_postgres_free_connection(ngx_connection_t *c, ngx_postgres_common_t *co
     }
     PQfinish(common->conn);
     common->conn = NULL;
-    if (c) {
-        if (c->read->timer_set) ngx_del_timer(c->read);
-        if (c->write->timer_set) ngx_del_timer(c->write);
-        if (ngx_del_conn) ngx_del_conn(c, NGX_CLOSE_EVENT); else {
-            if (c->read->active || c->read->disabled) ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
-            if (c->write->active || c->write->disabled) ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
-        }
-        if (c->read->posted) { ngx_delete_posted_event(c->read); }
-        if (c->write->posted) { ngx_delete_posted_event(c->write); }
-        c->read->closed = 1;
-        c->write->closed = 1;
-        if (c->pool) ngx_destroy_pool(c->pool);
-        ngx_free_connection(c);
-        c->fd = (ngx_socket_t) -1;
+    if (common->connection->read->timer_set) ngx_del_timer(common->connection->read);
+    if (common->connection->write->timer_set) ngx_del_timer(common->connection->write);
+    if (ngx_del_conn) ngx_del_conn(common->connection, NGX_CLOSE_EVENT); else {
+        if (common->connection->read->active || common->connection->read->disabled) ngx_del_event(common->connection->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
+        if (common->connection->write->active || common->connection->write->disabled) ngx_del_event(common->connection->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
     }
+    if (common->connection->read->posted) { ngx_delete_posted_event(common->connection->read); }
+    if (common->connection->write->posted) { ngx_delete_posted_event(common->connection->write); }
+    common->connection->read->closed = 1;
+    common->connection->write->closed = 1;
+    if (common->connection->pool) ngx_destroy_pool(common->connection->pool);
+    ngx_free_connection(common->connection);
+    common->connection->fd = (ngx_socket_t) -1;
     common->server_conf->save--; /* free spot in keepalive connection pool */
     common->connection = NULL;
 }
