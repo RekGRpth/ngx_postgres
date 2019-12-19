@@ -43,7 +43,6 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     if (!save->connection) return NGX_DECLINED;
     save->connection->idle = 0;
     save->connection->log = pc->log;
-//    save->connection->pool->log = pc->log;
     save->connection->read->log = pc->log;
     save->connection->write->log = pc->log;
     pc->cached = 1;
@@ -74,7 +73,6 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         if (!save->connection) continue;
         save->connection->idle = 0;
         save->connection->log = pc->log;
-//        save->connection->pool->log = pc->log;
         save->connection->read->log = pc->log;
         save->connection->write->log = pc->log;
         pc->cached = 1;
@@ -135,10 +133,6 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (fd == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "failed to get connection fd"); goto invalid; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "connection fd:%d", fd);
     if (!(pc->connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "failed to get a free nginx connection"); goto invalid; }
-    if (peer_data->common.server_conf->prepare) {
-        if (!(peer_data->common.prepare = ngx_pcalloc(peer_data->common.server_conf->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pcalloc"); goto invalid; }
-        ngx_queue_init(peer_data->common.prepare);
-    }
     pc->connection->log = pc->log;
     pc->connection->log_error = pc->log_error;
     pc->connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
@@ -279,7 +273,6 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_peer_
     save->connection->data = save;
     save->connection->idle = 1;
     save->connection->log = ngx_cycle->log;
-//    save->connection->pool->log = ngx_cycle->log;
     save->connection->read->handler = ngx_postgres_read_handler;
     save->connection->read->log = ngx_cycle->log;
     save->connection->write->handler = ngx_postgres_write_handler;

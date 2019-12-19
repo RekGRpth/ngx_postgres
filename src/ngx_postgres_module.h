@@ -103,7 +103,6 @@ typedef struct {
     ngx_flag_t                          reject;
     ngx_flag_t                          single;
     ngx_msec_t                          timeout;
-    ngx_pool_t                         *pool;
     ngx_postgres_peers_t               *peers;
     ngx_queue_t                         busy;
     ngx_queue_t                         free;

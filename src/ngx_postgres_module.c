@@ -344,7 +344,6 @@ static void *ngx_postgres_create_server_conf(ngx_conf_t *cf) {
     server_conf->max_save = 10;
     server_conf->single = 1;
     server_conf->prepare = 1;
-    server_conf->pool = cf->pool;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NULL; }
     cln->handler = ngx_postgres_server_conf_cleanup;
