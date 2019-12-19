@@ -189,32 +189,32 @@ static ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t le
 }
 
 
-void ngx_postgres_process_notify(ngx_connection_t *c, ngx_postgres_common_t *common) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s", __func__);
     for (PGnotify *notify; (notify = PQnotifies(common->conn)); PQfreemem(notify)) {
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "notify: relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify: relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
-        ngx_pool_t *temp_pool = ngx_create_pool(4096, c->log);
+        ngx_pool_t *temp_pool = ngx_create_pool(4096, common->connection->log);
         if (!temp_pool) continue;
-        switch (ngx_http_push_stream_add_msg_to_channel_my(c->log, &id, &text, NULL, NULL, 0, temp_pool)) {
-            case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "notify error"); break;
+        switch (ngx_http_push_stream_add_msg_to_channel_my(common->connection->log, &id, &text, NULL, NULL, 0, temp_pool)) {
+            case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "notify error"); break;
             case NGX_DECLINED: {
-                ngx_log_error(NGX_LOG_ERR, c->log, 0, "notify declined");
+                ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "notify declined");
                 ngx_str_t channel = PQescapeInternal(temp_pool, id.data, id.len, 1);
-                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "failed to escape %V", id); break; }
+                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "failed to escape %V", id); break; }
                 u_char *command = ngx_pnalloc(temp_pool, sizeof("UNLISTEN ") - 1 + channel.len + 1);
-                if (!command) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); break; }
+                if (!command) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_pnalloc"); break; }
                 u_char *last = ngx_snprintf(command, sizeof("UNLISTEN ") - 1 + channel.len, "UNLISTEN %V", &channel);
-                if (last != command + sizeof("UNLISTEN ") - 1 + channel.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_snprintf"); break; }
+                if (last != command + sizeof("UNLISTEN ") - 1 + channel.len) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "ngx_snprintf"); break; }
                 *last = '\0';
-                if (!PQsendQuery(common->conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "failed to send unlisten: %s", PQerrorMessage(common->conn)); break; }
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "unlisten %s sent successfully", command);
+                if (!PQsendQuery(common->conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "failed to send unlisten: %s", PQerrorMessage(common->conn)); break; }
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "unlisten %s sent successfully", command);
                 ngx_destroy_pool(temp_pool);
                 return;
             };
-            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "notify ok"); break;
-            default: ngx_log_error(NGX_LOG_ERR, c->log, 0, "notify unknown"); break;
+            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify ok"); break;
+            default: ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "notify unknown"); break;
         }
         ngx_destroy_pool(temp_pool);
     }
@@ -229,7 +229,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     if (!PQconsumeInput(ps->common.conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "failed to consume input: %s", PQerrorMessage(ps->common.conn)); goto close; }
     if (PQisBusy(ps->common.conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "busy while keepalive"); goto close; }
     for (PGresult *res; (res = PQgetResult(ps->common.conn)); PQclear(res)) ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ev->log, 0, "received result on idle keepalive connection: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
-    ngx_postgres_process_notify(ps->common.connection, &ps->common);
+    ngx_postgres_process_notify(&ps->common);
     return;
 close:
     if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
