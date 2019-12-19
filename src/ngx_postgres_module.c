@@ -440,7 +440,7 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
     }
     server_conf->peers = peers;
     server_conf->save = 0;
-    if (server_conf->max_save) return ngx_postgres_init(server_conf);
+    if (server_conf->max_save) return ngx_postgres_init(cf, server_conf);
     return NGX_OK;
 }
 

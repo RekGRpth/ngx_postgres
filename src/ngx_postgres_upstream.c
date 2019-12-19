@@ -384,15 +384,14 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 }
 
 
-ngx_int_t ngx_postgres_init(ngx_postgres_server_conf_t *server_conf) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, server_conf->pool->log, 0, "%s", __func__);
-    ngx_postgres_save_t *save = ngx_pcalloc(server_conf->pool, sizeof(ngx_postgres_save_t) * server_conf->max_save);
-    if (!save) { ngx_log_error(NGX_LOG_ERR, server_conf->pool->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+ngx_int_t ngx_postgres_init(ngx_conf_t *cf, ngx_postgres_server_conf_t *server_conf) {
     ngx_queue_init(&server_conf->busy);
     ngx_queue_init(&server_conf->free);
+    ngx_postgres_save_t *save;
     for (ngx_uint_t i = 0; i < server_conf->max_save; i++) {
-        ngx_queue_insert_head(&server_conf->free, &save[i].queue);
-        save[i].common.server_conf = server_conf;
+        if (!(save = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+        ngx_queue_insert_head(&server_conf->free, &save->queue);
+        save->common.server_conf = server_conf;
     }
     return NGX_OK;
 }
