@@ -402,19 +402,21 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_co
     }
     PQfinish(common->conn);
     common->conn = NULL;
-    if (common->connection->read->timer_set) ngx_del_timer(common->connection->read);
-    if (common->connection->write->timer_set) ngx_del_timer(common->connection->write);
-    if (ngx_del_conn) ngx_del_conn(common->connection, NGX_CLOSE_EVENT); else {
-        if (common->connection->read->active || common->connection->read->disabled) ngx_del_event(common->connection->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
-        if (common->connection->write->active || common->connection->write->disabled) ngx_del_event(common->connection->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
+    if (common->connection) {
+        if (common->connection->read->timer_set) ngx_del_timer(common->connection->read);
+        if (common->connection->write->timer_set) ngx_del_timer(common->connection->write);
+        if (ngx_del_conn) ngx_del_conn(common->connection, NGX_CLOSE_EVENT); else {
+            if (common->connection->read->active || common->connection->read->disabled) ngx_del_event(common->connection->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
+            if (common->connection->write->active || common->connection->write->disabled) ngx_del_event(common->connection->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
+        }
+        if (common->connection->read->posted) { ngx_delete_posted_event(common->connection->read); }
+        if (common->connection->write->posted) { ngx_delete_posted_event(common->connection->write); }
+        common->connection->read->closed = 1;
+        common->connection->write->closed = 1;
+        if (common->connection->pool) ngx_destroy_pool(common->connection->pool);
+        ngx_free_connection(common->connection);
+        common->connection->fd = (ngx_socket_t) -1;
+        common->connection = NULL;
     }
-    if (common->connection->read->posted) { ngx_delete_posted_event(common->connection->read); }
-    if (common->connection->write->posted) { ngx_delete_posted_event(common->connection->write); }
-    common->connection->read->closed = 1;
-    common->connection->write->closed = 1;
-    if (common->connection->pool) ngx_destroy_pool(common->connection->pool);
-    ngx_free_connection(common->connection);
-    common->connection->fd = (ngx_socket_t) -1;
     common->server_conf->save--; /* free spot in keepalive connection pool */
-    common->connection = NULL;
 }
