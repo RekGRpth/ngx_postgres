@@ -40,13 +40,13 @@ static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgre
     ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
     ngx_queue_remove(queue);
     ngx_queue_insert_head(&pd->common.server_conf->free, queue);
-    if (!ps->connection) return NGX_DECLINED;
-    ps->connection->idle = 0;
-    ps->connection->log = pc->log;
-    ps->connection->read->log = pc->log;
-    ps->connection->write->log = pc->log;
+    if (!ps->common.connection) return NGX_DECLINED;
+    ps->common.connection->idle = 0;
+    ps->common.connection->log = pc->log;
+    ps->common.connection->read->log = pc->log;
+    ps->common.connection->write->log = pc->log;
     pc->cached = 1;
-    pc->connection = ps->connection;
+    pc->connection = ps->common.connection;
     pc->name = ps->common.name;
     pc->sockaddr = ps->common.sockaddr;
     pc->socklen = ps->common.socklen;
@@ -69,13 +69,13 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
         if (ngx_memn2cmp((u_char *) ps->common.sockaddr, (u_char *) pc->sockaddr, ps->common.socklen, pc->socklen)) continue;
         ngx_queue_remove(queue);
         ngx_queue_insert_head(&pd->common.server_conf->free, queue);
-        if (!ps->connection) continue;
-        ps->connection->idle = 0;
-        ps->connection->log = pc->log;
-        ps->connection->read->log = pc->log;
-        ps->connection->write->log = pc->log;
+        if (!ps->common.connection) continue;
+        ps->common.connection->idle = 0;
+        ps->common.connection->log = pc->log;
+        ps->common.connection->read->log = pc->log;
+        ps->common.connection->write->log = pc->log;
         pc->cached = 1;
-        pc->connection = ps->connection;
+        pc->connection = ps->common.connection;
         /* we do not need to resume the peer name, because we already take the right value outside */
         pd->common.charset = ps->common.charset;
         pd->common.conn = ps->common.conn;
@@ -237,7 +237,7 @@ close:
 static void ngx_postgres_timeout(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
     ngx_postgres_save_t *ps = ev->data;
-    ngx_postgres_free_connection(ps->connection, &ps->common, NULL, 1);
+    ngx_postgres_free_connection(ps->common.connection, &ps->common, NULL, 1);
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
 }
@@ -254,7 +254,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_data_
         queue = ngx_queue_last(&pd->common.server_conf->busy);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         ngx_queue_remove(queue);
-        ngx_postgres_free_connection(ps->connection, &ps->common, &pd->common, 1);
+        ngx_postgres_free_connection(ps->common.connection, &ps->common, &pd->common, 1);
     } else {
         queue = ngx_queue_head(&pd->common.server_conf->free);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
@@ -264,17 +264,17 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_data_
     if (pc->connection->write->timer_set) ngx_del_timer(pc->connection->write);
     if (pc->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(pc->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_del_event != NGX_OK"); return; }
     if (pd->common.server_conf->max_requests && pd->common.requests >= pd->common.server_conf->max_requests - 1) return;
-    ps->connection = pc->connection;
+    ps->common.connection = pc->connection;
     pc->connection = NULL;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "free keepalive peer: saving connection %p", ps->connection);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "free keepalive peer: saving connection %p", ps->common.connection);
     ngx_queue_insert_head(&pd->common.server_conf->busy, queue);
-    ps->connection->data = ps;
-    ps->connection->idle = 1;
-    ps->connection->log = ngx_cycle->log;
-    ps->connection->read->handler = ngx_postgres_read_handler;
-    ps->connection->read->log = ngx_cycle->log;
-    ps->connection->write->handler = ngx_postgres_write_handler;
-    ps->connection->write->log = ngx_cycle->log;
+    ps->common.connection->data = ps;
+    ps->common.connection->idle = 1;
+    ps->common.connection->log = ngx_cycle->log;
+    ps->common.connection->read->handler = ngx_postgres_read_handler;
+    ps->common.connection->read->log = ngx_cycle->log;
+    ps->common.connection->write->handler = ngx_postgres_write_handler;
+    ps->common.connection->write->log = ngx_cycle->log;
     ps->common.charset = pd->common.charset;
     ps->common.conn = pd->common.conn;
     ps->common.name = pd->common.name;
