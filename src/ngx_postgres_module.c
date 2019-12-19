@@ -329,8 +329,8 @@ static void ngx_postgres_server_conf_cleanup(void *data) {
     while (!ngx_queue_empty(&server_conf->busy)) {
         ngx_queue_t *queue = ngx_queue_head(&server_conf->busy);
         ngx_queue_remove(queue);
-        ngx_postgres_save_t *save = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-        ngx_postgres_free_connection(save->connection, &save->common, NULL, 0);
+        ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
+        ngx_postgres_free_connection(ps->connection, &ps->common, NULL, 0);
     }
 }
 
@@ -432,11 +432,11 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
     }
     server_conf->save = 0;
     if (!server_conf->max_save) return NGX_OK;
-    ngx_postgres_save_t *save;
+    ngx_postgres_save_t *ps;
     for (ngx_uint_t i = 0; i < server_conf->max_save; i++) {
-        if (!(save = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-        ngx_queue_insert_head(&server_conf->free, &save->queue);
-        save->common.server_conf = server_conf;
+        if (!(ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+        ngx_queue_insert_head(&server_conf->free, &ps->queue);
+        ps->common.server_conf = server_conf;
     }
     return NGX_OK;
 }
