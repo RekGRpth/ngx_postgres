@@ -77,7 +77,7 @@ typedef struct {
     ngx_postgres_send_t                send;
     ngx_postgres_state_t               state;
     ngx_flag_t                         failed;
-} ngx_postgres_peer_data_t;
+} ngx_postgres_data_t;
 
 typedef struct {
     ngx_connection_t                  *connection;
