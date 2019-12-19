@@ -454,7 +454,7 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
 
 static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
     ngx_http_upstream_srv_conf_t *upstream_srv_conf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
-    if (!upstream_srv_conf->servers && !(upstream_srv_conf->servers = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_server_t)))) return "!ngx_array_create";
+    if (!upstream_srv_conf->servers && !(upstream_srv_conf->servers = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_server_t)))) return "!ngx_array_create";
     ngx_postgres_server_t *server = ngx_array_push(upstream_srv_conf->servers);
     if (!server) return "!ngx_array_push";
     ngx_memzero(server, sizeof(ngx_postgres_server_t));
@@ -617,7 +617,7 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             }
             if (!b[j].name.len) return "invalid method";
         }
-        if (!location_conf->methods && !(location_conf->methods = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_query_t)))) return "!ngx_array_create";
+        if (!location_conf->methods && !(location_conf->methods = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_query_t)))) return "!ngx_array_create";
         if (!(query = ngx_array_push(location_conf->methods))) return "!ngx_array_push";
         location_conf->methods_set |= methods;
     }
@@ -641,8 +641,8 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         sql.len = len;
     }
     if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) return "!ngx_palloc";
-    if (!(query->params = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_param_t)))) return "!ngx_array_create";
-    if (!(query->ids = ngx_array_create(cf->pool, 4, sizeof(ngx_uint_t)))) return "!ngx_array_create";
+    if (!(query->params = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_param_t)))) return "!ngx_array_create";
+    if (!(query->ids = ngx_array_create(cf->pool, 1, sizeof(ngx_uint_t)))) return "!ngx_array_create";
     u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
     query->percent = 0;
     for (ngx_uint_t k = 0; s < e; *p++ = *s++) {
@@ -693,7 +693,7 @@ static char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void 
     ngx_postgres_location_conf_t *location_conf = conf;
     ngx_postgres_rewrite_conf_t *rewrite_conf;
     if (location_conf->rewrite_conf == NGX_CONF_UNSET_PTR) {
-        if (!(location_conf->rewrite_conf = ngx_array_create(cf->pool, 2, sizeof(ngx_postgres_rewrite_conf_t)))) return "!ngx_array_create";
+        if (!(location_conf->rewrite_conf = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_rewrite_conf_t)))) return "!ngx_array_create";
     } else {
         rewrite_conf = location_conf->rewrite_conf->elts;
         for (ngx_uint_t j = 0; j < location_conf->rewrite_conf->nelts; j++) if (rewrite_conf[j].key == e[i].key) { rewrite_conf = &rewrite_conf[j]; goto found; }
@@ -724,7 +724,7 @@ found:;
             }
             if (!b[j].name.len) return "invalid method";
         }
-        if (!rewrite_conf->methods && !(rewrite_conf->methods = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_rewrite_t)))) return "!ngx_array_create";
+        if (!rewrite_conf->methods && !(rewrite_conf->methods = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_rewrite_t)))) return "!ngx_array_create";
         if (!(rewrite = ngx_array_push(rewrite_conf->methods))) return "!ngx_array_push";
         rewrite_conf->methods_set |= methods;
     }
@@ -809,7 +809,7 @@ static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *con
     elts[1].data++;
     if (!elts[3].len) return "empty column";
     ngx_postgres_location_conf_t *location_conf = conf;
-    if (location_conf->variables == NGX_CONF_UNSET_PTR && !(location_conf->variables = ngx_array_create(cf->pool, 4, sizeof(ngx_postgres_variable_t)))) return "!ngx_array_create";
+    if (location_conf->variables == NGX_CONF_UNSET_PTR && !(location_conf->variables = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_variable_t)))) return "!ngx_array_create";
     ngx_postgres_variable_t *variable = ngx_array_push(location_conf->variables);
     if (!variable) return "!ngx_array_push";
     variable->index = location_conf->variables->nelts - 1;
