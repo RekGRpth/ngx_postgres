@@ -238,9 +238,8 @@ close:
 }
 
 
-static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_data_t *pd, ngx_uint_t state) {
+static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "%s", __func__);
-    if (state & NGX_PEER_FAILED) pd->failed = 1;
     if (pd->failed || !pd->common.connection || pd->request->upstream->headers_in.status_n != NGX_HTTP_OK) return;
     ngx_postgres_save_t *ps;
     ngx_queue_t *queue;
@@ -261,7 +260,6 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_data_
     if (pd->common.server_conf->max_requests && pd->common.requests >= pd->common.server_conf->max_requests - 1) return;
     ps->common.connection = pd->common.connection;
     pd->common.connection = NULL;
-    pc->connection = NULL;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "free keepalive peer: saving connection %p", ps->common.connection);
     ngx_queue_insert_head(&pd->common.server_conf->busy, queue);
     ps->common.connection->data = ps;
@@ -276,8 +274,8 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_data_
     ps->common.name = pd->common.name;
     ps->common.prepare = pd->common.prepare;
     ps->common.requests = pd->common.requests;
-    ps->common.sockaddr = pc->sockaddr;
-    ps->common.socklen = pc->socklen;
+    ps->common.sockaddr = pd->common.sockaddr;
+    ps->common.socklen = pd->common.socklen;
     if (ps->common.server_conf->max_requests) ps->common.requests++;
     if (ps->common.server_conf->timeout) ngx_add_timer(&ps->timeout, ps->common.server_conf->timeout);
 }
@@ -286,13 +284,14 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_data_
 static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = data;
-    if (pd->common.server_conf->max_save) ngx_postgres_free_peer(pc, pd, state);
+    if (state & NGX_PEER_FAILED) pd->failed = 1;
+    if (pd->common.server_conf->max_save) ngx_postgres_free_peer(pd);
     if (pd->common.connection) {
         ngx_postgres_free_connection(pd->common.connection, &pd->common, NULL, 1);
         pd->common.conn = NULL;
         pd->common.connection = NULL;
-        pc->connection = NULL;
     }
+    pc->connection = NULL;
 }
 
 
