@@ -439,7 +439,15 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
     }
     server_conf->peers = peers;
     server_conf->save = 0;
-    if (server_conf->max_save) return ngx_postgres_init(cf, server_conf);
+    if (!server_conf->max_save) return NGX_OK;
+    ngx_queue_init(&server_conf->busy);
+    ngx_queue_init(&server_conf->free);
+    ngx_postgres_save_t *save;
+    for (ngx_uint_t i = 0; i < server_conf->max_save; i++) {
+        if (!(save = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+        ngx_queue_insert_head(&server_conf->free, &save->queue);
+        save->common.server_conf = server_conf;
+    }
     return NGX_OK;
 }
 
