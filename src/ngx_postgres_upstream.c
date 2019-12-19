@@ -274,10 +274,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, ngx_postgres_data_
     ps->common.sockaddr = pc->sockaddr;
     ps->common.socklen = pc->socklen;
     if (ps->common.server_conf->max_requests) ps->common.requests++;
-    if (ps->common.server_conf->timeout) {
-        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
-        ngx_add_timer(&ps->timeout, ps->common.server_conf->timeout);
-    }
+    if (ps->common.server_conf->timeout) ngx_add_timer(&ps->timeout, ps->common.server_conf->timeout);
 }
 
 
