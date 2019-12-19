@@ -232,6 +232,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     ngx_postgres_process_notify(ps->common.connection, &ps->common);
     return;
 close:
+    if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
     ngx_postgres_free_connection(&ps->common, NULL, 0);
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
@@ -248,6 +249,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         queue = ngx_queue_last(&pd->common.server_conf->busy);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         ngx_queue_remove(queue);
+        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ngx_postgres_free_connection(&ps->common, &pd->common, 1);
     } else {
         queue = ngx_queue_head(&pd->common.server_conf->free);
