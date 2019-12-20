@@ -33,32 +33,30 @@
 #include "ngx_postgres_upstream.h"
 
 
+static void ngx_postgres_busy_to_free(ngx_peer_connection_t *pc, ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
+    if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
+    ngx_queue_remove(&ps->queue);
+    ngx_queue_insert_head(&pd->common.server_conf->free, &ps->queue);
+    pd->common = ps->common;
+    pd->state = pd->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query;
+    pc->cached = 1;
+    pc->connection = pd->common.connection;
+    pc->connection->idle = 0;
+    pc->connection->log = pc->log;
+    pc->connection->read->log = pc->log;
+    pc->connection->write->log = pc->log;
+    pc->name = pd->common.name;
+    pc->sockaddr = pd->common.sockaddr;
+    pc->socklen = pd->common.socklen;
+}
+
+
 static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *pc, ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     if (ngx_queue_empty(&pd->common.server_conf->busy)) return NGX_DECLINED;
     ngx_queue_t *queue = ngx_queue_head(&pd->common.server_conf->busy);
     ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-    ngx_queue_remove(queue);
-    ngx_queue_insert_head(&pd->common.server_conf->free, queue);
-    if (!ps->common.connection) return NGX_DECLINED;
-    ps->common.connection->idle = 0;
-    ps->common.connection->log = pc->log;
-    ps->common.connection->read->log = pc->log;
-    ps->common.connection->write->log = pc->log;
-    pc->cached = 1;
-    pd->common.connection = ps->common.connection;
-    pc->connection = pd->common.connection;
-    pc->name = ps->common.name;
-    pc->sockaddr = ps->common.sockaddr;
-    pc->socklen = ps->common.socklen;
-    pd->common.charset = ps->common.charset;
-    pd->common.conn = ps->common.conn;
-    pd->common.name = ps->common.name;
-    pd->common.prepare = ps->common.prepare;
-    pd->common.requests = ps->common.requests;
-    pd->common.sockaddr = ps->common.sockaddr;
-    pd->common.socklen = ps->common.socklen;
-    if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
+    ngx_postgres_busy_to_free(pc, pd, ps);
     return NGX_DONE;
 }
 
@@ -67,23 +65,8 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *pc, ngx_postgres
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     for (ngx_queue_t *queue = ngx_queue_head(&pd->common.server_conf->busy); queue != ngx_queue_sentinel(&pd->common.server_conf->busy); queue = ngx_queue_next(queue)) {
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-        if (ngx_memn2cmp((u_char *) ps->common.sockaddr, (u_char *) pc->sockaddr, ps->common.socklen, pc->socklen)) continue;
-        ngx_queue_remove(queue);
-        ngx_queue_insert_head(&pd->common.server_conf->free, queue);
-        if (!ps->common.connection) continue;
-        ps->common.connection->idle = 0;
-        ps->common.connection->log = pc->log;
-        ps->common.connection->read->log = pc->log;
-        ps->common.connection->write->log = pc->log;
-        pc->cached = 1;
-        pd->common.connection = ps->common.connection;
-        pc->connection = pd->common.connection;
-        /* we do not need to resume the peer name, because we already take the right value outside */
-        pd->common.charset = ps->common.charset;
-        pd->common.conn = ps->common.conn;
-        pd->common.prepare = ps->common.prepare;
-        pd->common.requests = ps->common.requests;
-        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
+        if (ngx_memn2cmp((u_char *)pd->common.sockaddr, (u_char *)ps->common.sockaddr, pd->common.socklen, ps->common.socklen)) continue;
+        ngx_postgres_busy_to_free(pc, pd, ps);
         return NGX_DONE;
     }
     return NGX_DECLINED;
@@ -94,25 +77,17 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = data;
     pd->failed = 0;
-    if (pd->common.server_conf->max_save && pd->common.server_conf->single && ngx_postgres_peer_single(pc, pd) != NGX_DECLINED) { /* re-use keepalive peer */
-        pd->state = pd->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query;
-        ngx_postgres_process_events(pd->request);
-        return NGX_AGAIN;
-    }
+    if (pd->common.server_conf->max_save && pd->common.server_conf->single && ngx_postgres_peer_single(pc, pd) != NGX_DECLINED) { ngx_postgres_process_events(pd->request); return NGX_AGAIN; }
     if (pd->common.server_conf->peer >= pd->common.server_conf->max_peer) pd->common.server_conf->peer = 0;
     ngx_postgres_peer_t *peer = &pd->common.server_conf->peers[pd->common.server_conf->peer++];
     pd->common.name = peer->name;
     pd->common.sockaddr = peer->sockaddr;
     pd->common.socklen = peer->socklen;
     pc->cached = 0;
-    pc->name = peer->name;
-    pc->sockaddr = peer->sockaddr;
-    pc->socklen = peer->socklen;
-    if (pd->common.server_conf->max_save && !pd->common.server_conf->single && ngx_postgres_peer_multi(pc, pd) != NGX_DECLINED) { /* re-use keepalive peer */
-        pd->state = pd->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query;
-        ngx_postgres_process_events(pd->request);
-        return NGX_AGAIN;
-    }
+    pc->name = pd->common.name;
+    pc->sockaddr = pd->common.sockaddr;
+    pc->socklen = pd->common.socklen;
+    if (pd->common.server_conf->max_save && !pd->common.server_conf->single && ngx_postgres_peer_multi(pc, pd) != NGX_DECLINED) { ngx_postgres_process_events(pd->request); return NGX_AGAIN; }
     if (pd->common.server_conf->reject && pd->common.server_conf->save >= pd->common.server_conf->max_save) {
         ngx_log_error(NGX_LOG_INFO, pc->log, 0, "keepalive connection pool is full, rejecting request to upstream \"%V\"", peer->name);
         pd->common.connection = ngx_get_connection(0, pc->log); /* a bit hack-ish way to return error response (setup part) */
@@ -120,8 +95,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         return NGX_AGAIN;
     }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "connstring: %s", peer->connstring);
-    /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
-    pd->common.conn = PQconnectStart((const char *)peer->connstring);
+    pd->common.conn = PQconnectStart((const char *)peer->connstring); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
     if (PQstatus(pd->common.conn) == CONNECTION_BAD || PQsetnonblocking(pd->common.conn, 1) == -1) {
         ngx_log_error(NGX_LOG_ERR, pc->log, 0, "connection failed: %s in upstream \"%V\"", PQerrorMessage(pd->common.conn), peer->name);
         PQfinish(pd->common.conn);
