@@ -217,16 +217,15 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "%s", __func__);
     if (pd->failed || !pd->common.connection || pd->request->upstream->headers_in.status_n != NGX_HTTP_OK) return;
     ngx_postgres_save_t *ps;
-    ngx_queue_t *queue;
     if (ngx_queue_empty(&pd->common.server_conf->free)) {
         ngx_log_error(NGX_LOG_ERR, pd->request->connection->log, 0, "connection pool is already full");
-        queue = ngx_queue_last(&pd->common.server_conf->busy);
+        ngx_queue_t *queue = ngx_queue_last(&pd->common.server_conf->busy);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ngx_postgres_free_connection(&ps->common, &pd->common, 1);
         ngx_queue_remove(&ps->queue);
     } else {
-        queue = ngx_queue_head(&pd->common.server_conf->free);
+        ngx_queue_t *queue = ngx_queue_head(&pd->common.server_conf->free);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         ngx_queue_remove(&ps->queue);
     }
@@ -237,7 +236,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ps->common.connection = pd->common.connection;
     pd->common.connection = NULL;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "free keepalive peer: saving connection %p", ps->common.connection);
-    ngx_queue_insert_head(&pd->common.server_conf->busy, queue);
+    ngx_queue_insert_head(&pd->common.server_conf->busy, &ps->queue);
     ps->common.connection->data = ps;
     ps->common.connection->idle = 1;
     ps->common.connection->log = ngx_cycle->log;
