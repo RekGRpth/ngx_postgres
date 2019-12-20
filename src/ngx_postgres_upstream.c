@@ -34,10 +34,11 @@
 
 
 static void ngx_postgres_busy_to_free(ngx_peer_connection_t *pc, ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
+    pd->common = ps->common;
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
-    pd->common = ps->common;
     pd->state = pd->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query;
     pc->cached = 1;
     pc->connection = pd->common.connection;
@@ -231,14 +232,10 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     if (pd->common.connection->write->timer_set) ngx_del_timer(pd->common.connection->write);
     if (pd->common.connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(pd->common.connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) {
         ngx_log_error(NGX_LOG_ERR, pd->request->connection->log, 0, "ngx_del_event != NGX_OK");
-        ngx_queue_remove(&ps->queue);
-        ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
         return;
     }
-    if (pd->common.server_conf->max_requests && pd->common.requests >= pd->common.server_conf->max_requests - 1) {
+    if (pd->common.server_conf->max_requests && ++pd->common.requests > pd->common.server_conf->max_requests) {
         ngx_log_error(NGX_LOG_WARN, pd->request->connection->log, 0, "max_requests");
-        ngx_queue_remove(&ps->queue);
-        ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
         return;
     }
     ngx_queue_remove(&ps->queue);
@@ -253,7 +250,6 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ps->common.connection->read->log = ngx_cycle->log;
     ps->common.connection->write->handler = ngx_postgres_write_handler;
     ps->common.connection->write->log = ngx_cycle->log;
-    if (ps->common.server_conf->max_requests) ps->common.requests++;
     if (ps->common.server_conf->timeout) ngx_add_timer(&ps->timeout, ps->common.server_conf->timeout);
 }
 
