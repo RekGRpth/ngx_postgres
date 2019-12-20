@@ -214,6 +214,17 @@ close:
 }
 
 
+static void ngx_postgres_timeout(ngx_event_t *ev) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
+    ngx_connection_t *c = ev->data;
+    ngx_postgres_save_t *ps = c->data;
+    if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
+    ngx_postgres_free_connection(&ps->common, NULL, 1);
+    ngx_queue_remove(&ps->queue);
+    ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
+}
+
+
 static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "%s", __func__);
     if (pd->failed || !pd->common.connection || pd->request->upstream->headers_in.status_n != NGX_HTTP_OK) return;
@@ -250,7 +261,12 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ps->common.connection->read->log = ngx_cycle->log;
     ps->common.connection->write->handler = ngx_postgres_write_handler;
     ps->common.connection->write->log = ngx_cycle->log;
-    if (ps->common.server_conf->timeout) ngx_add_timer(&ps->timeout, ps->common.server_conf->timeout);
+    if (ps->common.server_conf->timeout) {
+        ps->timeout.log = ngx_cycle->log;
+        ps->timeout.data = ps->common.connection;
+        ps->timeout.handler = ngx_postgres_timeout;
+        ngx_add_timer(&ps->timeout, ps->common.server_conf->timeout);
+    }
 }
 
 

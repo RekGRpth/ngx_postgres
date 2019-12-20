@@ -398,16 +398,6 @@ static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void
 }
 
 
-static void ngx_postgres_timeout(ngx_event_t *ev) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
-    ngx_postgres_save_t *ps = ev->data;
-    if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
-    ngx_postgres_free_connection(&ps->common, NULL, 1);
-    ngx_queue_remove(&ps->queue);
-    ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
-}
-
-
 static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
     upstream_srv_conf->peer.init = ngx_postgres_peer_init;
     ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
@@ -447,9 +437,6 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
     for (ngx_uint_t i = 0; i < server_conf->max_save; i++) {
         if (!(ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
         ngx_queue_insert_head(&server_conf->free, &ps->queue);
-        ps->timeout.log = cf->log;
-        ps->timeout.data = ps;
-        ps->timeout.handler = ngx_postgres_timeout;
     }
     return NGX_OK;
 }
