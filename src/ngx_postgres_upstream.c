@@ -36,7 +36,7 @@
 static void ngx_postgres_busy_to_free(ngx_peer_connection_t *pc, ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
     if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
     ngx_queue_remove(&ps->queue);
-    ngx_queue_insert_head(&pd->common.server_conf->free, &ps->queue);
+    ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
     pd->common = ps->common;
     pd->state = pd->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query;
     pc->cached = 1;
@@ -223,24 +223,25 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ngx_postgres_free_connection(&ps->common, &pd->common, 1);
-        ngx_queue_remove(&ps->queue);
     } else {
         ngx_queue_t *queue = ngx_queue_head(&pd->common.server_conf->free);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-        ngx_queue_remove(&ps->queue);
     }
     if (pd->common.connection->read->timer_set) ngx_del_timer(pd->common.connection->read);
     if (pd->common.connection->write->timer_set) ngx_del_timer(pd->common.connection->write);
     if (pd->common.connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(pd->common.connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) {
         ngx_log_error(NGX_LOG_ERR, pd->request->connection->log, 0, "ngx_del_event != NGX_OK");
+        ngx_queue_remove(&ps->queue);
         ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
         return;
     }
     if (pd->common.server_conf->max_requests && pd->common.requests >= pd->common.server_conf->max_requests - 1) {
         ngx_log_error(NGX_LOG_WARN, pd->request->connection->log, 0, "max_requests");
+        ngx_queue_remove(&ps->queue);
         ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
         return;
     }
+    ngx_queue_remove(&ps->queue);
     ngx_queue_insert_head(&pd->common.server_conf->busy, &ps->queue);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "free keepalive peer: saving connection %p", pd->common.connection);
     ps->common = pd->common;
