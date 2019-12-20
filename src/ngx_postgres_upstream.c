@@ -232,11 +232,11 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     if (pd->common.connection->read->timer_set) ngx_del_timer(pd->common.connection->read);
     if (pd->common.connection->write->timer_set) ngx_del_timer(pd->common.connection->write);
     if (pd->common.connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(pd->common.connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pd->request->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
-    if (pd->common.server_conf->max_requests && pd->common.requests >= pd->common.server_conf->max_requests - 1) return;
-    ps->common.connection = pd->common.connection;
-    pd->common.connection = NULL;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "free keepalive peer: saving connection %p", ps->common.connection);
+    if (pd->common.server_conf->max_requests && pd->common.requests >= pd->common.server_conf->max_requests - 1) { ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue); return; }
     ngx_queue_insert_head(&pd->common.server_conf->busy, &ps->queue);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "free keepalive peer: saving connection %p", pd->common.connection);
+    ps->common = pd->common;
+    pd->common.connection = NULL;
     ps->common.connection->data = ps;
     ps->common.connection->idle = 1;
     ps->common.connection->log = ngx_cycle->log;
@@ -244,13 +244,6 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ps->common.connection->read->log = ngx_cycle->log;
     ps->common.connection->write->handler = ngx_postgres_write_handler;
     ps->common.connection->write->log = ngx_cycle->log;
-    ps->common.charset = pd->common.charset;
-    ps->common.conn = pd->common.conn;
-    ps->common.name = pd->common.name;
-    ps->common.prepare = pd->common.prepare;
-    ps->common.requests = pd->common.requests;
-    ps->common.sockaddr = pd->common.sockaddr;
-    ps->common.socklen = pd->common.socklen;
     if (ps->common.server_conf->max_requests) ps->common.requests++;
     if (ps->common.server_conf->timeout) ngx_add_timer(&ps->timeout, ps->common.server_conf->timeout);
 }
