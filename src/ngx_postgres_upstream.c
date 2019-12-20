@@ -228,7 +228,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     } else {
         queue = ngx_queue_head(&pd->common.server_conf->free);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-        ngx_queue_remove(queue);
+        ngx_queue_remove(&ps->queue);
     }
     if (pd->common.connection->read->timer_set) ngx_del_timer(pd->common.connection->read);
     if (pd->common.connection->write->timer_set) ngx_del_timer(pd->common.connection->write);
