@@ -448,7 +448,7 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
         if (!(ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
         ngx_queue_insert_head(&server_conf->free, &ps->queue);
         ps->common.server_conf = server_conf;
-        ps->timeout.log = ngx_cycle->log;
+        ps->timeout.log = cf->log;
         ps->timeout.data = ps;
         ps->timeout.handler = ngx_postgres_timeout;
     }
