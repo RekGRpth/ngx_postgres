@@ -341,12 +341,20 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     pd->command = sql.data;
     pd->resultFormat = location_conf->output.binary;
 //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
-    ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    context->sql = sql; /* set $postgres_query */
+    pd->sql = sql; /* set $postgres_query */
     if (pd->common.server_conf->prepare && !query->listen) {
         if (!(pd->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
         u_char *last = ngx_snprintf(pd->stmtName, 31, "ngx_%ul", (unsigned long)(pd->hash = ngx_hash_key(sql.data, sql.len)));
         *last = '\0';
+    }
+    pd->nfields = NGX_ERROR;
+    pd->ntuples = NGX_ERROR;
+    pd->cmdTuples = NGX_ERROR;
+    if (location_conf->variables) {
+        if (!(pd->variables = ngx_array_create(r->pool, location_conf->variables->nelts, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_create"); return NGX_ERROR; }
+        /* fake ngx_array_push'ing */
+        pd->variables->nelts = location_conf->variables->nelts;
+        ngx_memzero(pd->variables->elts, pd->variables->nelts * pd->variables->size);
     }
     return NGX_OK;
 }

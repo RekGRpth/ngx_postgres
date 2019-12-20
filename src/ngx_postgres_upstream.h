@@ -62,14 +62,22 @@ typedef struct {
 } ngx_postgres_common_t;
 
 typedef struct {
+    ngx_array_t                       *variables;
+    ngx_chain_t                       *response;
     ngx_flag_t                         failed;
     ngx_http_request_t                *request;
+    ngx_int_t                          cmdTuples;
+    ngx_int_t                          nfields;
+    ngx_int_t                          ntuples;
+    ngx_int_t                          status;
     ngx_postgres_common_t              common;
     ngx_postgres_state_t               state;
+    ngx_str_t                          sql;
     ngx_uint_t                         hash;
     ngx_uint_t                         nParams;
     ngx_uint_t                         resultFormat;
     Oid                               *paramTypes;
+    PGresult                          *res;
     u_char                            *command;
     u_char                           **paramValues;
     u_char                            *stmtName;
@@ -80,17 +88,6 @@ typedef struct {
     ngx_postgres_common_t              common;
     ngx_queue_t                        queue;
 } ngx_postgres_save_t;
-
-typedef struct {
-    ngx_array_t                       *variables;
-    ngx_chain_t                       *response;
-    ngx_int_t                          cmdTuples;
-    ngx_int_t                          nfields;
-    ngx_int_t                          ntuples;
-    ngx_int_t                          status;
-    ngx_str_t                          sql;
-    PGresult                          *res;
-} ngx_postgres_context_t;
 
 
 ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *);

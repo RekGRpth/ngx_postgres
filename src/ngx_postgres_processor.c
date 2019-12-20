@@ -72,8 +72,8 @@ static const char *ConnStatusType2string(ConnStatusType status) {
 static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     r->upstream->headers_in.status_n = NGX_HTTP_OK; /* flag for keepalive */
-    ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    ngx_postgres_finalize_upstream(r, r->upstream, context->status >= NGX_HTTP_SPECIAL_RESPONSE ? context->status : NGX_OK);
+    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_postgres_finalize_upstream(r, r->upstream, pd->status >= NGX_HTTP_SPECIAL_RESPONSE ? pd->status : NGX_OK);
     return NGX_DONE;
 }
 
@@ -87,8 +87,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         if (PQresultStatus(res) == PGRES_FATAL_ERROR) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "received error on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
             PQclear(res);
-            ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-            context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+            pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
             pd->state = state_db_idle;
             if (pd->stmtName && pd->common.prepare) {
                 for (ngx_queue_t *queue = ngx_queue_head(pd->common.prepare); queue != ngx_queue_sentinel(pd->common.prepare); queue = ngx_queue_next(queue)) {
@@ -181,31 +180,31 @@ static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
 static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    context->nfields = PQnfields(context->res); /* set $postgres_columns */
-    context->ntuples = PQntuples(context->res); /* set $postgres_rows */
-    if (ngx_strncasecmp((u_char *)PQcmdStatus(context->res), (u_char *)"SELECT", sizeof("SELECT") - 1)) { /* set $postgres_affected */
-        char *affected = PQcmdTuples(context->res);
+    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    pd->nfields = PQnfields(pd->res); /* set $postgres_columns */
+    pd->ntuples = PQntuples(pd->res); /* set $postgres_rows */
+    if (ngx_strncasecmp((u_char *)PQcmdStatus(pd->res), (u_char *)"SELECT", sizeof("SELECT") - 1)) { /* set $postgres_affected */
+        char *affected = PQcmdTuples(pd->res);
         size_t affected_len = ngx_strlen(affected);
-        if (affected_len) context->cmdTuples = ngx_atoi((u_char *)affected, affected_len);
+        if (affected_len) pd->cmdTuples = ngx_atoi((u_char *)affected, affected_len);
     }
     if (location_conf->rewrite_conf) { /* process rewrites */
         ngx_postgres_rewrite_conf_t *rewrite_conf = location_conf->rewrite_conf->elts;
         for (ngx_uint_t i = 0; i < location_conf->rewrite_conf->nelts; i++) {
             ngx_int_t rc = rewrite_conf[i].handler(r, &rewrite_conf[i]);
             if (rc != NGX_DECLINED) {
-                if (rc >= NGX_HTTP_SPECIAL_RESPONSE) { context->status = rc; return NGX_DONE; }
-                context->status = rc;
+                if (rc >= NGX_HTTP_SPECIAL_RESPONSE) { pd->status = rc; return NGX_DONE; }
+                pd->status = rc;
                 break;
             }
         }
     }
     if (location_conf->variables) { /* set custom variables */
         ngx_postgres_variable_t *variable = location_conf->variables->elts;
-        ngx_str_t *store = context->variables->elts;
+        ngx_str_t *store = pd->variables->elts;
         for (ngx_uint_t i = 0; i < location_conf->variables->nelts; i++) {
             store[i] = ngx_postgres_variable_set_custom(r, &variable[i]);
-            if (!store[i].len && variable[i].value.required) { context->status = NGX_HTTP_INTERNAL_SERVER_ERROR; ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_variable_set_custom"); return NGX_DONE; }
+            if (!store[i].len && variable[i].value.required) { pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR; ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_variable_set_custom"); return NGX_DONE; }
         }
     }
     if (location_conf->output.handler) return location_conf->output.handler(r);
@@ -223,8 +222,7 @@ static ngx_int_t ngx_postgres_get_ack(ngx_http_request_t *r) {
     if (res) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "receiving ACK failed: multiple queries(?)");
         PQclear(res);
-        ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-        context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     pd->state = state_db_idle;
     return ngx_postgres_done(r);
@@ -242,13 +240,11 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     if (PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to receive result: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
         PQclear(res);
-        ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-        context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         goto ret;
     }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "result received successfully, cols:%d rows:%d", PQnfields(res), PQntuples(res));
-    ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    context->res = res;
+    pd->res = res;
     ngx_int_t rc = ngx_postgres_process_response(r);
     PQclear(res);
     if (rc != NGX_DONE) return rc;

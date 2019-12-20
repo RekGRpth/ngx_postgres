@@ -153,18 +153,6 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
         url.no_resolve = 1;
         if (!(location_conf->upstream.upstream_conf.upstream = ngx_postgres_find_upstream(r, &url))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "upstream name \"%V\" not found", &host); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     }
-    ngx_postgres_context_t *context = ngx_pcalloc(r->pool, sizeof(ngx_postgres_context_t));
-    if (!context) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-    context->nfields = NGX_ERROR;
-    context->ntuples = NGX_ERROR;
-    context->cmdTuples = NGX_ERROR;
-    if (location_conf->variables) {
-        if (!(context->variables = ngx_array_create(r->pool, location_conf->variables->nelts, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_create"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-        /* fake ngx_array_push'ing */
-        context->variables->nelts = location_conf->variables->nelts;
-        ngx_memzero(context->variables->elts, context->variables->nelts * context->variables->size);
-    }
-    ngx_http_set_ctx(r, context, ngx_postgres_module);
     r->upstream->schema.len = sizeof("postgres://") - 1;
     r->upstream->schema.data = (u_char *) "postgres://";
     r->upstream->output.tag = (ngx_buf_tag_t) &ngx_postgres_module;

@@ -37,24 +37,24 @@ static int ngx_postgres_find_variables(char *variables[10], char *url, int size)
 }
 
 
-static char *ngx_postgres_find_values(char *values[10], char *variables[10], int vars, char *columned[10], ngx_postgres_context_t *context, int find_error) {
+static char *ngx_postgres_find_values(char *values[10], char *variables[10], int vars, char *columned[10], ngx_postgres_data_t *pd, int find_error) {
     char *error = NULL;
     int error_in_columns = 0;
     int resolved = 0;
     // check if returned columns match variable
-    for (ngx_int_t col = 0; col < context->nfields; col++) {
-        char *col_name = PQfname(context->res, col);
+    for (ngx_int_t col = 0; col < pd->nfields; col++) {
+        char *col_name = PQfname(pd->res, col);
         for (ngx_int_t i = 0; i < vars; i++) {
             if (!ngx_strncmp(variables[i], col_name, ngx_strlen(col_name))) {
-                if (!PQgetisnull(context->res, 0, col)) {
-                    values[i] = PQgetvalue(context->res, 0, col);
+                if (!PQgetisnull(pd->res, 0, col)) {
+                    values[i] = PQgetvalue(pd->res, 0, col);
                     columned[i] = values[i];
                     resolved++;
                 }
             }
         }
         if (find_error && *col_name == 'e' && *(col_name+1) == 'r' && *(col_name+2) == 'r' && *(col_name+3) == 'o' && *(col_name+4) == 'r') {
-            if (!PQgetisnull(context->res, 0, col)) error = PQgetvalue(context->res, 0, col);
+            if (!PQgetisnull(pd->res, 0, col)) error = PQgetvalue(pd->res, 0, col);
             error_in_columns = 1;
         }
     }
@@ -62,11 +62,11 @@ static char *ngx_postgres_find_values(char *values[10], char *variables[10], int
     if ((find_error && !error_in_columns) || resolved < vars) {
         int current = -1;
         // find some json in pg results
-        for (ngx_int_t row = 0; row < context->ntuples && !failed; row++) {
-            for (ngx_int_t col = 0; col < context->nfields && !failed; col++) {
-                if (!PQgetisnull(context->res, row, col)) {
-                    char *value = PQgetvalue(context->res, row, col);
-                    int size = PQgetlength(context->res, row, col);
+        for (ngx_int_t row = 0; row < pd->ntuples && !failed; row++) {
+            for (ngx_int_t col = 0; col < pd->nfields && !failed; col++) {
+                if (!PQgetisnull(pd->res, row, col)) {
+                    char *value = PQgetvalue(pd->res, row, col);
+                    int size = PQgetlength(pd->res, row, col);
                     for (char *p = value; p < value + size; p++) {
                         //if not inside string
                         if (*p == '"') {
@@ -275,23 +275,23 @@ ngx_int_t ngx_postgres_rewrite(ngx_http_request_t *r, ngx_postgres_rewrite_conf_
 
 
 ngx_int_t ngx_postgres_rewrite_changes(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf) {
-    ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (rewrite_conf->key % 2 == 0 && !context->cmdTuples) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_changes */
-    if (rewrite_conf->key % 2 == 1 && context->cmdTuples > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* changes */
+    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    if (rewrite_conf->key % 2 == 0 && !pd->cmdTuples) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_changes */
+    if (rewrite_conf->key % 2 == 1 && pd->cmdTuples > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* changes */
     return NGX_DECLINED;
 }
 
 
 ngx_int_t ngx_postgres_rewrite_rows(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf) {
-    ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
-    if (rewrite_conf->key % 2 == 0 && !context->ntuples) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_rows */
-    if (rewrite_conf->key % 2 == 1 && context->ntuples > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* rows */
+    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    if (rewrite_conf->key % 2 == 0 && !pd->ntuples) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_rows */
+    if (rewrite_conf->key % 2 == 1 && pd->ntuples > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* rows */
     return NGX_DECLINED;
 }
 
 
 ngx_int_t ngx_postgres_rewrite_valid(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf) {
-    ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
+    ngx_postgres_data_t *pd = r->upstream->peer.data;
     ngx_str_t redirect;
     redirect.len = 0;
     char *variables[10];
@@ -310,7 +310,7 @@ ngx_int_t ngx_postgres_rewrite_valid(ngx_http_request_t *r, ngx_postgres_rewrite
     int vars = 0;
     if (redirect.len > 0) vars = ngx_postgres_find_variables(variables, (char *)redirect.data, redirect.len);
     // when interpolating redirect url, also look for errors
-    char *error = ngx_postgres_find_values(values, variables, vars, columned, context, 1);
+    char *error = ngx_postgres_find_values(values, variables, vars, columned, pd, 1);
     char *url = NULL;
     if (redirect.len > 0) url = ngx_postgres_interpolate_url((char *) redirect.data, redirect.len, variables, vars, columned, values, r);
     if ((rewrite_conf->key % 2 == 0) && !error) return ngx_postgres_rewrite(r, rewrite_conf, url); /* no_rows */
