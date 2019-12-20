@@ -328,10 +328,10 @@ static void ngx_postgres_server_conf_cleanup(void *data) {
     server_conf->max_save = 0; /* just to be on the safe-side */
     while (!ngx_queue_empty(&server_conf->busy)) {
         ngx_queue_t *queue = ngx_queue_head(&server_conf->busy);
-        ngx_queue_remove(queue);
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ngx_postgres_free_connection(&ps->common, NULL, 0);
+        ngx_queue_remove(&ps->queue);
     }
 }
 
