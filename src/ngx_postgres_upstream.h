@@ -62,6 +62,10 @@ typedef struct {
 } ngx_postgres_common_t;
 
 typedef struct {
+    ngx_flag_t                         failed;
+    ngx_http_request_t                *request;
+    ngx_postgres_common_t              common;
+    ngx_postgres_state_t               state;
     ngx_uint_t                         hash;
     ngx_uint_t                         nParams;
     ngx_uint_t                         resultFormat;
@@ -69,14 +73,6 @@ typedef struct {
     u_char                            *command;
     u_char                           **paramValues;
     u_char                            *stmtName;
-} ngx_postgres_send_t;
-
-typedef struct {
-    ngx_http_request_t                *request;
-    ngx_postgres_common_t              common;
-    ngx_postgres_send_t                send;
-    ngx_postgres_state_t               state;
-    ngx_flag_t                         failed;
 } ngx_postgres_data_t;
 
 typedef struct {

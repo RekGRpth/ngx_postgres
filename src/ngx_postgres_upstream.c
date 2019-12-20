@@ -299,15 +299,15 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     } else query = location_conf->query;
     if (query->params->nelts) {
         ngx_postgres_param_t *param = query->params->elts;
-        pd->send.nParams = query->params->nelts;
-        if (!(pd->send.paramTypes = ngx_pnalloc(r->pool, query->params->nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-        if (!(pd->send.paramValues = ngx_pnalloc(r->pool, query->params->nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+        pd->nParams = query->params->nelts;
+        if (!(pd->paramTypes = ngx_pnalloc(r->pool, query->params->nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+        if (!(pd->paramValues = ngx_pnalloc(r->pool, query->params->nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
         for (ngx_uint_t i = 0; i < query->params->nelts; i++) {
-            pd->send.paramTypes[i] = param[i].oid;
+            pd->paramTypes[i] = param[i].oid;
             ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, param[i].index);
-            if (!value || !value->data || !value->len) pd->send.paramValues[i] = NULL; else {
-                if (!(pd->send.paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-                (void) ngx_cpystrn(pd->send.paramValues[i], value->data, value->len + 1);
+            if (!value || !value->data || !value->len) pd->paramValues[i] = NULL; else {
+                if (!(pd->paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                (void) ngx_cpystrn(pd->paramValues[i], value->data, value->len + 1);
             }
         }
     }
@@ -338,14 +338,14 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     if (av_call(alist)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "av_call"); return NGX_ERROR; }
     if (last != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_snprintf"); return NGX_ERROR; }
     *last = '\0';
-    pd->send.command = sql.data;
-    pd->send.resultFormat = location_conf->output.binary;
+    pd->command = sql.data;
+    pd->resultFormat = location_conf->output.binary;
 //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
     ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
     context->sql = sql; /* set $postgres_query */
     if (pd->common.server_conf->prepare && !query->listen) {
-        if (!(pd->send.stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
-        u_char *last = ngx_snprintf(pd->send.stmtName, 31, "ngx_%ul", (unsigned long)(pd->send.hash = ngx_hash_key(sql.data, sql.len)));
+        if (!(pd->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
+        u_char *last = ngx_snprintf(pd->stmtName, 31, "ngx_%ul", (unsigned long)(pd->hash = ngx_hash_key(sql.data, sql.len)));
         *last = '\0';
     }
     return NGX_OK;

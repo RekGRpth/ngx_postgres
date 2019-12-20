@@ -90,44 +90,44 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             ngx_postgres_context_t *context = ngx_http_get_module_ctx(r, ngx_postgres_module);
             context->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
             pd->state = state_db_idle;
-            if (pd->send.stmtName && pd->common.prepare) {
+            if (pd->stmtName && pd->common.prepare) {
                 for (ngx_queue_t *queue = ngx_queue_head(pd->common.prepare); queue != ngx_queue_sentinel(pd->common.prepare); queue = ngx_queue_next(queue)) {
                     ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
-                    if (prepare->hash == pd->send.hash) { ngx_queue_remove(queue); break; }
+                    if (prepare->hash == pd->hash) { ngx_queue_remove(queue); break; }
                 }
             }
             return ngx_postgres_done(r);
         }
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "received result on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
     }
-    if (!pd->send.stmtName) {
-        if (!PQsendQueryParams(pd->common.conn, (const char *)pd->send.command, pd->send.nParams, pd->send.paramTypes, (const char *const *)pd->send.paramValues, NULL, NULL, pd->send.resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to send query: %s", PQerrorMessage(pd->common.conn)); return NGX_ERROR; }
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query %s sent successfully", pd->send.command);
+    if (!pd->stmtName) {
+        if (!PQsendQueryParams(pd->common.conn, (const char *)pd->command, pd->nParams, pd->paramTypes, (const char *const *)pd->paramValues, NULL, NULL, pd->resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to send query: %s", PQerrorMessage(pd->common.conn)); return NGX_ERROR; }
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query %s sent successfully", pd->command);
     } else switch (pd->state) {
         case state_db_send_prepare: {
             ngx_uint_t hash = 0;
             if (pd->common.prepare) for (ngx_queue_t *queue = ngx_queue_head(pd->common.prepare); queue != ngx_queue_sentinel(pd->common.prepare); queue = ngx_queue_next(queue)) {
                 ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
-                if (prepare->hash == pd->send.hash) { hash = prepare->hash; break; }
+                if (prepare->hash == pd->hash) { hash = prepare->hash; break; }
             }
             if (hash) pd->state = state_db_send_query; else {
-                if (!PQsendPrepare(pd->common.conn, (const char *)pd->send.stmtName, (const char *)pd->send.command, pd->send.nParams, pd->send.paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to send prepare: %s", PQerrorMessage(pd->common.conn)); return NGX_ERROR; }
-                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "prepare %s:%s sent successfully", pd->send.stmtName, pd->send.command);
+                if (!PQsendPrepare(pd->common.conn, (const char *)pd->stmtName, (const char *)pd->command, pd->nParams, pd->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to send prepare: %s", PQerrorMessage(pd->common.conn)); return NGX_ERROR; }
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "prepare %s:%s sent successfully", pd->stmtName, pd->command);
                 if (!pd->common.prepare) {
                     if (!(pd->common.prepare = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                     ngx_queue_init(pd->common.prepare);
                 }
                 ngx_postgres_prepare_t *prepare = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_postgres_prepare_t));
                 if (!prepare) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-                prepare->hash = pd->send.hash;
+                prepare->hash = pd->hash;
                 ngx_queue_insert_head(pd->common.prepare, &prepare->queue);
                 pd->state = state_db_send_query;
                 return NGX_DONE;
             }
         } // fall through
         case state_db_send_query: {
-            if (!PQsendQueryPrepared(pd->common.conn, (const char *)pd->send.stmtName, pd->send.nParams, (const char *const *)pd->send.paramValues, NULL, NULL, pd->send.resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to send prepared query: %s", PQerrorMessage(pd->common.conn)); return NGX_ERROR; }
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query %s:%s sent successfully", pd->send.stmtName, pd->send.command);
+            if (!PQsendQueryPrepared(pd->common.conn, (const char *)pd->stmtName, pd->nParams, (const char *const *)pd->paramValues, NULL, NULL, pd->resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to send prepared query: %s", PQerrorMessage(pd->common.conn)); return NGX_ERROR; }
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query %s:%s sent successfully", pd->stmtName, pd->command);
         } break;
         default: { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pd->state"); return NGX_ERROR; }
     }
