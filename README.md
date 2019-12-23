@@ -45,8 +45,8 @@ Set details about the database server. Additional port parameter is offered to c
 
 postgres_keepalive
 ------------------
-* **syntax**: `postgres_keepalive off|no | save=count [mode=single|multi] [overflow=ignore|reject] [prepare=on|yes|off|no]`
-* **default**: `save=10 mode=single overflow=ignore prepare=256`
+* **syntax**: `postgres_keepalive off|no|false | save=count [mode=single|multi] [overflow=ignore|reject] [prepare=on|yes|true|off|no|false]`
+* **default**: `off`
 * **context**: `upstream`
 
 Configure keepalive parameters:
