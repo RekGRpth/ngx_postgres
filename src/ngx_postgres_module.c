@@ -319,7 +319,7 @@ struct ngx_postgres_output_enum_t {
 };
 
 
-static ngx_int_t ngx_postgres_add_variables(ngx_conf_t *cf) {
+static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
     for (ngx_http_variable_t *v = ngx_postgres_module_variables; v->name.len; v++) {
         ngx_http_variable_t *variable = ngx_http_add_variable(cf, &v->name, v->flags);
         if (!variable) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_http_add_variable"); return NGX_ERROR; }
@@ -343,7 +343,7 @@ static void ngx_postgres_server_conf_cleanup(void *data) {
 }
 
 
-static void *ngx_postgres_create_server_conf(ngx_conf_t *cf) {
+static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_server_conf_t *server_conf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_server_conf_t));
     if (!server_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     ngx_queue_init(&server_conf->busy);
@@ -356,7 +356,7 @@ static void *ngx_postgres_create_server_conf(ngx_conf_t *cf) {
 }
 
 
-static void *ngx_postgres_create_location_conf(ngx_conf_t *cf) {
+static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_postgres_location_conf_t *location_conf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_location_conf_t));
     if (!location_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     location_conf->upstream.upstream_conf.connect_timeout = NGX_CONF_UNSET_MSEC;
@@ -382,7 +382,7 @@ static void *ngx_postgres_create_location_conf(ngx_conf_t *cf) {
 }
 
 
-static char *ngx_postgres_merge_location_conf(ngx_conf_t *cf, void *parent, void *child) {
+static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
     ngx_postgres_location_conf_t *prev = parent;
     ngx_postgres_location_conf_t *conf = child;
     ngx_conf_merge_msec_value(conf->upstream.upstream_conf.connect_timeout, prev->upstream.upstream_conf.connect_timeout, 60000);
@@ -888,14 +888,14 @@ static ngx_command_t ngx_postgres_commands[] = {
 };
 
 static ngx_http_module_t ngx_postgres_ctx = {
-    .preconfiguration = ngx_postgres_add_variables,
+    .preconfiguration = ngx_postgres_preconfiguration,
     .postconfiguration = NULL,
     .create_main_conf = NULL,
     .init_main_conf = NULL,
-    .create_srv_conf = ngx_postgres_create_server_conf,
+    .create_srv_conf = ngx_postgres_create_srv_conf,
     .merge_srv_conf = NULL,
-    .create_loc_conf = ngx_postgres_create_location_conf,
-    .merge_loc_conf = ngx_postgres_merge_location_conf
+    .create_loc_conf = ngx_postgres_create_loc_conf,
+    .merge_loc_conf = ngx_postgres_merge_loc_conf
 };
 
 ngx_module_t ngx_postgres_module = {
