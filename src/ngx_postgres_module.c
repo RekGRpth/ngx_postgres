@@ -346,7 +346,6 @@ static void ngx_postgres_server_conf_cleanup(void *data) {
 static void *ngx_postgres_create_server_conf(ngx_conf_t *cf) {
     ngx_postgres_server_conf_t *server_conf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_server_conf_t));
     if (!server_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
-    server_conf->max_save = 10;
     server_conf->prepare = 1;
     ngx_queue_init(&server_conf->busy);
     ngx_queue_init(&server_conf->free);
@@ -503,7 +502,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
 
 static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_conf_t *server_conf = conf;
-    if (server_conf->max_save != 10 /* default */) return "is duplicate";
+    if (server_conf->max_save/* default */) return "is duplicate";
     ngx_str_t *elts = cf->args->elts;
     if (cf->args->nelts == 2 && ((elts[1].len == sizeof("off") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"off", sizeof("off") - 1)) || (elts[1].len == sizeof("no") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"no", sizeof("no") - 1)) || (elts[1].len == sizeof("false") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"false", sizeof("false") - 1)))) { server_conf->max_save = 0; server_conf->prepare = 0; return NGX_CONF_OK; }
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
