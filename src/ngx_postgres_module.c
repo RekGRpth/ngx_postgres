@@ -438,11 +438,9 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
     }
     server_conf->save = 0;
     if (!server_conf->max_save) return NGX_OK;
-    ngx_postgres_save_t *ps;
-    for (ngx_uint_t i = 0; i < server_conf->max_save; i++) {
-        if (!(ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-        ngx_queue_insert_head(&server_conf->free, &ps->queue);
-    }
+    ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t) * server_conf->max_save);
+    if (!ps) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+    for (ngx_uint_t i = 0; i < server_conf->max_save; i++) { ngx_queue_insert_head(&server_conf->free, &ps[i].queue); }
     return NGX_OK;
 }
 
