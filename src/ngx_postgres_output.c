@@ -113,17 +113,18 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
             case NUMERICOID:
             case OIDOID:
             case TIDOID:
-            case XIDOID:
+            case XIDOID: if (location_conf->output.string_quote_only) {
                 size += PQgetlength(pd->res, row, col);
                 break;
-            default:
+            } // fall through
+            default: {
                 if (location_conf->output.quote) size++;
                 if (PQgetlength(pd->res, row, col)) {
                     if (location_conf->output.escape) size += ngx_postgres_count((u_char *)PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col), location_conf->output.escape);
                     else size += PQgetlength(pd->res, row, col);
                 }
                 if (location_conf->output.quote) size++;
-                break;
+            } break;
         }
     }
     if (!size) return NGX_DONE;
@@ -160,16 +161,18 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
                 case NUMERICOID:
                 case OIDOID:
                 case TIDOID:
-                case XIDOID:
+                case XIDOID: if (location_conf->output.string_quote_only) {
                     if (PQgetlength(pd->res, row, col)) b->last = ngx_copy(b->last, (u_char *)PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col));
                     break;
-                default:
+                } // fall through
+                default: {
                     if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
                     if (PQgetlength(pd->res, row, col)) {
                         if (location_conf->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col), location_conf->output.escape);
                         else b->last = ngx_copy(b->last, (u_char *)PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col));
                     }
                     if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
+                } break;
             }
         }
     }
@@ -246,17 +249,12 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
                     case NUMERICOID:
                     case OIDOID:
                     case TIDOID:
-                    case XIDOID:
-                        size += PQgetlength(pd->res, row, col);
-                        break;
+                    case XIDOID: size += PQgetlength(pd->res, row, col); break;
                     case BOOLOID: switch (PQgetvalue(pd->res, row, col)[0]) {
                         case 't': case 'T': size += sizeof("true") - 1; break;
                         case 'f': case 'F': size += sizeof("false") - 1; break;
                     } break;
-                    default:
-                        size += sizeof("\"\"") - 1;
-                        size += PQgetlength(pd->res, row, col) + ngx_escape_json(NULL, (u_char *)PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col));
-                        break;
+                    default: size += sizeof("\"\"") - 1 + PQgetlength(pd->res, row, col) + ngx_escape_json(NULL, (u_char *)PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col)); break;
                 }
             }
         }
@@ -295,18 +293,16 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
                     case NUMERICOID:
                     case OIDOID:
                     case TIDOID:
-                    case XIDOID:
-                        b->last = ngx_copy(b->last, PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col));
-                        break;
+                    case XIDOID: b->last = ngx_copy(b->last, PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col)); break;
                     case BOOLOID: switch (PQgetvalue(pd->res, row, col)[0]) {
                         case 't': case 'T': b->last = ngx_copy(b->last, "true", sizeof("true") - 1); break;
                         case 'f': case 'F': b->last = ngx_copy(b->last, "false", sizeof("false") - 1); break;
                     } break;
-                    default:
+                    default: {
                         b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
                         if (PQgetlength(pd->res, row, col) > 0) b->last = (u_char *) ngx_escape_json(b->last, (u_char *)PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col));
                         b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
-                    break;
+                    } break;
                 }
             }
             b->last = ngx_copy(b->last, "}", sizeof("}") - 1);
