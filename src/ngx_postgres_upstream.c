@@ -170,7 +170,7 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify: relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
-        ngx_pool_t *temp_pool = ngx_create_pool(4096, common->connection->log);
+        ngx_pool_t *temp_pool = ngx_create_pool(8192, common->connection->log);
         if (!temp_pool) continue;
         switch (ngx_http_push_stream_add_msg_to_channel_my(common->connection->log, &id, &text, NULL, NULL, 0, temp_pool)) {
             case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "notify error"); break;
@@ -386,7 +386,7 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_co
             if (PQresultStatus(res) == PGRES_TUPLES_OK) for (int row = 0; row < PQntuples(res); row++) {
                 ngx_str_t id = { PQgetlength(res, row, 0), (u_char *)PQgetvalue(res, row, 0) };
                 ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "delete channel = %V", &id);
-                ngx_pool_t *temp_pool = ngx_create_pool(4096, common->connection->log);
+                ngx_pool_t *temp_pool = ngx_create_pool(8192, common->connection->log);
                 if (temp_pool) {
                     ngx_http_push_stream_delete_channel_my(common->connection->log, &id, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, temp_pool);
                     ngx_destroy_pool(temp_pool);
