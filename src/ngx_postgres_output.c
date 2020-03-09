@@ -36,9 +36,9 @@
 
 ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (pd->ntuples != 1 || pd->nfields != 1) {
+    if (PQntuples(pd->res) != 1 || PQnfields(pd->res) != 1) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_output value\" received %d value(s) instead of expected single value in location \"%V\"", pd->ntuples * pd->nfields, &core_loc_conf->name);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_output value\" received %d value(s) instead of expected single value in location \"%V\"", PQntuples(pd->res) * PQnfields(pd->res), &core_loc_conf->name);
         pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }
@@ -85,22 +85,22 @@ static u_char *ngx_postgres_escape(u_char *d, u_char *s, size_t l, u_char c) {
 
 static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (!pd->ntuples || !pd->nfields) return NGX_DONE;
+    if (!PQntuples(pd->res) || !PQnfields(pd->res)) return NGX_DONE;
     size_t size = 0;
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location_conf->output.header) {
-        size += pd->nfields - 1; // header delimiters
+        size += PQnfields(pd->res) - 1; // header delimiters
         size++; // header new line
-        for (ngx_int_t col = 0; col < pd->nfields; col++) {
+        for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) {
             if (location_conf->output.quote) size++;
             if (location_conf->output.escape) size += ngx_postgres_count((u_char *)PQfname(pd->res, col), ngx_strlen(PQfname(pd->res, col)), location_conf->output.escape);
             else size += ngx_strlen(PQfname(pd->res, col));
             if (location_conf->output.quote) size++;
         }
     }
-    size += pd->ntuples * (pd->nfields - 1); // value delimiters
-    size += pd->ntuples - 1; // value new line
-    for (ngx_int_t row = 0; row < pd->ntuples; row++) for (ngx_int_t col = 0; col < pd->nfields; col++) {
+    size += PQntuples(pd->res) * (PQnfields(pd->res) - 1); // value delimiters
+    size += PQntuples(pd->res) - 1; // value new line
+    for (ngx_int_t row = 0; row < PQntuples(pd->res); row++) for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) {
         if (PQgetisnull(pd->res, row, col)) size += location_conf->output.null.len; else switch (PQftype(pd->res, col)) {
             case BITOID:
             case BOOLOID:
@@ -136,7 +136,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     b->memory = 1;
     b->tag = r->upstream->output.tag;
     if (location_conf->output.header) {
-        for (ngx_int_t col = 0; col < pd->nfields; col++) {
+        for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) {
             if (col > 0) *b->last++ = location_conf->output.delimiter;
             if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
             if (location_conf->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)PQfname(pd->res, col), ngx_strlen(PQfname(pd->res, col)), location_conf->output.escape);
@@ -145,9 +145,9 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
         }
         *b->last++ = '\n';
     }
-    for (ngx_int_t row = 0; row < pd->ntuples; row++) {
+    for (ngx_int_t row = 0; row < PQntuples(pd->res); row++) {
         if (row > 0) *b->last++ = '\n';
-        for (ngx_int_t col = 0; col < pd->nfields; col++) {
+        for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) {
             if (col > 0) *b->last++ = location_conf->output.delimiter;
             if (PQgetisnull(pd->res, row, col)) b->last = ngx_copy(b->last, location_conf->output.null.data, location_conf->output.null.len); else switch (PQftype(pd->res, col)) {
                 case BITOID:
@@ -231,11 +231,11 @@ ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
 ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     size_t size = 0;
-    if (pd->ntuples == 1 && pd->nfields == 1 && (PQftype(pd->res, 0) == JSONOID || PQftype(pd->res, 0) == JSONBOID)) size = PQgetlength(pd->res, 0, 0); else {
-        if (pd->ntuples > 1) size += 2; // [] + \0
-        for (ngx_int_t row = 0; row < pd->ntuples; row++) {
+    if (PQntuples(pd->res) == 1 && PQnfields(pd->res) == 1 && (PQftype(pd->res, 0) == JSONOID || PQftype(pd->res, 0) == JSONBOID)) size = PQgetlength(pd->res, 0, 0); else {
+        if (PQntuples(pd->res) > 1) size += 2; // [] + \0
+        for (ngx_int_t row = 0; row < PQntuples(pd->res); row++) {
             size += sizeof("{}") - 1;
-            for (ngx_int_t col = 0; col < pd->nfields; col++) {
+            for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) {
                 if (PQgetisnull(pd->res, row, col)) size += sizeof("null") - 1; else switch (PQftype(pd->res, col)) {
                     case BITOID:
                     case CIDOID:
@@ -258,11 +258,11 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
                 }
             }
         }
-        for (ngx_int_t col = 0; col < pd->nfields; col++) size += (ngx_strlen(PQfname(pd->res, col)) + 3) * pd->ntuples; // extra "":
-        size += pd->ntuples * (pd->nfields - 1); /* column delimiters */
-        size += pd->ntuples - 1;                      /* row delimiters */
+        for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) size += (ngx_strlen(PQfname(pd->res, col)) + 3) * PQntuples(pd->res); // extra "":
+        size += PQntuples(pd->res) * (PQnfields(pd->res) - 1); /* column delimiters */
+        size += PQntuples(pd->res) - 1;                      /* row delimiters */
     }
-    if (!pd->ntuples || !size) return NGX_DONE;
+    if (!PQntuples(pd->res) || !size) return NGX_DONE;
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
     if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_create_temp_buf"); return NGX_ERROR; }
     ngx_chain_t *chain = ngx_alloc_chain_link(r->pool);
@@ -270,12 +270,12 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     chain->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
-    if (pd->ntuples == 1 && pd->nfields == 1 && (PQftype(pd->res, 0) == JSONOID || PQftype(pd->res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(pd->res, 0, 0), PQgetlength(pd->res, 0, 0)); else { /* fill data */
-        if (pd->ntuples > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
-        for (ngx_int_t row = 0; row < pd->ntuples; row++) {
+    if (PQntuples(pd->res) == 1 && PQnfields(pd->res) == 1 && (PQftype(pd->res, 0) == JSONOID || PQftype(pd->res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(pd->res, 0, 0), PQgetlength(pd->res, 0, 0)); else { /* fill data */
+        if (PQntuples(pd->res) > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
+        for (ngx_int_t row = 0; row < PQntuples(pd->res); row++) {
             if (row > 0) b->last = ngx_copy(b->last, ",", 1);
             b->last = ngx_copy(b->last, "{", sizeof("{") - 1);
-            for (ngx_int_t col = 0; col < pd->nfields; col++) {
+            for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) {
                 if (col > 0) b->last = ngx_copy(b->last, ",", 1);
                 b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
                 b->last = ngx_copy(b->last, PQfname(pd->res, col), ngx_strlen(PQfname(pd->res, col)));
@@ -307,7 +307,7 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
             }
             b->last = ngx_copy(b->last, "}", sizeof("}") - 1);
         }
-        if (pd->ntuples > 1) b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
+        if (PQntuples(pd->res) > 1) b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
     chain->next = NULL;

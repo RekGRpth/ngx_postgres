@@ -42,7 +42,7 @@ static char *ngx_postgres_find_values(char *values[10], char *variables[10], int
     int error_in_columns = 0;
     int resolved = 0;
     // check if returned columns match variable
-    for (ngx_int_t col = 0; col < pd->nfields; col++) {
+    for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) {
         char *col_name = PQfname(pd->res, col);
         for (ngx_int_t i = 0; i < vars; i++) {
             if (!ngx_strncmp(variables[i], col_name, ngx_strlen(col_name))) {
@@ -62,8 +62,8 @@ static char *ngx_postgres_find_values(char *values[10], char *variables[10], int
     if ((find_error && !error_in_columns) || resolved < vars) {
         int current = -1;
         // find some json in pg results
-        for (ngx_int_t row = 0; row < pd->ntuples && !failed; row++) {
-            for (ngx_int_t col = 0; col < pd->nfields && !failed; col++) {
+        for (ngx_int_t row = 0; row < PQntuples(pd->res) && !failed; row++) {
+            for (ngx_int_t col = 0; col < PQnfields(pd->res) && !failed; col++) {
                 if (!PQgetisnull(pd->res, row, col)) {
                     char *value = PQgetvalue(pd->res, row, col);
                     int size = PQgetlength(pd->res, row, col);
@@ -284,15 +284,15 @@ ngx_int_t ngx_postgres_rewrite_changes(ngx_http_request_t *r, ngx_postgres_rewri
 
 ngx_int_t ngx_postgres_rewrite_rows(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (rewrite_conf->key % 2 == 0 && !pd->ntuples) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_rows */
-    if (rewrite_conf->key % 2 == 1 && pd->ntuples > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* rows */
+    if (rewrite_conf->key % 2 == 0 && !PQntuples(pd->res)) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* no_rows */
+    if (rewrite_conf->key % 2 == 1 && PQntuples(pd->res) > 0) return ngx_postgres_rewrite(r, rewrite_conf, NULL); /* rows */
     return NGX_DECLINED;
 }
 
 
 ngx_int_t ngx_postgres_rewrite_valid(ngx_http_request_t *r, ngx_postgres_rewrite_conf_t *rewrite_conf) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    ngx_str_t redirect;
+    ngx_str_t redirect = {0, NULL};
     redirect.len = 0;
     char *variables[10];
     char *columned[10];

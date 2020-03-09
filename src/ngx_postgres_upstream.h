@@ -67,8 +67,6 @@ typedef struct {
     ngx_flag_t                         failed;
     ngx_http_request_t                *request;
     ngx_int_t                          cmdTuples;
-    ngx_int_t                          nfields;
-    ngx_int_t                          ntuples;
     ngx_int_t                          status;
     ngx_postgres_common_t              common;
     ngx_postgres_query_t              *query;
