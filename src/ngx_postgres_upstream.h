@@ -71,6 +71,7 @@ typedef struct {
     ngx_int_t                          ntuples;
     ngx_int_t                          status;
     ngx_postgres_common_t              common;
+    ngx_postgres_query_t              *query;
     ngx_postgres_state_t               state;
     ngx_str_t                          sql;
     ngx_uint_t                         hash;
@@ -78,7 +79,6 @@ typedef struct {
     ngx_uint_t                         resultFormat;
     Oid                               *paramTypes;
     PGresult                          *res;
-    u_char                            *command;
     u_char                           **paramValues;
     u_char                            *stmtName;
 } ngx_postgres_data_t;

@@ -26,7 +26,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <avcall.h>
 
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_processor.h"
@@ -39,7 +38,6 @@ static void ngx_postgres_busy_to_free(ngx_peer_connection_t *pc, ngx_postgres_da
     pd->common = ps->common;
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
-    pd->state = pd->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query;
     pc->cached = 1;
     pc->connection = pd->common.connection;
     pc->connection->idle = 0;
@@ -140,30 +138,6 @@ static void ngx_postgres_write_handler(ngx_event_t *ev) {
 }
 
 
-static ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident) {
-    ngx_str_t result = ngx_null_string;
-    u_char quote_char = as_ident ? '"' : '\'';
-    ngx_uint_t num_backslashes = 0;
-    ngx_uint_t num_quotes = 0;
-    const u_char *s;
-    for (s = str; (size_t)(s - str) < len && *s != '\0'; ++s) if (*s == quote_char) ++num_quotes; else if (*s == '\\') ++num_backslashes;
-    size_t input_len = s - str;
-    size_t result_size = input_len + num_quotes + 3;
-    if (!as_ident && num_backslashes > 0) result_size += num_backslashes + 2;
-    u_char *rp = ngx_pnalloc(pool, result_size);
-    if (!rp) return result;
-    result.data = rp;
-    if (!as_ident && num_backslashes > 0) { *rp++ = ' '; *rp++ = 'E'; }
-    *rp++ = quote_char;
-    if (!num_quotes && (!num_backslashes || as_ident)) rp = ngx_copy(rp, str, input_len);
-    else for (s = str; (size_t)(s - str) < input_len; ++s) if (*s == quote_char || (!as_ident && *s == '\\')) { *rp++ = *s; *rp++ = *s; } else *rp++ = *s;
-    *rp++ = quote_char;
-    *rp = '\0';
-    result.len = rp - result.data;
-    return result;
-}
-
-
 static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s", __func__);
     for (PGnotify *notify; (notify = PQnotifies(common->conn)); PQfreemem(notify)) {
@@ -176,11 +150,14 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
             case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "notify error"); break;
             case NGX_DECLINED: {
                 ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "notify declined");
-                ngx_str_t channel = PQescapeInternal(temp_pool, id.data, id.len, 1);
-                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "failed to escape %V", id); break; }
+                char *str = PQescapeIdentifier(common->conn, (const char *)id.data, id.len);
+                if (!str) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "failed to escape %V: %s", id, PQerrorMessage(common->conn)); break; }
+                ngx_str_t channel = {ngx_strlen(str), (u_char *)str};
+                if (!channel.len) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "failed to escape %V", id); PQfreemem(str); break; }
                 u_char *command = ngx_pnalloc(temp_pool, sizeof("UNLISTEN ") - 1 + channel.len + 1);
-                if (!command) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_pnalloc"); break; }
+                if (!command) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_pnalloc"); PQfreemem(str); break; }
                 u_char *last = ngx_snprintf(command, sizeof("UNLISTEN ") - 1 + channel.len, "UNLISTEN %V", &channel);
+                PQfreemem(str);
                 if (last != command + sizeof("UNLISTEN ") - 1 + channel.len) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "ngx_snprintf"); break; }
                 *last = '\0';
                 if (!PQsendQuery(common->conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "failed to send unlisten: %s", PQerrorMessage(common->conn)); break; }
@@ -311,45 +288,11 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
             }
         }
     }
-    ngx_str_t sql;
-    sql.len = query->sql.len - 2 * query->ids->nelts - query->percent;
-//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &query->sql);
-    ngx_str_t *ids = NULL;
-    if (query->ids->nelts) {
-        ngx_uint_t *id = query->ids->elts;
-        if (!(ids = ngx_pnalloc(r->pool, query->ids->nelts * sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-        for (ngx_uint_t i = 0; i < query->ids->nelts; i++) {
-            ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, id[i]);
-            if (!value || !value->data || !value->len) { ngx_str_set(&ids[i], "NULL"); } else {
-                ids[i] = PQescapeInternal(r->pool, value->data, value->len, 1);
-                if (!ids[i].len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to escape %*.*s", value->len, value->len, value->data); return NGX_ERROR; }
-            }
-            sql.len += ids[i].len;
-        }
-    }
-    if (!(sql.data = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-    av_alist alist;
-    u_char *last = NULL;
-    av_start_ptr(alist, &ngx_snprintf, u_char *, &last);
-    if (av_ptr(alist, u_char *, sql.data)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "av_ptr"); return NGX_ERROR; }
-    if (av_ulong(alist, sql.len)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "av_ulong"); return NGX_ERROR; }
-    if (av_ptr(alist, char *, query->sql.data)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "av_ptr"); return NGX_ERROR; }
-    for (ngx_uint_t i = 0; i < query->ids->nelts; i++) if (av_ptr(alist, ngx_str_t *, &ids[i])) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "av_ptr"); return NGX_ERROR; }
-    if (av_call(alist)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "av_call"); return NGX_ERROR; }
-    if (last != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_snprintf"); return NGX_ERROR; }
-    *last = '\0';
-    pd->command = sql.data;
-    pd->resultFormat = location_conf->output.binary;
-//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
-    pd->sql = sql; /* set $postgres_query */
-    if (pd->common.server_conf->prepare && !query->listen) {
-        if (!(pd->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
-        u_char *last = ngx_snprintf(pd->stmtName, 31, "ngx_%ul", (unsigned long)(pd->hash = ngx_hash_key(sql.data, sql.len)));
-        *last = '\0';
-    }
+    pd->query = query;
     pd->nfields = NGX_ERROR;
     pd->ntuples = NGX_ERROR;
     pd->cmdTuples = NGX_ERROR;
+    pd->resultFormat = location_conf->output.binary;
     if (location_conf->variables) {
         if (!(pd->variables = ngx_array_create(r->pool, location_conf->variables->nelts, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_create"); return NGX_ERROR; }
         /* fake ngx_array_push'ing */
