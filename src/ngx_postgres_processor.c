@@ -82,30 +82,6 @@ static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
 }
 
 
-static ngx_str_t PQescapeInternal(ngx_pool_t *pool, const u_char *str, size_t len, ngx_flag_t as_ident) {
-    ngx_str_t result = ngx_null_string;
-    u_char quote_char = as_ident ? '"' : '\'';
-    ngx_uint_t num_backslashes = 0;
-    ngx_uint_t num_quotes = 0;
-    const u_char *s;
-    for (s = str; (size_t)(s - str) < len && *s != '\0'; ++s) if (*s == quote_char) ++num_quotes; else if (*s == '\\') ++num_backslashes;
-    size_t input_len = s - str;
-    size_t result_size = input_len + num_quotes + 3;
-    if (!as_ident && num_backslashes > 0) result_size += num_backslashes + 2;
-    u_char *rp = ngx_pnalloc(pool, result_size);
-    if (!rp) return result;
-    result.data = rp;
-    if (!as_ident && num_backslashes > 0) { *rp++ = ' '; *rp++ = 'E'; }
-    *rp++ = quote_char;
-    if (!num_quotes && (!num_backslashes || as_ident)) rp = ngx_copy(rp, str, input_len);
-    else for (s = str; (size_t)(s - str) < input_len; ++s) if (*s == quote_char || (!as_ident && *s == '\\')) { *rp++ = *s; *rp++ = *s; } else *rp++ = *s;
-    *rp++ = quote_char;
-    *rp = '\0';
-    result.len = rp - result.data;
-    return result;
-}
-
-
 static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
@@ -123,7 +99,13 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             for (ngx_uint_t i = 0; i < query->ids->nelts; i++) {
                 ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, id[i]);
                 if (!value || !value->data || !value->len) { ngx_str_set(&ids[i], "NULL"); } else {
-                    ids[i] = PQescapeInternal(r->pool, value->data, value->len, 1);
+                    char *str = PQescapeIdentifier(pd->common.conn, (const char *)value->data, value->len);
+                    if (!str) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to escape %*.*s: %s", value->len, value->len, value->data, PQerrorMessage(pd->common.conn)); return NGX_ERROR; }
+                    ngx_str_t id = {ngx_strlen(str), NULL};
+                    if (!(id.data = ngx_pnalloc(r->pool, id.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); PQfreemem(str); return NGX_ERROR; }
+                    ngx_memcpy(id.data, str, id.len);
+                    PQfreemem(str);
+                    ids[i] = id;
                     if (!ids[i].len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to escape %*.*s", value->len, value->len, value->data); return NGX_ERROR; }
                 }
                 sql.len += ids[i].len;
