@@ -31,7 +31,8 @@
 
 ngx_int_t ngx_postgres_variable_columns(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (!pd) { v->not_found = 1; return NGX_OK; }
+    v->not_found = 1;
+    if (!pd) return NGX_OK;
     if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
     v->len = ngx_sprintf(v->data, "%i", PQnfields(pd->res)) - v->data;
     v->valid = 1;
@@ -43,7 +44,8 @@ ngx_int_t ngx_postgres_variable_columns(ngx_http_request_t *r, ngx_http_variable
 
 ngx_int_t ngx_postgres_variable_rows(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (!pd) { v->not_found = 1; return NGX_OK; }
+    v->not_found = 1;
+    if (!pd) return NGX_OK;
     if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
     v->len = ngx_sprintf(v->data, "%i", PQntuples(pd->res)) - v->data;
     v->valid = 1;
@@ -55,7 +57,8 @@ ngx_int_t ngx_postgres_variable_rows(ngx_http_request_t *r, ngx_http_variable_va
 
 ngx_int_t ngx_postgres_variable_affected(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (!pd || pd->cmdTuples == NGX_ERROR) { v->not_found = 1; return NGX_OK; }
+    v->not_found = 1;
+    if (!pd || pd->cmdTuples == NGX_ERROR) return NGX_OK;
     if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
     v->len = ngx_sprintf(v->data, "%i", pd->cmdTuples) - v->data;
     v->valid = 1;
@@ -67,7 +70,8 @@ ngx_int_t ngx_postgres_variable_affected(ngx_http_request_t *r, ngx_http_variabl
 
 ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (!pd || !pd->sql.len) { v->not_found = 1; return NGX_OK; }
+    v->not_found = 1;
+    if (!pd || !pd->sql.len) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
@@ -79,7 +83,8 @@ ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_variable_v
 
 ngx_int_t ngx_postgres_variable_get_custom(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (!pd || !pd->variables) { v->not_found = 1; return NGX_OK; }
+    v->not_found = 1;
+    if (!pd || !pd->variables) return NGX_OK;
     ngx_str_t *store = pd->variables->elts;
     ngx_postgres_variable_t *variable = (ngx_postgres_variable_t *) data; /* index is always valid */
     if (!store[variable->index].len) { v->not_found = 1; return NGX_OK; }
