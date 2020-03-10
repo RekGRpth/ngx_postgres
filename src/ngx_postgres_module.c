@@ -218,7 +218,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"hostaddr", sizeof("hostaddr") - 1)) { hostaddr = (u_char *)opt->val; continue; }
         arg++;
     }
-    if (!host) {
+    if (!host && !hostaddr) {
         char sockself[MAXPGPATH];
         UNIXSOCK_PATH(sockself, DEF_PGPORT, DEFAULT_PGSOCKET_DIR);
         size_t len = ngx_strlen(sockself);
