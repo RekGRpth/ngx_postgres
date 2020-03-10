@@ -31,7 +31,6 @@
 #include "ngx_postgres_handler.h"
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"
-#include "ngx_postgres_rewrite.h"
 #include "ngx_postgres_upstream.h"
 #include "ngx_postgres_variable.h"
 
@@ -290,20 +289,6 @@ ngx_conf_enum_t ngx_postgres_requirement_options[] = {
     { ngx_null_string, 0 }
 };
 
-struct ngx_postgres_rewrite_enum_t {
-    ngx_str_t name;
-    ngx_uint_t key;
-    ngx_postgres_rewrite_handler_pt handler;
-} ngx_postgres_rewrite_handlers[] = {
-    { ngx_string("no_changes"), 0, ngx_postgres_rewrite_changes },
-    { ngx_string("changes"), 1, ngx_postgres_rewrite_changes },
-    { ngx_string("no_rows"), 2, ngx_postgres_rewrite_rows },
-    { ngx_string("rows"), 3, ngx_postgres_rewrite_rows },
-    { ngx_string("no_errors"), 4, ngx_postgres_rewrite_valid },
-    { ngx_string("errors"), 5, ngx_postgres_rewrite_valid },
-    { ngx_null_string, 0, NULL }
-};
-
 struct ngx_postgres_output_enum_t {
     ngx_str_t name;
     unsigned binary:1;
@@ -361,7 +346,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     if (!location_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     location_conf->upstream.upstream_conf.connect_timeout = NGX_CONF_UNSET_MSEC;
     location_conf->upstream.upstream_conf.read_timeout = NGX_CONF_UNSET_MSEC;
-    location_conf->rewrite_conf = NGX_CONF_UNSET_PTR;
     location_conf->output.header = 1;
     location_conf->output.string = 1;
     location_conf->variables = NGX_CONF_UNSET_PTR;
@@ -396,7 +380,6 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
         conf->methods = prev->methods;
         conf->query = prev->query;
     }
-    ngx_conf_merge_ptr_value(conf->rewrite_conf, prev->rewrite_conf, NULL);
     if (!conf->output.handler && prev->output.handler) conf->output = prev->output;
     ngx_conf_merge_ptr_value(conf->variables, prev->variables, NULL);
     return NGX_CONF_OK;
@@ -676,62 +659,6 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 }
 
 
-static char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    struct ngx_postgres_rewrite_enum_t *e = ngx_postgres_rewrite_handlers;
-    ngx_str_t *elts = cf->args->elts;
-    ngx_str_t what = elts[cf->args->nelts - 2];
-    ngx_uint_t i;
-    for (i = 0; e[i].name.len; i++) if (e[i].name.len == what.len && !ngx_strncasecmp(e[i].name.data, what.data, what.len)) break;
-    if (!e[i].name.len) return "invalid condition";
-    ngx_postgres_location_conf_t *location_conf = conf;
-    ngx_postgres_rewrite_conf_t *rewrite_conf;
-    if (location_conf->rewrite_conf == NGX_CONF_UNSET_PTR) {
-        if (!(location_conf->rewrite_conf = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_rewrite_conf_t)))) return "!ngx_array_create";
-    } else {
-        rewrite_conf = location_conf->rewrite_conf->elts;
-        for (ngx_uint_t j = 0; j < location_conf->rewrite_conf->nelts; j++) if (rewrite_conf[j].key == e[i].key) { rewrite_conf = &rewrite_conf[j]; goto found; }
-    }
-    if (!(rewrite_conf = ngx_array_push(location_conf->rewrite_conf))) return "!ngx_array_push";
-    ngx_memzero(rewrite_conf, sizeof(ngx_postgres_rewrite_conf_t));
-    rewrite_conf->key = e[i].key;
-    rewrite_conf->handler = e[i].handler;
-found:;
-    ngx_uint_t methods;
-    ngx_postgres_rewrite_t *rewrite;
-    if (cf->args->nelts == 3) { /* default rewrite */
-        if (rewrite_conf->rewrite) return "is duplicate";
-        if (!(rewrite_conf->rewrite = ngx_palloc(cf->pool, sizeof(ngx_postgres_rewrite_t)))) return "!ngx_palloc";
-        methods = 0xFFFF;
-        rewrite = rewrite_conf->rewrite;
-    } else { /* method-specific rewrite */
-        methods = 0;
-        for (i = 1; i < cf->args->nelts - 2; i++) {
-            ngx_conf_bitmask_t *b = ngx_postgres_http_methods;
-            ngx_uint_t j;
-            for (j = 0; b[j].name.len; j++) {
-                if (b[j].name.len == elts[i].len && !ngx_strncasecmp(b[j].name.data, elts[i].data, elts[i].len)) {
-                    if (rewrite_conf->methods_set & b[j].mask) return "method is duplicate";
-                    methods |= b[j].mask;
-                    break;
-                }
-            }
-            if (!b[j].name.len) return "invalid method";
-        }
-        if (!rewrite_conf->methods && !(rewrite_conf->methods = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_rewrite_t)))) return "!ngx_array_create";
-        if (!(rewrite = ngx_array_push(rewrite_conf->methods))) return "!ngx_array_push";
-        rewrite_conf->methods_set |= methods;
-    }
-    ngx_str_t to = elts[cf->args->nelts - 1];
-    ngx_uint_t keep_body = 0;
-    if (to.data[0] == '=') { keep_body = 1; to.len--; to.data++; }
-    rewrite->methods = methods;
-    rewrite->status = ngx_atoi(to.data, to.len);
-    if (rewrite->status == NGX_ERROR || rewrite->status < NGX_HTTP_OK || rewrite->status > NGX_HTTP_INSUFFICIENT_STORAGE || (rewrite->status >= NGX_HTTP_SPECIAL_RESPONSE && rewrite->status < NGX_HTTP_BAD_REQUEST)) rewrite->location = to;
-    if (keep_body) rewrite->status = -rewrite->status;
-    return NGX_CONF_OK;
-}
-
-
 static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_conf_t *location_conf = conf;
     if (location_conf->output.handler) return "is duplicate";
@@ -851,12 +778,6 @@ static ngx_command_t ngx_postgres_commands[] = {
   { .name = ngx_string("postgres_query"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_1MORE,
     .set = ngx_postgres_query_conf,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = 0,
-    .post = NULL },
-  { .name = ngx_string("postgres_rewrite"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_2MORE,
-    .set = ngx_postgres_rewrite_conf,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,
     .post = NULL },

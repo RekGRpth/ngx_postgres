@@ -289,7 +289,6 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
         }
     }
     pd->query = query;
-    pd->cmdTuples = NGX_ERROR;
     pd->resultFormat = location_conf->output.binary;
     if (location_conf->variables) {
         if (!(pd->variables = ngx_array_create(r->pool, location_conf->variables->nelts, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_create"); return NGX_ERROR; }

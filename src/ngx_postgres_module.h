@@ -53,24 +53,6 @@ typedef struct {
     ngx_uint_t                          index;
 } ngx_postgres_variable_t;
 
-typedef struct ngx_postgres_rewrite_conf_s ngx_postgres_rewrite_conf_t;
-
-typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_http_request_t *, ngx_postgres_rewrite_conf_t *);
-
-typedef struct {
-    ngx_int_t                           status;
-    ngx_str_t                           location;
-    ngx_uint_t                          methods;
-} ngx_postgres_rewrite_t;
-
-struct ngx_postgres_rewrite_conf_s {
-    ngx_array_t                        *methods; /* method-specific */
-    ngx_postgres_rewrite_handler_pt     handler;
-    ngx_postgres_rewrite_t             *rewrite;     /* default */
-    ngx_uint_t                          key;
-    ngx_uint_t                          methods_set;
-};
-
 typedef struct {
     in_port_t                           port;
     int                                 family;
@@ -136,7 +118,6 @@ typedef struct {
 
 typedef struct {
     ngx_array_t                        *methods; /* method-specific */
-    ngx_array_t                        *rewrite_conf;
     ngx_array_t                        *variables;
     ngx_postgres_output_t               output;
     ngx_postgres_query_t               *query;     /* default */

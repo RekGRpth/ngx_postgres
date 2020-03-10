@@ -58,9 +58,9 @@ ngx_int_t ngx_postgres_variable_rows(ngx_http_request_t *r, ngx_http_variable_va
 ngx_int_t ngx_postgres_variable_affected(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
-    if (!pd || pd->cmdTuples == NGX_ERROR) return NGX_OK;
+    if (!pd) return NGX_OK;
     if (!(v->data = ngx_pnalloc(r->pool, NGX_INT32_LEN))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-    v->len = ngx_sprintf(v->data, "%i", pd->cmdTuples) - v->data;
+    v->len = ngx_sprintf(v->data, "%s", PQcmdTuples(pd->res)) - v->data;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;

@@ -232,22 +232,6 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (ngx_strncasecmp((u_char *)PQcmdStatus(pd->res), (u_char *)"SELECT", sizeof("SELECT") - 1)) { /* set $postgres_affected */
-        char *affected = PQcmdTuples(pd->res);
-        size_t affected_len = ngx_strlen(affected);
-        if (affected_len) pd->cmdTuples = ngx_atoi((u_char *)affected, affected_len);
-    }
-    if (location_conf->rewrite_conf) { /* process rewrites */
-        ngx_postgres_rewrite_conf_t *rewrite_conf = location_conf->rewrite_conf->elts;
-        for (ngx_uint_t i = 0; i < location_conf->rewrite_conf->nelts; i++) {
-            ngx_int_t rc = rewrite_conf[i].handler(r, &rewrite_conf[i]);
-            if (rc != NGX_DECLINED) {
-                if (rc >= NGX_HTTP_SPECIAL_RESPONSE) { pd->status = rc; return NGX_DONE; }
-                pd->status = rc;
-                break;
-            }
-        }
-    }
     if (location_conf->variables) { /* set custom variables */
         ngx_postgres_variable_t *variable = location_conf->variables->elts;
         ngx_str_t *store = pd->variables->elts;
