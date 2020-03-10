@@ -549,11 +549,9 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     ngx_str_t *elts = cf->args->elts;
     ngx_str_t sql = elts[cf->args->nelts - 1];
     if (!sql.len) return "empty query";
-    ngx_postgres_query_t *query;
     ngx_postgres_location_conf_t *location_conf = conf;
     if (location_conf->query) return "is duplicate";
     if (!(location_conf->query = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t)))) return "!ngx_palloc";
-    query = location_conf->query;
     if (sql.len > sizeof("file://") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file://", sizeof("file://") - 1)) {
         sql.data += sizeof("file://") - 1;
         sql.len -= sizeof("file://") - 1;
@@ -572,15 +570,15 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         sql.data = data;
         sql.len = len;
     }
-    if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) return "!ngx_palloc";
-    if (!(query->params = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_param_t)))) return "!ngx_array_create";
-    if (!(query->ids = ngx_array_create(cf->pool, 1, sizeof(ngx_uint_t)))) return "!ngx_array_create";
-    u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
-    query->percent = 0;
+    if (!(location_conf->query->sql.data = ngx_palloc(cf->pool, sql.len))) return "!ngx_palloc";
+    if (!(location_conf->query->params = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_param_t)))) return "!ngx_array_create";
+    if (!(location_conf->query->ids = ngx_array_create(cf->pool, 1, sizeof(ngx_uint_t)))) return "!ngx_array_create";
+    u_char *p = location_conf->query->sql.data, *s = sql.data, *e = sql.data + sql.len;
+    location_conf->query->percent = 0;
     for (ngx_uint_t k = 0; s < e; *p++ = *s++) {
         if (*s == '%') {
             *p++ = '%';
-            query->percent++;
+            location_conf->query->percent++;
         } else if (*s == '$') {
             ngx_str_t name;
             for (name.data = ++s, name.len = 0; s < e && is_variable_character(*s); s++, name.len++);
@@ -593,13 +591,13 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             ngx_uint_t oid = type2oid(&type);
             if (!oid) return "!type2oid";
             if (oid == IDOID) {
-                ngx_uint_t *id = ngx_array_push(query->ids);
+                ngx_uint_t *id = ngx_array_push(location_conf->query->ids);
                 if (!id) return "!ngx_array_push";
                 *id = (ngx_uint_t) index;
                 *p++ = '%';
                 *p++ = 'V';
             } else {
-                ngx_postgres_param_t *param = ngx_array_push(query->params);
+                ngx_postgres_param_t *param = ngx_array_push(location_conf->query->params);
                 if (!param) return "!ngx_array_push";
                 param->index = (ngx_uint_t) index;
                 param->oid = oid;
@@ -608,9 +606,9 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             if (s >= e) break;
         }
     }
-    query->sql.len = p - query->sql.data;
-    query->listen = query->sql.len > sizeof("LISTEN ") - 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1);
-//    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sql = `%V`", &query->sql);
+    location_conf->query->sql.len = p - location_conf->query->sql.data;
+    location_conf->query->listen = location_conf->query->sql.len > sizeof("LISTEN ") - 1 && !ngx_strncasecmp(location_conf->query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1);
+//    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sql = `%V`", &location_conf->query->sql);
     return NGX_CONF_OK;
 }
 
