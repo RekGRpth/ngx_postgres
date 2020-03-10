@@ -61,15 +61,11 @@ typedef struct {
 } ngx_postgres_output_t;
 
 typedef struct {
-    ngx_http_complex_value_t           *complex_value;
-    ngx_http_upstream_conf_t            upstream_conf;
-} ngx_postgres_upstream_t;
-
-typedef struct {
     ngx_array_t                        *variables;
+    ngx_http_complex_value_t           *complex;
+    ngx_http_upstream_conf_t            upstream;
     ngx_postgres_output_t               output;
     ngx_postgres_query_t               *query;
-    ngx_postgres_upstream_t             upstream;
 } ngx_postgres_location_conf_t;
 
 
