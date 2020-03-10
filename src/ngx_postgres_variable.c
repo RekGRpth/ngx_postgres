@@ -85,14 +85,14 @@ ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_variable_val
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
     if (!pd || !pd->variables) return NGX_OK;
-    ngx_str_t *store = pd->variables->elts;
+    ngx_str_t *elts = pd->variables->elts;
     ngx_postgres_variable_t *variable = (ngx_postgres_variable_t *) data; /* index is always valid */
-    if (!store[variable->index].len) return NGX_OK;
+    if (!elts[variable->index].len) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->len = store[variable->index].len;
-    v->data = store[variable->index].data;
+    v->len = elts[variable->index].len;
+    v->data = elts[variable->index].data;
     return NGX_OK;
 }
 
