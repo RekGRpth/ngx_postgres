@@ -210,7 +210,6 @@ static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
     if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write); /* remove connection timeout from new connection */
     if (poll_status != PGRES_POLLING_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "connection failed: %s", PQerrorMessage(pd->common.conn)); return NGX_ERROR; }
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connected successfully");
-//    pd->state = pd->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query;
     const char *charset = PQparameterStatus(pd->common.conn, "client_encoding");
     if (charset) {
         pd->common.charset.len = ngx_strlen(charset);
@@ -221,10 +220,6 @@ static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
             ngx_memcpy(pd->common.charset.data, charset, pd->common.charset.len);
         }
     }
-
-
-
-
     return ngx_postgres_send_query(r);
 }
 
