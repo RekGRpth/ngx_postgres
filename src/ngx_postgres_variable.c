@@ -97,6 +97,15 @@ ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_variable_val
 }
 
 
+typedef struct {
+    ngx_http_variable_t                *variable;
+    ngx_int_t                           col;
+    ngx_int_t                           row;
+    ngx_uint_t                          required;
+    u_char                             *name;
+} ngx_postgres_variable_t;
+
+
 ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
