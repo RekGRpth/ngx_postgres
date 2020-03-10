@@ -687,12 +687,11 @@ static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *con
     if (location_conf->variables == NGX_CONF_UNSET_PTR && !(location_conf->variables = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_variable_t)))) return "!ngx_array_create";
     ngx_postgres_variable_t *variable = ngx_array_push(location_conf->variables);
     if (!variable) return "!ngx_array_push";
-    variable->index = location_conf->variables->nelts - 1;
     if (!(variable->variable = ngx_http_add_variable(cf, &elts[1], NGX_HTTP_VAR_CHANGEABLE))) return "!ngx_http_add_variable";
     if (ngx_http_get_variable_index(cf, &elts[1]) == NGX_ERROR) return "ngx_http_get_variable_index == NGX_ERROR";
     if (!variable->variable->get_handler) {
         variable->variable->get_handler = ngx_postgres_variable_get;
-        variable->variable->data = (uintptr_t) variable;
+        variable->variable->data = (uintptr_t) location_conf->variables->nelts - 1;
     }
     if ((variable->value.row = ngx_atoi(elts[2].data, elts[2].len)) == NGX_ERROR) return "invalid row number";
     if ((variable->value.col = ngx_atoi(elts[3].data, elts[3].len)) == NGX_ERROR) { /* get col by name */
