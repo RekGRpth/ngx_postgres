@@ -32,6 +32,10 @@
 #include <assert.h>
 #include <ngx_http.h>
 
+
+#define IDOID 9999
+
+
 extern ngx_module_t  ngx_postgres_module;
 
 

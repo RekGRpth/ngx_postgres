@@ -27,6 +27,8 @@
  */
 
 
+#include <postgresql/server/catalog/pg_type_d.h>
+
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_processor.h"
 #include "ngx_postgres_upstream.h"
@@ -347,4 +349,251 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_co
         common->connection = NULL;
     }
     common->server_conf->save--; /* free spot in keepalive connection pool */
+}
+
+
+static ngx_flag_t is_variable_character(u_char p) {
+    return ((p >= '0' && p <= '9') || (p >= 'a' && p <= 'z') || (p >= 'A' && p <= 'Z') || p == '_');
+}
+
+
+ngx_conf_enum_t ngx_postgres_oids[] = {
+    { ngx_string("IDOID"), IDOID },
+    { ngx_string("BOOLOID"), BOOLOID },
+    { ngx_string("BYTEAOID"), BYTEAOID },
+    { ngx_string("CHAROID"), CHAROID },
+    { ngx_string("NAMEOID"), NAMEOID },
+    { ngx_string("INT8OID"), INT8OID },
+    { ngx_string("INT2OID"), INT2OID },
+    { ngx_string("INT2VECTOROID"), INT2VECTOROID },
+    { ngx_string("INT4OID"), INT4OID },
+    { ngx_string("REGPROCOID"), REGPROCOID },
+    { ngx_string("TEXTOID"), TEXTOID },
+    { ngx_string("OIDOID"), OIDOID },
+    { ngx_string("TIDOID"), TIDOID },
+    { ngx_string("XIDOID"), XIDOID },
+    { ngx_string("CIDOID"), CIDOID },
+    { ngx_string("OIDVECTOROID"), OIDVECTOROID },
+    { ngx_string("JSONOID"), JSONOID },
+    { ngx_string("XMLOID"), XMLOID },
+    { ngx_string("PGNODETREEOID"), PGNODETREEOID },
+    { ngx_string("PGNDISTINCTOID"), PGNDISTINCTOID },
+    { ngx_string("PGDEPENDENCIESOID"), PGDEPENDENCIESOID },
+    { ngx_string("PGMCVLISTOID"), PGMCVLISTOID },
+    { ngx_string("PGDDLCOMMANDOID"), PGDDLCOMMANDOID },
+    { ngx_string("POINTOID"), POINTOID },
+    { ngx_string("LSEGOID"), LSEGOID },
+    { ngx_string("PATHOID"), PATHOID },
+    { ngx_string("BOXOID"), BOXOID },
+    { ngx_string("POLYGONOID"), POLYGONOID },
+    { ngx_string("LINEOID"), LINEOID },
+    { ngx_string("FLOAT4OID"), FLOAT4OID },
+    { ngx_string("FLOAT8OID"), FLOAT8OID },
+    { ngx_string("UNKNOWNOID"), UNKNOWNOID },
+    { ngx_string("CIRCLEOID"), CIRCLEOID },
+    { ngx_string("CASHOID"), CASHOID },
+    { ngx_string("MACADDROID"), MACADDROID },
+    { ngx_string("INETOID"), INETOID },
+    { ngx_string("CIDROID"), CIDROID },
+    { ngx_string("MACADDR8OID"), MACADDR8OID },
+    { ngx_string("ACLITEMOID"), ACLITEMOID },
+    { ngx_string("BPCHAROID"), BPCHAROID },
+    { ngx_string("VARCHAROID"), VARCHAROID },
+    { ngx_string("DATEOID"), DATEOID },
+    { ngx_string("TIMEOID"), TIMEOID },
+    { ngx_string("TIMESTAMPOID"), TIMESTAMPOID },
+    { ngx_string("TIMESTAMPTZOID"), TIMESTAMPTZOID },
+    { ngx_string("INTERVALOID"), INTERVALOID },
+    { ngx_string("TIMETZOID"), TIMETZOID },
+    { ngx_string("BITOID"), BITOID },
+    { ngx_string("VARBITOID"), VARBITOID },
+    { ngx_string("NUMERICOID"), NUMERICOID },
+    { ngx_string("REFCURSOROID"), REFCURSOROID },
+    { ngx_string("REGPROCEDUREOID"), REGPROCEDUREOID },
+    { ngx_string("REGOPEROID"), REGOPEROID },
+    { ngx_string("REGOPERATOROID"), REGOPERATOROID },
+    { ngx_string("REGCLASSOID"), REGCLASSOID },
+    { ngx_string("REGTYPEOID"), REGTYPEOID },
+    { ngx_string("REGROLEOID"), REGROLEOID },
+    { ngx_string("REGNAMESPACEOID"), REGNAMESPACEOID },
+    { ngx_string("UUIDOID"), UUIDOID },
+    { ngx_string("LSNOID"), LSNOID },
+    { ngx_string("TSVECTOROID"), TSVECTOROID },
+    { ngx_string("GTSVECTOROID"), GTSVECTOROID },
+    { ngx_string("TSQUERYOID"), TSQUERYOID },
+    { ngx_string("REGCONFIGOID"), REGCONFIGOID },
+    { ngx_string("REGDICTIONARYOID"), REGDICTIONARYOID },
+    { ngx_string("JSONBOID"), JSONBOID },
+    { ngx_string("JSONPATHOID"), JSONPATHOID },
+    { ngx_string("TXID_SNAPSHOTOID"), TXID_SNAPSHOTOID },
+    { ngx_string("INT4RANGEOID"), INT4RANGEOID },
+    { ngx_string("NUMRANGEOID"), NUMRANGEOID },
+    { ngx_string("TSRANGEOID"), TSRANGEOID },
+    { ngx_string("TSTZRANGEOID"), TSTZRANGEOID },
+    { ngx_string("DATERANGEOID"), DATERANGEOID },
+    { ngx_string("INT8RANGEOID"), INT8RANGEOID },
+    { ngx_string("RECORDOID"), RECORDOID },
+    { ngx_string("RECORDARRAYOID"), RECORDARRAYOID },
+    { ngx_string("CSTRINGOID"), CSTRINGOID },
+    { ngx_string("ANYOID"), ANYOID },
+    { ngx_string("ANYARRAYOID"), ANYARRAYOID },
+    { ngx_string("VOIDOID"), VOIDOID },
+    { ngx_string("TRIGGEROID"), TRIGGEROID },
+    { ngx_string("EVTTRIGGEROID"), EVTTRIGGEROID },
+    { ngx_string("LANGUAGE_HANDLEROID"), LANGUAGE_HANDLEROID },
+    { ngx_string("INTERNALOID"), INTERNALOID },
+    { ngx_string("OPAQUEOID"), OPAQUEOID },
+    { ngx_string("ANYELEMENTOID"), ANYELEMENTOID },
+    { ngx_string("ANYNONARRAYOID"), ANYNONARRAYOID },
+    { ngx_string("ANYENUMOID"), ANYENUMOID },
+    { ngx_string("FDW_HANDLEROID"), FDW_HANDLEROID },
+    { ngx_string("INDEX_AM_HANDLEROID"), INDEX_AM_HANDLEROID },
+    { ngx_string("TSM_HANDLEROID"), TSM_HANDLEROID },
+    { ngx_string("TABLE_AM_HANDLEROID"), TABLE_AM_HANDLEROID },
+    { ngx_string("ANYRANGEOID"), ANYRANGEOID },
+    { ngx_string("BOOLARRAYOID"), BOOLARRAYOID },
+    { ngx_string("BYTEAARRAYOID"), BYTEAARRAYOID },
+    { ngx_string("CHARARRAYOID"), CHARARRAYOID },
+    { ngx_string("NAMEARRAYOID"), NAMEARRAYOID },
+    { ngx_string("INT8ARRAYOID"), INT8ARRAYOID },
+    { ngx_string("INT2ARRAYOID"), INT2ARRAYOID },
+    { ngx_string("INT2VECTORARRAYOID"), INT2VECTORARRAYOID },
+    { ngx_string("INT4ARRAYOID"), INT4ARRAYOID },
+    { ngx_string("REGPROCARRAYOID"), REGPROCARRAYOID },
+    { ngx_string("TEXTARRAYOID"), TEXTARRAYOID },
+    { ngx_string("OIDARRAYOID"), OIDARRAYOID },
+    { ngx_string("TIDARRAYOID"), TIDARRAYOID },
+    { ngx_string("XIDARRAYOID"), XIDARRAYOID },
+    { ngx_string("CIDARRAYOID"), CIDARRAYOID },
+    { ngx_string("OIDVECTORARRAYOID"), OIDVECTORARRAYOID },
+    { ngx_string("JSONARRAYOID"), JSONARRAYOID },
+    { ngx_string("XMLARRAYOID"), XMLARRAYOID },
+    { ngx_string("POINTARRAYOID"), POINTARRAYOID },
+    { ngx_string("LSEGARRAYOID"), LSEGARRAYOID },
+    { ngx_string("PATHARRAYOID"), PATHARRAYOID },
+    { ngx_string("BOXARRAYOID"), BOXARRAYOID },
+    { ngx_string("POLYGONARRAYOID"), POLYGONARRAYOID },
+    { ngx_string("LINEARRAYOID"), LINEARRAYOID },
+    { ngx_string("FLOAT4ARRAYOID"), FLOAT4ARRAYOID },
+    { ngx_string("FLOAT8ARRAYOID"), FLOAT8ARRAYOID },
+    { ngx_string("CIRCLEARRAYOID"), CIRCLEARRAYOID },
+    { ngx_string("MONEYARRAYOID"), MONEYARRAYOID },
+    { ngx_string("MACADDRARRAYOID"), MACADDRARRAYOID },
+    { ngx_string("INETARRAYOID"), INETARRAYOID },
+    { ngx_string("CIDRARRAYOID"), CIDRARRAYOID },
+    { ngx_string("MACADDR8ARRAYOID"), MACADDR8ARRAYOID },
+    { ngx_string("ACLITEMARRAYOID"), ACLITEMARRAYOID },
+    { ngx_string("BPCHARARRAYOID"), BPCHARARRAYOID },
+    { ngx_string("VARCHARARRAYOID"), VARCHARARRAYOID },
+    { ngx_string("DATEARRAYOID"), DATEARRAYOID },
+    { ngx_string("TIMEARRAYOID"), TIMEARRAYOID },
+    { ngx_string("TIMESTAMPARRAYOID"), TIMESTAMPARRAYOID },
+    { ngx_string("TIMESTAMPTZARRAYOID"), TIMESTAMPTZARRAYOID },
+    { ngx_string("INTERVALARRAYOID"), INTERVALARRAYOID },
+    { ngx_string("TIMETZARRAYOID"), TIMETZARRAYOID },
+    { ngx_string("BITARRAYOID"), BITARRAYOID },
+    { ngx_string("VARBITARRAYOID"), VARBITARRAYOID },
+    { ngx_string("NUMERICARRAYOID"), NUMERICARRAYOID },
+    { ngx_string("REFCURSORARRAYOID"), REFCURSORARRAYOID },
+    { ngx_string("REGPROCEDUREARRAYOID"), REGPROCEDUREARRAYOID },
+    { ngx_string("REGOPERARRAYOID"), REGOPERARRAYOID },
+    { ngx_string("REGOPERATORARRAYOID"), REGOPERATORARRAYOID },
+    { ngx_string("REGCLASSARRAYOID"), REGCLASSARRAYOID },
+    { ngx_string("REGTYPEARRAYOID"), REGTYPEARRAYOID },
+    { ngx_string("REGROLEARRAYOID"), REGROLEARRAYOID },
+    { ngx_string("REGNAMESPACEARRAYOID"), REGNAMESPACEARRAYOID },
+    { ngx_string("UUIDARRAYOID"), UUIDARRAYOID },
+    { ngx_string("PG_LSNARRAYOID"), PG_LSNARRAYOID },
+    { ngx_string("TSVECTORARRAYOID"), TSVECTORARRAYOID },
+    { ngx_string("GTSVECTORARRAYOID"), GTSVECTORARRAYOID },
+    { ngx_string("TSQUERYARRAYOID"), TSQUERYARRAYOID },
+    { ngx_string("REGCONFIGARRAYOID"), REGCONFIGARRAYOID },
+    { ngx_string("REGDICTIONARYARRAYOID"), REGDICTIONARYARRAYOID },
+    { ngx_string("JSONBARRAYOID"), JSONBARRAYOID },
+    { ngx_string("JSONPATHARRAYOID"), JSONPATHARRAYOID },
+    { ngx_string("TXID_SNAPSHOTARRAYOID"), TXID_SNAPSHOTARRAYOID },
+    { ngx_string("INT4RANGEARRAYOID"), INT4RANGEARRAYOID },
+    { ngx_string("NUMRANGEARRAYOID"), NUMRANGEARRAYOID },
+    { ngx_string("TSRANGEARRAYOID"), TSRANGEARRAYOID },
+    { ngx_string("TSTZRANGEARRAYOID"), TSTZRANGEARRAYOID },
+    { ngx_string("DATERANGEARRAYOID"), DATERANGEARRAYOID },
+    { ngx_string("INT8RANGEARRAYOID"), INT8RANGEARRAYOID },
+    { ngx_string("CSTRINGARRAYOID"), CSTRINGARRAYOID },
+    { ngx_null_string, 0 }
+};
+
+
+static ngx_uint_t type2oid(ngx_str_t *type) {
+    ngx_conf_enum_t *e = ngx_postgres_oids;
+    for (ngx_uint_t i = 0; e[i].name.len; i++) if (e[i].name.len - 3 == type->len && !ngx_strncasecmp(e[i].name.data, type->data, type->len)) return e[i].value;
+    return 0;
+}
+
+
+char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_str_t *elts = cf->args->elts;
+    ngx_str_t sql = elts[cf->args->nelts - 1];
+    if (!sql.len) return "empty query";
+    ngx_postgres_location_conf_t *location_conf = conf;
+    if (location_conf->query) return "is duplicate";
+    if (!(location_conf->query = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t)))) return "!ngx_palloc";
+    if (sql.len > sizeof("file://") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file://", sizeof("file://") - 1)) {
+        sql.data += sizeof("file://") - 1;
+        sql.len -= sizeof("file://") - 1;
+        if (ngx_conf_full_name(cf->cycle, &sql, 0) != NGX_OK) return "ngx_conf_full_name != NGX_OK";
+        ngx_fd_t fd = ngx_open_file(sql.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
+        if (fd == NGX_INVALID_FILE) return "ngx_open_file == NGX_INVALID_FILE";
+        ngx_file_info_t fi;
+        if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "ngx_close_file == NGX_FILE_ERROR"; return "ngx_fd_info == NGX_FILE_ERROR"; }
+        size_t len = ngx_file_size(&fi);
+        u_char *data = ngx_pnalloc(cf->pool, len);
+        if (!data) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "ngx_close_file == NGX_FILE_ERROR"; return "!ngx_pnalloc"; }
+        ssize_t n = ngx_read_fd(fd, data, len);
+        if (n == -1) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "ngx_close_file == NGX_FILE_ERROR"; return "ngx_read_fd == -1"; }
+        if ((size_t) n != len) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "ngx_close_file == NGX_FILE_ERROR"; return "ngx_read_fd != len"; }
+        if (ngx_close_file(fd) == NGX_FILE_ERROR) return "ngx_close_file == NGX_FILE_ERROR";
+        sql.data = data;
+        sql.len = len;
+    }
+    ngx_postgres_query_t *query = location_conf->query;
+    if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) return "!ngx_palloc";
+    if (!(query->params = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_param_t)))) return "!ngx_array_create";
+    if (!(query->ids = ngx_array_create(cf->pool, 1, sizeof(ngx_uint_t)))) return "!ngx_array_create";
+    u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
+    query->percent = 0;
+    for (ngx_uint_t k = 0; s < e; *p++ = *s++) {
+        if (*s == '%') {
+            *p++ = '%';
+            query->percent++;
+        } else if (*s == '$') {
+            ngx_str_t name;
+            for (name.data = ++s, name.len = 0; s < e && is_variable_character(*s); s++, name.len++);
+            if (!name.len) { *p++ = '$'; continue; }
+            ngx_str_t type = {0, NULL};
+            if (s[0] == ':' && s[1] == ':') for (s += 2, type.data = s, type.len = 0; s < e && is_variable_character(*s); s++, type.len++);
+            if (!type.len) { *p++ = '$'; p = ngx_copy(p, name.data, name.len); continue; }
+            ngx_int_t index = ngx_http_get_variable_index(cf, &name);
+            if (index == NGX_ERROR) return "ngx_http_get_variable_index == NGX_ERROR";
+            ngx_uint_t oid = type2oid(&type);
+            if (!oid) return "!type2oid";
+            if (oid == IDOID) {
+                ngx_uint_t *id = ngx_array_push(query->ids);
+                if (!id) return "!ngx_array_push";
+                *id = (ngx_uint_t) index;
+                *p++ = '%';
+                *p++ = 'V';
+            } else {
+                ngx_postgres_param_t *param = ngx_array_push(query->params);
+                if (!param) return "!ngx_array_push";
+                param->index = (ngx_uint_t) index;
+                param->oid = oid;
+                p += ngx_sprintf(p, "$%d", ++k) - p;
+            }
+            if (s >= e) break;
+        }
+    }
+    query->sql.len = p - query->sql.data;
+    query->listen = query->sql.len > sizeof("LISTEN ") - 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1);
+//    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sql = `%V`", &query->sql);
+    return NGX_CONF_OK;
 }
