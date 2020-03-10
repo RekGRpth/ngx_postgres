@@ -60,30 +60,6 @@ ngx_conf_enum_t ngx_postgres_prepare_options[] = {
     { ngx_null_string, 0 }
 };
 
-ngx_conf_enum_t ngx_postgres_output_options[] = {
-    { ngx_string("off"), 0 },
-    { ngx_string("no"), 0 },
-    { ngx_string("false"), 0 },
-    { ngx_string("on"), 1 },
-    { ngx_string("yes"), 1 },
-    { ngx_string("true"), 1 },
-    { ngx_null_string, 0 }
-};
-
-struct ngx_postgres_output_enum_t {
-    ngx_str_t name;
-    unsigned binary:1;
-    ngx_postgres_output_handler_pt handler;
-} ngx_postgres_output_handlers[] = {
-    { ngx_string("none"), 0, NULL },
-    { ngx_string("text"), 0, ngx_postgres_output_text },
-    { ngx_string("csv"), 0, ngx_postgres_output_csv },
-    { ngx_string("value"), 0, ngx_postgres_output_value },
-    { ngx_string("binary"), 1, ngx_postgres_output_value },
-    { ngx_string("json"), 0, ngx_postgres_output_json },
-    { ngx_null_string, 0, NULL }
-};
-
 
 static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
     return ngx_postgres_variable_add(cf);
@@ -338,68 +314,6 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
         if (!(location_conf->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) return "!ngx_http_upstream_add";
         return NGX_CONF_OK;
     }
-}
-
-
-static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_location_conf_t *location_conf = conf;
-    if (location_conf->output.handler) return "is duplicate";
-    struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
-    ngx_str_t *elts = cf->args->elts;
-    ngx_uint_t i;
-    for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[1].len && !ngx_strncasecmp(e[i].name.data, elts[1].data, elts[1].len)) { location_conf->output.handler = e[i].handler; break; }
-    if (!e[i].name.len) return "invalid output format";
-    location_conf->output.binary = e[i].binary;
-    if (cf->args->nelts > 2 && location_conf->output.handler != ngx_postgres_output_text && location_conf->output.handler != ngx_postgres_output_csv) return "invalid extra parameters for output format";
-    if (location_conf->output.handler == ngx_postgres_output_text) {
-        location_conf->output.delimiter = '\t';
-        ngx_str_set(&location_conf->output.null, "\\N");
-    } else if (location_conf->output.handler == ngx_postgres_output_csv) {
-        location_conf->output.delimiter = ',';
-        ngx_str_set(&location_conf->output.null, "");
-        location_conf->output.quote = '"';
-        location_conf->output.escape = '"';
-    }
-    for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (elts[i].len > sizeof("delimiter=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"delimiter=", sizeof("delimiter=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("delimiter=") - 1);
-            if (!elts[i].len || elts[i].len > 1) return "invalid delimiter";
-            elts[i].data = &elts[i].data[sizeof("delimiter=") - 1];
-            location_conf->output.delimiter = *elts[i].data;
-        } else if (elts[i].len > sizeof("null=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"null=", sizeof("null=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("null=") - 1);
-            if (!(location_conf->output.null.len = elts[i].len)) return "invalid null";
-            elts[i].data = &elts[i].data[sizeof("null=") - 1];
-            location_conf->output.null.data = elts[i].data;
-        } else if (elts[i].len > sizeof("header=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"header=", sizeof("header=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("header=") - 1);
-            elts[i].data = &elts[i].data[sizeof("header=") - 1];
-            ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_output_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location_conf->output.header = e[j].value; break; }
-            if (!e[j].name.len) return "invalid header";
-        } else if (elts[i].len > sizeof("string=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"string=", sizeof("string=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("string=") - 1);
-            elts[i].data = &elts[i].data[sizeof("string=") - 1];
-            ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_output_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location_conf->output.string = e[j].value; break; }
-            if (!e[j].name.len) return "invalid string";
-        } else if (elts[i].len >= sizeof("quote=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"quote=", sizeof("quote=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("quote=") - 1);
-            if (!elts[i].len) { location_conf->output.quote = '\0'; continue; }
-            else if (elts[i].len > 1) return "invalid quote";
-            elts[i].data = &elts[i].data[sizeof("quote=") - 1];
-            location_conf->output.quote = *elts[i].data;
-        } else if (elts[i].len >= sizeof("escape=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"escape=", sizeof("escape=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("escape=") - 1);
-            if (!elts[i].len) { location_conf->output.escape = '\0'; continue; }
-            else if (elts[i].len > 1) return "invalid escape";
-            elts[i].data = &elts[i].data[sizeof("escape=") - 1];
-            location_conf->output.escape = *elts[i].data;
-        } else return "invalid parameter";
-    }
-    return NGX_CONF_OK;
 }
 
 

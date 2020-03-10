@@ -31,9 +31,7 @@
 
 #include <ngx_http.h>
 
-
 extern ngx_module_t  ngx_postgres_module;
-
 
 typedef struct {
     ngx_array_t                        *ids;
@@ -63,6 +61,5 @@ typedef struct {
     ngx_postgres_output_t               output;
     ngx_postgres_query_t               *query;
 } ngx_postgres_location_conf_t;
-
 
 #endif /* _NGX_POSTGRES_MODULE_H_ */

@@ -34,7 +34,7 @@
 #include "ngx_postgres_upstream.h"
 
 
-ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     if (PQntuples(pd->res) != 1 || PQnfields(pd->res) != 1) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -183,52 +183,17 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
 }
 
 
-ngx_int_t ngx_postgres_output_text(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_output_text(ngx_http_request_t *r) {
     return ngx_postgres_output_text_csv(r);
 }
 
 
-ngx_int_t ngx_postgres_output_csv(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_output_csv(ngx_http_request_t *r) {
     return ngx_postgres_output_text_csv(r);
 }
 
 
-ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (!r->header_sent) {
-        ngx_http_clear_content_length(r);
-        ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-        r->headers_out.status = pd->status ? ngx_abs(pd->status) : NGX_HTTP_OK;
-        ngx_postgres_data_t *pd = r->upstream->peer.data;
-        if (pd->common.charset.len) r->headers_out.charset = pd->common.charset;
-        if (location_conf->output.handler == &ngx_postgres_output_json) {
-            ngx_str_set(&r->headers_out.content_type, "application/json");
-            r->headers_out.content_type_len = r->headers_out.content_type.len;
-        } else if (location_conf->output.handler == &ngx_postgres_output_text) {
-            ngx_str_set(&r->headers_out.content_type, "text/plain");
-            r->headers_out.content_type_len = r->headers_out.content_type.len;
-        } else if (location_conf->output.handler == &ngx_postgres_output_csv) {
-            ngx_str_set(&r->headers_out.content_type, "text/csv");
-            r->headers_out.content_type_len = r->headers_out.content_type.len;
-        } else if (location_conf->output.handler) {
-            ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            r->headers_out.content_type = core_loc_conf->default_type;
-            r->headers_out.content_type_len = core_loc_conf->default_type.len;
-        }
-        r->headers_out.content_type_lowcase = NULL;
-        if (pd->response) r->headers_out.content_length_n = pd->response->buf->end - pd->response->buf->start;
-        ngx_int_t rc = ngx_http_send_header(r);
-        if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return rc;
-    }
-    if (!pd->response) return NGX_DONE;
-    ngx_int_t rc = ngx_http_output_filter(r, pd->response);
-    if (rc == NGX_ERROR || rc > NGX_OK) return rc;
-    ngx_chain_update_chains(r->pool, &r->upstream->free_bufs, &r->upstream->busy_bufs, &pd->response, r->upstream->output.tag);
-    return rc;
-}
-
-
-ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     size_t size = 0;
     if (PQntuples(pd->res) == 1 && PQnfields(pd->res) == 1 && (PQftype(pd->res, 0) == JSONOID || PQftype(pd->res, 0) == JSONBOID)) size = PQgetlength(pd->res, 0, 0); else {
@@ -313,4 +278,127 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     chain->next = NULL;
     pd->response = chain; /* set output response */
     return NGX_DONE;
+}
+
+
+ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
+    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    if (!r->header_sent) {
+        ngx_http_clear_content_length(r);
+        ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+        r->headers_out.status = pd->status ? ngx_abs(pd->status) : NGX_HTTP_OK;
+        ngx_postgres_data_t *pd = r->upstream->peer.data;
+        if (pd->common.charset.len) r->headers_out.charset = pd->common.charset;
+        if (location_conf->output.handler == &ngx_postgres_output_json) {
+            ngx_str_set(&r->headers_out.content_type, "application/json");
+            r->headers_out.content_type_len = r->headers_out.content_type.len;
+        } else if (location_conf->output.handler == &ngx_postgres_output_text) {
+            ngx_str_set(&r->headers_out.content_type, "text/plain");
+            r->headers_out.content_type_len = r->headers_out.content_type.len;
+        } else if (location_conf->output.handler == &ngx_postgres_output_csv) {
+            ngx_str_set(&r->headers_out.content_type, "text/csv");
+            r->headers_out.content_type_len = r->headers_out.content_type.len;
+        } else if (location_conf->output.handler) {
+            ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+            r->headers_out.content_type = core_loc_conf->default_type;
+            r->headers_out.content_type_len = core_loc_conf->default_type.len;
+        }
+        r->headers_out.content_type_lowcase = NULL;
+        if (pd->response) r->headers_out.content_length_n = pd->response->buf->end - pd->response->buf->start;
+        ngx_int_t rc = ngx_http_send_header(r);
+        if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return rc;
+    }
+    if (!pd->response) return NGX_DONE;
+    ngx_int_t rc = ngx_http_output_filter(r, pd->response);
+    if (rc == NGX_ERROR || rc > NGX_OK) return rc;
+    ngx_chain_update_chains(r->pool, &r->upstream->free_bufs, &r->upstream->busy_bufs, &pd->response, r->upstream->output.tag);
+    return rc;
+}
+
+
+struct ngx_postgres_output_enum_t {
+    ngx_str_t name;
+    unsigned binary:1;
+    ngx_postgres_output_handler_pt handler;
+} ngx_postgres_output_handlers[] = {
+    { ngx_string("none"), 0, NULL },
+    { ngx_string("text"), 0, ngx_postgres_output_text },
+    { ngx_string("csv"), 0, ngx_postgres_output_csv },
+    { ngx_string("value"), 0, ngx_postgres_output_value },
+    { ngx_string("binary"), 1, ngx_postgres_output_value },
+    { ngx_string("json"), 0, ngx_postgres_output_json },
+    { ngx_null_string, 0, NULL }
+};
+
+
+ngx_conf_enum_t ngx_postgres_output_options[] = {
+    { ngx_string("off"), 0 },
+    { ngx_string("no"), 0 },
+    { ngx_string("false"), 0 },
+    { ngx_string("on"), 1 },
+    { ngx_string("yes"), 1 },
+    { ngx_string("true"), 1 },
+    { ngx_null_string, 0 }
+};
+
+
+char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_postgres_location_conf_t *location_conf = conf;
+    if (location_conf->output.handler) return "is duplicate";
+    struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
+    ngx_str_t *elts = cf->args->elts;
+    ngx_uint_t i;
+    for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[1].len && !ngx_strncasecmp(e[i].name.data, elts[1].data, elts[1].len)) { location_conf->output.handler = e[i].handler; break; }
+    if (!e[i].name.len) return "invalid output format";
+    location_conf->output.binary = e[i].binary;
+    if (cf->args->nelts > 2 && location_conf->output.handler != ngx_postgres_output_text && location_conf->output.handler != ngx_postgres_output_csv) return "invalid extra parameters for output format";
+    if (location_conf->output.handler == ngx_postgres_output_text) {
+        location_conf->output.delimiter = '\t';
+        ngx_str_set(&location_conf->output.null, "\\N");
+    } else if (location_conf->output.handler == ngx_postgres_output_csv) {
+        location_conf->output.delimiter = ',';
+        ngx_str_set(&location_conf->output.null, "");
+        location_conf->output.quote = '"';
+        location_conf->output.escape = '"';
+    }
+    for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
+        if (elts[i].len > sizeof("delimiter=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"delimiter=", sizeof("delimiter=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("delimiter=") - 1);
+            if (!elts[i].len || elts[i].len > 1) return "invalid delimiter";
+            elts[i].data = &elts[i].data[sizeof("delimiter=") - 1];
+            location_conf->output.delimiter = *elts[i].data;
+        } else if (elts[i].len > sizeof("null=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"null=", sizeof("null=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("null=") - 1);
+            if (!(location_conf->output.null.len = elts[i].len)) return "invalid null";
+            elts[i].data = &elts[i].data[sizeof("null=") - 1];
+            location_conf->output.null.data = elts[i].data;
+        } else if (elts[i].len > sizeof("header=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"header=", sizeof("header=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("header=") - 1);
+            elts[i].data = &elts[i].data[sizeof("header=") - 1];
+            ngx_uint_t j;
+            ngx_conf_enum_t *e = ngx_postgres_output_options;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location_conf->output.header = e[j].value; break; }
+            if (!e[j].name.len) return "invalid header";
+        } else if (elts[i].len > sizeof("string=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"string=", sizeof("string=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("string=") - 1);
+            elts[i].data = &elts[i].data[sizeof("string=") - 1];
+            ngx_uint_t j;
+            ngx_conf_enum_t *e = ngx_postgres_output_options;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location_conf->output.string = e[j].value; break; }
+            if (!e[j].name.len) return "invalid string";
+        } else if (elts[i].len >= sizeof("quote=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"quote=", sizeof("quote=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("quote=") - 1);
+            if (!elts[i].len) { location_conf->output.quote = '\0'; continue; }
+            else if (elts[i].len > 1) return "invalid quote";
+            elts[i].data = &elts[i].data[sizeof("quote=") - 1];
+            location_conf->output.quote = *elts[i].data;
+        } else if (elts[i].len >= sizeof("escape=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"escape=", sizeof("escape=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("escape=") - 1);
+            if (!elts[i].len) { location_conf->output.escape = '\0'; continue; }
+            else if (elts[i].len > 1) return "invalid escape";
+            elts[i].data = &elts[i].data[sizeof("escape=") - 1];
+            location_conf->output.escape = *elts[i].data;
+        } else return "invalid parameter";
+    }
+    return NGX_CONF_OK;
 }
