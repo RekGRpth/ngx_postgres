@@ -30,7 +30,6 @@
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"
 #include "ngx_postgres_processor.h"
-#include "ngx_postgres_upstream.h"
 
 
 ngx_int_t ngx_postgres_test_connect(ngx_connection_t *c) {
