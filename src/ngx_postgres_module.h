@@ -40,11 +40,6 @@ extern ngx_module_t  ngx_postgres_module;
 
 
 typedef struct {
-    ngx_uint_t                          index;
-    ngx_uint_t                          oid;
-} ngx_postgres_param_t;
-
-typedef struct {
     in_port_t                           port;
     int                                 family;
     ngx_addr_t                         *addrs;
