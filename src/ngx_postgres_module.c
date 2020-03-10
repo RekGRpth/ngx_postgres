@@ -26,6 +26,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <assert.h>
+
 #include "ngx_postgres_handler.h"
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"

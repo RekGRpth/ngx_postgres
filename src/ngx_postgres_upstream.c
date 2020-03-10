@@ -363,6 +363,9 @@ static ngx_flag_t is_variable_character(u_char p) {
 }
 
 
+#define IDOID 9999
+
+
 ngx_conf_enum_t ngx_postgres_oids[] = {
     { ngx_string("IDOID"), IDOID },
     { ngx_string("BOOLOID"), BOOLOID },

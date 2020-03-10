@@ -29,11 +29,7 @@
 #ifndef _NGX_POSTGRES_MODULE_H_
 #define _NGX_POSTGRES_MODULE_H_
 
-#include <assert.h>
 #include <ngx_http.h>
-
-
-#define IDOID 9999
 
 
 extern ngx_module_t  ngx_postgres_module;
