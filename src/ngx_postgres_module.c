@@ -66,24 +66,6 @@ static ngx_http_variable_t ngx_postgres_module_variables[] = {
     ngx_http_null_variable
 };
 
-ngx_conf_bitmask_t ngx_postgres_http_methods[] = {
-   { ngx_string("GET"), NGX_HTTP_GET },
-   { ngx_string("HEAD"), NGX_HTTP_HEAD },
-   { ngx_string("POST"), NGX_HTTP_POST },
-   { ngx_string("PUT"), NGX_HTTP_PUT },
-   { ngx_string("DELETE"), NGX_HTTP_DELETE },
-   { ngx_string("MKCOL"), NGX_HTTP_MKCOL },
-   { ngx_string("COPY"), NGX_HTTP_COPY },
-   { ngx_string("MOVE"), NGX_HTTP_MOVE },
-   { ngx_string("OPTIONS"), NGX_HTTP_OPTIONS },
-   { ngx_string("PROPFIND"), NGX_HTTP_PROPFIND },
-   { ngx_string("PROPPATCH"), NGX_HTTP_PROPPATCH },
-   { ngx_string("LOCK"), NGX_HTTP_LOCK },
-   { ngx_string("UNLOCK"), NGX_HTTP_UNLOCK },
-   { ngx_string("PATCH"), NGX_HTTP_PATCH },
-   { ngx_null_string, 0 }
-};
-
 #define IDOID 9999
 
 ngx_conf_enum_t ngx_postgres_oids[] = {
@@ -375,11 +357,7 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
         conf->upstream.upstream_conf = prev->upstream.upstream_conf;
         conf->upstream.complex_value = prev->upstream.complex_value;
     }
-    if (!conf->query && !conf->methods) {
-        conf->methods_set = prev->methods_set;
-        conf->methods = prev->methods;
-        conf->query = prev->query;
-    }
+    if (!conf->query) conf->query = prev->query;
     if (!conf->output.handler && prev->output.handler) conf->output = prev->output;
     ngx_conf_merge_ptr_value(conf->variables, prev->variables, NULL);
     return NGX_CONF_OK;
@@ -572,32 +550,10 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     ngx_str_t sql = elts[cf->args->nelts - 1];
     if (!sql.len) return "empty query";
     ngx_postgres_query_t *query;
-    ngx_uint_t methods;
     ngx_postgres_location_conf_t *location_conf = conf;
-    if (cf->args->nelts == 2) { /* default query */
-        if (location_conf->query) return "is duplicate";
-        if (!(location_conf->query = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t)))) return "!ngx_palloc";
-        methods = 0xFFFF;
-        query = location_conf->query;
-    } else { /* method-specific query */
-        methods = 0;
-        for (ngx_uint_t i = 1; i < cf->args->nelts - 1; i++) {
-            ngx_conf_bitmask_t *b = ngx_postgres_http_methods;
-            ngx_uint_t j;
-            for (j = 0; b[j].name.len; j++) {
-                if (b[j].name.len == elts[i].len && !ngx_strncasecmp(b[j].name.data, elts[i].data, elts[i].len)) {
-                    if (location_conf->methods_set & b[j].mask) return "method is duplicate";
-                    methods |= b[j].mask;
-                    break;
-                }
-            }
-            if (!b[j].name.len) return "invalid method";
-        }
-        if (!location_conf->methods && !(location_conf->methods = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_query_t)))) return "!ngx_array_create";
-        if (!(query = ngx_array_push(location_conf->methods))) return "!ngx_array_push";
-        location_conf->methods_set |= methods;
-    }
-    query->methods = methods;
+    if (location_conf->query) return "is duplicate";
+    if (!(location_conf->query = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t)))) return "!ngx_palloc";
+    query = location_conf->query;
     if (sql.len > sizeof("file://") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file://", sizeof("file://") - 1)) {
         sql.data += sizeof("file://") - 1;
         sql.len -= sizeof("file://") - 1;
@@ -776,7 +732,7 @@ static ngx_command_t ngx_postgres_commands[] = {
     .offset = 0,
     .post = NULL },
   { .name = ngx_string("postgres_query"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_1MORE,
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
     .set = ngx_postgres_query_conf,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,

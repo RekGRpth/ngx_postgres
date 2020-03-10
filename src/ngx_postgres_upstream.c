@@ -268,12 +268,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     r->upstream->peer.free = ngx_postgres_peer_free;
     ngx_postgres_query_t *query;
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (location_conf->methods_set & r->method) {
-        query = location_conf->methods->elts;
-        ngx_uint_t i;
-        for (i = 0; i < location_conf->methods->nelts; i++) if (query[i].methods & r->method) { query = &query[i]; break; }
-        if (i == location_conf->methods->nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "i == location_conf->methods->nelts"); return NGX_ERROR; }
-    } else query = location_conf->query;
+    query = location_conf->query;
     if (query->params->nelts) {
         ngx_postgres_param_t *param = query->params->elts;
         pd->nParams = query->params->nelts;

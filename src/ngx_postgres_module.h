@@ -94,7 +94,6 @@ typedef struct {
     ngx_array_t                        *params;
     ngx_flag_t                          listen;
     ngx_str_t                           sql;
-    ngx_uint_t                          methods;
     ngx_uint_t                          percent;
 } ngx_postgres_query_t;
 
@@ -117,12 +116,10 @@ typedef struct {
 } ngx_postgres_upstream_t;
 
 typedef struct {
-    ngx_array_t                        *methods; /* method-specific */
     ngx_array_t                        *variables;
     ngx_postgres_output_t               output;
-    ngx_postgres_query_t               *query;     /* default */
+    ngx_postgres_query_t               *query;
     ngx_postgres_upstream_t             upstream;
-    ngx_uint_t                          methods_set;
 } ngx_postgres_location_conf_t;
 
 

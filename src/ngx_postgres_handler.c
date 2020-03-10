@@ -130,8 +130,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     /* TODO: add support for subrequest in memory by emitting output into u->buffer instead */
     if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres module does not support subrequests in memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (!location_conf->query && !(location_conf->methods_set & r->method)) {
-        if (location_conf->methods_set) return NGX_HTTP_NOT_ALLOWED;
+    if (!location_conf->query) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "missing \"postgres_query\" in location \"%V\"", &core_loc_conf->name);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
