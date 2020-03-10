@@ -113,7 +113,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
             case NUMERICOID:
             case OIDOID:
             case TIDOID:
-            case XIDOID: if (location_conf->output.string_quote_only) {
+            case XIDOID: if (location_conf->output.string) {
                 size += PQgetlength(pd->res, row, col);
                 break;
             } // fall through
@@ -161,7 +161,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
                 case NUMERICOID:
                 case OIDOID:
                 case TIDOID:
-                case XIDOID: if (location_conf->output.string_quote_only) {
+                case XIDOID: if (location_conf->output.string) {
                     if (PQgetlength(pd->res, row, col)) b->last = ngx_copy(b->last, (u_char *)PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col));
                     break;
                 } // fall through
