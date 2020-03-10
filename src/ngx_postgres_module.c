@@ -682,7 +682,7 @@ static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *con
     if (elts[1].data[0] != '$') return "invalid variable name";
     elts[1].len--;
     elts[1].data++;
-    if (!elts[3].len) return "empty column";
+    if (!elts[3].len) return "empty col";
     ngx_postgres_location_conf_t *location_conf = conf;
     if (location_conf->variables == NGX_CONF_UNSET_PTR && !(location_conf->variables = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_variable_t)))) return "!ngx_array_create";
     ngx_postgres_variable_t *variable = ngx_array_push(location_conf->variables);
@@ -695,7 +695,7 @@ static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *con
         variable->variable->data = (uintptr_t) variable;
     }
     if ((variable->value.row = ngx_atoi(elts[2].data, elts[2].len)) == NGX_ERROR) return "invalid row number";
-    if ((variable->value.column = ngx_atoi(elts[3].data, elts[3].len)) == NGX_ERROR) { /* get column by name */
+    if ((variable->value.col = ngx_atoi(elts[3].data, elts[3].len)) == NGX_ERROR) { /* get col by name */
         if (!(variable->value.name = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "!ngx_pnalloc";
         (void) ngx_cpystrn(variable->value.name, elts[3].data, elts[3].len + 1);
     }

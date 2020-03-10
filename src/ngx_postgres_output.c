@@ -259,7 +259,7 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
             }
         }
         for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) size += (ngx_strlen(PQfname(pd->res, col)) + 3) * PQntuples(pd->res); // extra "":
-        size += PQntuples(pd->res) * (PQnfields(pd->res) - 1); /* column delimiters */
+        size += PQntuples(pd->res) * (PQnfields(pd->res) - 1); /* col delimiters */
         size += PQntuples(pd->res) - 1;                      /* row delimiters */
     }
     if (!PQntuples(pd->res) || !size) return NGX_DONE;
