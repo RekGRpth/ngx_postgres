@@ -32,11 +32,8 @@
 #include "ngx_postgres_module.h"
 
 
-ngx_int_t ngx_postgres_variable_cmdtuples(ngx_http_request_t *,  ngx_http_variable_value_t *, uintptr_t);
+ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
 ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *, ngx_http_variable_value_t *, uintptr_t);
-ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *, ngx_http_variable_value_t *, uintptr_t);
-ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *, ngx_http_variable_value_t *, uintptr_t);
-ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *, ngx_http_variable_value_t *, uintptr_t);
 ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r);
 
 #endif /* _NGX_POSTGRES_VARIABLE_H_ */

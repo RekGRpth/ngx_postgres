@@ -29,7 +29,7 @@
 #include "ngx_postgres_variable.h"
 
 
-ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+static ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
     if (!pd) return NGX_OK;
@@ -42,7 +42,7 @@ ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *r, ngx_http_variable
 }
 
 
-ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+static ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
     if (!pd) return NGX_OK;
@@ -55,7 +55,7 @@ ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *r, ngx_http_variable
 }
 
 
-ngx_int_t ngx_postgres_variable_cmdtuples(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+static ngx_int_t ngx_postgres_variable_cmdtuples(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
     if (!pd) return NGX_OK;
@@ -68,7 +68,7 @@ ngx_int_t ngx_postgres_variable_cmdtuples(ngx_http_request_t *r, ngx_http_variab
 }
 
 
-ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
     if (!pd || !pd->sql.len) return NGX_OK;
@@ -143,6 +143,44 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
             return NGX_ERROR;
         }
         ngx_memcpy(elts[i].data, PQgetvalue(pd->res, variable[i].row, variable[i].col), elts[i].len);
+    }
+    return NGX_OK;
+}
+
+static ngx_http_variable_t ngx_postgres_module_variables[] = {
+  { .name = ngx_string("postgres_nfields"),
+    .set_handler = NULL,
+    .get_handler = ngx_postgres_variable_nfields,
+    .data = 0,
+    .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
+    .index = 0 },
+  { .name = ngx_string("postgres_ntuples"),
+    .set_handler = NULL,
+    .get_handler = ngx_postgres_variable_ntuples,
+    .data = 0,
+    .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
+    .index = 0 },
+  { .name = ngx_string("postgres_cmdtuples"),
+    .set_handler = NULL,
+    .get_handler = ngx_postgres_variable_cmdtuples,
+    .data = 0,
+    .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
+    .index = 0 },
+  { .name = ngx_string("postgres_query"),
+    .set_handler = NULL,
+    .get_handler = ngx_postgres_variable_query,
+    .data = 0,
+    .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
+    .index = 0 },
+    ngx_http_null_variable
+};
+
+ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf) {
+    for (ngx_http_variable_t *v = ngx_postgres_module_variables; v->name.len; v++) {
+        ngx_http_variable_t *variable = ngx_http_add_variable(cf, &v->name, v->flags);
+        if (!variable) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_http_add_variable"); return NGX_ERROR; }
+        variable->get_handler = v->get_handler;
+        variable->data = v->data;
     }
     return NGX_OK;
 }

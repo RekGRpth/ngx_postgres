@@ -38,34 +38,6 @@
 #define NGX_CONF_TAKE34  (NGX_CONF_TAKE3|NGX_CONF_TAKE4)
 
 
-static ngx_http_variable_t ngx_postgres_module_variables[] = {
-  { .name = ngx_string("postgres_nfields"),
-    .set_handler = NULL,
-    .get_handler = ngx_postgres_variable_nfields,
-    .data = 0,
-    .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
-    .index = 0 },
-  { .name = ngx_string("postgres_ntuples"),
-    .set_handler = NULL,
-    .get_handler = ngx_postgres_variable_ntuples,
-    .data = 0,
-    .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
-    .index = 0 },
-  { .name = ngx_string("postgres_cmdtuples"),
-    .set_handler = NULL,
-    .get_handler = ngx_postgres_variable_cmdtuples,
-    .data = 0,
-    .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
-    .index = 0 },
-  { .name = ngx_string("postgres_query"),
-    .set_handler = NULL,
-    .get_handler = ngx_postgres_variable_query,
-    .data = 0,
-    .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
-    .index = 0 },
-    ngx_http_null_variable
-};
-
 #define IDOID 9999
 
 ngx_conf_enum_t ngx_postgres_oids[] = {
@@ -287,13 +259,7 @@ struct ngx_postgres_output_enum_t {
 
 
 static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
-    for (ngx_http_variable_t *v = ngx_postgres_module_variables; v->name.len; v++) {
-        ngx_http_variable_t *variable = ngx_http_add_variable(cf, &v->name, v->flags);
-        if (!variable) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_http_add_variable"); return NGX_ERROR; }
-        variable->get_handler = v->get_handler;
-        variable->data = v->data;
-    }
-    return NGX_OK;
+    return ngx_postgres_variable_add(cf);
 }
 
 
