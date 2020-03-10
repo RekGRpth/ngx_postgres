@@ -155,6 +155,21 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 }
 
 
+typedef struct {
+    in_port_t                           port;
+    int                                 family;
+    ngx_addr_t                         *addrs;
+    ngx_str_t                           application_name;
+    ngx_str_t                           dbname;
+    ngx_str_t                           password;
+    ngx_str_t                           user;
+    ngx_uint_t                          naddrs;
+} ngx_postgres_server_t;
+
+
+static_assert(sizeof(ngx_postgres_server_t) <= sizeof(ngx_http_upstream_server_t), "sizeof(ngx_postgres_server_t) <= sizeof(ngx_http_upstream_server_t)");
+
+
 static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
     upstream_srv_conf->peer.init = ngx_postgres_peer_init;
     ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);

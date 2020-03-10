@@ -40,19 +40,6 @@ extern ngx_module_t  ngx_postgres_module;
 
 
 typedef struct {
-    in_port_t                           port;
-    int                                 family;
-    ngx_addr_t                         *addrs;
-    ngx_str_t                           application_name;
-    ngx_str_t                           dbname;
-    ngx_str_t                           password;
-    ngx_str_t                           user;
-    ngx_uint_t                          naddrs;
-} ngx_postgres_server_t;
-
-static_assert(sizeof(ngx_postgres_server_t) <= sizeof(ngx_http_upstream_server_t), "sizeof(ngx_postgres_server_t) <= sizeof(ngx_http_upstream_server_t)");
-
-typedef struct {
     ngx_str_t                           host;
     ngx_str_t                          *name;
     socklen_t                           socklen;
