@@ -81,7 +81,7 @@ static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_var
 }
 
 
-ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
     if (!pd || !pd->variables) return NGX_OK;
