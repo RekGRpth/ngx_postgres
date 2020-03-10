@@ -237,12 +237,6 @@ ngx_conf_enum_t ngx_postgres_output_options[] = {
     { ngx_null_string, 0 }
 };
 
-ngx_conf_enum_t ngx_postgres_requirement_options[] = {
-    { ngx_string("optional"), 0 },
-    { ngx_string("required"), 1 },
-    { ngx_null_string, 0 }
-};
-
 struct ngx_postgres_output_enum_t {
     ngx_str_t name;
     unsigned binary:1;
@@ -637,38 +631,6 @@ static char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
             elts[i].data = &elts[i].data[sizeof("escape=") - 1];
             location_conf->output.escape = *elts[i].data;
         } else return "invalid parameter";
-    }
-    return NGX_CONF_OK;
-}
-
-
-static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_str_t *elts = cf->args->elts;
-    if (elts[1].len < 2) return "empty variable name";
-    if (elts[1].data[0] != '$') return "invalid variable name";
-    elts[1].len--;
-    elts[1].data++;
-    if (!elts[3].len) return "empty col";
-    ngx_postgres_location_conf_t *location_conf = conf;
-    if (location_conf->variables == NGX_CONF_UNSET_PTR && !(location_conf->variables = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_variable_t)))) return "!ngx_array_create";
-    ngx_postgres_variable_t *variable = ngx_array_push(location_conf->variables);
-    if (!variable) return "!ngx_array_push";
-    if (!(variable->variable = ngx_http_add_variable(cf, &elts[1], NGX_HTTP_VAR_CHANGEABLE))) return "!ngx_http_add_variable";
-    if (ngx_http_get_variable_index(cf, &elts[1]) == NGX_ERROR) return "ngx_http_get_variable_index == NGX_ERROR";
-    if (!variable->variable->get_handler) {
-        variable->variable->get_handler = ngx_postgres_variable_get;
-        variable->variable->data = (uintptr_t) location_conf->variables->nelts - 1;
-    }
-    if ((variable->row = ngx_atoi(elts[2].data, elts[2].len)) == NGX_ERROR) return "invalid row number";
-    if ((variable->col = ngx_atoi(elts[3].data, elts[3].len)) == NGX_ERROR) { /* get col by name */
-        if (!(variable->name = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "!ngx_pnalloc";
-        (void) ngx_cpystrn(variable->name, elts[3].data, elts[3].len + 1);
-    }
-    if (cf->args->nelts == 4) variable->required = 0; else { /* user-specified value */
-        ngx_conf_enum_t *e = ngx_postgres_requirement_options;
-        ngx_uint_t i;
-        for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[4].len && !ngx_strncasecmp(e[i].name.data, elts[4].data, elts[4].len)) { variable->required = e[i].value; break; }
-        if (!e[i].name.len) return "invalid requirement option";
     }
     return NGX_CONF_OK;
 }
