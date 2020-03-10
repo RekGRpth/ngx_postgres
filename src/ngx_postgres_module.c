@@ -126,13 +126,10 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 
 
 typedef struct {
-    in_port_t                           port;
+    const char                        **keywords;
+    const char                        **values;
     int                                 family;
     ngx_addr_t                         *addrs;
-    ngx_str_t                           application_name;
-    ngx_str_t                           dbname;
-    ngx_str_t                           password;
-    ngx_str_t                           user;
     ngx_uint_t                          naddrs;
 } ngx_postgres_server_t;
 
@@ -150,26 +147,15 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
     for (ngx_uint_t i = 0, n = 0; i < upstream_srv_conf->servers->nelts; i++) {
         for (ngx_uint_t j = 0; j < elts[i].naddrs; j++) {
             ngx_postgres_peer_t *peer = &server_conf->peers[n];
+            peer->keywords = elts[i].keywords;
+            peer->values = elts[i].values;
             peer->sockaddr = elts[i].addrs[j].sockaddr;
             peer->socklen = elts[i].addrs[j].socklen;
             peer->name = &elts[i].addrs[j].name;
             if (!(peer->host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             if (!(peer->host.len = ngx_sock_ntop(peer->sockaddr, peer->socklen, peer->host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_sock_ntop"); return NGX_ERROR; }
-            size_t len = elts[i].family == AF_UNIX ? sizeof("host=%s") - 1 - 1 + peer->host.len - 5 : sizeof("hostaddr=%V") - 1 - 1 + peer->host.len;
-            len += sizeof(" port=%d") - 1 - 1 + sizeof("65535") - 1;
-            if (elts[i].dbname.len) len += sizeof(" dbname=%V") - 1 - 1 + elts[i].dbname.len;
-            if (elts[i].user.len) len += sizeof(" user=%V") - 1 - 1 + elts[i].user.len;
-            if (elts[i].password.len) len += sizeof(" password=%V") - 1 - 1 + elts[i].password.len;
-            if (elts[i].application_name.len) len += sizeof(" application_name=%V") - 1 - 1 + elts[i].application_name.len;
-            if (!(peer->connstring = ngx_pnalloc(cf->pool, len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-            u_char *last = peer->connstring;
-            last = elts[i].family == AF_UNIX ? ngx_snprintf(last, sizeof("host=%s") - 1 - 1 + peer->host.len - 5, "host=%s", &peer->host.data[5]) : ngx_snprintf(last, sizeof("hostaddr=%V") - 1 - 1 + peer->host.len, "hostaddr=%V", &peer->host);
-            last = ngx_snprintf(last, sizeof(" port=%d") - 1 - 1 + sizeof("65535") - 1, " port=%d", elts[i].port);
-            if (elts[i].dbname.len) last = ngx_snprintf(last, sizeof(" dbname=%V") - 1 - 1 + elts[i].dbname.len, " dbname=%V", &elts[i].dbname);
-            if (elts[i].user.len) last = ngx_snprintf(last, sizeof(" user=%V") - 1 - 1 + elts[i].user.len, " user=%V", &elts[i].user);
-            if (elts[i].password.len) last = ngx_snprintf(last, sizeof(" password=%V") - 1 - 1 + elts[i].password.len, " password=%V", &elts[i].password);
-            if (elts[i].application_name.len) last = ngx_snprintf(last, sizeof(" application_name=%V") - 1 - 1 + elts[i].application_name.len, " application_name=%V", &elts[i].application_name);
-            *last = '\0';
+            if (!(peer->value = ngx_pnalloc(cf->pool, peer->host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+            (void) ngx_cpystrn(peer->value, peer->host.data + (elts[i].family == AF_UNIX ? 5 : 0), peer->host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0));
             n++;
         }
     }
@@ -197,38 +183,58 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     if (ngx_parse_url(cf->pool, &url) != NGX_OK) { if (url.err) return url.err; return "ngx_parse_url != NGX_OK"; }
     server->addrs = url.addrs;
     server->naddrs = url.naddrs;
-    server->port = url.family == AF_UNIX ? url.default_port : url.port;
     server->family = url.family;
     /* parse various options */
+    ngx_str_t conninfo = ngx_null_string;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (elts[i].len > sizeof("port=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"port=", sizeof("port=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("port=") - 1);
-            elts[i].data = &elts[i].data[sizeof("port=") - 1];
-            ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
-            if (n == NGX_ERROR) return "ngx_atoi == NGX_ERROR";
-            server->port = (ngx_uint_t) n;
-        } else if (elts[i].len > sizeof("dbname=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"dbname=", sizeof("dbname=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("dbname=") - 1);
-            if (!(server->dbname.len = elts[i].len)) return "!server->dbname.len";
-            elts[i].data = &elts[i].data[sizeof("dbname=") - 1];
-            server->dbname.data = elts[i].data;
-        } else if (elts[i].len > sizeof("user=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"user=", sizeof("user=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("user=") - 1);
-            if (!(server->user.len = elts[i].len)) return "!server->user.len";
-            elts[i].data = &elts[i].data[sizeof("user=") - 1];
-            server->user.data = elts[i].data;
-        } else if (elts[i].len > sizeof("password=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"password=", sizeof("password=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("password=") - 1);
-            if (!(server->password.len = elts[i].len)) return "!server->password.len";
-            elts[i].data = &elts[i].data[sizeof("password=") - 1];
-            server->password.data = elts[i].data;
-        } else if (elts[i].len > sizeof("application_name=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"application_name=", sizeof("application_name=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("application_name=") - 1);
-            if (!(server->application_name.len = elts[i].len)) return "!server->application_name.len";
-            elts[i].data = &elts[i].data[sizeof("application_name=") - 1];
-            server->application_name.data = elts[i].data;
-        } else return "invalid parameter";
+        if (i > 2) conninfo.len += sizeof(" ") - 1;
+        conninfo.len += elts[i].len;
     }
+    if (!(conninfo.data = ngx_pnalloc(cf->pool, conninfo.len + 1))) return "!ngx_pnalloc";
+    u_char *p = conninfo.data;
+    for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
+        if (i > 2) *p++ = ' ';
+        p = ngx_cpymem(p, elts[i].data, elts[i].len);
+    }
+    *p = '\0';
+    char *err;
+    PQconninfoOption *opts = PQconninfoParse((const char *)conninfo.data, &err);
+    if (!opts) {
+        if (err) {
+            err[strlen(err) - 1] = '\0';
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, err);
+            PQfreemem(err);
+        } else ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!PQconninfoParse");
+        return NGX_CONF_ERROR;
+    }
+    int arg = 3;
+    for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
+        if (!opt->val) continue;
+        if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"fallback_application_name", sizeof("fallback_application_name") - 1)) continue;
+        arg++;
+    }
+    if (!(server->keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) return "!ngx_pnalloc";
+    if (!(server->values = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) return "!ngx_pnalloc";
+    arg = 0;
+    server->keywords[arg] = server->family == AF_UNIX ? "host" : "hostaddr";
+    arg++;
+    server->keywords[arg] = "fallback_application_name";
+    server->values[arg] = "nginx";
+    for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
+        if (!opt->val) continue;
+        if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"fallback_application_name", sizeof("fallback_application_name") - 1)) continue;
+        arg++;
+        size_t keyword_len = ngx_strlen(opt->keyword);
+        if (!(server->keywords[arg] = ngx_pnalloc(cf->pool, keyword_len + 1))) return "!ngx_pnalloc";
+        (void) ngx_cpystrn((u_char *)server->keywords[arg], (u_char *)opt->keyword, keyword_len + 1);
+        size_t val_len = ngx_strlen(opt->val);
+        if (!(server->values[arg] = ngx_pnalloc(cf->pool, val_len + 1))) return "!ngx_pnalloc";
+        (void) ngx_cpystrn((u_char *)server->values[arg], (u_char *)opt->val, val_len + 1);
+    }
+    arg++;
+    server->keywords[arg] = NULL;
+    server->values[arg] = NULL;
+    PQconninfoFree(opts);
     upstream_srv_conf->peer.init_upstream = ngx_postgres_init_upstream;
     return NGX_CONF_OK;
 }

@@ -95,8 +95,8 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         pc->connection = pd->common.connection;
         return NGX_AGAIN;
     }
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "connstring: %s", peer->connstring);
-    pd->common.conn = PQconnectStart((const char *)peer->connstring); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
+    peer->values[0] = (const char *)peer->value;
+    pd->common.conn = PQconnectStartParams(peer->keywords, peer->values, 0); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
     if (PQstatus(pd->common.conn) == CONNECTION_BAD || PQsetnonblocking(pd->common.conn, 1) == -1) {
         ngx_log_error(NGX_LOG_ERR, pc->log, 0, "connection failed: %s in upstream \"%V\"", PQerrorMessage(pd->common.conn), peer->name);
         PQfinish(pd->common.conn);

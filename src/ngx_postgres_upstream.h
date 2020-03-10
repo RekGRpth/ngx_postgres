@@ -47,11 +47,13 @@ typedef struct {
 } ngx_postgres_prepare_t;
 
 typedef struct {
+    const char                        **keywords;
+    const char                        **values;
     ngx_str_t                           host;
     ngx_str_t                          *name;
     socklen_t                           socklen;
     struct sockaddr                    *sockaddr;
-    u_char                             *connstring;
+    u_char                             *value;
 } ngx_postgres_peer_t;
 
 typedef struct {
