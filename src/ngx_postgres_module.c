@@ -615,9 +615,9 @@ static char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         location_conf->methods_set |= methods;
     }
     query->methods = methods;
-    if (sql.len > sizeof("file:") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file:", sizeof("file:") - 1)) {
-        sql.data += sizeof("file:") - 1;
-        sql.len -= sizeof("file:") - 1;
+    if (sql.len > sizeof("file://") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file://", sizeof("file://") - 1)) {
+        sql.data += sizeof("file://") - 1;
+        sql.len -= sizeof("file://") - 1;
         if (ngx_conf_full_name(cf->cycle, &sql, 0) != NGX_OK) return "ngx_conf_full_name != NGX_OK";
         ngx_fd_t fd = ngx_open_file(sql.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
         if (fd == NGX_INVALID_FILE) return "ngx_open_file == NGX_INVALID_FILE";
