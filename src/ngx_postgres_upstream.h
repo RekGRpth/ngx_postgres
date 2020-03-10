@@ -50,6 +50,29 @@ typedef struct {
 } ngx_postgres_prepare_t;
 
 typedef struct {
+    ngx_str_t                           host;
+    ngx_str_t                          *name;
+    socklen_t                           socklen;
+    struct sockaddr                    *sockaddr;
+    u_char                             *connstring;
+} ngx_postgres_peer_t;
+
+typedef struct {
+    ngx_flag_t                          prepare;
+    ngx_flag_t                          reject;
+    ngx_flag_t                          single;
+    ngx_msec_t                          timeout;
+    ngx_postgres_peer_t                *peers;
+    ngx_queue_t                         busy;
+    ngx_queue_t                         free;
+    ngx_uint_t                          max_peer;
+    ngx_uint_t                          max_requests;
+    ngx_uint_t                          max_save;
+    ngx_uint_t                          peer;
+    ngx_uint_t                          save;
+} ngx_postgres_server_conf_t;
+
+typedef struct {
     ngx_connection_t                  *connection;
     ngx_postgres_server_conf_t        *server_conf;
     ngx_queue_t                       *prepare;
