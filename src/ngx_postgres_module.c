@@ -211,6 +211,8 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
         if (!opt->val) continue;
         if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"fallback_application_name", sizeof("fallback_application_name") - 1)) continue;
+        if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"host", sizeof("host") - 1)) continue;
+        if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"hostaddr", sizeof("hostaddr") - 1)) continue;
         arg++;
     }
     if (!(server->keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) return "!ngx_pnalloc";
@@ -223,6 +225,8 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
         if (!opt->val) continue;
         if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"fallback_application_name", sizeof("fallback_application_name") - 1)) continue;
+        if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"host", sizeof("host") - 1)) continue;
+        if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"hostaddr", sizeof("hostaddr") - 1)) continue;
         arg++;
         size_t keyword_len = ngx_strlen(opt->keyword);
         if (!(server->keywords[arg] = ngx_pnalloc(cf->pool, keyword_len + 1))) return "!ngx_pnalloc";
