@@ -696,8 +696,8 @@ static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *con
     }
     if ((variable->value.row = ngx_atoi(elts[2].data, elts[2].len)) == NGX_ERROR) return "invalid row number";
     if ((variable->value.column = ngx_atoi(elts[3].data, elts[3].len)) == NGX_ERROR) { /* get column by name */
-        if (!(variable->value.col_name = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "!ngx_pnalloc";
-        (void) ngx_cpystrn(variable->value.col_name, elts[3].data, elts[3].len + 1);
+        if (!(variable->value.name = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "!ngx_pnalloc";
+        (void) ngx_cpystrn(variable->value.name, elts[3].data, elts[3].len + 1);
     }
     if (cf->args->nelts == 4) variable->value.required = 0; else { /* user-specified value */
         ngx_conf_enum_t *e = ngx_postgres_requirement_options;

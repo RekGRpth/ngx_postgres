@@ -103,11 +103,11 @@ ngx_str_t ngx_postgres_variable_set(ngx_http_request_t *r, ngx_postgres_variable
     ngx_str_t value = ngx_null_string;
     ngx_postgres_value_t *pgv = &variable->value;
     if (pgv->column != NGX_ERROR) /* get column by number */ col = pgv->column; else { /* get column by name */
-        col = PQfnumber(pd->res, (const char *)pgv->col_name);
+        col = PQfnumber(pd->res, (const char *)pgv->name);
         if (col == NGX_ERROR) {
             if (pgv->required) {
                 ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value from column \"%s\" that wasn't found in the received result-set in location \"%V\"", &variable->variable->name, pgv->col_name, &core_loc_conf->name);
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value from column \"%s\" that wasn't found in the received result-set in location \"%V\"", &variable->variable->name, pgv->name, &core_loc_conf->name);
             }
             return value;
         }
