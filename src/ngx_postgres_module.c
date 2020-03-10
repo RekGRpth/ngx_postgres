@@ -101,18 +101,10 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     location_conf->output.string = 1;
     location_conf->variables = NGX_CONF_UNSET_PTR;
     /* the hardcoded values */
-    location_conf->upstream.cyclic_temp_file = 0;
     location_conf->upstream.buffering = 1;
     location_conf->upstream.ignore_client_abort = 1;
-    location_conf->upstream.send_lowat = 0;
-    location_conf->upstream.bufs.num = 0;
-    location_conf->upstream.busy_buffers_size = 0;
-    location_conf->upstream.max_temp_file_size = 0;
-    location_conf->upstream.temp_file_write_size = 0;
     location_conf->upstream.intercept_errors = 1;
     location_conf->upstream.intercept_404 = 1;
-    location_conf->upstream.pass_request_headers = 0;
-    location_conf->upstream.pass_request_body = 0;
     return location_conf;
 }
 
