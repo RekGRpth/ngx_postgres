@@ -41,15 +41,11 @@ typedef struct {
 } ngx_postgres_param_t;
 
 typedef struct {
+    ngx_http_variable_t                *variable;
     ngx_int_t                           col;
     ngx_int_t                           row;
     ngx_uint_t                          required;
     u_char                             *name;
-} ngx_postgres_value_t;
-
-typedef struct {
-    ngx_http_variable_t                *variable;
-    ngx_postgres_value_t                value;
 } ngx_postgres_variable_t;
 
 typedef struct {

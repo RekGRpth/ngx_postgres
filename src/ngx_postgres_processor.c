@@ -238,7 +238,7 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
         ngx_str_t *elts = pd->variables->elts;
         for (ngx_uint_t i = 0; i < location_conf->variables->nelts; i++) {
             elts[i] = ngx_postgres_variable_set(r, &variable[i]);
-            if (!elts[i].len && variable[i].value.required) { pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR; ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_variable_set"); return NGX_DONE; }
+            if (!elts[i].len && variable[i].required) { pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR; ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_variable_set"); return NGX_DONE; }
         }
     }
     if (location_conf->output.handler) return location_conf->output.handler(r);
