@@ -29,7 +29,7 @@
 #include "ngx_postgres_variable.h"
 
 
-ngx_int_t ngx_postgres_variable_columns(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
     if (!pd) return NGX_OK;
@@ -42,7 +42,7 @@ ngx_int_t ngx_postgres_variable_columns(ngx_http_request_t *r, ngx_http_variable
 }
 
 
-ngx_int_t ngx_postgres_variable_rows(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
     if (!pd) return NGX_OK;
@@ -55,7 +55,7 @@ ngx_int_t ngx_postgres_variable_rows(ngx_http_request_t *r, ngx_http_variable_va
 }
 
 
-ngx_int_t ngx_postgres_variable_affected(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+ngx_int_t ngx_postgres_variable_cmdtuples(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
     if (!pd) return NGX_OK;
@@ -81,7 +81,7 @@ ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_variable_v
 }
 
 
-ngx_int_t ngx_postgres_variable_get_custom(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
     if (!pd || !pd->variables) return NGX_OK;
@@ -97,7 +97,7 @@ ngx_int_t ngx_postgres_variable_get_custom(ngx_http_request_t *r, ngx_http_varia
 }
 
 
-ngx_str_t ngx_postgres_variable_set_custom(ngx_http_request_t *r, ngx_postgres_variable_t *variable) {
+ngx_str_t ngx_postgres_variable_set(ngx_http_request_t *r, ngx_postgres_variable_t *variable) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     ngx_int_t col;
     ngx_str_t value = ngx_null_string;

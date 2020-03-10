@@ -39,21 +39,21 @@
 
 
 static ngx_http_variable_t ngx_postgres_module_variables[] = {
-  { .name = ngx_string("postgres_columns"),
+  { .name = ngx_string("postgres_nfields"),
     .set_handler = NULL,
-    .get_handler = ngx_postgres_variable_columns,
+    .get_handler = ngx_postgres_variable_nfields,
     .data = 0,
     .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
     .index = 0 },
-  { .name = ngx_string("postgres_rows"),
+  { .name = ngx_string("postgres_ntuples"),
     .set_handler = NULL,
-    .get_handler = ngx_postgres_variable_rows,
+    .get_handler = ngx_postgres_variable_ntuples,
     .data = 0,
     .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
     .index = 0 },
-  { .name = ngx_string("postgres_affected"),
+  { .name = ngx_string("postgres_cmdtuples"),
     .set_handler = NULL,
-    .get_handler = ngx_postgres_variable_affected,
+    .get_handler = ngx_postgres_variable_cmdtuples,
     .data = 0,
     .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
     .index = 0 },
@@ -691,7 +691,7 @@ static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *con
     if (!(variable->variable = ngx_http_add_variable(cf, &elts[1], NGX_HTTP_VAR_CHANGEABLE))) return "!ngx_http_add_variable";
     if (ngx_http_get_variable_index(cf, &elts[1]) == NGX_ERROR) return "ngx_http_get_variable_index == NGX_ERROR";
     if (!variable->variable->get_handler) {
-        variable->variable->get_handler = ngx_postgres_variable_get_custom;
+        variable->variable->get_handler = ngx_postgres_variable_get;
         variable->variable->data = (uintptr_t) variable;
     }
     if ((variable->value.row = ngx_atoi(elts[2].data, elts[2].len)) == NGX_ERROR) return "invalid row number";
@@ -699,9 +699,7 @@ static char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *con
         if (!(variable->value.col_name = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "!ngx_pnalloc";
         (void) ngx_cpystrn(variable->value.col_name, elts[3].data, elts[3].len + 1);
     }
-    if (cf->args->nelts == 4) { /* default value */
-        variable->value.required = 0;
-    } else { /* user-specified value */
+    if (cf->args->nelts == 4) variable->value.required = 0; else { /* user-specified value */
         ngx_conf_enum_t *e = ngx_postgres_requirement_options;
         ngx_uint_t i;
         for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[4].len && !ngx_strncasecmp(e[i].name.data, elts[4].data, elts[4].len)) { variable->value.required = e[i].value; break; }
