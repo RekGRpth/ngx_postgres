@@ -30,8 +30,8 @@
 #include <postgresql/server/catalog/pg_type_d.h>
 #include <avcall.h>
 
-
 #include "ngx_postgres_handler.h"
+#include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"
 #include "ngx_postgres_processor.h"
 #include "ngx_postgres_upstream.h"

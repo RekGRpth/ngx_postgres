@@ -32,8 +32,6 @@
 #include <libpq-fe.h>
 #include <ngx_http.h>
 
-#include "ngx_postgres_module.h"
-
 typedef enum {
     state_db_connect,
     state_db_send_prepare,
