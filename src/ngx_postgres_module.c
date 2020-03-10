@@ -233,13 +233,13 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     server->addrs = url.addrs;
     server->naddrs = url.naddrs;
     server->family = url.family;
-    if (server->family != AF_UNIX) arg++;
+    if (host && server->family != AF_UNIX) arg++;
     if (!(server->keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) return "!ngx_pnalloc";
     if (!(server->values = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) return "!ngx_pnalloc";
     arg = 0;
     server->keywords[arg] = server->family == AF_UNIX ? "host" : "hostaddr";
     arg++;
-    if (server->family != AF_UNIX) {
+    if (host && server->family != AF_UNIX) {
         server->keywords[arg] = "host";
         if (!(server->values[arg] = ngx_pnalloc(cf->pool, url.host.len + 1))) return "!ngx_pnalloc";
         (void) ngx_cpystrn((u_char *)server->values[arg], url.host.data, url.host.len + 1);
