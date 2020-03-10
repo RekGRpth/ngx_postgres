@@ -37,6 +37,6 @@ ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *, ngx_http_variable_valu
 ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *, ngx_http_variable_value_t *, uintptr_t);
 ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *, ngx_http_variable_value_t *, uintptr_t);
 ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *, ngx_http_variable_value_t *, uintptr_t);
-ngx_str_t ngx_postgres_variable_set(ngx_http_request_t *r, ngx_postgres_variable_t *);
+ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r);
 
 #endif /* _NGX_POSTGRES_VARIABLE_H_ */

@@ -226,16 +226,13 @@ static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
 
 static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (location_conf->variables) { /* set custom variables */
-        ngx_postgres_variable_t *variable = location_conf->variables->elts;
-        ngx_str_t *elts = pd->variables->elts;
-        for (ngx_uint_t i = 0; i < location_conf->variables->nelts; i++) {
-            elts[i] = ngx_postgres_variable_set(r, &variable[i]);
-            if (!elts[i].len && variable[i].required) { pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR; ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_variable_set"); return NGX_DONE; }
-        }
+    if (ngx_postgres_variable_set(r) == NGX_ERROR) {
+        ngx_postgres_data_t *pd = r->upstream->peer.data;
+        pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_set == NGX_ERROR");
+        return NGX_DONE;
     }
+    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location_conf->output.handler) return location_conf->output.handler(r);
     return NGX_DONE;
 }
