@@ -201,8 +201,9 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     char *err;
     PQconninfoOption *opts = PQconninfoParse((const char *)conninfo, &err);
     if (!opts) {
-        if (err) {
-            err[strlen(err) - 1] = '\0';
+        int len;
+        if (err && (len = strlen(err)) > 0) {
+            err[len - 1] = '\0';
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, err);
             PQfreemem(err);
         } else ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!PQconninfoParse");
