@@ -426,10 +426,10 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
         for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) {
             size += (ngx_strlen(PQfname(pd->res, col)) + 3) * PQntuples(pd->res); // extra "":
             if (location_conf->output.append && !ngx_strstr(PQfname(pd->res, col), "::")) {
-                size += sizeof("::") - 1;
+                size += 2 * PQntuples(pd->res);
                 Oid oid = PQftype(pd->res, col);
                 const char *type = PQftypeMy(oid);
-                if (type) size += ngx_strlen(type); else size += snprintf(NULL, 0, "%i", oid);
+                if (type) size += ngx_strlen(type) * PQntuples(pd->res); else size += snprintf(NULL, 0, "%i", oid) * PQntuples(pd->res);
             }
         }
         size += PQntuples(pd->res) * (PQnfields(pd->res) - 1); /* col delimiters */
