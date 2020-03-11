@@ -83,6 +83,173 @@ static u_char *ngx_postgres_escape(u_char *d, u_char *s, size_t l, u_char c) {
 }
 
 
+static const char *PQftypeMy(Oid oid) {
+    switch (oid) {
+        case BOOLOID: return "bool";
+        case BYTEAOID: return "bytea";
+        case CHAROID: return "char";
+        case NAMEOID: return "name";
+        case INT8OID: return "int8";
+        case INT2OID: return "int2";
+        case INT2VECTOROID: return "int2vector";
+        case INT4OID: return "int4";
+        case REGPROCOID: return "regproc";
+        case TEXTOID: return "text";
+        case OIDOID: return "oid";
+        case TIDOID: return "tid";
+        case XIDOID: return "xid";
+        case CIDOID: return "cid";
+        case OIDVECTOROID: return "oidvector";
+        case JSONOID: return "json";
+        case XMLOID: return "xml";
+        case PGNODETREEOID: return "pgnodetree";
+        case PGNDISTINCTOID: return "pgndistinct";
+        case PGDEPENDENCIESOID: return "pgdependencies";
+        case PGMCVLISTOID: return "pgmcvlist";
+        case PGDDLCOMMANDOID: return "pgddlcommand";
+        case POINTOID: return "point";
+        case LSEGOID: return "lseg";
+        case PATHOID: return "path";
+        case BOXOID: return "box";
+        case POLYGONOID: return "polygon";
+        case LINEOID: return "line";
+        case FLOAT4OID: return "float4";
+        case FLOAT8OID: return "float8";
+        case UNKNOWNOID: return "unknown";
+        case CIRCLEOID: return "circle";
+        case CASHOID: return "cash";
+        case MACADDROID: return "macaddr";
+        case INETOID: return "inet";
+        case CIDROID: return "cidr";
+        case MACADDR8OID: return "macaddr8";
+        case ACLITEMOID: return "aclitem";
+        case BPCHAROID: return "bpchar";
+        case VARCHAROID: return "varchar";
+        case DATEOID: return "date";
+        case TIMEOID: return "time";
+        case TIMESTAMPOID: return "timestamp";
+        case TIMESTAMPTZOID: return "timestamptz";
+        case INTERVALOID: return "interval";
+        case TIMETZOID: return "timetz";
+        case BITOID: return "bit";
+        case VARBITOID: return "varbit";
+        case NUMERICOID: return "numeric";
+        case REFCURSOROID: return "refcursor";
+        case REGPROCEDUREOID: return "regprocedure";
+        case REGOPEROID: return "regoper";
+        case REGOPERATOROID: return "regoperator";
+        case REGCLASSOID: return "regclass";
+        case REGTYPEOID: return "regtype";
+        case REGROLEOID: return "regrole";
+        case REGNAMESPACEOID: return "regnamespace";
+        case UUIDOID: return "uuid";
+        case LSNOID: return "lsn";
+        case TSVECTOROID: return "tsvector";
+        case GTSVECTOROID: return "gtsvector";
+        case TSQUERYOID: return "tsquery";
+        case REGCONFIGOID: return "regconfig";
+        case REGDICTIONARYOID: return "regdictionary";
+        case JSONBOID: return "jsonb";
+        case JSONPATHOID: return "jsonpath";
+        case TXID_SNAPSHOTOID: return "txid_snapshot";
+        case INT4RANGEOID: return "int4range";
+        case NUMRANGEOID: return "numrange";
+        case TSRANGEOID: return "tsrange";
+        case TSTZRANGEOID: return "tstzrange";
+        case DATERANGEOID: return "daterange";
+        case INT8RANGEOID: return "int8range";
+        case RECORDOID: return "record";
+        case RECORDARRAYOID: return "recordarray";
+        case CSTRINGOID: return "cstring";
+        case ANYOID: return "any";
+        case ANYARRAYOID: return "anyarray";
+        case VOIDOID: return "void";
+        case TRIGGEROID: return "trigger";
+        case EVTTRIGGEROID: return "evttrigger";
+        case LANGUAGE_HANDLEROID: return "language_handler";
+        case INTERNALOID: return "internal";
+        case OPAQUEOID: return "opaque";
+        case ANYELEMENTOID: return "anyelement";
+        case ANYNONARRAYOID: return "anynonarray";
+        case ANYENUMOID: return "anyenum";
+        case FDW_HANDLEROID: return "fdw_handler";
+        case INDEX_AM_HANDLEROID: return "index_am_handler";
+        case TSM_HANDLEROID: return "tsm_handler";
+        case TABLE_AM_HANDLEROID: return "table_am_handler";
+        case ANYRANGEOID: return "anyrange";
+        case BOOLARRAYOID: return "boolarray";
+        case BYTEAARRAYOID: return "byteaarray";
+        case CHARARRAYOID: return "chararray";
+        case NAMEARRAYOID: return "namearray";
+        case INT8ARRAYOID: return "int8array";
+        case INT2ARRAYOID: return "int2array";
+        case INT2VECTORARRAYOID: return "int2vectorarray";
+        case INT4ARRAYOID: return "int4array";
+        case REGPROCARRAYOID: return "regprocarray";
+        case TEXTARRAYOID: return "textarray";
+        case OIDARRAYOID: return "oidarray";
+        case TIDARRAYOID: return "tidarray";
+        case XIDARRAYOID: return "xidarray";
+        case CIDARRAYOID: return "cidarray";
+        case OIDVECTORARRAYOID: return "oidvectorarray";
+        case JSONARRAYOID: return "jsonarray";
+        case XMLARRAYOID: return "xmlarray";
+        case POINTARRAYOID: return "pointarray";
+        case LSEGARRAYOID: return "lsegarray";
+        case PATHARRAYOID: return "patharray";
+        case BOXARRAYOID: return "boxarray";
+        case POLYGONARRAYOID: return "polygonarray";
+        case LINEARRAYOID: return "linearray";
+        case FLOAT4ARRAYOID: return "float4array";
+        case FLOAT8ARRAYOID: return "float8array";
+        case CIRCLEARRAYOID: return "circlearray";
+        case MONEYARRAYOID: return "moneyarray";
+        case MACADDRARRAYOID: return "macaddrarray";
+        case INETARRAYOID: return "inetarray";
+        case CIDRARRAYOID: return "cidrarray";
+        case MACADDR8ARRAYOID: return "macaddr8array";
+        case ACLITEMARRAYOID: return "aclitemarray";
+        case BPCHARARRAYOID: return "bpchararray";
+        case VARCHARARRAYOID: return "varchararray";
+        case DATEARRAYOID: return "datearray";
+        case TIMEARRAYOID: return "timearray";
+        case TIMESTAMPARRAYOID: return "timestamparray";
+        case TIMESTAMPTZARRAYOID: return "timestamptzarray";
+        case INTERVALARRAYOID: return "intervalarray";
+        case TIMETZARRAYOID: return "timetzarray";
+        case BITARRAYOID: return "bitarray";
+        case VARBITARRAYOID: return "varbitarray";
+        case NUMERICARRAYOID: return "numericarray";
+        case REFCURSORARRAYOID: return "refcursorarray";
+        case REGPROCEDUREARRAYOID: return "regprocedurearray";
+        case REGOPERARRAYOID: return "regoperarray";
+        case REGOPERATORARRAYOID: return "regoperatorarray";
+        case REGCLASSARRAYOID: return "regclassarray";
+        case REGTYPEARRAYOID: return "regtypearray";
+        case REGROLEARRAYOID: return "regrolearray";
+        case REGNAMESPACEARRAYOID: return "regnamespacearray";
+        case UUIDARRAYOID: return "uuidarray";
+        case PG_LSNARRAYOID: return "pg_lsnarray";
+        case TSVECTORARRAYOID: return "tsvectorarray";
+        case GTSVECTORARRAYOID: return "gtsvectorarray";
+        case TSQUERYARRAYOID: return "tsqueryarray";
+        case REGCONFIGARRAYOID: return "regconfigarray";
+        case REGDICTIONARYARRAYOID: return "regdictionaryarray";
+        case JSONBARRAYOID: return "jsonbarray";
+        case JSONPATHARRAYOID: return "jsonpatharray";
+        case TXID_SNAPSHOTARRAYOID: return "txid_snapshotarray";
+        case INT4RANGEARRAYOID: return "int4rangearray";
+        case NUMRANGEARRAYOID: return "numrangearray";
+        case TSRANGEARRAYOID: return "tsrangearray";
+        case TSTZRANGEARRAYOID: return "tstzrangearray";
+        case DATERANGEARRAYOID: return "daterangearray";
+        case INT8RANGEARRAYOID: return "int8rangearray";
+        case CSTRINGARRAYOID: return "cstringarray";
+        default: return NULL;
+    }
+}
+
+
 static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     if (!PQntuples(pd->res) || !PQnfields(pd->res)) return NGX_DONE;
@@ -95,6 +262,22 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
             if (location_conf->output.quote) size++;
             if (location_conf->output.escape) size += ngx_postgres_count((u_char *)PQfname(pd->res, col), ngx_strlen(PQfname(pd->res, col)), location_conf->output.escape);
             else size += ngx_strlen(PQfname(pd->res, col));
+            if (location_conf->output.append && !ngx_strstr(PQfname(pd->res, col), "::")) {
+                if (location_conf->output.escape) size += ngx_postgres_count((u_char *)"::", sizeof("::") - 1, location_conf->output.escape);
+                else size += sizeof("::") - 1;
+                Oid oid = PQftype(pd->res, col);
+                const char *type = PQftypeMy(oid);
+                if (type) {
+                    if (location_conf->output.escape) size += ngx_postgres_count((u_char *)type, ngx_strlen(type), location_conf->output.escape);
+                    else size += ngx_strlen(type);
+                } else {
+                    size_t len = snprintf(NULL, 0, "%i", oid);
+                    char type[len + 1];
+                    snprintf(type, len + 1, "%i", oid);
+                    if (location_conf->output.escape) size += ngx_postgres_count((u_char *)type, len, location_conf->output.escape);
+                    else size += len;
+                }
+            }
             if (location_conf->output.quote) size++;
         }
     }
@@ -141,6 +324,22 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
             if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
             if (location_conf->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)PQfname(pd->res, col), ngx_strlen(PQfname(pd->res, col)), location_conf->output.escape);
             else b->last = ngx_copy(b->last, PQfname(pd->res, col), ngx_strlen(PQfname(pd->res, col)));
+            if (location_conf->output.append && !ngx_strstr(PQfname(pd->res, col), "::")) {
+                if (location_conf->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)"::", sizeof("::") - 1, location_conf->output.escape);
+                else b->last = ngx_copy(b->last, "::", sizeof("::") - 1);
+                Oid oid = PQftype(pd->res, col);
+                const char *type = PQftypeMy(oid);
+                if (type) {
+                    if (location_conf->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)type, ngx_strlen(type), location_conf->output.escape);
+                    else b->last = ngx_copy(b->last, type, ngx_strlen(type));
+                } else {
+                    size_t len = snprintf(NULL, 0, "%i", oid);
+                    char type[len + 1];
+                    snprintf(type, len + 1, "%i", oid);
+                    if (location_conf->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)type, len, location_conf->output.escape);
+                    else b->last = ngx_copy(b->last, type, len);
+                }
+            }
             if (location_conf->output.quote) *b->last++ = location_conf->output.quote;
         }
         *b->last++ = '\n';
@@ -372,6 +571,13 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             if (!(location_conf->output.null.len = elts[i].len)) return "invalid null";
             elts[i].data = &elts[i].data[sizeof("null=") - 1];
             location_conf->output.null.data = elts[i].data;
+        } else if (elts[i].len > sizeof("append=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"append=", sizeof("append=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("append=") - 1);
+            elts[i].data = &elts[i].data[sizeof("append=") - 1];
+            ngx_uint_t j;
+            ngx_conf_enum_t *e = ngx_postgres_output_options;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location_conf->output.append = e[j].value; break; }
+            if (!e[j].name.len) return "invalid append";
         } else if (elts[i].len > sizeof("header=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"header=", sizeof("header=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("header=") - 1);
             elts[i].data = &elts[i].data[sizeof("header=") - 1];

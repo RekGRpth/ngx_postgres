@@ -44,6 +44,7 @@ typedef struct {
 typedef ngx_int_t (*ngx_postgres_output_handler_pt) (ngx_http_request_t *);
 
 typedef struct {
+    ngx_flag_t                          append;
     ngx_flag_t                          binary;
     ngx_flag_t                          header;
     ngx_flag_t                          string;
