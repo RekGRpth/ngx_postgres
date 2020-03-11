@@ -210,17 +210,23 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     }
     u_char *host = NULL;
     u_char *hostaddr = NULL;
+    in_port_t port = DEF_PGPORT;
     int arg = 3;
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
         if (!opt->val) continue;
         if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"fallback_application_name", sizeof("fallback_application_name") - 1)) continue;
         if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"host", sizeof("host") - 1)) { host = (u_char *)opt->val; continue; }
         if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"hostaddr", sizeof("hostaddr") - 1)) { hostaddr = (u_char *)opt->val; continue; }
+        if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"port", sizeof("port") - 1)) {
+            ngx_int_t n = ngx_atoi((u_char *)opt->val, ngx_strlen(opt->val));
+            if (n == NGX_ERROR) return "ngx_atoi == NGX_ERROR";
+            port = (in_port_t)n;
+        }
         arg++;
     }
     if (!host && !hostaddr) {
         char sockself[MAXPGPATH];
-        UNIXSOCK_PATH(sockself, DEF_PGPORT, DEFAULT_PGSOCKET_DIR);
+        UNIXSOCK_PATH(sockself, port, DEFAULT_PGSOCKET_DIR);
         size_t len = ngx_strlen(sockself);
         if (!(host = ngx_pnalloc(cf->pool, len + 1))) return "!ngx_pnalloc";
         (void) ngx_cpystrn(host, (u_char *)sockself, len + 1);
@@ -228,7 +234,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_url_t url;
     ngx_memzero(&url, sizeof(ngx_url_t));
     url.url = hostaddr ? (ngx_str_t){ngx_strlen(hostaddr), hostaddr} : (ngx_str_t){ngx_strlen(host), host};
-    url.default_port = DEF_PGPORT;
+    url.default_port = port;
     if (ngx_parse_url(cf->pool, &url) != NGX_OK) { if (url.err) return url.err; return "ngx_parse_url != NGX_OK"; }
     server->addrs = url.addrs;
     server->naddrs = url.naddrs;
