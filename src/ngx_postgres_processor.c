@@ -153,13 +153,13 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
 static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    char *err = PQerrorMessage(pd->common.conn);
-    int len = err ? strlen(err) : 0;
+    char *err;
+    int len;
     switch (PQstatus(pd->common.conn)) {
         case CONNECTION_AUTH_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_AUTH_OK"); break;
         case CONNECTION_AWAITING_RESPONSE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_AWAITING_RESPONSE"); break;
         case CONNECTION_BAD:
-            if (len) {
+            if ((len = (err = PQerrorMessage(pd->common.conn)) ? strlen(err) : 0)) {
                 err[len - 1] = '\0';
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, err);
             } else ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD");
@@ -177,7 +177,7 @@ static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
     switch (PQconnectPoll(pd->common.conn)) {
         case PGRES_POLLING_ACTIVE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_ACTIVE"); break;
         case PGRES_POLLING_FAILED:
-            if (len) {
+            if ((len = (err = PQerrorMessage(pd->common.conn)) ? strlen(err) : 0)) {
                 err[len - 1] = '\0';
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, err);
             } else ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_FAILED");
