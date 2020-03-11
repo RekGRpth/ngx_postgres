@@ -424,7 +424,7 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
             }
         }
         for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) {
-            size += (ngx_strlen(PQfname(pd->res, col)) + 3) * PQntuples(pd->res); // extra "":
+            size += (ngx_strlen(PQfname(pd->res, col)) + 3 + ngx_escape_json(NULL, (u_char *)PQfname(pd->res, col), ngx_strlen(PQfname(pd->res, col)))) * PQntuples(pd->res); // extra "":
             if (location_conf->output.append && !ngx_strstr(PQfname(pd->res, col), "::")) {
                 size += 2 * PQntuples(pd->res);
                 Oid oid = PQftype(pd->res, col);
@@ -451,8 +451,7 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
             for (ngx_int_t col = 0; col < PQnfields(pd->res); col++) {
                 if (col > 0) b->last = ngx_copy(b->last, ",", 1);
                 b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
-                b->last = ngx_copy(b->last, PQfname(pd->res, col), ngx_strlen(PQfname(pd->res, col)));
-
+                b->last = (u_char *)ngx_escape_json(b->last, (u_char *)PQfname(pd->res, col), ngx_strlen(PQfname(pd->res, col)));
                 if (location_conf->output.append && !ngx_strstr(PQfname(pd->res, col), "::")) {
                     b->last = ngx_copy(b->last, "::", sizeof("::") - 1);
                     Oid oid = PQftype(pd->res, col);
@@ -485,7 +484,7 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
                     } break;
                     default: {
                         b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
-                        if (PQgetlength(pd->res, row, col) > 0) b->last = (u_char *) ngx_escape_json(b->last, (u_char *)PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col));
+                        if (PQgetlength(pd->res, row, col) > 0) b->last = (u_char *)ngx_escape_json(b->last, (u_char *)PQgetvalue(pd->res, row, col), PQgetlength(pd->res, row, col));
                         b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
                     } break;
                 }
