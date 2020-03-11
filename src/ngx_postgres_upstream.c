@@ -95,8 +95,26 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         pc->connection = pd->common.connection;
         return NGX_AGAIN;
     }
+    const char *host = peer->values[0];
     peer->values[0] = (const char *)peer->value;
+    const char *options = peer->values[2];
+    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(pd->request, ngx_postgres_module);
+    if (location_conf->output.append) {
+        size_t len = options ? ngx_strlen(options) : 0;
+        u_char *buf = ngx_pnalloc(pd->request->pool, len + (len ? 1 : 0) + sizeof("-c config.append_type_to_column_name=true") - 1 + 1);
+        if (!buf) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pnalloc"); return NGX_DECLINED; }
+        u_char *p = buf;
+        if (options) {
+            p = ngx_copy(p, options, len);
+            *p++ = ' ';
+        }
+        p = ngx_copy(p, "-c config.append_type_to_column_name=true", sizeof("-c config.append_type_to_column_name=true") - 1);
+        *p = '\0';
+        peer->values[2] = (const char *)buf;
+    }
     pd->common.conn = PQconnectStartParams(peer->keywords, peer->values, 0); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
+    peer->values[0] = host;
+    peer->values[2] = options;
     if (PQstatus(pd->common.conn) == CONNECTION_BAD || PQsetnonblocking(pd->common.conn, 1) == -1) {
         ngx_log_error(NGX_LOG_ERR, pc->log, 0, "connection failed: %s in upstream \"%V\"", PQerrorMessage(pd->common.conn), peer->name);
         PQfinish(pd->common.conn);
