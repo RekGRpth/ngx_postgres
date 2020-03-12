@@ -28,7 +28,6 @@
 
 #include <assert.h>
 #include <pg_config.h>
-//#include <pg_config_manual.h>
 
 #include "ngx_postgres_handler.h"
 #include "ngx_postgres_module.h"

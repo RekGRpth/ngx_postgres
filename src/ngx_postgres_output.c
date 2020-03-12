@@ -577,7 +577,6 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[1].len && !ngx_strncasecmp(e[i].name.data, elts[1].data, elts[1].len)) { location_conf->output.handler = e[i].handler; break; }
     if (!e[i].name.len) return "invalid output format";
     location_conf->output.binary = e[i].binary;
-//    if (cf->args->nelts > 2 && location_conf->output.handler != ngx_postgres_output_text && location_conf->output.handler != ngx_postgres_output_csv) return "invalid extra parameters for output format";
     if (location_conf->output.handler == ngx_postgres_output_text) {
         location_conf->output.delimiter = '\t';
         ngx_str_set(&location_conf->output.null, "\\N");
