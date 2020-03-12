@@ -91,9 +91,13 @@ typedef struct {
     ngx_int_t                          status;
     ngx_postgres_common_t              common;
     ngx_postgres_state_t               state;
+    ngx_str_t                          cmdStatus;
+    ngx_str_t                          cmdTuples;
     ngx_str_t                          sql;
     ngx_uint_t                         hash;
+    ngx_uint_t                         nfields;
     ngx_uint_t                         nParams;
+    ngx_uint_t                         ntuples;
     ngx_uint_t                         resultFormat;
     Oid                               *paramTypes;
     PGresult                          *res;
