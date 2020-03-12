@@ -206,8 +206,9 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
             err[len - 1] = '\0';
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, err);
             PQfreemem(err);
-        } else ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!PQconninfoParse");
-        return NGX_CONF_ERROR;
+            return NGX_CONF_ERROR;
+        }
+        return "!PQconninfoParse";
     }
     u_char *host = NULL;
     u_char *hostaddr = NULL;
@@ -238,7 +239,10 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_memzero(&url, sizeof(ngx_url_t));
     url.url = hostaddr ? (ngx_str_t){ngx_strlen(hostaddr), hostaddr} : (ngx_str_t){ngx_strlen(host), host};
     url.default_port = port;
-    if (ngx_parse_url(cf->pool, &url) != NGX_OK) { if (url.err) return url.err; return "ngx_parse_url != NGX_OK"; }
+    if (ngx_parse_url(cf->pool, &url) != NGX_OK) {
+        if (url.err) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s %V:%i", url.err, &url.url, url.default_port); return NGX_CONF_ERROR; }
+        return "ngx_parse_url != NGX_OK";
+    }
     server->addrs = url.addrs;
     server->naddrs = url.naddrs;
     server->family = url.family;
