@@ -197,6 +197,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     ngx_postgres_process_notify(&ps->common);
     return;
 close:
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "ps->timeout.timer_set = %s", ps->timeout.timer_set ? "true" : "false");
     if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
     ngx_postgres_free_connection(&ps->common, NULL, 0);
     ngx_queue_remove(&ps->queue);
@@ -362,10 +363,10 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_co
         if (common->connection->write->posted) { ngx_delete_posted_event(common->connection->write); }
         common->connection->read->closed = 1;
         common->connection->write->closed = 1;
-/*        if (common->connection->pool) {
+        if (common->connection->pool) {
             ngx_destroy_pool(common->connection->pool);
             common->connection->pool = NULL;
-        }*/
+        }
         ngx_free_connection(common->connection);
         common->connection->fd = (ngx_socket_t) -1;
         common->connection = NULL;
