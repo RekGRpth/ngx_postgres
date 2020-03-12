@@ -123,10 +123,10 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     }
 //    PQtrace(pd->common.conn, stderr);
     pd->common.server_conf->save++; /* take spot in keepalive connection pool */
-    int fd = PQsocket(pd->common.conn); /* add the file descriptor (fd) into an nginx connection structure */
-    if (fd == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "failed to get connection fd"); goto invalid; }
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "connection fd:%d", fd);
-    if (!(pd->common.connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "failed to get a free nginx connection"); goto invalid; }
+    if ((pd->common.fd = PQsocket(pd->common.conn)) == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQsocket == -1"); goto invalid; }
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "pd->common.fd = %d", pd->common.fd);
+    if (!(pd->common.connection = ngx_get_connection(pd->common.fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "failed to get a free nginx connection"); goto invalid; }
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "pd->common.connection = %p", pd->common.connection);
     pd->common.connection->log = pc->log;
     pd->common.connection->log_error = pc->log_error;
     pd->common.connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);

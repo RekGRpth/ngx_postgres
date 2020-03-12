@@ -169,11 +169,12 @@ static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
         case CONNECTION_GSS_STARTUP: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_GSS_STARTUP"); break;
         case CONNECTION_MADE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_MADE"); break;
         case CONNECTION_NEEDED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_NEEDED"); break;
-        case CONNECTION_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_OK"); break;
+        case CONNECTION_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_OK"); return ngx_postgres_send_query(r);
         case CONNECTION_SETENV: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_SETENV"); break;
         case CONNECTION_SSL_STARTUP: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_SSL_STARTUP"); break;
         case CONNECTION_STARTED: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_STARTED"); break;
     }
+again:
     switch (PQconnectPoll(pd->common.conn)) {
         case PGRES_POLLING_ACTIVE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_ACTIVE"); break;
         case PGRES_POLLING_FAILED:
@@ -183,12 +184,18 @@ static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
             } else ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_FAILED");
             return NGX_ERROR;
         case PGRES_POLLING_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_OK"); break;
-        case PGRES_POLLING_READING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_READING"); return NGX_AGAIN;
+        case PGRES_POLLING_READING:
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_READING");
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.fd = %d", pd->common.fd);
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsocket(pd->common.conn) = %d", PQsocket(pd->common.conn));
+            return NGX_AGAIN;
         case PGRES_POLLING_WRITING:
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_WRITING");
-            if (PQstatus(pd->common.conn) == CONNECTION_MADE) PQconnectPoll(pd->common.conn);
+            if (PQstatus(pd->common.conn) == CONNECTION_MADE) goto again;//PQconnectPoll(pd->common.conn);
             return NGX_AGAIN;
     }
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.fd = %d", pd->common.fd);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsocket(pd->common.conn) = %d", PQsocket(pd->common.conn));
     if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write); /* remove connection timeout from new connection */
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connected successfully");
     const char *charset = PQparameterStatus(pd->common.conn, "client_encoding");
