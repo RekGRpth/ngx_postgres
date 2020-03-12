@@ -148,6 +148,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 bad_add:
     ngx_log_error(NGX_LOG_ERR, pc->log, 0, "failed to add nginx connection");
 invalid:
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_free_connection(&pd->common, NULL, 0);
     return NGX_ERROR;
 }
@@ -205,6 +206,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     return;
 close:
     if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
     ngx_postgres_free_connection(&ps->common, NULL, 0);
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
@@ -216,6 +218,7 @@ static void ngx_postgres_timeout(ngx_event_t *ev) {
     ngx_connection_t *c = ev->data;
     ngx_postgres_save_t *ps = c->data;
     if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
     ngx_postgres_free_connection(&ps->common, NULL, 1);
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_head(&ps->common.server_conf->free, &ps->queue);
@@ -231,6 +234,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_queue_t *queue = ngx_queue_last(&pd->common.server_conf->busy);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "%s", __func__);
         ngx_postgres_free_connection(&ps->common, &pd->common, 1);
     } else {
         ngx_queue_t *queue = ngx_queue_head(&pd->common.server_conf->free);
@@ -272,6 +276,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     ngx_postgres_data_t *pd = data;
     if (state & NGX_PEER_FAILED) pd->failed = 1;
     if (pd->common.server_conf->max_save) ngx_postgres_free_peer(pd);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     if (pd->common.connection) ngx_postgres_free_connection(&pd->common, NULL, 1);
     pc->connection = NULL;
 }
@@ -326,36 +331,39 @@ ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *peer) {
 
 void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_common_t *listen, ngx_flag_t delete) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s", __func__);
-    if (listen) {
-        PGresult *res = PQexec(common->conn, "with s as (select pg_listening_channels()) select array_to_string(array_agg(format($$listen %I$$, s.pg_listening_channels)), ';') from s");
-        if (res) {
-            if (PQresultStatus(res) == PGRES_TUPLES_OK) {
-                if (!PQsendQuery(listen->conn, PQgetvalue(res, 0, 0))) {
-                    ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "failed to send relisten: %s", PQerrorMessage(listen->conn));
-                } else {
-                    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "relisten %s sent successfully", PQgetvalue(res, 0, 0));
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "common->conn = %p", common->conn);
+    if (common->conn) {
+        if (listen) {
+            PGresult *res = PQexec(common->conn, "with s as (select pg_listening_channels()) select array_to_string(array_agg(format($$listen %I$$, s.pg_listening_channels)), ';') from s");
+            if (res) {
+                if (PQresultStatus(res) == PGRES_TUPLES_OK) {
+                    if (!PQsendQuery(listen->conn, PQgetvalue(res, 0, 0))) {
+                        ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "failed to send relisten: %s", PQerrorMessage(listen->conn));
+                    } else {
+                        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "relisten %s sent successfully", PQgetvalue(res, 0, 0));
+                    }
                 }
+                PQclear(res);
             }
-            PQclear(res);
         }
-    }
-    if (delete) {
-        PGresult *res = PQexec(common->conn, "select pg_listening_channels()");
-        if (res) {
-            if (PQresultStatus(res) == PGRES_TUPLES_OK) for (int row = 0; row < PQntuples(res); row++) {
-                ngx_str_t id = { PQgetlength(res, row, 0), (u_char *)PQgetvalue(res, row, 0) };
-                ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "delete channel = %V", &id);
-                ngx_pool_t *temp_pool = ngx_create_pool(8192, common->connection->log);
-                if (temp_pool) {
-                    ngx_http_push_stream_delete_channel_my(common->connection->log, &id, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, temp_pool);
-                    ngx_destroy_pool(temp_pool);
+        if (delete) {
+            PGresult *res = PQexec(common->conn, "select pg_listening_channels()");
+            if (res) {
+                if (PQresultStatus(res) == PGRES_TUPLES_OK) for (int row = 0; row < PQntuples(res); row++) {
+                    ngx_str_t id = { PQgetlength(res, row, 0), (u_char *)PQgetvalue(res, row, 0) };
+                    ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "delete channel = %V", &id);
+                    ngx_pool_t *temp_pool = ngx_create_pool(8192, common->connection->log);
+                    if (temp_pool) {
+                        ngx_http_push_stream_delete_channel_my(common->connection->log, &id, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, temp_pool);
+                        ngx_destroy_pool(temp_pool);
+                    }
                 }
+                PQclear(res);
             }
-            PQclear(res);
         }
+        PQfinish(common->conn);
+        common->conn = NULL;
     }
-    PQfinish(common->conn);
-    common->conn = NULL;
     if (common->connection) {
         if (common->connection->read->timer_set) ngx_del_timer(common->connection->read);
         if (common->connection->write->timer_set) ngx_del_timer(common->connection->write);
