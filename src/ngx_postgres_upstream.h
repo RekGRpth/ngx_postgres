@@ -72,13 +72,11 @@ typedef struct {
 } ngx_postgres_server_conf_t;
 
 typedef struct {
-    int                                fd;
     ngx_connection_t                  *connection;
     ngx_postgres_server_conf_t        *server_conf;
     ngx_queue_t                       *prepare;
     ngx_str_t                          charset;
     ngx_str_t                         *name;
-    ngx_uint_t                         num;
     ngx_uint_t                         requests;
     PGconn                            *conn;
     socklen_t                          socklen;

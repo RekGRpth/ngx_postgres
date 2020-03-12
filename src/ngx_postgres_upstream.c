@@ -118,8 +118,9 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     }
 //    PQtrace(pd->common.conn, stderr);
     pd->common.server_conf->save++; /* take spot in keepalive connection pool */
-    if ((pd->common.fd = PQsocket(pd->common.conn)) == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQsocket == -1"); goto invalid; }
-    if (!(pd->common.connection = ngx_get_connection(pd->common.fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "failed to get a free nginx connection"); goto invalid; }
+    int fd;
+    if ((fd = PQsocket(pd->common.conn)) == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQsocket == -1"); goto invalid; }
+    if (!(pd->common.connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_get_connection"); goto invalid; }
     pd->common.connection->log = pc->log;
     pd->common.connection->log_error = pc->log_error;
     pd->common.connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
