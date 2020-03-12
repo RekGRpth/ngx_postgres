@@ -190,14 +190,13 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
     ngx_connection_t *c = ev->data;
     ngx_postgres_save_t *ps = c->data;
-    if (c->close) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "c->close"); goto close; }
+    if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "c->close"); goto close; }
     if (!PQconsumeInput(ps->common.conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "failed to consume input: %s", PQerrorMessage(ps->common.conn)); goto close; }
     if (PQisBusy(ps->common.conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "busy while keepalive"); goto close; }
-    for (PGresult *res; (res = PQgetResult(ps->common.conn)); PQclear(res)) ngx_log_debug2(NGX_LOG_DEBUG_HTTP, ev->log, 0, "received result on idle keepalive connection: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
+    for (PGresult *res; (res = PQgetResult(ps->common.conn)); PQclear(res)) ngx_log_error(NGX_LOG_WARN, ev->log, 0, "received result on idle keepalive connection: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
     ngx_postgres_process_notify(&ps->common);
     return;
 close:
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "ps->timeout.timer_set = %s", ps->timeout.timer_set ? "true" : "false");
     if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
     ngx_postgres_free_connection(&ps->common, NULL, 0);
     ngx_queue_remove(&ps->queue);
