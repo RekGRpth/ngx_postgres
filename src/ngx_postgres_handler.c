@@ -172,7 +172,10 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     /* a bit hack-ish way to return error response (clean-up part) */
     if (r->upstream->peer.connection && !r->upstream->peer.connection->fd) {
         if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write);
-        if (r->upstream->peer.connection->pool) ngx_destroy_pool(r->upstream->peer.connection->pool);
+        if (r->upstream->peer.connection->pool) {
+            ngx_destroy_pool(r->upstream->peer.connection->pool);
+            r->upstream->peer.connection->pool = NULL;
+        }
         ngx_free_connection(r->upstream->peer.connection);
         r->upstream->peer.connection = NULL;
         ngx_postgres_finalize_upstream(r, r->upstream, NGX_HTTP_SERVICE_UNAVAILABLE);
@@ -196,7 +199,10 @@ void ngx_postgres_finalize_upstream(ngx_http_request_t *r, ngx_http_upstream_t *
     if (u->peer.free) u->peer.free(&u->peer, u->peer.data, 0);
     if (u->peer.connection) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "close http upstream connection: %i", u->peer.connection->fd);
-        if (u->peer.connection->pool) ngx_destroy_pool(u->peer.connection->pool);
+        if (u->peer.connection->pool) {
+            ngx_destroy_pool(u->peer.connection->pool);
+            u->peer.connection->pool = NULL;
+        }
         ngx_close_connection(u->peer.connection);
     }
     u->peer.connection = NULL;
@@ -227,7 +233,10 @@ void ngx_postgres_next_upstream(ngx_http_request_t *r, ngx_http_upstream_t *u, n
     }
     if (u->peer.connection) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "close http upstream connection: %i", u->peer.connection->fd);
-        if (u->peer.connection->pool) ngx_destroy_pool(u->peer.connection->pool);
+        if (u->peer.connection->pool) {
+            ngx_destroy_pool(u->peer.connection->pool);
+            u->peer.connection->pool = NULL;
+        }
         ngx_close_connection(u->peer.connection);
     }
     if (!status) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!status"); status = NGX_HTTP_INTERNAL_SERVER_ERROR; /* TODO: ngx_http_upstream_connect(r, u); */ }

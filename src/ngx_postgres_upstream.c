@@ -362,7 +362,10 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_co
         if (common->connection->write->posted) { ngx_delete_posted_event(common->connection->write); }
         common->connection->read->closed = 1;
         common->connection->write->closed = 1;
-//        if (common->connection->pool) ngx_destroy_pool(common->connection->pool);
+        if (common->connection->pool) {
+            ngx_destroy_pool(common->connection->pool);
+            common->connection->pool = NULL;
+        }
         ngx_free_connection(common->connection);
         common->connection->fd = (ngx_socket_t) -1;
         common->connection = NULL;
