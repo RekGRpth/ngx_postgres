@@ -89,7 +89,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pc->sockaddr = pd->common.sockaddr;
     pc->socklen = pd->common.socklen;
     if (pd->common.server_conf->max_save && !pd->common.server_conf->single && ngx_postgres_peer_multi(pc, pd) != NGX_DECLINED) { ngx_postgres_process_events(pd->request); return NGX_AGAIN; }
-    if (pd->common.server_conf->reject && pd->common.server_conf->save >= pd->common.server_conf->max_save) {
+    if (!pd->common.server_conf->ignore && pd->common.server_conf->save >= pd->common.server_conf->max_save) {
         ngx_log_error(NGX_LOG_INFO, pc->log, 0, "keepalive connection pool is full, rejecting request to upstream \"%V\"", peer->name);
         pd->common.connection = ngx_get_connection(0, pc->log); /* a bit hack-ish way to return error response (setup part) */
         pc->connection = pd->common.connection;

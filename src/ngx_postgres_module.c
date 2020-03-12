@@ -47,8 +47,8 @@ ngx_conf_enum_t ngx_postgres_mode_options[] = {
 };
 
 ngx_conf_enum_t ngx_postgres_overflow_options[] = {
-    { ngx_string("ignore"), 0 },
-    { ngx_string("reject"), 1 },
+    { ngx_string("reject"), 0 },
+    { ngx_string("ignore"), 1 },
     { ngx_null_string, 0 }
 };
 
@@ -311,7 +311,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_overflow_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server_conf->reject = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server_conf->ignore = e[j].value; break; }
             if (!e[j].name.len) return "invalid overflow";
         } else if (elts[i].len > sizeof("prepare=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare=", sizeof("prepare=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("prepare=") - 1);
