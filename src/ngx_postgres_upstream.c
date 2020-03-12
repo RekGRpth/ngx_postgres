@@ -161,7 +161,7 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
         if (!temp_pool) continue;
         switch (ngx_http_push_stream_add_msg_to_channel_my(common->connection->log, &id, &text, NULL, NULL, 0, temp_pool)) {
             case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "notify error"); break;
-            case NGX_DECLINED: {
+            case NGX_DECLINED:
                 ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "notify declined");
                 char *str = PQescapeIdentifier(common->conn, (const char *)id.data, id.len);
                 if (!str) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "failed to escape %V: %s", id, PQerrorMessage(common->conn)); break; }
@@ -177,7 +177,6 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "unlisten %s sent successfully", command);
                 ngx_destroy_pool(temp_pool);
                 return;
-            };
             case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify ok"); break;
             default: ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "notify unknown"); break;
         }

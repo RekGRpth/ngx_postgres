@@ -113,12 +113,12 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         }
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "received result on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessage(res));
     }
+    ngx_uint_t hash = 0;
     if (!pd->stmtName) {
         if (!PQsendQueryParams(pd->common.conn, (const char *)pd->sql.data, pd->nParams, pd->paramTypes, (const char *const *)pd->paramValues, NULL, NULL, pd->resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to send query: %s", PQerrorMessage(pd->common.conn)); return NGX_ERROR; }
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query %s sent successfully", pd->sql.data);
     } else switch (pd->state) {
-        case state_db_send_prepare: {
-            ngx_uint_t hash = 0;
+        case state_db_send_prepare:
             if (pd->common.prepare) for (ngx_queue_t *queue = ngx_queue_head(pd->common.prepare); queue != ngx_queue_sentinel(pd->common.prepare); queue = ngx_queue_next(queue)) {
                 ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
                 if (prepare->hash == pd->hash) { hash = prepare->hash; break; }
@@ -136,13 +136,12 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 ngx_queue_insert_head(pd->common.prepare, &prepare->queue);
                 pd->state = state_db_send_query;
                 return NGX_DONE;
-            }
-        } // fall through
-        case state_db_send_query: {
+            } // fall through
+        case state_db_send_query:
             if (!PQsendQueryPrepared(pd->common.conn, (const char *)pd->stmtName, pd->nParams, (const char *const *)pd->paramValues, NULL, NULL, pd->resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to send prepared query: %s", PQerrorMessage(pd->common.conn)); return NGX_ERROR; }
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query %s:%s sent successfully", pd->stmtName, pd->sql.data);
-        } break;
-        default: { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pd->state"); return NGX_ERROR; }
+            break;
+        default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pd->state"); return NGX_ERROR;
     }
     ngx_add_timer(r->upstream->peer.connection->read, r->upstream->conf->read_timeout); /* set result timeout */
     pd->state = state_db_get_result;
@@ -184,9 +183,7 @@ again:
             } else ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_FAILED");
             return NGX_ERROR;
         case PGRES_POLLING_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_OK"); break;
-        case PGRES_POLLING_READING:
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_READING");
-            return NGX_AGAIN;
+        case PGRES_POLLING_READING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_READING"); return NGX_AGAIN;
         case PGRES_POLLING_WRITING:
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_WRITING");
             if (PQstatus(pd->common.conn) == CONNECTION_MADE) goto again;
@@ -273,7 +270,7 @@ void ngx_postgres_process_events(ngx_http_request_t *r) {
         case state_db_send_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_send_query"); rc = ngx_postgres_send_query(r); break;
         case state_db_get_result: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_get_result"); rc = ngx_postgres_get_result(r); break;
         case state_db_get_ack: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_get_ack"); rc = ngx_postgres_get_ack(r); break;
-        case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_idle, re-using keepalive connection"); /*pd->state = pd->common.server_conf->prepare ? state_db_send_prepare : state_db_send_query; */rc = ngx_postgres_send_query(r); break;
+        case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state_db_idle, re-using keepalive connection"); rc = ngx_postgres_send_query(r); break;
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "unknown state: %i", pd->state); goto failed;
     }
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) ngx_postgres_finalize_upstream(r, r->upstream, rc);
