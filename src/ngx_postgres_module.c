@@ -28,7 +28,7 @@
 
 #include <assert.h>
 #include <pg_config.h>
-#include <pg_config_manual.h>
+//#include <pg_config_manual.h>
 
 #include "ngx_postgres_handler.h"
 #include "ngx_postgres_module.h"
@@ -38,11 +38,6 @@
 
 
 #define NGX_CONF_TAKE34  (NGX_CONF_TAKE3|NGX_CONF_TAKE4)
-#define UNIXSOCK_PATH(path, port, sockdir) \
-		snprintf(path, sizeof(path), "%s/.s.PGSQL.%d", \
-				((sockdir) && *(sockdir) != '\0') ? (sockdir) : \
-				DEFAULT_PGSOCKET_DIR, \
-				(port))
 
 
 ngx_conf_enum_t ngx_postgres_mode_options[] = {
@@ -228,13 +223,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         }
         arg++;
     }
-    if (!host && !hostaddr) {
-        char sockself[MAXPGPATH];
-        UNIXSOCK_PATH(sockself, port, DEFAULT_PGSOCKET_DIR);
-        size_t len = ngx_strlen(sockself);
-        if (!(host = ngx_pnalloc(cf->pool, len + 1))) return "!ngx_pnalloc";
-        (void) ngx_cpystrn(host, (u_char *)sockself, len + 1);
-    }
+    if (!host && !hostaddr) host = (u_char *)"unix:///run/postgresql";
     ngx_url_t url;
     ngx_memzero(&url, sizeof(ngx_url_t));
     url.url = hostaddr ? (ngx_str_t){ngx_strlen(hostaddr), hostaddr} : (ngx_str_t){ngx_strlen(host), host};
