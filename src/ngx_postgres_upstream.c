@@ -331,7 +331,7 @@ ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *peer) {
 
 void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_common_t *listen, ngx_flag_t delete) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s", __func__);
-//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "common->conn = %p", common->conn);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "common->conn = %p", common->conn);
     if (common->conn) {
         if (listen) {
             PGresult *res = PQexec(common->conn, "with s as (select pg_listening_channels()) select array_to_string(array_agg(format($$listen %I$$, s.pg_listening_channels)), ';') from s");
@@ -364,6 +364,7 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_co
         PQfinish(common->conn);
         common->conn = NULL;
     }
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "common->connection = %p", common->connection);
     if (common->connection) {
         if (common->connection->read->timer_set) ngx_del_timer(common->connection->read);
         if (common->connection->write->timer_set) ngx_del_timer(common->connection->write);
@@ -375,7 +376,8 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_co
         if (common->connection->write->posted) { ngx_delete_posted_event(common->connection->write); }
         common->connection->read->closed = 1;
         common->connection->write->closed = 1;
-        if (common->connection->pool) ngx_destroy_pool(common->connection->pool);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "common->connection->pool = %p", common->connection->pool);
+        //if (common->connection->pool) ngx_destroy_pool(common->connection->pool);
         ngx_free_connection(common->connection);
         common->connection->fd = (ngx_socket_t) -1;
         common->connection = NULL;
