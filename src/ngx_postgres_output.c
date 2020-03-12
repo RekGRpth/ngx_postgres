@@ -38,7 +38,7 @@ static ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     if (PQntuples(pd->res) != 1 || PQnfields(pd->res) != 1) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_output value\" received %d value(s) instead of expected single value in location \"%V\"", PQntuples(pd->res) * PQnfields(pd->res), &core_loc_conf->name);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_output value\" received %i value(s) instead of expected single value in location \"%V\"", PQntuples(pd->res) * PQnfields(pd->res), &core_loc_conf->name);
         pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         return NGX_DONE;
     }

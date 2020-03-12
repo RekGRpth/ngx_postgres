@@ -124,7 +124,8 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 //    PQtrace(pd->common.conn, stderr);
     pd->common.server_conf->save++; /* take spot in keepalive connection pool */
     if ((pd->common.fd = PQsocket(pd->common.conn)) == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQsocket == -1"); goto invalid; }
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "pd->common.fd = %d", pd->common.fd);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "pd->common.num = %i", pd->common.num);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "pd->common.fd = %i", pd->common.fd);
     if (!(pd->common.connection = ngx_get_connection(pd->common.fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "failed to get a free nginx connection"); goto invalid; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "pd->common.connection = %p", pd->common.connection);
     pd->common.connection->log = pc->log;
@@ -162,7 +163,7 @@ static void ngx_postgres_write_handler(ngx_event_t *ev) {
 static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s", __func__);
     for (PGnotify *notify; (notify = PQnotifies(common->conn)); PQfreemem(notify)) {
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify: relname=\"%s\", extra=\"%s\", be_pid=%d.", notify->relname, notify->extra, notify->be_pid);
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify: relname=\"%s\", extra=\"%s\", be_pid=%i.", notify->relname, notify->extra, notify->be_pid);
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
         ngx_pool_t *temp_pool = ngx_create_pool(8192, common->connection->log);
@@ -624,7 +625,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
                 if (!param) return "!ngx_array_push";
                 param->index = (ngx_uint_t) index;
                 param->oid = oid;
-                p += ngx_sprintf(p, "$%d", ++k) - p;
+                p += ngx_sprintf(p, "$%i", ++k) - p;
             }
             if (s >= e) break;
         }

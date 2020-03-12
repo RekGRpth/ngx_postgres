@@ -151,7 +151,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
         if (variable[i].row >= PQntuples(pd->res) || variable[i].col >= PQnfields(pd->res)) {
             if (variable[i].required) {
                 ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value out of range of the received result-set (rows:%d cols:%d) in location \"%V\"", &variable[i].variable->name, PQntuples(pd->res), PQnfields(pd->res), &core_loc_conf->name);
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value out of range of the received result-set (rows:%i cols:%i) in location \"%V\"", &variable[i].variable->name, PQntuples(pd->res), PQnfields(pd->res), &core_loc_conf->name);
                 return NGX_ERROR;
             }
             continue;
