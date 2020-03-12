@@ -155,6 +155,8 @@ static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     char *err;
     int len;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common = %p", pd->common);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.conn = %p", pd->common.conn);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.num = %i", pd->common.num);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.fd = %i", pd->common.fd);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsocket(pd->common.conn) = %i", PQsocket(pd->common.conn));

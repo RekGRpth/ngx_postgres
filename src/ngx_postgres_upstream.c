@@ -78,6 +78,12 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = data;
     pd->failed = 0;
+/*    if (!pd->common.server_conf->ignore && pd->common.server_conf->save >= pd->common.server_conf->max_save) {
+        ngx_log_error(NGX_LOG_WARN, pc->log, 0, "max_save");
+//        pd->common.connection = ngx_get_connection(0, pc->log); / * a bit hack-ish way to return error response (setup part) * /
+//        pc->connection = pd->common.connection;
+        return NGX_DECLINED;
+    }*/
     if (pd->common.server_conf->max_save && pd->common.server_conf->single && ngx_postgres_peer_single(pc, pd) != NGX_DECLINED) { ngx_postgres_process_events(pd->request); return NGX_AGAIN; }
     if (pd->common.server_conf->peer >= pd->common.server_conf->max_peer) pd->common.server_conf->peer = 0;
     ngx_postgres_peer_t *peer = &pd->common.server_conf->peers[pd->common.server_conf->peer++];
@@ -91,9 +97,9 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (pd->common.server_conf->max_save && !pd->common.server_conf->single && ngx_postgres_peer_multi(pc, pd) != NGX_DECLINED) { ngx_postgres_process_events(pd->request); return NGX_AGAIN; }
     if (!pd->common.server_conf->ignore && pd->common.server_conf->save >= pd->common.server_conf->max_save) {
         ngx_log_error(NGX_LOG_WARN, pc->log, 0, "max_save");
-        pd->common.connection = ngx_get_connection(0, pc->log); /* a bit hack-ish way to return error response (setup part) */
-        pc->connection = pd->common.connection;
-        return NGX_AGAIN;
+//        pd->common.connection = ngx_get_connection(0, pc->log); / * a bit hack-ish way to return error response (setup part) * /
+//        pc->connection = pd->common.connection;
+        return NGX_DECLINED;
     }
     const char *host = peer->values[0];
     peer->values[0] = (const char *)peer->value;
