@@ -180,12 +180,12 @@ again:
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connected successfully");
     const char *charset = PQparameterStatus(pd->common->conn, "client_encoding");
     if (charset) {
-        pd->common->charset.len = ngx_strlen(charset);
-        if (pd->common->charset.len == sizeof("UTF8") - 1 && !ngx_strncasecmp((u_char *)charset, (u_char *)"UTF8", sizeof("UTF8") - 1)) {
-            ngx_str_set(&pd->common->charset, "utf-8");
+        pd->result.charset.len = ngx_strlen(charset);
+        if (pd->result.charset.len == sizeof("UTF8") - 1 && !ngx_strncasecmp((u_char *)charset, (u_char *)"UTF8", sizeof("UTF8") - 1)) {
+            ngx_str_set(&pd->result.charset, "utf-8");
         } else {
-            if (!(pd->common->charset.data = ngx_pnalloc(r->pool, pd->common->charset.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-            ngx_memcpy(pd->common->charset.data, charset, pd->common->charset.len);
+            if (!(pd->result.charset.data = ngx_pnalloc(r->pool, pd->result.charset.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+            ngx_memcpy(pd->result.charset.data, charset, pd->result.charset.len);
         }
     }
     return ngx_postgres_send_query(r);

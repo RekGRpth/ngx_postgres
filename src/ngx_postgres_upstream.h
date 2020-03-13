@@ -78,7 +78,6 @@ typedef struct {
     ngx_postgres_server_conf_t        *server_conf;
     ngx_postgres_state_t               state;
     ngx_queue_t                       *prepare;
-    ngx_str_t                          charset;
     ngx_str_t                         *name;
     ngx_uint_t                         requests;
     PGconn                            *conn;
@@ -87,10 +86,11 @@ typedef struct {
 } ngx_postgres_common_t;
 
 typedef struct {
-    ngx_str_t                          cmdStatus;
-    ngx_str_t                          cmdTuples;
     ngx_int_t                          nfields;
     ngx_int_t                          ntuples;
+    ngx_str_t                          charset;
+    ngx_str_t                          cmdStatus;
+    ngx_str_t                          cmdTuples;
     PGresult                          *res;
 } ngx_postgres_result_t;
 
