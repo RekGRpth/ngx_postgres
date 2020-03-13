@@ -195,19 +195,22 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     for (PGresult *res; (res = PQgetResult(ps->common.conn)); PQclear(res)) switch(PQresultStatus(res)) {
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
         case PGRES_TUPLES_OK:
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == PGRES_TUPLES_OK");
             if (ps->common.state == state_db_send_query) {
                 if (ps->listen) ngx_array_destroy(ps->listen);
-                if (!PQntuples(res)) ps->listen = NULL; else {
-                    if (!(ps->listen = ngx_array_create(ps->common.connection->pool, PQntuples(res), sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_array_create"); } else {
-                        for (int row = 0; row < PQntuples(res); row++) {
-                        }
-                    }
+                if (!PQntuples(res) || !PQnfields(res)) ps->listen = NULL; else
+                if (!(ps->listen = ngx_array_create(ps->common.connection->pool, PQntuples(res), sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_array_create"); break; }
+                for (int row = 0; row < PQntuples(res); row++) {
+                    if (PQgetisnull(res, row, 0)) continue;
+                    ngx_str_t *channel = ngx_array_push(ps->listen);
+                    if (!channel) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_array_push"); continue; }
+                    channel->len = PQgetlength(res, row, 0);
+                    if (!(channel->data = ngx_pnalloc(ps->common.connection->pool, channel->len))) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_pnalloc"); continue; }
+                    ngx_memcpy(channel->data, (u_char *)PQgetvalue(res, row, 0), channel->len);
                 }
-//ngx_array_t *ngx_array_create(ngx_pool_t *p, ngx_uint_t n, size_t size);
-//void ngx_array_destroy(ngx_array_t *a);
-//void *ngx_array_push(ngx_array_t *a);
                 ps->common.state = state_db_idle;
-            } // fall through
+            }
+            break;
         default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
     }
     ngx_postgres_process_notify(&ps->common);
