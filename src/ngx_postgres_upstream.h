@@ -72,6 +72,7 @@ typedef struct {
 } ngx_postgres_server_conf_t;
 
 typedef struct {
+    ngx_array_t                       *listen;
     ngx_connection_t                  *connection;
     ngx_postgres_server_conf_t        *server_conf;
     ngx_postgres_state_t               state;
@@ -110,7 +111,6 @@ typedef struct {
 } ngx_postgres_data_t;
 
 typedef struct {
-    ngx_array_t                       *listen;
     ngx_event_t                        timeout;
     ngx_postgres_common_t              common;
     ngx_queue_t                        queue;
