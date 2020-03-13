@@ -136,7 +136,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         if (ngx_add_event(pd->common.connection->read, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
         if (ngx_add_event(pd->common.connection->write, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
     } else goto bad_add;
-    pd->state = state_db_connect;
+    pd->common.state = state_db_connect;
     pc->connection = pd->common.connection;
     return NGX_AGAIN;
 bad_add:
@@ -250,6 +250,8 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ps->timeout.handler = ngx_postgres_timeout;
         ngx_add_timer(&ps->timeout, ps->common.server_conf->timeout);
     }
+//    if (!PQsendQuery(pd->common.conn, "select pg_listening_channels()")) ngx_log_error(NGX_LOG_WARN, pd->request->connection->log, 0, "!PQsendQuery and %s", PQerrorMessageMy(pd->common.conn));
+//    else 
 }
 
 
