@@ -70,8 +70,8 @@ static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
 static void ngx_postgres_server_conf_cleanup(void *data) {
     ngx_postgres_server_conf_t *server_conf = data;
     server_conf->max_save = 0; /* just to be on the safe-side */
-    while (!ngx_queue_empty(&server_conf->busy)) {
-        ngx_queue_t *queue = ngx_queue_head(&server_conf->busy);
+    while (!ngx_queue_empty(&server_conf->keepalive)) {
+        ngx_queue_t *queue = ngx_queue_head(&server_conf->keepalive);
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ngx_postgres_free_connection(&ps->common, NULL, 0);
@@ -84,8 +84,8 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_server_conf_t *server_conf = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_server_conf_t));
     if (!server_conf) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     server_conf->pool = cf->pool;
-    ngx_queue_init(&server_conf->busy);
     ngx_queue_init(&server_conf->free);
+    ngx_queue_init(&server_conf->keepalive);
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NULL; }
     cln->handler = ngx_postgres_server_conf_cleanup;
