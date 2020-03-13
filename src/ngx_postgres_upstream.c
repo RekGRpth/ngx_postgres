@@ -240,6 +240,10 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (pd->failed || !pd->common.connection || r->upstream->headers_in.status_n != NGX_HTTP_OK) return;
+    if (pd->common.connection->read->timer_set) ngx_del_timer(pd->common.connection->read);
+    if (pd->common.connection->write->timer_set) ngx_del_timer(pd->common.connection->write);
+    if (pd->common.connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(pd->common.connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
+    if (pd->common.server_conf->max_requests && ++pd->common.requests > pd->common.server_conf->max_requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "max_requests"); return; }
     ngx_postgres_save_t *ps;
     if (ngx_queue_empty(&pd->common.server_conf->free)) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty");
@@ -251,10 +255,6 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_queue_t *queue = ngx_queue_head(&pd->common.server_conf->free);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
     }
-    if (pd->common.connection->read->timer_set) ngx_del_timer(pd->common.connection->read);
-    if (pd->common.connection->write->timer_set) ngx_del_timer(pd->common.connection->write);
-    if (pd->common.connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(pd->common.connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
-    if (pd->common.server_conf->max_requests && ++pd->common.requests > pd->common.server_conf->max_requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "max_requests"); return; }
 //    ngx_array_t *listen = ps->common.listen;
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_tail(&pd->common.server_conf->busy, &ps->queue);
