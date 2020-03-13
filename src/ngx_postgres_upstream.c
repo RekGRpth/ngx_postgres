@@ -202,7 +202,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
         case PGRES_TUPLES_OK:
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == PGRES_TUPLES_OK");
             if (ps->common->state == state_db_send_query) {
-//                if (ps->common->listen) ngx_array_destroy(ps->common->listen);
+                if (ps->common->listen) ngx_array_destroy(ps->common->listen);
                 if (!PQntuples(res) || !PQnfields(res)) ps->common->listen = NULL; else
                 if (!(ps->common->listen = ngx_array_create(ps->common->connection->pool, PQntuples(res), sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_array_create"); break; }
                 for (int row = 0; row < PQntuples(res); row++) {
@@ -283,7 +283,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     if (!PQsendQuery(common->conn, "select pg_listening_channels()")) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery and %s", PQerrorMessageMy(common->conn)); }
     else common->state = state_db_send_query;
 //    if (listen) ngx_array_destroy(listen);
-    if (common->listen) ngx_array_destroy(common->listen);
+//    if (common->listen) ngx_array_destroy(common->listen);
 }
 
 
