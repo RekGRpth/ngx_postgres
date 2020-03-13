@@ -197,7 +197,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
         case PGRES_TUPLES_OK:
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == PGRES_TUPLES_OK");
             if (ps->common.state == state_db_send_query) {
-                if (ps->common.listen) ngx_array_destroy(ps->common.listen);
+//                if (ps->common.listen) ngx_array_destroy(ps->common.listen);
                 if (!PQntuples(res) || !PQnfields(res)) ps->common.listen = NULL; else
                 if (!(ps->common.listen = ngx_array_create(ps->common.connection->pool, PQntuples(res), sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_array_create"); break; }
                 for (int row = 0; row < PQntuples(res); row++) {
@@ -253,6 +253,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     if (pd->common.connection->write->timer_set) ngx_del_timer(pd->common.connection->write);
     if (pd->common.connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(pd->common.connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pd->request->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
     if (pd->common.server_conf->max_requests && ++pd->common.requests > pd->common.server_conf->max_requests) { ngx_log_error(NGX_LOG_WARN, pd->request->connection->log, 0, "max_requests"); return; }
+//    ngx_array_t *listen = ps->common.listen;
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_head(&pd->common.server_conf->busy, &ps->queue);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "free keepalive peer: saving connection %p", pd->common.connection);
@@ -273,6 +274,8 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     }
     if (!PQsendQuery(ps->common.conn, "select pg_listening_channels()")) { ngx_log_error(NGX_LOG_WARN, pd->request->connection->log, 0, "!PQsendQuery and %s", PQerrorMessageMy(ps->common.conn)); }
     else ps->common.state = state_db_send_query;
+//    if (listen) ngx_array_destroy(listen);
+    if (ps->common.listen) ngx_array_destroy(ps->common.listen);
 }
 
 
