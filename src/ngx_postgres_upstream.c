@@ -334,6 +334,14 @@ ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *peer) {
 
 void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_common_t *listen, ngx_flag_t delete) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s", __func__);
+    common->server_conf->save--; /* free spot in keepalive connection pool */
+    if (!common->connection) {
+        if (common->conn) {
+            PQfinish(common->conn);
+            common->conn = NULL;
+        }
+        return;
+    }
     if (common->conn) {
         if (listen) {
             ngx_str_t *elts = common->listen->elts;
@@ -363,36 +371,29 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_postgres_co
             ngx_str_t *elts = common->listen->elts;
             for (ngx_uint_t i = 1; i < common->listen->nelts; i++) {
                 ngx_log_error(NGX_LOG_INFO, common->connection->log, 0, "delete channel = %V", &elts[i]);
-                ngx_pool_t *temp_pool = ngx_create_pool(8192, common->connection->log);
-                if (temp_pool) {
-                    ngx_http_push_stream_delete_channel_my(common->connection->log, &elts[i], (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, temp_pool);
-                    ngx_destroy_pool(temp_pool);
-                }
+                ngx_http_push_stream_delete_channel_my(common->connection->log, &elts[i], (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, common->connection->pool);
             }
         }
         PQfinish(common->conn);
         common->conn = NULL;
     }
-    if (common->connection) {
-        if (common->connection->read->timer_set) ngx_del_timer(common->connection->read);
-        if (common->connection->write->timer_set) ngx_del_timer(common->connection->write);
-        if (ngx_del_conn) ngx_del_conn(common->connection, NGX_CLOSE_EVENT); else {
-            if (common->connection->read->active || common->connection->read->disabled) ngx_del_event(common->connection->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
-            if (common->connection->write->active || common->connection->write->disabled) ngx_del_event(common->connection->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
-        }
-        if (common->connection->read->posted) { ngx_delete_posted_event(common->connection->read); }
-        if (common->connection->write->posted) { ngx_delete_posted_event(common->connection->write); }
-        common->connection->read->closed = 1;
-        common->connection->write->closed = 1;
-        if (common->connection->pool && !common->connection->close) {
-            ngx_destroy_pool(common->connection->pool);
-            common->connection->pool = NULL;
-        }
-        ngx_free_connection(common->connection);
-        common->connection->fd = (ngx_socket_t) -1;
-        common->connection = NULL;
+    if (common->connection->read->timer_set) ngx_del_timer(common->connection->read);
+    if (common->connection->write->timer_set) ngx_del_timer(common->connection->write);
+    if (ngx_del_conn) ngx_del_conn(common->connection, NGX_CLOSE_EVENT); else {
+        if (common->connection->read->active || common->connection->read->disabled) ngx_del_event(common->connection->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
+        if (common->connection->write->active || common->connection->write->disabled) ngx_del_event(common->connection->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
     }
-    common->server_conf->save--; /* free spot in keepalive connection pool */
+    if (common->connection->read->posted) { ngx_delete_posted_event(common->connection->read); }
+    if (common->connection->write->posted) { ngx_delete_posted_event(common->connection->write); }
+    common->connection->read->closed = 1;
+    common->connection->write->closed = 1;
+    if (common->connection->pool && !common->connection->close) {
+        ngx_destroy_pool(common->connection->pool);
+        common->connection->pool = NULL;
+    }
+    ngx_free_connection(common->connection);
+    common->connection->fd = (ngx_socket_t) -1;
+    common->connection = NULL;
 }
 
 
