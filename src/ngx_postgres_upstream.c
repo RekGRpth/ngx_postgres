@@ -240,9 +240,10 @@ static void ngx_postgres_timeout(ngx_event_t *ev) {
 }
 
 
-static void ngx_postgres_free_peer(ngx_peer_connection_t *peer, ngx_postgres_data_t *pd) {
+static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_peer_connection_t *peer = &r->upstream->peer;
     ngx_postgres_common_t *common = pd->common;
     if (pd->failed || !common->connection || r->upstream->headers_in.status_n != NGX_HTTP_OK) return;
     if (common->connection->read->timer_set) ngx_del_timer(common->connection->read);
@@ -290,7 +291,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *peer, void *data, ngx_
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, peer->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = data;
     if (state & NGX_PEER_FAILED) pd->failed = 1;
-    if (pd->common->server_conf->max_save) ngx_postgres_free_peer(peer, pd);
+    if (pd->common->server_conf->max_save) ngx_postgres_free_peer(pd);
     if (peer->connection) ngx_postgres_free_connection(pd->common, NULL, 1);
 //    peer->connection = NULL;
 }
