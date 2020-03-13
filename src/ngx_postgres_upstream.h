@@ -90,7 +90,7 @@ typedef struct {
     ngx_int_t                          nfields;
     ngx_int_t                          ntuples;
     PGresult                          *res;
-} ngx_postgres_res_t;
+} ngx_postgres_result_t;
 
 typedef struct {
     ngx_array_t                       *variables;
@@ -99,7 +99,7 @@ typedef struct {
     ngx_http_request_t                *request;
     ngx_int_t                          status;
     ngx_postgres_common_t              common;
-    ngx_postgres_res_t                 res;
+    ngx_postgres_result_t              result;
     ngx_str_t                          sql;
     ngx_uint_t                         hash;
     ngx_uint_t                         nParams;
