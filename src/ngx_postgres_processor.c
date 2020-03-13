@@ -42,8 +42,8 @@ static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     r->upstream->headers_in.status_n = NGX_HTTP_OK; /* flag for keepalive */
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    ngx_postgres_finalize_upstream(r, r->upstream, pd->status >= NGX_HTTP_SPECIAL_RESPONSE ? pd->status : NGX_OK);
     pd->common.state = state_db_idle;
+    ngx_postgres_finalize_upstream(r, r->upstream, pd->status >= NGX_HTTP_SPECIAL_RESPONSE ? pd->status : NGX_OK);
     return NGX_DONE;
 }
 
