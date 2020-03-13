@@ -79,7 +79,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_data_t *pd = data;
     pd->failed = 0;
     if (pd->common.server_conf->max_save && pd->common.server_conf->single && ngx_postgres_peer_single(pc, pd) != NGX_DECLINED) { ngx_postgres_process_events(pd->request); return NGX_AGAIN; }
-    if (pd->common.server_conf->peer >= pd->common.server_conf->max_peer) pd->common.server_conf->peer = 0;
+    if (pd->common.server_conf->peer >= pd->common.server_conf->npeers) pd->common.server_conf->peer = 0;
     ngx_postgres_peer_t *peer = &pd->common.server_conf->peers[pd->common.server_conf->peer++];
     pd->common.name = peer->name;
     pd->common.sockaddr = peer->sockaddr;

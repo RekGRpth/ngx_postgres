@@ -143,8 +143,8 @@ static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_sr
     ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
     if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
     ngx_postgres_server_t *elts = upstream_srv_conf->servers->elts;
-    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) server_conf->max_peer += elts[i].naddrs;
-    if (!(server_conf->peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_peer_t) * server_conf->max_peer))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) server_conf->npeers += elts[i].naddrs;
+    if (!(server_conf->peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_peer_t) * server_conf->npeers))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0, n = 0; i < upstream_srv_conf->servers->nelts; i++) {
         for (ngx_uint_t j = 0; j < elts[i].naddrs; j++) {
             ngx_postgres_peer_t *peer = &server_conf->peers[n];
