@@ -247,7 +247,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_postgres_save_t *ps;
     if (ngx_queue_empty(&pd->common.server_conf->free)) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty");
-        ngx_queue_t *queue = ngx_queue_last(&pd->common.server_conf->keepalive);
+        ngx_queue_t *queue = ngx_queue_head(&pd->common.server_conf->keepalive);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ngx_postgres_free_connection(&ps->common, &pd->common, 1);
