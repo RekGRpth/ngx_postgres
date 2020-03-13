@@ -34,8 +34,10 @@
 #include "ngx_postgres_upstream.h"
 
 
-static void ngx_postgres_keepalive_to_free(ngx_peer_connection_t *peer, ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, peer->log, 0, "%s", __func__);
+static void ngx_postgres_keepalive_to_free(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
+    ngx_http_request_t *r = pd->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_peer_connection_t *peer = &r->upstream->peer;
     if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
     pd->common = ps->common;
     ngx_queue_remove(&ps->queue);
@@ -52,22 +54,24 @@ static void ngx_postgres_keepalive_to_free(ngx_peer_connection_t *peer, ngx_post
 }
 
 
-static ngx_int_t ngx_postgres_peer_single(ngx_peer_connection_t *peer, ngx_postgres_data_t *pd) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, peer->log, 0, "%s", __func__);
+static ngx_int_t ngx_postgres_peer_single(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (ngx_queue_empty(&pd->common->server_conf->keepalive)) return NGX_DECLINED;
     ngx_queue_t *queue = ngx_queue_head(&pd->common->server_conf->keepalive);
     ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-    ngx_postgres_keepalive_to_free(peer, pd, ps);
+    ngx_postgres_keepalive_to_free(pd, ps);
     return NGX_DONE;
 }
 
 
-static ngx_int_t ngx_postgres_peer_multi(ngx_peer_connection_t *peer, ngx_postgres_data_t *pd) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, peer->log, 0, "%s", __func__);
+static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     for (ngx_queue_t *queue = ngx_queue_head(&pd->common->server_conf->keepalive); queue != ngx_queue_sentinel(&pd->common->server_conf->keepalive); queue = ngx_queue_next(queue)) {
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ngx_memn2cmp((u_char *)pd->common->sockaddr, (u_char *)ps->common->sockaddr, pd->common->socklen, ps->common->socklen)) continue;
-        ngx_postgres_keepalive_to_free(peer, pd, ps);
+        ngx_postgres_keepalive_to_free(pd, ps);
         return NGX_DONE;
     }
     return NGX_DECLINED;
@@ -79,7 +83,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *peer, void *data) 
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     pd->failed = 0;
-    if (pd->common->server_conf->max_save && pd->common->server_conf->single && ngx_postgres_peer_single(peer, pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
+    if (pd->common->server_conf->max_save && pd->common->server_conf->single && ngx_postgres_peer_single(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
     if (pd->common->server_conf->peer >= pd->common->server_conf->npeers) pd->common->server_conf->peer = 0;
     ngx_postgres_peer_t *pp = &pd->common->server_conf->peers[pd->common->server_conf->peer++];
     pd->common->name = pp->name;
@@ -89,7 +93,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *peer, void *data) 
     peer->name = pd->common->name;
     peer->sockaddr = pd->common->sockaddr;
     peer->socklen = pd->common->socklen;
-    if (pd->common->server_conf->max_save && !pd->common->server_conf->single && ngx_postgres_peer_multi(peer, pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
+    if (pd->common->server_conf->max_save && !pd->common->server_conf->single && ngx_postgres_peer_multi(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
     if (!pd->common->server_conf->ignore && pd->common->server_conf->save >= pd->common->server_conf->max_save) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "max_save"); return NGX_DECLINED; }
     const char *host = pp->values[0];
     pp->values[0] = (const char *)pp->value;
