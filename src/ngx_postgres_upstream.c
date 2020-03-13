@@ -289,16 +289,16 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     if (common->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(common->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
     if (common->server_conf->max_requests && ++common->requests > common->server_conf->max_requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "max_requests"); return; }
     ngx_postgres_save_t *ps;
-    if (ngx_queue_empty(&common->server_conf->keepalive) && !ngx_queue_empty(&common->server_conf->free)) {
-        ngx_queue_t *queue = ngx_queue_head(&common->server_conf->free);
-        ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-    } else if (ngx_queue_empty(&common->server_conf->free) && !ngx_queue_empty(&common->server_conf->keepalive)) {
+    if (ngx_queue_empty(&common->server_conf->free)) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty");
         ngx_queue_t *queue = ngx_queue_head(&common->server_conf->keepalive);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ngx_postgres_free_connection(ps->common, 1);
-    } else { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty"); return; }
+    } else {
+        ngx_queue_t *queue = ngx_queue_head(&common->server_conf->free);
+        ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
+    }
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_tail(&common->server_conf->keepalive, &ps->queue);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "free keepalive peer: saving connection %p", common->connection);
@@ -389,13 +389,13 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_flag_t dele
         return;
     }
     if (common->conn) {
-//        if (delete) {
+        if (!common->connection->close) {
             ngx_str_t *elts = common->listen->elts;
             for (ngx_uint_t i = 0; i < common->listen->nelts; i++) {
                 ngx_log_error(NGX_LOG_INFO, common->connection->log, 0, "delete channel = %V", &elts[i]);
                 ngx_http_push_stream_delete_channel_my(common->connection->log, &elts[i], (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, common->connection->pool);
             }
-//        }
+        }
         PQfinish(common->conn);
         common->conn = NULL;
     }
