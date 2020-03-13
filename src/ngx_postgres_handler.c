@@ -96,21 +96,21 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
 
 
 static ngx_int_t ngx_postgres_process_header(ngx_http_request_t *r) {
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_process_header should not be called by the upstream");
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "should not be called by the upstream");
     return NGX_ERROR;
 }
 
 
 static ngx_int_t ngx_postgres_input_filter_init(void *data) {
     ngx_http_request_t *r = data;
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_input_filter_init should not be called by the upstream");
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "should not be called by the upstream");
     return NGX_ERROR;
 }
 
 
 static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes) {
     ngx_http_request_t *r = data;
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_input_filter should not be called by the upstream");
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "should not be called by the upstream");
     return NGX_ERROR;
 }
 
@@ -126,8 +126,7 @@ ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *r, 
 
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    /* TODO: add support for subrequest in memory by emitting output into u->buffer instead */
-    if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres module does not support subrequests in memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+    if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "r->subrequest_in_memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; } /* TODO: add support for subrequest in memory by emitting output into u->buffer instead */
     ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (!location_conf->query) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -218,7 +217,7 @@ void ngx_postgres_next_upstream(ngx_http_request_t *r, ngx_http_upstream_t *u, n
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http next upstream, %xi (%p ~ %p)", ft_type, r->upstream, u);
     ngx_uint_t state = ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404 ? NGX_PEER_NEXT : NGX_PEER_FAILED;
     if (ft_type != NGX_HTTP_UPSTREAM_FT_NOLIVE) u->peer.free(&u->peer, u->peer.data, state);
-    if (ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT) ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_ETIMEDOUT, "upstream timed out");
+    if (ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT) ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_ETIMEDOUT, "ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT");
     ngx_uint_t status;
     if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) status = 0; else switch(ft_type) {
         case NGX_HTTP_UPSTREAM_FT_TIMEOUT: status = NGX_HTTP_GATEWAY_TIME_OUT; break;

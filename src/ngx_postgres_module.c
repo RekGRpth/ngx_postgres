@@ -230,7 +230,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     url.url = hostaddr ? (ngx_str_t){ngx_strlen(hostaddr), hostaddr} : (ngx_str_t){ngx_strlen(host), host};
     url.default_port = port;
     if (ngx_parse_url(cf->pool, &url) != NGX_OK) {
-        if (url.err) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s %V:%i", url.err, &url.url, url.default_port); return NGX_CONF_ERROR; }
+        if (url.err) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "ngx_parse_url != NGX_OK and %s %V:%i", url.err, &url.url, url.default_port); return NGX_CONF_ERROR; }
         return "ngx_parse_url != NGX_OK";
     }
     server->addrs = url.addrs;
