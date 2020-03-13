@@ -87,20 +87,24 @@ typedef struct {
 typedef struct {
     ngx_array_t                       *variables;
     ngx_chain_t                       *response;
+    ngx_str_t                          cmdStatus;
+    ngx_str_t                          cmdTuples;
+    ngx_uint_t                         nfields;
+    ngx_uint_t                         ntuples;
+    PGresult                          *res;
+} ngx_postgres_res_t;
+
+typedef struct {
     ngx_flag_t                         failed;
     ngx_http_request_t                *request;
     ngx_int_t                          status;
     ngx_postgres_common_t              common;
-    ngx_str_t                          cmdStatus;
-    ngx_str_t                          cmdTuples;
+    ngx_postgres_res_t                 res;
     ngx_str_t                          sql;
     ngx_uint_t                         hash;
-    ngx_uint_t                         nfields;
     ngx_uint_t                         nParams;
-    ngx_uint_t                         ntuples;
     ngx_uint_t                         resultFormat;
     Oid                               *paramTypes;
-    PGresult                          *res;
     u_char                           **paramValues;
     u_char                            *stmtName;
 } ngx_postgres_data_t;

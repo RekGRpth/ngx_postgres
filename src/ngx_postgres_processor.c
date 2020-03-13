@@ -237,7 +237,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
         goto ret;
     }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "result received successfully, cols:%i rows:%i", PQnfields(res), PQntuples(res));
-    pd->res = res;
+    pd->res.res = res;
     ngx_int_t rc = ngx_postgres_process_response(r);
     PQclear(res);
     if (rc != NGX_DONE) return rc;
