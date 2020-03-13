@@ -33,12 +33,13 @@
 #include <ngx_http.h>
 
 typedef enum {
+    state_db_ack,
     state_db_connect,
-    state_db_send_prepare,
-    state_db_send_query,
-    state_db_get_result,
-    state_db_get_ack,
-    state_db_idle
+    state_db_idle,
+    state_db_listen,
+    state_db_prepare,
+    state_db_query,
+    state_db_result
 } ngx_postgres_state_t;
 
 typedef struct {

@@ -180,7 +180,7 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
                 *last = '\0';
                 if (!PQsendQuery(common->conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!PQsendQuery and %s", PQerrorMessageMy(common->conn)); break; }
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s sent successfully", command);
-                common->state = state_db_send_query;
+                common->state = state_db_listen;
                 ngx_destroy_pool(temp_pool);
                 return;
             case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify ok"); break;
@@ -208,7 +208,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
         case PGRES_TUPLES_OK:
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == PGRES_TUPLES_OK");
-            if (ps->common->state == state_db_send_query) {
+            if (ps->common->state == state_db_listen) {
                 if (ps->common->listen) ngx_array_destroy(ps->common->listen);
                 if (!PQntuples(res) || !PQnfields(res)) ps->common->listen = NULL; else
                 if (!(ps->common->listen = ngx_array_create(ps->common->connection->pool, PQntuples(res), sizeof(ngx_postgres_listen_t)))) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_array_create"); break; }
@@ -283,7 +283,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_peer_connection_t *peer = &r->upstream->peer;
     ngx_postgres_common_t *common = pd->common;
-    if (pd->failed || !common->connection || r->upstream->headers_in.status_n != NGX_HTTP_OK) return;
+    if (pd->failed || !common || !common->connection || r->upstream->headers_in.status_n != NGX_HTTP_OK) return;
     if (common->connection->read->timer_set) ngx_del_timer(common->connection->read);
     if (common->connection->write->timer_set) ngx_del_timer(common->connection->write);
     if (common->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(common->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
@@ -317,7 +317,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     u_char *listen = ngx_postgres_listen(pd);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
     if (!PQsendQuery(common->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery and %s", PQerrorMessageMy(common->conn)); }
-    else common->state = state_db_send_query;
+    else common->state = state_db_listen;
 }
 
 
@@ -389,7 +389,7 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_flag_t dele
         return;
     }
     if (common->conn) {
-        if (!common->connection->close) {
+        if (/*delete && */!common->connection->close && common->listen) {
             ngx_str_t *elts = common->listen->elts;
             for (ngx_uint_t i = 0; i < common->listen->nelts; i++) {
                 ngx_log_error(NGX_LOG_INFO, common->connection->log, 0, "delete channel = %V", &elts[i]);
