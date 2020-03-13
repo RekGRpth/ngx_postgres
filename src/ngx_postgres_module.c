@@ -74,7 +74,7 @@ static void ngx_postgres_server_conf_cleanup(void *data) {
         ngx_queue_t *queue = ngx_queue_head(&server_conf->keepalive);
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
-        ngx_postgres_free_connection(&ps->common, NULL, 0);
+        ngx_postgres_free_connection(ps->common, NULL, 0);
         ngx_queue_remove(&ps->queue);
     }
 }
@@ -139,7 +139,7 @@ typedef struct {
 static_assert(sizeof(ngx_postgres_server_t) <= sizeof(ngx_http_upstream_server_t), "sizeof(ngx_postgres_server_t) <= sizeof(ngx_http_upstream_server_t)");
 
 
-static ngx_int_t ngx_postgres_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
+static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
     upstream_srv_conf->peer.init = ngx_postgres_peer_init;
     ngx_postgres_server_conf_t *server_conf = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
     if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
@@ -272,7 +272,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     server->keywords[arg] = NULL;
     server->values[arg] = NULL;
     PQconninfoFree(opts);
-    upstream_srv_conf->peer.init_upstream = ngx_postgres_init_upstream;
+    upstream_srv_conf->peer.init_upstream = ngx_postgres_peer_init_upstream;
     return NGX_CONF_OK;
 }
 

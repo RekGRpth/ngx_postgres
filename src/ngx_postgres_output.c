@@ -514,7 +514,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
         ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
         r->headers_out.status = pd->status ? ngx_abs(pd->status) : NGX_HTTP_OK;
         ngx_postgres_data_t *pd = r->upstream->peer.data;
-        if (pd->common.charset.len) r->headers_out.charset = pd->common.charset;
+        if (pd->common->charset.len) r->headers_out.charset = pd->common->charset;
         if (location_conf->output.handler == &ngx_postgres_output_json) {
             ngx_str_set(&r->headers_out.content_type, "application/json");
             r->headers_out.content_type_len = r->headers_out.content_type.len;

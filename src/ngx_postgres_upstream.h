@@ -100,7 +100,7 @@ typedef struct {
     ngx_flag_t                         failed;
     ngx_http_request_t                *request;
     ngx_int_t                          status;
-    ngx_postgres_common_t              common;
+    ngx_postgres_common_t             *common;
     ngx_postgres_result_t              result;
     ngx_str_t                          sql;
     ngx_uint_t                         hash;
@@ -113,7 +113,7 @@ typedef struct {
 
 typedef struct {
     ngx_event_t                        timeout;
-    ngx_postgres_common_t              common;
+    ngx_postgres_common_t             *common;
     ngx_queue_t                        queue;
 } ngx_postgres_save_t;
 
