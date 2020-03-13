@@ -99,8 +99,8 @@ static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_var
 static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
-    if (!pd || !pd->res.variables) return NGX_OK;
-    ngx_str_t *elts = pd->res.variables->elts;
+    if (!pd || !pd->variables) return NGX_OK;
+    ngx_str_t *elts = pd->variables->elts;
     ngx_uint_t index = *(ngx_uint_t *)data;
     if (!elts[index].len) return NGX_OK;
     v->valid = 1;
@@ -136,7 +136,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     ngx_memcpy(pd->res.cmdStatus.data, cmdStatus, pd->res.cmdStatus.len);
     if (!location_conf->variables) return NGX_OK;
     ngx_postgres_variable_t *variable = location_conf->variables->elts;
-    ngx_str_t *elts = pd->res.variables->elts;
+    ngx_str_t *elts = pd->variables->elts;
     for (ngx_uint_t i = 0; i < location_conf->variables->nelts; i++) {
         if (variable[i].col == NGX_ERROR) {
             if ((variable[i].col = PQfnumber(pd->res.res, (const char *)variable[i].name)) == -1) {
@@ -148,10 +148,10 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
                 continue;
             }
         }
-        if (variable[i].row >= PQntuples(pd->res.res) || variable[i].col >= PQnfields(pd->res.res)) {
+        if (variable[i].row >= pd->res.ntuples || variable[i].col >= pd->res.nfields) {
             if (variable[i].required) {
                 ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value out of range of the received result-set (rows:%i cols:%i) in location \"%V\"", &variable[i].variable->name, PQntuples(pd->res.res), PQnfields(pd->res.res), &core_loc_conf->name);
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value out of range of the received result-set (rows:%i cols:%i) in location \"%V\"", &variable[i].variable->name, pd->res.ntuples, pd->res.nfields, &core_loc_conf->name);
                 return NGX_ERROR;
             }
             continue;

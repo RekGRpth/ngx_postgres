@@ -315,9 +315,9 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     }
     pd->resultFormat = location_conf->output.binary;
     if (location_conf->variables) {
-        if (!(pd->res.variables = ngx_array_create(r->pool, location_conf->variables->nelts, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_create"); return NGX_ERROR; }
-        pd->res.variables->nelts = location_conf->variables->nelts;
-        ngx_memzero(pd->res.variables->elts, pd->res.variables->nelts * pd->res.variables->size); /* fake ngx_array_push'ing */
+        if (!(pd->variables = ngx_array_create(r->pool, location_conf->variables->nelts, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_create"); return NGX_ERROR; }
+        pd->variables->nelts = location_conf->variables->nelts;
+        ngx_memzero(pd->variables->elts, pd->variables->nelts * pd->variables->size); /* fake ngx_array_push'ing */
     }
     return NGX_OK;
 }

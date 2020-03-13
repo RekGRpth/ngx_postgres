@@ -85,16 +85,16 @@ typedef struct {
 } ngx_postgres_common_t;
 
 typedef struct {
-    ngx_array_t                       *variables;
-    ngx_chain_t                       *response;
     ngx_str_t                          cmdStatus;
     ngx_str_t                          cmdTuples;
-    ngx_uint_t                         nfields;
-    ngx_uint_t                         ntuples;
+    ngx_int_t                          nfields;
+    ngx_int_t                          ntuples;
     PGresult                          *res;
 } ngx_postgres_res_t;
 
 typedef struct {
+    ngx_array_t                       *variables;
+    ngx_chain_t                       *response;
     ngx_flag_t                         failed;
     ngx_http_request_t                *request;
     ngx_int_t                          status;
