@@ -21,6 +21,13 @@ static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
 
 typedef struct {
     ngx_queue_t queue;
+    ngx_str_t channel;
+    ngx_str_t command;
+} ngx_postgres_listen_t;
+
+
+typedef struct {
+    ngx_queue_t queue;
     ngx_uint_t hash;
 } ngx_postgres_prepare_t;
 
@@ -37,11 +44,13 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         sql.len = query->sql.len - 2 * query->ids.nelts - query->percent;
     //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &query->sql);
         ngx_str_t *ids = NULL;
+        ngx_str_t channel = ngx_null_string;
+        ngx_str_t command = ngx_null_string;
         if (query->ids.nelts) {
-            ngx_uint_t *id = query->ids.elts;
+            ngx_uint_t *elts = query->ids.elts;
             if (!(ids = ngx_pnalloc(r->pool, query->ids.nelts * sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             for (ngx_uint_t i = 0; i < query->ids.nelts; i++) {
-                ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, id[i]);
+                ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, elts[i]);
                 if (!value || !value->data || !value->len) { ngx_str_set(&ids[i], "NULL"); } else {
                     char *str = PQescapeIdentifier(pd->common.conn, (const char *)value->data, value->len);
                     if (!str) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQescapeIdentifier(%*.*s) and %s", value->len, value->len, value->data, PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
@@ -50,6 +59,15 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                     ngx_memcpy(id.data, str, id.len);
                     PQfreemem(str);
                     ids[i] = id;
+                    if (!i && query->listen) {
+                        ngx_http_core_main_conf_t *cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
+                        ngx_http_variable_t *v = cmcf->variables.elts;
+                        if (!(channel.data = ngx_pstrdup(r->upstream->peer.connection->pool, &v[elts[i]].name))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pstrdup"); return NGX_ERROR; }
+                        channel.len = v[elts[i]].name.len;
+                        command.len = sizeof("UNLISTEN ") - 1 + id.len;
+                        if (!(command.data = ngx_pnalloc(r->upstream->peer.connection->pool, command.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                        command.len = ngx_snprintf(command.data, command.len, "UNLISTEN %V", &id) - command.data;
+                    }
                 }
                 sql.len += ids[i].len;
             }
@@ -67,10 +85,22 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         *last = '\0';
     //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
         pd->sql = sql; /* set $postgres_query */
-        if (pd->common.server->prepare && !query->listen) {
-            if (!(pd->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
-            u_char *last = ngx_snprintf(pd->stmtName, 31, "ngx_%ul", (unsigned long)(pd->hash = ngx_hash_key(sql.data, sql.len)));
-            *last = '\0';
+        if (pd->common.server->prepare) {
+            if (query->listen) {
+                if (!pd->common.listen) {
+                    if (!(pd->common.listen = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+                    ngx_queue_init(pd->common.listen);
+                }
+                ngx_postgres_listen_t *listen = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_postgres_listen_t));
+                if (!listen) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+                listen->channel = channel;
+                listen->command = command;
+                ngx_queue_insert_tail(pd->common.listen, &listen->queue);
+            } else {
+                if (!(pd->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
+                u_char *last = ngx_snprintf(pd->stmtName, 31, "ngx_%ul", (unsigned long)(pd->hash = ngx_hash_key(sql.data, sql.len)));
+                *last = '\0';
+            }
         }
         pd->common.state = pd->common.server->prepare ? state_db_prepare : state_db_query;
     }

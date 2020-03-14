@@ -173,12 +173,6 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
 }
 
 
-/*typedef struct {
-    ngx_str_t channel;
-    ngx_str_t command;
-} ngx_postgres_listen_t;*/
-
-
 static void ngx_postgres_read_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
     ngx_connection_t *c = ev->data;

@@ -40,10 +40,10 @@ typedef struct {
 } ngx_postgres_server_t;
 
 typedef struct {
-//    ngx_array_t *listen;
     ngx_connection_t *connection;
     ngx_postgres_server_t *server;
     ngx_postgres_state_t state;
+    ngx_queue_t *listen;
     ngx_queue_t *prepare;
     ngx_str_t name;
     ngx_uint_t requests;
