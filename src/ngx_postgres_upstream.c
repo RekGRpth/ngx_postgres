@@ -19,7 +19,7 @@ static void ngx_postgres_idle_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
 //    pc->connection->log = pc->log;
 //    pc->connection->read->log = pc->log;
 //    pc->connection->write->log = pc->log;
-    pc->name = pd->common.name;
+    pc->name = &pd->common.name;
     pc->sockaddr = pd->common.sockaddr;
     pc->socklen = pd->common.socklen;
 }

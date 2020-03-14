@@ -19,7 +19,7 @@ typedef struct {
     const char **values;
     ngx_queue_t queue;
     ngx_str_t host;
-    ngx_str_t *name;
+    ngx_str_t name;
     socklen_t socklen;
     struct sockaddr *sockaddr;
     u_char *value;
@@ -45,7 +45,7 @@ typedef struct {
     ngx_postgres_server_t *server;
     ngx_postgres_state_t state;
     ngx_queue_t *prepare;
-    ngx_str_t *name;
+    ngx_str_t name;
     ngx_uint_t requests;
     PGconn *conn;
     socklen_t socklen;
