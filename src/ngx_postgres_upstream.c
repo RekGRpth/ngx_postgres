@@ -328,7 +328,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     r->upstream->peer.get = ngx_postgres_peer_get;
     r->upstream->peer.free = ngx_postgres_peer_free;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = location->query;
+    ngx_postgres_query_t *query = &location->query;
     if (query->params->nelts) {
         ngx_postgres_param_t *param = query->params->elts;
         pd->nParams = query->params->nelts;
@@ -585,8 +585,8 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_str_t sql = elts[cf->args->nelts - 1];
     if (!sql.len) return "empty query";
     ngx_postgres_location_t *location = conf;
-    if (location->query) return "is duplicate";
-    if (!(location->query = ngx_palloc(cf->pool, sizeof(ngx_postgres_query_t)))) return "!ngx_palloc";
+    ngx_postgres_query_t *query = &location->query;
+    if (query->sql.data) return "is duplicate";
     if (sql.len > sizeof("file://") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file://", sizeof("file://") - 1)) {
         sql.data += sizeof("file://") - 1;
         sql.len -= sizeof("file://") - 1;
@@ -605,7 +605,6 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         sql.data = data;
         sql.len = len;
     }
-    ngx_postgres_query_t *query = location->query;
     if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) return "!ngx_palloc";
     if (!(query->params = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_param_t)))) return "!ngx_array_create";
     if (!(query->ids = ngx_array_create(cf->pool, 1, sizeof(ngx_uint_t)))) return "!ngx_array_create";

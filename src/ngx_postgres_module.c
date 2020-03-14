@@ -93,7 +93,7 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
         conf->upstream = prev->upstream;
         conf->complex = prev->complex;
     }
-    if (!conf->query) conf->query = prev->query;
+    if (!conf->query.sql.data) conf->query = prev->query;
     if (!conf->output.handler && prev->output.handler) conf->output = prev->output;
     ngx_conf_merge_ptr_value(conf->variables, prev->variables, NULL);
     return NGX_CONF_OK;
