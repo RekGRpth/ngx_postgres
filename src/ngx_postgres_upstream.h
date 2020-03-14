@@ -43,11 +43,6 @@ typedef enum {
 } ngx_postgres_state_t;
 
 typedef struct {
-    ngx_queue_t queue;
-    ngx_uint_t hash;
-} ngx_postgres_prepare_t;
-
-typedef struct {
     const char **keywords;
     const char **values;
     ngx_str_t host;
@@ -78,7 +73,7 @@ typedef struct {
     ngx_connection_t *connection;
     ngx_postgres_server_t *server;
     ngx_postgres_state_t state;
-    ngx_queue_t *prepare;
+    ngx_queue_t *queue;
     ngx_str_t *name;
     ngx_uint_t requests;
     PGconn *conn;
