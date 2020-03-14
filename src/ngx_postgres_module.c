@@ -86,15 +86,13 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
 static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
     ngx_postgres_location_t *prev = parent;
     ngx_postgres_location_t *conf = child;
+    if (!conf->complex.value.data) conf->complex = prev->complex;
+    if (!conf->output.handler) conf->output = prev->output;
+    if (!conf->query.sql.data) conf->query = prev->query;
+    if (!conf->upstream.upstream) conf->upstream = prev->upstream;
+    if (!conf->variables.elts) conf->variables = prev->variables;
     ngx_conf_merge_msec_value(conf->upstream.connect_timeout, prev->upstream.connect_timeout, 60000);
     ngx_conf_merge_msec_value(conf->upstream.read_timeout, prev->upstream.read_timeout, 60000);
-    if (!conf->upstream.upstream && !conf->complex) {
-        conf->upstream = prev->upstream;
-        conf->complex = prev->complex;
-    }
-    if (!conf->query.sql.data) conf->query = prev->query;
-    if (!conf->variables.elts) conf->variables = prev->variables;
-    if (!conf->output.handler && prev->output.handler) conf->output = prev->output;
     return NGX_CONF_OK;
 }
 
@@ -304,15 +302,14 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
 
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    if (location->upstream.upstream || location->complex) return "is duplicate";
+    if (location->upstream.upstream || location->complex.value.data) return "is duplicate";
     ngx_str_t *elts = cf->args->elts;
     if (!elts[1].len) return "empty upstream";
     ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     core_loc_conf->handler = ngx_postgres_handler;
     if (core_loc_conf->name.data[core_loc_conf->name.len - 1] == '/') core_loc_conf->auto_redirect = 1;
     if (ngx_http_script_variables_count(&elts[1])) { /* complex value */
-        if (!(location->complex = ngx_palloc(cf->pool, sizeof(ngx_http_complex_value_t)))) return "!ngx_palloc";
-        ngx_http_compile_complex_value_t ccv = {cf, &elts[1], location->complex, 0, 0, 0};
+        ngx_http_compile_complex_value_t ccv = {cf, &elts[1], &location->complex, 0, 0, 0};
         if (ngx_http_compile_complex_value(&ccv) != NGX_OK) return "ngx_http_compile_complex_value != NGX_OK";
         return NGX_CONF_OK;
     } else { /* simple value */
