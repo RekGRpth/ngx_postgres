@@ -28,7 +28,7 @@ typedef struct {
 } ngx_postgres_output_t;
 
 typedef struct {
-    ngx_array_t *variables;
+    ngx_array_t variables;
     ngx_http_complex_value_t *complex;
     ngx_http_upstream_conf_t upstream;
     ngx_postgres_output_t output;

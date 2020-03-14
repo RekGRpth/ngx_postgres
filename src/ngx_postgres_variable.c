@@ -108,10 +108,10 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     pd->result.cmdStatus.len = ngx_strlen(cmdStatus);
     if (!(pd->result.cmdStatus.data = ngx_pnalloc(r->pool, pd->result.cmdStatus.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
     ngx_memcpy(pd->result.cmdStatus.data, cmdStatus, pd->result.cmdStatus.len);
-    if (!location->variables) return NGX_OK;
-    ngx_postgres_variable_t *variable = location->variables->elts;
+    if (!location->variables.elts) return NGX_OK;
+    ngx_postgres_variable_t *variable = location->variables.elts;
     ngx_str_t *elts = pd->variables->elts;
-    for (ngx_uint_t i = 0; i < location->variables->nelts; i++) {
+    for (ngx_uint_t i = 0; i < location->variables.nelts; i++) {
         if (variable[i].col == NGX_ERROR) {
             if ((variable[i].col = PQfnumber(pd->result.res, (const char *)variable[i].name)) == -1) {
                 if (variable[i].required) {
@@ -217,14 +217,14 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     elts[1].data++;
     if (!elts[3].len) return "empty col";
     ngx_postgres_location_t *location = conf;
-    if (location->variables == NGX_CONF_UNSET_PTR && !(location->variables = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_variable_t)))) return "!ngx_array_create";
-    ngx_postgres_variable_t *variable = ngx_array_push(location->variables);
+    if (!location->variables.elts && ngx_array_init(&location->variables, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) return "!ngx_array_init != NGX_OK";
+    ngx_postgres_variable_t *variable = ngx_array_push(&location->variables);
     if (!variable) return "!ngx_array_push";
     if (!(variable->variable = ngx_http_add_variable(cf, &elts[1], NGX_HTTP_VAR_CHANGEABLE))) return "!ngx_http_add_variable";
     if (ngx_http_get_variable_index(cf, &elts[1]) == NGX_ERROR) return "ngx_http_get_variable_index == NGX_ERROR";
     if (!variable->variable->get_handler) {
         variable->variable->get_handler = ngx_postgres_variable_get;
-        variable->variable->data = (uintptr_t) location->variables->nelts - 1;
+        variable->variable->data = (uintptr_t) location->variables.nelts - 1;
     }
     if ((variable->row = ngx_atoi(elts[2].data, elts[2].len)) == NGX_ERROR) return "invalid row number";
     if ((variable->col = ngx_atoi(elts[3].data, elts[3].len)) == NGX_ERROR) { /* get col by name */

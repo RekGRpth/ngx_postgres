@@ -74,7 +74,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     location->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
     location->output.header = 1;
     location->output.string = 1;
-    location->variables = NGX_CONF_UNSET_PTR;
     /* the hardcoded values */
     location->upstream.buffering = 1;
     location->upstream.ignore_client_abort = 1;
@@ -94,8 +93,8 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
         conf->complex = prev->complex;
     }
     if (!conf->query.sql.data) conf->query = prev->query;
+    if (!conf->variables.elts) conf->variables = prev->variables;
     if (!conf->output.handler && prev->output.handler) conf->output = prev->output;
-    ngx_conf_merge_ptr_value(conf->variables, prev->variables, NULL);
     return NGX_CONF_OK;
 }
 
