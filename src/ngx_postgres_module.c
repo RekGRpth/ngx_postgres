@@ -86,7 +86,7 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     server->pool = cf->pool;
     ngx_queue_init(&server->free);
     ngx_queue_init(&server->idle);
-    ngx_queue_init(&server->queue);
+    ngx_queue_init(&server->peer);
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NULL; }
     cln->handler = ngx_postgres_server_cleanup;
@@ -152,7 +152,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     for (ngx_uint_t i = 0, n = 0; i < upstream_srv_conf->servers->nelts; i++) {
         for (ngx_uint_t j = 0; j < elts[i].naddrs; j++) {
             ngx_postgres_peer_t *peer = &peers[n++];
-            ngx_queue_insert_tail(&server->queue, &peer->queue);
+            ngx_queue_insert_tail(&server->peer, &peer->queue);
             peer->keywords = elts[i].keywords;
             peer->values = elts[i].values;
             peer->sockaddr = elts[i].addrs[j].sockaddr;

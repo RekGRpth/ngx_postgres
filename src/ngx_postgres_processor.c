@@ -108,8 +108,8 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res));
             PQclear(res);
             pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-            if (pd->stmtName && pd->common.queue) {
-                for (ngx_queue_t *queue = ngx_queue_head(pd->common.queue); queue != ngx_queue_sentinel(pd->common.queue); queue = ngx_queue_next(queue)) {
+            if (pd->stmtName && pd->common.prepare) {
+                for (ngx_queue_t *queue = ngx_queue_head(pd->common.prepare); queue != ngx_queue_sentinel(pd->common.prepare); queue = ngx_queue_next(queue)) {
                     ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
                     if (prepare->hash == pd->hash) { ngx_queue_remove(queue); break; }
                 }
@@ -124,21 +124,21 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query %s sent successfully", pd->sql.data);
     } else switch (pd->common.state) {
         case state_db_prepare:
-            if (pd->common.queue) for (ngx_queue_t *queue = ngx_queue_head(pd->common.queue); queue != ngx_queue_sentinel(pd->common.queue); queue = ngx_queue_next(queue)) {
+            if (pd->common.prepare) for (ngx_queue_t *queue = ngx_queue_head(pd->common.prepare); queue != ngx_queue_sentinel(pd->common.prepare); queue = ngx_queue_next(queue)) {
                 ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
                 if (prepare->hash == pd->hash) { hash = prepare->hash; break; }
             }
             if (hash) pd->common.state = state_db_query; else {
                 if (!PQsendPrepare(pd->common.conn, (const char *)pd->stmtName, (const char *)pd->sql.data, pd->nParams, pd->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(%s, %s) and %s", pd->stmtName, pd->sql.data, PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "prepare %s:%s sent successfully", pd->stmtName, pd->sql.data);
-                if (!pd->common.queue) {
-                    if (!(pd->common.queue = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-                    ngx_queue_init(pd->common.queue);
+                if (!pd->common.prepare) {
+                    if (!(pd->common.prepare = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+                    ngx_queue_init(pd->common.prepare);
                 }
                 ngx_postgres_prepare_t *prepare = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_postgres_prepare_t));
                 if (!prepare) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                 prepare->hash = pd->hash;
-                ngx_queue_insert_tail(pd->common.queue, &prepare->queue);
+                ngx_queue_insert_tail(pd->common.prepare, &prepare->queue);
                 pd->common.state = state_db_query;
                 return NGX_DONE;
             } // fall through
