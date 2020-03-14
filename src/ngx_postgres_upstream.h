@@ -4,6 +4,12 @@
 #include <libpq-fe.h>
 #include <ngx_http.h>
 
+typedef struct {
+    ngx_queue_t queue;
+    ngx_str_t channel;
+    ngx_str_t command;
+} ngx_postgres_listen_t;
+
 typedef enum {
     state_db_ack,
     state_db_connect,

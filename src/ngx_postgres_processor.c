@@ -21,13 +21,6 @@ static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
 
 typedef struct {
     ngx_queue_t queue;
-    ngx_str_t channel;
-    ngx_str_t command;
-} ngx_postgres_listen_t;
-
-
-typedef struct {
-    ngx_queue_t queue;
     ngx_uint_t hash;
 } ngx_postgres_prepare_t;
 

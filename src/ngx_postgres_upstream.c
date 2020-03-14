@@ -363,13 +363,15 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_flag_t dele
         return;
     }
     if (common->conn) {
-/*        if (/ *delete && * /!common->connection->close && common->listen) {
-            ngx_str_t *elts = common->listen->elts;
-            for (ngx_uint_t i = 0; i < common->listen->nelts; i++) {
-                ngx_log_error(NGX_LOG_INFO, common->connection->log, 0, "delete channel = %V", &elts[i]);
-                ngx_http_push_stream_delete_channel_my(common->connection->log, &elts[i], (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, common->connection->pool);
+        if (/*delete && */!common->connection->close && common->listen) {
+            while (!ngx_queue_empty(common->listen)) {
+                ngx_queue_t *queue = ngx_queue_head(common->listen);
+                ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
+                ngx_log_error(NGX_LOG_INFO, common->connection->log, 0, "delete channel = %V", &listen->channel);
+                ngx_http_push_stream_delete_channel_my(common->connection->log, &listen->channel, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, common->connection->pool);
+                ngx_queue_remove(&listen->queue);
             }
-        }*/
+        }
         PQfinish(common->conn);
         common->conn = NULL;
     }
