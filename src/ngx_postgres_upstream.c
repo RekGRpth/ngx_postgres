@@ -85,21 +85,21 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pd->failed = 0;
     if (pd->common.server->max_save && pd->common.server->single && ngx_postgres_peer_single(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
     ngx_queue_t *queue = ngx_queue_head(&pd->common.server->peer);
-    ngx_postgres_peer_t *pp = ngx_queue_data(queue, ngx_postgres_peer_t, queue);
-    ngx_queue_remove(&pp->queue);
-    ngx_queue_insert_tail(&pd->common.server->peer, &pp->queue);
-    pd->common.name = pp->name;
-    pd->common.sockaddr = pp->sockaddr;
-    pd->common.socklen = pp->socklen;
+    ngx_postgres_peer_t *peer = ngx_queue_data(queue, ngx_postgres_peer_t, queue);
+    ngx_queue_remove(&peer->queue);
+    ngx_queue_insert_tail(&pd->common.server->peer, &peer->queue);
+    pd->common.name = peer->name;
+    pd->common.sockaddr = peer->sockaddr;
+    pd->common.socklen = peer->socklen;
     pc->cached = 0;
     pc->name = pd->common.name;
     pc->sockaddr = pd->common.sockaddr;
     pc->socklen = pd->common.socklen;
     if (pd->common.server->max_save && !pd->common.server->single && ngx_postgres_peer_multi(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
     if (!pd->common.server->ignore && pd->common.server->save >= pd->common.server->max_save) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "max_save"); return NGX_DECLINED; }
-    const char *host = pp->values[0];
-    pp->values[0] = (const char *)pp->value;
-    const char *options = pp->values[2];
+    const char *host = peer->values[0];
+    peer->values[0] = (const char *)peer->value;
+    const char *options = peer->values[2];
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location->output.append) {
         size_t len = options ? ngx_strlen(options) : 0;
@@ -112,13 +112,13 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         }
         p = ngx_copy(p, "-c config.append_type_to_column_name=true", sizeof("-c config.append_type_to_column_name=true") - 1);
         *p = '\0';
-        pp->values[2] = (const char *)buf;
+        peer->values[2] = (const char *)buf;
     }
-    pd->common.conn = PQconnectStartParams(pp->keywords, pp->values, 0); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
-    pp->values[0] = host;
-    pp->values[2] = options;
+    pd->common.conn = PQconnectStartParams(peer->keywords, peer->values, 0); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
+    peer->values[0] = host;
+    peer->values[2] = options;
     if (PQstatus(pd->common.conn) == CONNECTION_BAD || PQsetnonblocking(pd->common.conn, 1) == -1) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(pd->common.conn), pp->name);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(pd->common.conn), peer->name);
         PQfinish(pd->common.conn);
         pd->common.conn = NULL;
         return NGX_DECLINED;
