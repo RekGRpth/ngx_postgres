@@ -54,8 +54,8 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     if (!PQconsumeInput(pd->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
     if (PQisBusy(pd->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
     if (pd->common.state == state_db_connect || pd->common.state == state_db_idle) {
-        ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-        ngx_postgres_query_t *query = location_conf->query;
+        ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+        ngx_postgres_query_t *query = location->query;
         ngx_str_t sql;
         sql.len = query->sql.len - 2 * query->ids->nelts - query->percent;
     //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &query->sql);
@@ -90,12 +90,12 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         *last = '\0';
     //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
         pd->sql = sql; /* set $postgres_query */
-        if (pd->common.server_conf->prepare && !query->listen) {
+        if (pd->common.server->prepare && !query->listen) {
             if (!(pd->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
             u_char *last = ngx_snprintf(pd->stmtName, 31, "ngx_%ul", (unsigned long)(pd->hash = ngx_hash_key(sql.data, sql.len)));
             *last = '\0';
         }
-        pd->common.state = pd->common.server_conf->prepare ? state_db_prepare : state_db_query;
+        pd->common.state = pd->common.server->prepare ? state_db_prepare : state_db_query;
     }
     for (PGresult *res; (res = PQgetResult(pd->common.conn)); PQclear(res)) {
         if (PQresultStatus(res) == PGRES_FATAL_ERROR) {
@@ -200,8 +200,8 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_set == NGX_ERROR");
         return NGX_DONE;
     }
-    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (location_conf->output.handler) return location_conf->output.handler(r);
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    if (location->output.handler) return location->output.handler(r);
     return NGX_DONE;
 }
 

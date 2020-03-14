@@ -71,12 +71,12 @@ typedef struct {
     ngx_uint_t npeers;
     ngx_uint_t peer;
     ngx_uint_t save;
-} ngx_postgres_server_conf_t;
+} ngx_postgres_server_t;
 
 typedef struct {
     ngx_array_t *listen;
     ngx_connection_t *connection;
-    ngx_postgres_server_conf_t *server_conf;
+    ngx_postgres_server_t *server;
     ngx_postgres_state_t state;
     ngx_queue_t *prepare;
     ngx_str_t *name;

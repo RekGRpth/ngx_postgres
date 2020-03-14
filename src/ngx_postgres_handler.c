@@ -127,8 +127,8 @@ ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *r, 
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "r->subrequest_in_memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; } /* TODO: add support for subrequest in memory by emitting output into u->buffer instead */
-    ngx_postgres_location_conf_t *location_conf = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (!location_conf->query) {
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    if (!location->query) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "missing \"postgres_query\" in location \"%V\"", &core_loc_conf->name);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -136,24 +136,24 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     ngx_int_t rc = ngx_http_discard_request_body(r);
     if (rc != NGX_OK) return rc;
     if (ngx_http_upstream_create(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_upstream_create != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-    if (location_conf->complex) { /* use complex value */
+    if (location->complex) { /* use complex value */
         ngx_str_t host;
-        if (ngx_http_complex_value(r, location_conf->complex, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_complex_value != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+        if (ngx_http_complex_value(r, location->complex, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_complex_value != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
         if (!host.len) {
             ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location_conf->complex->value, &core_loc_conf->name);
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location->complex->value, &core_loc_conf->name);
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         ngx_url_t url;
         ngx_memzero(&url, sizeof(ngx_url_t));
         url.host = host;
         url.no_resolve = 1;
-        if (!(location_conf->upstream.upstream = ngx_postgres_find_upstream(r, &url))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "upstream name \"%V\" not found", &host); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+        if (!(location->upstream.upstream = ngx_postgres_find_upstream(r, &url))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "upstream name \"%V\" not found", &host); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     }
     r->upstream->schema.len = sizeof("postgres://") - 1;
     r->upstream->schema.data = (u_char *) "postgres://";
     r->upstream->output.tag = (ngx_buf_tag_t) &ngx_postgres_module;
-    r->upstream->conf = &location_conf->upstream;
+    r->upstream->conf = &location->upstream;
     r->upstream->create_request = ngx_postgres_create_request;
     r->upstream->reinit_request = ngx_postgres_reinit_request;
     r->upstream->process_header = ngx_postgres_process_header;

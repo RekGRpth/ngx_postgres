@@ -61,6 +61,6 @@ typedef struct {
     ngx_http_upstream_conf_t upstream;
     ngx_postgres_output_t output;
     ngx_postgres_query_t *query;
-} ngx_postgres_location_conf_t;
+} ngx_postgres_location_t;
 
 #endif /* _NGX_POSTGRES_MODULE_H_ */
