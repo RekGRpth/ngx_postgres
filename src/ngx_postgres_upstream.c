@@ -34,7 +34,7 @@
 #include "ngx_postgres_upstream.h"
 
 
-static void ngx_postgres_keepalive_to_free(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
+static void ngx_postgres_idle_to_free(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_peer_connection_t *peer = &r->upstream->peer;
@@ -45,9 +45,9 @@ static void ngx_postgres_keepalive_to_free(ngx_postgres_data_t *pd, ngx_postgres
     peer->cached = 1;
     peer->connection = pd->common.connection;
     peer->connection->idle = 0;
-    peer->connection->log = peer->log;
-    peer->connection->read->log = peer->log;
-    peer->connection->write->log = peer->log;
+//    peer->connection->log = peer->log;
+//    peer->connection->read->log = peer->log;
+//    peer->connection->write->log = peer->log;
     peer->name = pd->common.name;
     peer->sockaddr = pd->common.sockaddr;
     peer->socklen = pd->common.socklen;
@@ -57,10 +57,10 @@ static void ngx_postgres_keepalive_to_free(ngx_postgres_data_t *pd, ngx_postgres
 static ngx_int_t ngx_postgres_peer_single(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    if (ngx_queue_empty(&pd->common.server->keepalive)) return NGX_DECLINED;
-    ngx_queue_t *queue = ngx_queue_head(&pd->common.server->keepalive);
+    if (ngx_queue_empty(&pd->common.server->idle)) return NGX_DECLINED;
+    ngx_queue_t *queue = ngx_queue_head(&pd->common.server->idle);
     ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-    ngx_postgres_keepalive_to_free(pd, ps);
+    ngx_postgres_idle_to_free(pd, ps);
     return NGX_DONE;
 }
 
@@ -68,10 +68,10 @@ static ngx_int_t ngx_postgres_peer_single(ngx_postgres_data_t *pd) {
 static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    for (ngx_queue_t *queue = ngx_queue_head(&pd->common.server->keepalive); queue != ngx_queue_sentinel(&pd->common.server->keepalive); queue = ngx_queue_next(queue)) {
+    for (ngx_queue_t *queue = ngx_queue_head(&pd->common.server->idle); queue != ngx_queue_sentinel(&pd->common.server->idle); queue = ngx_queue_next(queue)) {
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ngx_memn2cmp((u_char *)pd->common.sockaddr, (u_char *)ps->common.sockaddr, pd->common.socklen, ps->common.socklen)) continue;
-        ngx_postgres_keepalive_to_free(pd, ps);
+        ngx_postgres_idle_to_free(pd, ps);
         return NGX_DONE;
     }
     return NGX_DECLINED;
@@ -291,7 +291,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_postgres_save_t *ps;
     if (ngx_queue_empty(&common->server->free)) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty");
-        ngx_queue_t *queue = ngx_queue_head(&common->server->keepalive);
+        ngx_queue_t *queue = ngx_queue_head(&common->server->idle);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ngx_postgres_free_connection(&ps->common, 1);
@@ -300,7 +300,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
     }
     ngx_queue_remove(&ps->queue);
-    ngx_queue_insert_tail(&common->server->keepalive, &ps->queue);
+    ngx_queue_insert_tail(&common->server->idle, &ps->queue);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "free keepalive peer: saving connection %p", common->connection);
     peer->connection = NULL;
     ps->common = pd->common;

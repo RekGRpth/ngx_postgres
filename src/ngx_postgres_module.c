@@ -70,8 +70,8 @@ static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
 static void ngx_postgres_server_cleanup(void *data) {
     ngx_postgres_server_t *server = data;
     server->max_save = 0; /* just to be on the safe-side */
-    while (!ngx_queue_empty(&server->keepalive)) {
-        ngx_queue_t *queue = ngx_queue_head(&server->keepalive);
+    while (!ngx_queue_empty(&server->idle)) {
+        ngx_queue_t *queue = ngx_queue_head(&server->idle);
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ngx_postgres_free_connection(&ps->common, 0);
@@ -85,7 +85,7 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     server->pool = cf->pool;
     ngx_queue_init(&server->free);
-    ngx_queue_init(&server->keepalive);
+    ngx_queue_init(&server->idle);
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NULL; }
     cln->handler = ngx_postgres_server_cleanup;

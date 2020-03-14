@@ -65,7 +65,7 @@ typedef struct {
     ngx_pool_t *pool;
     ngx_postgres_peer_t *peers;
     ngx_queue_t free;
-    ngx_queue_t keepalive;
+    ngx_queue_t idle;
     ngx_uint_t max_requests;
     ngx_uint_t max_save;
     ngx_uint_t npeers;
