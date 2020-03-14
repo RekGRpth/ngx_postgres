@@ -30,7 +30,7 @@ typedef struct {
     ngx_flag_t prepare;
     ngx_flag_t single;
     ngx_msec_t timeout;
-    ngx_pool_t *pool;
+//    ngx_pool_t *pool;
     ngx_queue_t free;
     ngx_queue_t idle;
     ngx_queue_t peer;
