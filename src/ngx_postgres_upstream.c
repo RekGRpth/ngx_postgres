@@ -88,13 +88,13 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_peer_t *peer = ngx_queue_data(queue, ngx_postgres_peer_t, queue);
     ngx_queue_remove(&peer->queue);
     ngx_queue_insert_tail(&pd->common.server->peer, &peer->queue);
+    pc->cached = 0;
+//    pc->name = peer->name;
+//    pc->sockaddr = peer->sockaddr;
+//    pc->socklen = peer->socklen;
     pd->common.name = peer->name;
     pd->common.sockaddr = peer->sockaddr;
     pd->common.socklen = peer->socklen;
-    pc->cached = 0;
-    pc->name = pd->common.name;
-    pc->sockaddr = pd->common.sockaddr;
-    pc->socklen = pd->common.socklen;
     if (pd->common.server->max_save && !pd->common.server->single && ngx_postgres_peer_multi(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
     if (!pd->common.server->ignore && pd->common.server->save >= pd->common.server->max_save) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "max_save"); return NGX_DECLINED; }
     const char *host = peer->values[0];
