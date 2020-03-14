@@ -146,28 +146,43 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
         ngx_pool_t *temp_pool = ngx_create_pool(8192, common->connection->log);
         if (!temp_pool) continue;
+        ngx_array_t *array = NULL;
+        size_t len = 0;
         switch (ngx_http_push_stream_add_msg_to_channel_my(common->connection->log, &id, &text, NULL, NULL, 0, temp_pool)) {
             case NGX_ERROR: ngx_log_error(NGX_LOG_WARN, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_ERROR"); break;
             case NGX_DECLINED:
                 ngx_log_error(NGX_LOG_WARN, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_DECLINED");
-/*                char *str = PQescapeIdentifier(common->conn, (const char *)id.data, id.len);
-                if (!str) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!PQescapeIdentifier(%V) and %s", id, PQerrorMessageMy(common->conn)); break; }
-                ngx_str_t channel = {ngx_strlen(str), (u_char *)str};
-                u_char *command = ngx_pnalloc(temp_pool, sizeof("BEGIN;\nUNLISTEN ;\nCOMMIT;\nSELECT pg_listening_channels()") - 1 + channel.len + 1);
-                if (!command) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_pnalloc"); PQfreemem(str); break; }
-                u_char *last = ngx_snprintf(command, sizeof("BEGIN;\nUNLISTEN ;\nCOMMIT;\nSELECT pg_listening_channels()") - 1 + channel.len, "BEGIN;\nUNLISTEN %V;\nCOMMIT;\nSELECT pg_listening_channels()", &channel);
-                PQfreemem(str);
-                if (last != command + sizeof("BEGIN;\nUNLISTEN ;\nCOMMIT;\nSELECT pg_listening_channels()") - 1 + channel.len) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "ngx_snprintf"); break; }
-                *last = '\0';
-                if (!PQsendQuery(common->conn, (const char *)command)) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!PQsendQuery and %s", PQerrorMessageMy(common->conn)); break; }
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s sent successfully", command);
-                common->state = state_db_listen;
-                ngx_destroy_pool(temp_pool);
-                return;*/
+                if (common->listen) for (ngx_queue_t *queue = ngx_queue_head(common->listen); queue != ngx_queue_sentinel(common->listen); queue = ngx_queue_next(queue)) {
+                    ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
+                    if (id.len == listen->channel.len && !ngx_strncasecmp(id.data, listen->channel.data, id.len)) {
+                        if (!array && !(array = ngx_array_create(temp_pool, 1, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_array_create"); goto destroy; }
+                        ngx_str_t *unlisten = ngx_array_push(array);
+                        if (!listen) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_array_push"); goto destroy; }
+                        *unlisten = listen->command;
+                        len += unlisten->len;
+                        ngx_queue_remove(&listen->queue);
+                        break;
+                    }
+                }
                 break;
             case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify ok"); break;
             default: ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == unknown"); break;
         }
+        if (len && array && array->nelts) {
+            u_char *unlisten = ngx_pnalloc(temp_pool, len + 2 * array->nelts - 1);
+            if (!unlisten) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_pnalloc"); goto destroy; }
+            ngx_str_t *elts = array->elts;
+            u_char *p = unlisten;
+            for (ngx_uint_t i = 0; i < array->nelts; i++) {
+                if (i) { *p++ = ';'; *p++ = '\n'; }
+                p = ngx_cpymem(p, elts[i].data, elts[i].len);
+            }
+            *p = '\0';
+            if (!PQsendQuery(common->conn, (const char *)unlisten)) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!PQsendQuery(%s) and %s", unlisten, PQerrorMessageMy(common->conn)); goto destroy; }
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s sent successfully", unlisten);
+//            common->state = state_db_listen;
+        }
+destroy:
         ngx_destroy_pool(temp_pool);
     }
 }
