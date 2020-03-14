@@ -516,7 +516,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
 struct ngx_postgres_output_enum_t {
     ngx_str_t name;
     unsigned binary:1;
-    ngx_postgres_output_handler_pt handler;
+    ngx_postgres_handler_pt handler;
 } ngx_postgres_output_handlers[] = {
     { ngx_string("none"), 0, NULL },
     { ngx_string("text"), 0, ngx_postgres_output_text },
