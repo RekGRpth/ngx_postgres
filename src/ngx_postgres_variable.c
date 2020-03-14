@@ -73,8 +73,8 @@ static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_var
 static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
-    if (!pd || !pd->variables) return NGX_OK;
-    ngx_str_t *elts = pd->variables->elts;
+    if (!pd || !pd->variables.elts) return NGX_OK;
+    ngx_str_t *elts = pd->variables.elts;
     ngx_uint_t index = *(ngx_uint_t *)data;
     if (!elts[index].len) return NGX_OK;
     v->valid = 1;
@@ -110,7 +110,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     ngx_memcpy(pd->result.cmdStatus.data, cmdStatus, pd->result.cmdStatus.len);
     if (!location->variables.elts) return NGX_OK;
     ngx_postgres_variable_t *variable = location->variables.elts;
-    ngx_str_t *elts = pd->variables->elts;
+    ngx_str_t *elts = pd->variables.elts;
     for (ngx_uint_t i = 0; i < location->variables.nelts; i++) {
         if (variable[i].col == NGX_ERROR) {
             if ((variable[i].col = PQfnumber(pd->result.res, (const char *)variable[i].name)) == -1) {

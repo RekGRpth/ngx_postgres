@@ -62,7 +62,7 @@ typedef struct {
 } ngx_postgres_result_t;
 
 typedef struct {
-    ngx_array_t *variables;
+    ngx_array_t variables;
     ngx_chain_t *response;
     ngx_flag_t failed;
     ngx_http_request_t *request;
