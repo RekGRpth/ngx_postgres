@@ -84,8 +84,10 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *peer, void *data) 
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     pd->failed = 0;
     if (pd->common.server->max_save && pd->common.server->single && ngx_postgres_peer_single(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
-    if (pd->common.server->peer >= pd->common.server->npeers) pd->common.server->peer = 0;
-    ngx_postgres_peer_t *pp = &pd->common.server->peers[pd->common.server->peer++];
+    ngx_queue_t *queue = ngx_queue_head(&pd->common.server->queue);
+    ngx_postgres_peer_t *pp = ngx_queue_data(queue, ngx_postgres_peer_t, queue);
+    ngx_queue_remove(&pp->queue);
+    ngx_queue_insert_tail(&pd->common.server->queue, &pp->queue);
     pd->common.name = pp->name;
     pd->common.sockaddr = pp->sockaddr;
     pd->common.socklen = pp->socklen;

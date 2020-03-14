@@ -45,6 +45,7 @@ typedef enum {
 typedef struct {
     const char **keywords;
     const char **values;
+    ngx_queue_t queue;
     ngx_str_t host;
     ngx_str_t *name;
     socklen_t socklen;
@@ -58,13 +59,11 @@ typedef struct {
     ngx_flag_t single;
     ngx_msec_t timeout;
     ngx_pool_t *pool;
-    ngx_postgres_peer_t *peers;
     ngx_queue_t free;
     ngx_queue_t idle;
+    ngx_queue_t queue;
     ngx_uint_t max_requests;
     ngx_uint_t max_save;
-    ngx_uint_t npeers;
-    ngx_uint_t peer;
     ngx_uint_t save;
 } ngx_postgres_server_t;
 
