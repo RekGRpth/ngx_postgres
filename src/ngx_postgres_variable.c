@@ -87,11 +87,11 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
 
 
 typedef struct {
-    ngx_http_variable_t                *variable;
-    ngx_int_t                           col;
-    ngx_int_t                           row;
-    ngx_uint_t                          required;
-    u_char                             *name;
+    ngx_http_variable_t *variable;
+    ngx_int_t col;
+    ngx_int_t row;
+    ngx_uint_t required;
+    u_char *name;
 } ngx_postgres_variable_t;
 
 
