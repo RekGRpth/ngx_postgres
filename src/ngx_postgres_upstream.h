@@ -43,79 +43,79 @@ typedef enum {
 } ngx_postgres_state_t;
 
 typedef struct {
-    ngx_queue_t                        queue;
-    ngx_uint_t                         hash;
+    ngx_queue_t queue;
+    ngx_uint_t hash;
 } ngx_postgres_prepare_t;
 
 typedef struct {
-    const char                        **keywords;
-    const char                        **values;
-    ngx_str_t                           host;
-    ngx_str_t                          *name;
-    socklen_t                           socklen;
-    struct sockaddr                    *sockaddr;
-    u_char                             *value;
+    const char **keywords;
+    const char **values;
+    ngx_str_t host;
+    ngx_str_t *name;
+    socklen_t socklen;
+    struct sockaddr *sockaddr;
+    u_char *value;
 } ngx_postgres_peer_t;
 
 typedef struct {
-    ngx_flag_t                          ignore;
-    ngx_flag_t                          prepare;
-    ngx_flag_t                          single;
-    ngx_msec_t                          timeout;
-    ngx_pool_t                         *pool;
-    ngx_postgres_peer_t                *peers;
-    ngx_queue_t                         free;
-    ngx_queue_t                         keepalive;
-    ngx_uint_t                          max_requests;
-    ngx_uint_t                          max_save;
-    ngx_uint_t                          npeers;
-    ngx_uint_t                          peer;
-    ngx_uint_t                          save;
+    ngx_flag_t ignore;
+    ngx_flag_t prepare;
+    ngx_flag_t single;
+    ngx_msec_t timeout;
+    ngx_pool_t *pool;
+    ngx_postgres_peer_t *peers;
+    ngx_queue_t free;
+    ngx_queue_t keepalive;
+    ngx_uint_t max_requests;
+    ngx_uint_t max_save;
+    ngx_uint_t npeers;
+    ngx_uint_t peer;
+    ngx_uint_t save;
 } ngx_postgres_server_conf_t;
 
 typedef struct {
-    ngx_array_t                       *listen;
-    ngx_connection_t                  *connection;
-    ngx_postgres_server_conf_t        *server_conf;
-    ngx_postgres_state_t               state;
-    ngx_queue_t                       *prepare;
-    ngx_str_t                         *name;
-    ngx_uint_t                         requests;
-    PGconn                            *conn;
-    socklen_t                          socklen;
-    struct sockaddr                   *sockaddr;
+    ngx_array_t *listen;
+    ngx_connection_t *connection;
+    ngx_postgres_server_conf_t *server_conf;
+    ngx_postgres_state_t state;
+    ngx_queue_t *prepare;
+    ngx_str_t *name;
+    ngx_uint_t requests;
+    PGconn *conn;
+    socklen_t socklen;
+    struct sockaddr *sockaddr;
 } ngx_postgres_common_t;
 
 typedef struct {
-    ngx_int_t                          nfields;
-    ngx_int_t                          ntuples;
-    ngx_str_t                          charset;
-    ngx_str_t                          cmdStatus;
-    ngx_str_t                          cmdTuples;
-    PGresult                          *res;
+    ngx_int_t nfields;
+    ngx_int_t ntuples;
+    ngx_str_t charset;
+    ngx_str_t cmdStatus;
+    ngx_str_t cmdTuples;
+    PGresult *res;
 } ngx_postgres_result_t;
 
 typedef struct {
-    ngx_array_t                       *variables;
-    ngx_chain_t                       *response;
-    ngx_flag_t                         failed;
-    ngx_http_request_t                *request;
-    ngx_int_t                          status;
-    ngx_postgres_common_t             *common;
-    ngx_postgres_result_t              result;
-    ngx_str_t                          sql;
-    ngx_uint_t                         hash;
-    ngx_uint_t                         nParams;
-    ngx_uint_t                         resultFormat;
-    Oid                               *paramTypes;
-    u_char                           **paramValues;
-    u_char                            *stmtName;
+    ngx_array_t *variables;
+    ngx_chain_t *response;
+    ngx_flag_t failed;
+    ngx_http_request_t *request;
+    ngx_int_t status;
+    ngx_postgres_common_t common;
+    ngx_postgres_result_t result;
+    ngx_str_t sql;
+    ngx_uint_t hash;
+    ngx_uint_t nParams;
+    ngx_uint_t resultFormat;
+    Oid *paramTypes;
+    u_char **paramValues;
+    u_char *stmtName;
 } ngx_postgres_data_t;
 
 typedef struct {
-    ngx_event_t                        timeout;
-    ngx_postgres_common_t             *common;
-    ngx_queue_t                        queue;
+    ngx_event_t timeout;
+    ngx_postgres_common_t common;
+    ngx_queue_t queue;
 } ngx_postgres_save_t;
 
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
