@@ -261,7 +261,7 @@ void ngx_postgres_process_events(ngx_http_request_t *r) {
         case state_db_ack: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.state == state_db_ack"); rc = ngx_postgres_get_ack(r); break;
         case state_db_connect: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.state == state_db_connect"); rc = ngx_postgres_connect(r); break;
         case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.state == state_db_idle"); rc = ngx_postgres_send_query(r); break;
-        case state_db_listen: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.state == state_db_listen"); rc = NGX_AGAIN; break;
+//        case state_db_listen: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.state == state_db_listen"); rc = NGX_AGAIN; break;
         case state_db_prepare: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.state == state_db_prepare"); rc = ngx_postgres_send_query(r); break;
         case state_db_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.state == state_db_query"); rc = ngx_postgres_send_query(r); break;
         case state_db_result: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd->common.state == state_db_result"); rc = ngx_postgres_get_result(r); break;

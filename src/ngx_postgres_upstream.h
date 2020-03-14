@@ -36,7 +36,7 @@ typedef enum {
     state_db_ack,
     state_db_connect,
     state_db_idle,
-    state_db_listen,
+//    state_db_listen,
     state_db_prepare,
     state_db_query,
     state_db_result
@@ -68,7 +68,7 @@ typedef struct {
 } ngx_postgres_server_t;
 
 typedef struct {
-    ngx_array_t *listen;
+//    ngx_array_t *listen;
     ngx_connection_t *connection;
     ngx_postgres_server_t *server;
     ngx_postgres_state_t state;

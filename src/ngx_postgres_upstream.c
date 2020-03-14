@@ -179,7 +179,7 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
             case NGX_ERROR: ngx_log_error(NGX_LOG_WARN, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_ERROR"); break;
             case NGX_DECLINED:
                 ngx_log_error(NGX_LOG_WARN, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_DECLINED");
-                char *str = PQescapeIdentifier(common->conn, (const char *)id.data, id.len);
+/*                char *str = PQescapeIdentifier(common->conn, (const char *)id.data, id.len);
                 if (!str) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!PQescapeIdentifier(%V) and %s", id, PQerrorMessageMy(common->conn)); break; }
                 ngx_str_t channel = {ngx_strlen(str), (u_char *)str};
                 u_char *command = ngx_pnalloc(temp_pool, sizeof("BEGIN;\nUNLISTEN ;\nCOMMIT;\nSELECT pg_listening_channels()") - 1 + channel.len + 1);
@@ -192,7 +192,8 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s sent successfully", command);
                 common->state = state_db_listen;
                 ngx_destroy_pool(temp_pool);
-                return;
+                return;*/
+                break;
             case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify ok"); break;
             default: ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == unknown"); break;
         }
@@ -201,10 +202,10 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
 }
 
 
-typedef struct {
+/*typedef struct {
     ngx_str_t channel;
     ngx_str_t command;
-} ngx_postgres_listen_t;
+} ngx_postgres_listen_t;*/
 
 
 static void ngx_postgres_read_handler(ngx_event_t *ev) {
@@ -218,7 +219,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
         case PGRES_TUPLES_OK:
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == PGRES_TUPLES_OK");
-            if (ps->common.state == state_db_listen) {
+/*            if (ps->common.state == state_db_listen) {
                 if (ps->common.listen) ngx_array_destroy(ps->common.listen);
                 if (!PQntuples(res) || !PQnfields(res)) ps->common.listen = NULL; else
                 if (!(ps->common.listen = ngx_array_create(ps->common.connection->pool, PQntuples(res), sizeof(ngx_postgres_listen_t)))) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_array_create"); break; }
@@ -240,7 +241,7 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
                     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%V", &listen->command);
                 }
                 ps->common.state = state_db_idle;
-            }
+            }*/
             break;
         default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
     }
@@ -265,7 +266,7 @@ static void ngx_postgres_timeout(ngx_event_t *ev) {
 }
 
 
-static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd) {
+/*static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_postgres_common_t *common = &pd->common;
     u_char *listen = (u_char *)"SELECT pg_listening_channels()";
@@ -285,7 +286,7 @@ static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd) {
     p = ngx_cpymem(p, "SELECT pg_listening_channels()", sizeof("SELECT pg_listening_channels()") - 1);
     *p = '\0';
     return listen;
-}
+}*/
 
 
 static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
@@ -324,10 +325,10 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ps->timeout.handler = ngx_postgres_timeout;
         ngx_add_timer(&ps->timeout, common->server->timeout);
     }
-    u_char *listen = ngx_postgres_listen(pd);
+/*    u_char *listen = ngx_postgres_listen(pd);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
     if (!PQsendQuery(common->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery and %s", PQerrorMessageMy(common->conn)); }
-    else common->state = state_db_listen;
+    else common->state = state_db_listen;*/
 }
 
 
@@ -397,13 +398,13 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_flag_t dele
         return;
     }
     if (common->conn) {
-        if (/*delete && */!common->connection->close && common->listen) {
+/*        if (/ *delete && * /!common->connection->close && common->listen) {
             ngx_str_t *elts = common->listen->elts;
             for (ngx_uint_t i = 0; i < common->listen->nelts; i++) {
                 ngx_log_error(NGX_LOG_INFO, common->connection->log, 0, "delete channel = %V", &elts[i]);
                 ngx_http_push_stream_delete_channel_my(common->connection->log, &elts[i], (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, common->connection->pool);
             }
-        }
+        }*/
         PQfinish(common->conn);
         common->conn = NULL;
     }
