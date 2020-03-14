@@ -55,10 +55,10 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                     if (!i && query->listen) {
                         ngx_http_core_main_conf_t *cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
                         ngx_http_variable_t *v = cmcf->variables.elts;
-                        if (!(channel.data = ngx_pstrdup(r->upstream->peer.connection->pool, &v[elts[i]].name))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pstrdup"); return NGX_ERROR; }
+                        if (!(channel.data = ngx_pstrdup(pd->common.connection->pool, &v[elts[i]].name))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pstrdup"); return NGX_ERROR; }
                         channel.len = v[elts[i]].name.len;
                         command.len = sizeof("UNLISTEN ") - 1 + id.len;
-                        if (!(command.data = ngx_pnalloc(r->upstream->peer.connection->pool, command.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                        if (!(command.data = ngx_pnalloc(pd->common.connection->pool, command.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
                         command.len = ngx_snprintf(command.data, command.len, "UNLISTEN %V", &id) - command.data;
                     }
                 }
@@ -81,10 +81,10 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         if (pd->common.server->prepare) {
             if (query->listen) {
                 if (!pd->common.listen) {
-                    if (!(pd->common.listen = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+                    if (!(pd->common.listen = ngx_pcalloc(pd->common.connection->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                     ngx_queue_init(pd->common.listen);
                 }
-                ngx_postgres_listen_t *listen = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_postgres_listen_t));
+                ngx_postgres_listen_t *listen = ngx_pcalloc(pd->common.connection->pool, sizeof(ngx_postgres_listen_t));
                 if (!listen) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                 listen->channel = channel;
                 listen->command = command;
@@ -126,10 +126,10 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 if (!PQsendPrepare(pd->common.conn, (const char *)pd->stmtName, (const char *)pd->sql.data, pd->nParams, pd->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(%s, %s) and %s", pd->stmtName, pd->sql.data, PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "prepare %s:%s sent successfully", pd->stmtName, pd->sql.data);
                 if (!pd->common.prepare) {
-                    if (!(pd->common.prepare = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+                    if (!(pd->common.prepare = ngx_pcalloc(pd->common.connection->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                     ngx_queue_init(pd->common.prepare);
                 }
-                ngx_postgres_prepare_t *prepare = ngx_pcalloc(r->upstream->peer.connection->pool, sizeof(ngx_postgres_prepare_t));
+                ngx_postgres_prepare_t *prepare = ngx_pcalloc(pd->common.connection->pool, sizeof(ngx_postgres_prepare_t));
                 if (!prepare) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                 prepare->hash = pd->hash;
                 ngx_queue_insert_tail(pd->common.prepare, &prepare->queue);
@@ -142,7 +142,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             break;
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pd->common.state == %i", pd->common.state); return NGX_ERROR;
     }
-    ngx_add_timer(r->upstream->peer.connection->read, r->upstream->conf->read_timeout); /* set result timeout */
+    ngx_add_timer(pd->common.connection->read, r->upstream->conf->read_timeout); /* set result timeout */
     pd->common.state = state_db_result;
     return NGX_DONE;
 }
@@ -176,7 +176,7 @@ again:
             if (PQstatus(pd->common.conn) == CONNECTION_MADE) goto again;
             return NGX_AGAIN;
     }
-    if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write); /* remove connection timeout from new connection */
+    if (pd->common.connection->write->timer_set) ngx_del_timer(pd->common.connection->write); /* remove connection timeout from new connection */
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connected successfully");
     const char *charset = PQparameterStatus(pd->common.conn, "client_encoding");
     if (charset) {
@@ -211,7 +211,7 @@ static ngx_int_t ngx_postgres_get_ack(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     if (!PQconsumeInput(pd->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
     if (PQisBusy(pd->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); pd->common.state = state_db_ack; return NGX_AGAIN; }
-    if (r->upstream->peer.connection->read->timer_set) ngx_del_timer(r->upstream->peer.connection->read); /* remove result timeout */
+    if (pd->common.connection->read->timer_set) ngx_del_timer(pd->common.connection->read); /* remove result timeout */
     PGresult *res = PQgetResult(pd->common.conn);
     if (res) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQgetResult");
@@ -225,7 +225,7 @@ static ngx_int_t ngx_postgres_get_ack(ngx_http_request_t *r) {
 static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write); /* remove connection timeout from re-used keepalive connection */
+    if (pd->common.connection->write->timer_set) ngx_del_timer(pd->common.connection->write); /* remove connection timeout from re-used keepalive connection */
     if (!PQconsumeInput(pd->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
     if (PQisBusy(pd->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
     PGresult *res = PQgetResult(pd->common.conn);
