@@ -13,7 +13,7 @@ typedef struct {
     ngx_uint_t percent;
 } ngx_postgres_query_t;
 
-typedef ngx_int_t (*ngx_postgres_handler_pt) (ngx_http_request_t *);
+typedef ngx_int_t (*ngx_postgres_handler_pt) (ngx_http_request_t *r);
 
 typedef struct {
     ngx_flag_t append;
