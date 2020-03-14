@@ -20,8 +20,8 @@ typedef struct {
 } ngx_postgres_output_t;
 
 typedef struct {
-    ngx_array_t *ids;
-    ngx_array_t *params;
+    ngx_array_t ids;
+    ngx_array_t params;
     ngx_flag_t listen;
     ngx_str_t sql;
     ngx_uint_t percent;

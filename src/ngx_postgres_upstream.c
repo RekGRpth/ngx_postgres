@@ -329,12 +329,12 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     r->upstream->peer.free = ngx_postgres_peer_free;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *query = &location->query;
-    if (query->params->nelts) {
-        ngx_postgres_param_t *param = query->params->elts;
-        pd->nParams = query->params->nelts;
-        if (!(pd->paramTypes = ngx_pnalloc(r->pool, query->params->nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-        if (!(pd->paramValues = ngx_pnalloc(r->pool, query->params->nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-        for (ngx_uint_t i = 0; i < query->params->nelts; i++) {
+    if (query->params.nelts) {
+        ngx_postgres_param_t *param = query->params.elts;
+        pd->nParams = query->params.nelts;
+        if (!(pd->paramTypes = ngx_pnalloc(r->pool, query->params.nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+        if (!(pd->paramValues = ngx_pnalloc(r->pool, query->params.nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+        for (ngx_uint_t i = 0; i < query->params.nelts; i++) {
             pd->paramTypes[i] = param[i].oid;
             ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, param[i].index);
             if (!value || !value->data || !value->len) pd->paramValues[i] = NULL; else {
@@ -606,8 +606,8 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         sql.len = len;
     }
     if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) return "!ngx_palloc";
-    if (!(query->params = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_param_t)))) return "!ngx_array_create";
-    if (!(query->ids = ngx_array_create(cf->pool, 1, sizeof(ngx_uint_t)))) return "!ngx_array_create";
+    if (ngx_array_init(&query->params, cf->pool, 1, sizeof(ngx_postgres_param_t)) != NGX_OK) return "ngx_array_init != NGX_OK";
+    if (ngx_array_init(&query->ids, cf->pool, 1, sizeof(ngx_uint_t)) != NGX_OK) return "ngx_array_init != NGX_OK";
     u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
     query->percent = 0;
     for (ngx_uint_t k = 0; s < e; *p++ = *s++) {
@@ -626,13 +626,13 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             ngx_uint_t oid = type2oid(&type);
             if (!oid) return "!type2oid";
             if (oid == IDOID) {
-                ngx_uint_t *id = ngx_array_push(query->ids);
+                ngx_uint_t *id = ngx_array_push(&query->ids);
                 if (!id) return "!ngx_array_push";
                 *id = (ngx_uint_t) index;
                 *p++ = '%';
                 *p++ = 'V';
             } else {
-                ngx_postgres_param_t *param = ngx_array_push(query->params);
+                ngx_postgres_param_t *param = ngx_array_push(&query->params);
                 if (!param) return "!ngx_array_push";
                 param->index = (ngx_uint_t) index;
                 param->oid = oid;
