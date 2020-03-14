@@ -5,14 +5,6 @@
 
 extern ngx_module_t ngx_postgres_module;
 
-typedef struct {
-    ngx_array_t *ids;
-    ngx_array_t *params;
-    ngx_flag_t listen;
-    ngx_str_t sql;
-    ngx_uint_t percent;
-} ngx_postgres_query_t;
-
 typedef ngx_int_t (*ngx_postgres_handler_pt) (ngx_http_request_t *r);
 
 typedef struct {
@@ -26,6 +18,14 @@ typedef struct {
     u_char escape;
     u_char quote;
 } ngx_postgres_output_t;
+
+typedef struct {
+    ngx_array_t *ids;
+    ngx_array_t *params;
+    ngx_flag_t listen;
+    ngx_str_t sql;
+    ngx_uint_t percent;
+} ngx_postgres_query_t;
 
 typedef struct {
     ngx_array_t variables;
