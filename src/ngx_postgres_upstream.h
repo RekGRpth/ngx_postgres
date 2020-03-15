@@ -12,13 +12,12 @@ typedef struct {
 } ngx_postgres_listen_t;
 
 typedef enum {
-    state_db_ack,
     state_db_connect,
-    state_db_idle,
-//    state_db_listen,
     state_db_prepare,
     state_db_query,
-    state_db_result
+    state_db_result,
+    state_db_ack,
+    state_db_idle
 } ngx_postgres_state_t;
 
 typedef struct {
@@ -38,7 +37,6 @@ typedef struct {
     ngx_flag_t single;
     ngx_log_t *log;
     ngx_msec_t timeout;
-//    ngx_pool_t *pool;
     ngx_queue_t free;
     ngx_queue_t idle;
     ngx_queue_t peer;
