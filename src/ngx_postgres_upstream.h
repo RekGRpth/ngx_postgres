@@ -8,6 +8,7 @@ typedef struct {
     ngx_queue_t queue;
     ngx_str_t channel;
     ngx_str_t command;
+    ngx_uint_t index;
 } ngx_postgres_listen_t;
 
 typedef enum {

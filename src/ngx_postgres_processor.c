@@ -39,6 +39,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         ngx_str_t *ids = NULL;
         ngx_str_t channel = ngx_null_string;
         ngx_str_t command = ngx_null_string;
+        ngx_uint_t index = 0;
         if (query->ids.nelts) {
             ngx_uint_t *elts = query->ids.elts;
             if (!(ids = ngx_pnalloc(r->pool, query->ids.nelts * sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
@@ -53,10 +54,11 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                     PQfreemem(str);
                     ids[i] = id;
                     if (!i && query->listen) {
+                        index = elts[i];
                         ngx_http_core_main_conf_t *cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
                         ngx_http_variable_t *v = cmcf->variables.elts;
-                        if (!(channel.data = ngx_pstrdup(pd->common.connection->pool, &v[elts[i]].name))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pstrdup"); return NGX_ERROR; }
-                        channel.len = v[elts[i]].name.len;
+                        if (!(channel.data = ngx_pstrdup(pd->common.connection->pool, &v[index].name))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pstrdup"); return NGX_ERROR; }
+                        channel.len = v[index].name.len;
                         command.len = sizeof("UNLISTEN ") - 1 + id.len;
                         if (!(command.data = ngx_pnalloc(pd->common.connection->pool, command.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
                         command.len = ngx_snprintf(command.data, command.len, "UNLISTEN %V", &id) - command.data;
@@ -79,16 +81,22 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
         pd->sql = sql; /* set $postgres_query */
         if (pd->common.server->max_save) {
-            if (query->listen) {
+            if (query->listen /*&& index && channel && command*/) {
                 if (!pd->common.listen) {
                     if (!(pd->common.listen = ngx_pcalloc(pd->common.connection->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                     ngx_queue_init(pd->common.listen);
+                }
+                for (ngx_queue_t *queue = ngx_queue_head(pd->common.listen); queue != ngx_queue_sentinel(pd->common.listen); queue = ngx_queue_next(queue)) {
+                    ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
+                    if (listen->index == index) goto cont;
                 }
                 ngx_postgres_listen_t *listen = ngx_pcalloc(pd->common.connection->pool, sizeof(ngx_postgres_listen_t));
                 if (!listen) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                 listen->channel = channel;
                 listen->command = command;
+                listen->index = index;
                 ngx_queue_insert_tail(pd->common.listen, &listen->queue);
+                cont:;
             } else if (pd->common.server->prepare) {
                 if (!(pd->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
                 u_char *last = ngx_snprintf(pd->stmtName, 31, "ngx_%ul", (unsigned long)(pd->hash = ngx_hash_key(sql.data, sql.len)));
