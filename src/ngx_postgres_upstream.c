@@ -139,7 +139,8 @@ static void ngx_postgres_write_handler(ngx_event_t *ev) {
 }
 
 
-static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
+static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
+    ngx_postgres_common_t *common = &ps->common;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s", __func__);
     for (PGnotify *notify; (notify = PQnotifies(common->conn)); PQfreemem(notify)) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify: relname=\"%s\", extra=\"%s\", be_pid=%i.", notify->relname, notify->extra, notify->be_pid);
@@ -181,7 +182,9 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
             *p = '\0';
             if (!PQsendQuery(common->conn, (const char *)unlisten)) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!PQsendQuery(%s) and %s", unlisten, PQerrorMessageMy(common->conn)); goto destroy; }
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s sent successfully", unlisten);
-//            common->state = state_db_listen;
+            common->state = state_db_query;
+            ngx_queue_remove(&ps->queue);
+            ngx_queue_insert_tail(&common->server->free, &ps->queue);
         }
 destroy:
         ngx_destroy_pool(temp_pool);
@@ -193,20 +196,26 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
     ngx_connection_t *c = ev->data;
     ngx_postgres_save_t *ps = c->data;
+    ngx_postgres_common_t *common = &ps->common;
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "c->close"); goto close; }
-    if (!PQconsumeInput(ps->common.conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(ps->common.conn)); goto close; }
-    if (PQisBusy(ps->common.conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQisBusy"); goto close; }
-    for (PGresult *res; (res = PQgetResult(ps->common.conn)); PQclear(res)) switch(PQresultStatus(res)) {
+    if (!PQconsumeInput(common->conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(common->conn)); goto close; }
+    if (PQisBusy(common->conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQisBusy"); goto close; }
+    for (PGresult *res; (res = PQgetResult(common->conn)); PQclear(res)) switch(PQresultStatus(res)) {
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
         default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
     }
-    ngx_postgres_process_notify(&ps->common);
+    if (common->state == state_db_query) {
+        common->state = state_db_idle;
+        ngx_queue_remove(&ps->queue);
+        ngx_queue_insert_tail(&common->server->idle, &ps->queue);
+    }
+    ngx_postgres_process_notify(ps);
     return;
 close:
     if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
     ngx_postgres_free_connection(&ps->common, 0);
     ngx_queue_remove(&ps->queue);
-    ngx_queue_insert_tail(&ps->common.server->free, &ps->queue);
+    ngx_queue_insert_tail(&common->server->free, &ps->queue);
 }
 
 
@@ -214,10 +223,11 @@ static void ngx_postgres_timeout(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
     ngx_connection_t *c = ev->data;
     ngx_postgres_save_t *ps = c->data;
+    ngx_postgres_common_t *common = &ps->common;
     if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
     ngx_postgres_free_connection(&ps->common, 1);
     ngx_queue_remove(&ps->queue);
-    ngx_queue_insert_tail(&ps->common.server->free, &ps->queue);
+    ngx_queue_insert_tail(&common->server->free, &ps->queue);
 }
 
 
@@ -307,7 +317,11 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     }
     if (listen) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
-        if (!PQsendQuery(common->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery(%s) and %s", listen, PQerrorMessageMy(common->conn)); }
+        if (!PQsendQuery(common->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery(%s) and %s", listen, PQerrorMessageMy(common->conn)); } else {
+            common->state = state_db_query;
+            ngx_queue_remove(&ps->queue);
+            ngx_queue_insert_tail(&common->server->free, &ps->queue);
+        }
     //    else common->state = state_db_listen;
     }
 }
