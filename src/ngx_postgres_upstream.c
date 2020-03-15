@@ -183,9 +183,6 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
         *p = '\0';
         if (!PQsendQuery(common->conn, (const char *)unlisten)) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!PQsendQuery(%s) and %s", unlisten, PQerrorMessageMy(common->conn)); goto destroy; }
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s sent successfully", unlisten);
-        common->state = state_db_query;
-        ngx_queue_remove(&ps->queue);
-        ngx_queue_insert_tail(&common->server->free, &ps->queue);
     }
 destroy:
     if (temp_pool) ngx_destroy_pool(temp_pool);
@@ -317,12 +314,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     }
     if (listen) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
-        if (!PQsendQuery(common->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery(%s) and %s", listen, PQerrorMessageMy(common->conn)); } else {
-            common->state = state_db_query;
-            ngx_queue_remove(&ps->queue);
-            ngx_queue_insert_tail(&common->server->free, &ps->queue);
-        }
-    //    else common->state = state_db_listen;
+        if (!PQsendQuery(common->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery(%s) and %s", listen, PQerrorMessageMy(common->conn)); }
     }
 }
 
