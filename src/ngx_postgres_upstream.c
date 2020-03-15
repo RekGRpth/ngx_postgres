@@ -198,32 +198,6 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     if (PQisBusy(ps->common.conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQisBusy"); goto close; }
     for (PGresult *res; (res = PQgetResult(ps->common.conn)); PQclear(res)) switch(PQresultStatus(res)) {
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
-        case PGRES_TUPLES_OK:
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == PGRES_TUPLES_OK");
-/*            if (ps->common.state == state_db_listen) {
-                if (ps->common.listen) ngx_array_destroy(ps->common.listen);
-                if (!PQntuples(res) || !PQnfields(res)) ps->common.listen = NULL; else
-                if (!(ps->common.listen = ngx_array_create(ps->common.connection->pool, PQntuples(res), sizeof(ngx_postgres_listen_t)))) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_array_create"); break; }
-                for (int row = 0; row < PQntuples(res); row++) {
-                    if (PQgetisnull(res, row, 0)) continue;
-                    ngx_postgres_listen_t *listen = ngx_array_push(ps->common.listen);
-                    if (!listen) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_array_push"); continue; }
-                    ngx_memzero(listen, sizeof(ngx_str_t));
-                    listen->channel.len = PQgetlength(res, row, 0);
-                    if (!(listen->channel.data = ngx_pnalloc(ps->common.connection->pool, listen->channel.len))) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_pnalloc"); continue; }
-                    ngx_memcpy(listen->channel.data, (u_char *)PQgetvalue(res, row, 0), listen->channel.len);
-                    char *str = PQescapeIdentifier(ps->common.conn, (const char *)listen->channel.data, listen->channel.len);
-                    if (!str) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQescapeIdentifier(%V) and %s", &listen->channel, PQerrorMessageMy(ps->common.conn)); continue; }
-                    ngx_str_t channel = {ngx_strlen(str), (u_char *)str};
-                    listen->command.len = channel.len + sizeof("LISTEN ") - 1;
-                    if (!(listen->command.data = ngx_pnalloc(ps->common.connection->pool, listen->command.len))) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!ngx_pnalloc"); PQfreemem(str); continue; }
-                    listen->command.len = ngx_snprintf(listen->command.data, listen->command.len, "LISTEN %V", &channel) - listen->command.data;
-                    PQfreemem(str);
-                    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%V", &listen->command);
-                }
-                ps->common.state = state_db_idle;
-            }*/
-            break;
         default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
     }
     ngx_postgres_process_notify(&ps->common);
