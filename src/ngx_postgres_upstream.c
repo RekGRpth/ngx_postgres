@@ -146,7 +146,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify: relname=\"%s\", extra=\"%s\", be_pid=%i.", notify->relname, notify->extra, notify->be_pid);
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
-        ngx_pool_t *temp_pool = ngx_create_pool(8192, common->connection->log);
+        ngx_pool_t *temp_pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, common->connection->log);
         if (!temp_pool) continue;
         ngx_array_t *array = NULL;
         size_t len = 0;
