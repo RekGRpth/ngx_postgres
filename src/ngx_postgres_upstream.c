@@ -142,12 +142,12 @@ static void ngx_postgres_write_handler(ngx_event_t *ev) {
 static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
     ngx_postgres_common_t *common = &ps->common;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s", __func__);
-    ngx_pool_t *temp_pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, common->connection->log);
-    if (!temp_pool) return;
+    ngx_pool_t *temp_pool = NULL;
     ngx_array_t *array = NULL;
     size_t len = 0;
     for (PGnotify *notify; (notify = PQnotifies(common->conn)); PQfreemem(notify)) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify: relname=\"%s\", extra=\"%s\", be_pid=%i.", notify->relname, notify->extra, notify->be_pid);
+        if (!temp_pool && !(temp_pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, common->connection->log))) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_create_pool"); return; }
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
         switch (ngx_http_push_stream_add_msg_to_channel_my(common->connection->log, &id, &text, NULL, NULL, 0, temp_pool)) {
@@ -188,7 +188,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
         ngx_queue_insert_tail(&common->server->free, &ps->queue);
     }
 destroy:
-    ngx_destroy_pool(temp_pool);
+    if (temp_pool) ngx_destroy_pool(temp_pool);
 }
 
 
