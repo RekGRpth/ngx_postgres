@@ -16,9 +16,10 @@ static void ngx_postgres_idle_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     pc->cached = 1;
     pc->connection = pd->common.connection;
     pc->connection->idle = 0;
-//    pc->connection->log = pc->log;
-//    pc->connection->read->log = pc->log;
-//    pc->connection->write->log = pc->log;
+    pc->connection->log = pc->log;
+    pc->connection->log_error = pc->log_error;
+    pc->connection->read->log = pc->log;
+    pc->connection->write->log = pc->log;
     pc->name = &pd->common.name;
     pc->sockaddr = pd->common.sockaddr;
     pc->socklen = pd->common.socklen;
@@ -299,8 +300,11 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     common->connection->idle = 1;
     common->connection->read->handler = ngx_postgres_read_handler;
     common->connection->write->handler = ngx_postgres_write_handler;
+    common->connection->log = common->server->log ? common->server->log : ngx_cycle->log;
+    common->connection->read->log = common->connection->log;
+    common->connection->write->log = common->connection->log;
     if (common->server->timeout) {
-        ps->timeout.log = ngx_cycle->log;
+        ps->timeout.log = common->connection->log;
         ps->timeout.data = common->connection;
         ps->timeout.handler = ngx_postgres_timeout;
         ngx_add_timer(&ps->timeout, common->server->timeout);

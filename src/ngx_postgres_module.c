@@ -56,6 +56,7 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_server_t *server = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_server_t));
     if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
 //    server->pool = cf->pool;
+//    server->log = ngx_cycle->log;
     ngx_queue_init(&server->free);
     ngx_queue_init(&server->idle);
     ngx_queue_init(&server->peer);
@@ -323,7 +324,25 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
 }
 
 
+static char *ngx_postgres_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_postgres_server_t *server = conf;
+    return ngx_log_set_log(cf, &server->log);
+}
+
+
 static ngx_command_t ngx_postgres_commands[] = {
+/*  { .name = ngx_string("postgres_access_log"),
+    .type = NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
+    .set = ngx_http_log_set_log,
+    .conf = NGX_HTTP_SRV_CONF_OFFSET,
+    .offset = 0,
+    .post = NULL },*/
+  { .name = ngx_string("postgres_log"),
+    .type = NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
+    .set = ngx_postgres_log,
+    .conf = NGX_HTTP_SRV_CONF_OFFSET,
+    .offset = 0,
+    .post = NULL },
   { .name = ngx_string("postgres_server"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
     .set = ngx_postgres_server_conf,
