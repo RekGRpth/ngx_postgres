@@ -31,8 +31,8 @@ typedef struct {
 } ngx_postgres_peer_t;
 
 typedef struct {
-    ngx_flag_t ignore;
     ngx_flag_t prepare;
+    ngx_flag_t reject;
     ngx_flag_t single;
     ngx_log_t *log;
     ngx_msec_t timeout;
