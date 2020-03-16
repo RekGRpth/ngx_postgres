@@ -176,7 +176,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
         }
         *p = '\0';
         if (!PQsendQuery(common->conn, (const char *)unlisten)) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!PQsendQuery(%s) and %s", unlisten, PQerrorMessageMy(common->conn)); }
-        else ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s sent successfully", unlisten);
+        else { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s sent successfully", unlisten); }
         ngx_pfree(common->connection->pool, unlisten);
     }
 destroy:
