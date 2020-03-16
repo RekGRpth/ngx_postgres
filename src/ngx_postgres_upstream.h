@@ -74,7 +74,6 @@ typedef struct {
     ngx_http_request_t *request;
     ngx_int_t status;
     ngx_postgres_common_t common;
-    ngx_postgres_peer_t *peer;
     ngx_postgres_result_t result;
     ngx_queue_t queue;
     ngx_str_t sql;
