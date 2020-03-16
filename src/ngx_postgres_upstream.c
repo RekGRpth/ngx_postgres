@@ -27,8 +27,7 @@ static void ngx_postgres_idle_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
 
 
 static ngx_int_t ngx_postgres_peer_single(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "%s", __func__);
     if (ngx_queue_empty(&pd->common.server->idle)) return NGX_DECLINED;
     ngx_queue_t *queue = ngx_queue_head(&pd->common.server->idle);
     ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
@@ -38,8 +37,7 @@ static ngx_int_t ngx_postgres_peer_single(ngx_postgres_data_t *pd) {
 
 
 static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "%s", __func__);
     for (ngx_queue_t *queue = ngx_queue_head(&pd->common.server->idle); queue != ngx_queue_sentinel(&pd->common.server->idle); queue = ngx_queue_next(queue)) {
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ngx_memn2cmp((u_char *)pd->common.sockaddr, (u_char *)ps->common.sockaddr, pd->common.socklen, ps->common.socklen)) continue;
