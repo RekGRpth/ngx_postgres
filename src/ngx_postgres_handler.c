@@ -141,7 +141,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     r->upstream->write_event_handler = ngx_postgres_write_event_handler;
     r->upstream->read_event_handler = ngx_postgres_read_event_handler;
     /* a bit hack-ish way to return error response (clean-up part) */
-    if (r->upstream->peer.connection && !r->upstream->peer.connection->fd) {
+    /*if (r->upstream->peer.connection && !r->upstream->peer.connection->fd) {
         if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write);
         if (r->upstream->peer.connection->pool) {
             ngx_destroy_pool(r->upstream->peer.connection->pool);
@@ -150,7 +150,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
         ngx_free_connection(r->upstream->peer.connection);
         r->upstream->peer.connection = NULL;
         ngx_postgres_finalize_upstream(r, r->upstream, NGX_HTTP_SERVICE_UNAVAILABLE);
-    }
+    }*/
     return NGX_DONE;
 }
 
