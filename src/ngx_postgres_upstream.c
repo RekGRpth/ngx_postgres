@@ -111,7 +111,7 @@ invalid:
 
 
 static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
-    ngx_postgres_data_t *pd = data;
+    ngx_postgres_data_t *pd = pc->data;
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     pd->pc = pc;
