@@ -199,11 +199,6 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
         default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
     }
-    if (common->state == state_db_query) {
-        common->state = state_db_idle;
-        ngx_queue_remove(&ps->queue);
-        ngx_queue_insert_tail(&common->server->idle, &ps->queue);
-    }
     ngx_postgres_process_notify(ps);
     return;
 close:
