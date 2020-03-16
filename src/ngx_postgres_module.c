@@ -403,6 +403,16 @@ static ngx_http_module_t ngx_postgres_ctx = {
     .merge_loc_conf = ngx_postgres_merge_loc_conf
 };
 
+/*static ngx_int_t init_module(ngx_cycle_t *cycle) {
+    for (ngx_uint_t i = 0; cycle->modules[i]; i++) {
+        ngx_module_t *module = cycle->modules[i];
+        if (!ngx_strcasecmp((u_char *)module->name, (u_char *)"ngx_http_push_stream_module")) {
+            ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "name = %s", module->name);
+        }
+    }
+    return NGX_OK;
+}*/
+
 ngx_module_t ngx_postgres_module = {
     NGX_MODULE_V1,
     .ctx = &ngx_postgres_ctx,

@@ -52,7 +52,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                     ngx_memcpy(id.data, str, id.len);
                     PQfreemem(str);
                     ids[i] = id;
-                    if (!i && query->listen) {
+                    if (!i && query->listen && ngx_http_push_stream_add_msg_to_channel_my && ngx_http_push_stream_delete_channel_my) {
                         channel.len = value->len;
                         if (!(channel.data = ngx_pnalloc(pd->common.connection->pool, channel.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
                         ngx_memcpy(channel.data, value->data, value->len);

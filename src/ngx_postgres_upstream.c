@@ -145,6 +145,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
     size_t len = 0;
     for (PGnotify *notify; (notify = PQnotifies(common->conn)); PQfreemem(notify)) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "relname=%s, extra=%s, be_pid=%i", notify->relname, notify->extra, notify->be_pid);
+        if (!ngx_http_push_stream_add_msg_to_channel_my) continue;
         if (!temp_pool && !(temp_pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, common->connection->log))) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_create_pool"); return; }
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
@@ -281,7 +282,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_queue_t *queue = ngx_queue_head(&common->server->idle);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
-        listen = ngx_postgres_listen(pd, ps);
+        if (ngx_http_push_stream_add_msg_to_channel_my && ngx_http_push_stream_delete_channel_my) listen = ngx_postgres_listen(pd, ps);
         ngx_postgres_free_connection(&ps->common, 1);
     } else {
         ngx_queue_t *queue = ngx_queue_head(&common->server->free);
@@ -378,7 +379,7 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_flag_t dele
         return;
     }
     if (common->conn) {
-        if (/*delete && */!common->connection->close && common->listen) {
+        if (/*delete && */!common->connection->close && common->listen && ngx_http_push_stream_delete_channel_my) {
             while (!ngx_queue_empty(common->listen)) {
                 ngx_queue_t *queue = ngx_queue_head(common->listen);
                 ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
