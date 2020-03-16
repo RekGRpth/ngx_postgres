@@ -144,7 +144,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
     ngx_array_t *array = NULL;
     size_t len = 0;
     for (PGnotify *notify; (notify = PQnotifies(common->conn)); PQfreemem(notify)) {
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify: relname=\"%s\", extra=\"%s\", be_pid=%i.", notify->relname, notify->extra, notify->be_pid);
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "relname=%s, extra=%s, be_pid=%i", notify->relname, notify->extra, notify->be_pid);
         if (!temp_pool && !(temp_pool = ngx_create_pool(NGX_DEFAULT_POOL_SIZE, common->connection->log))) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_create_pool"); return; }
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
@@ -154,6 +154,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
                 ngx_log_error(NGX_LOG_WARN, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_DECLINED");
                 if (common->listen) for (ngx_queue_t *queue = ngx_queue_head(common->listen); queue != ngx_queue_sentinel(common->listen); queue = ngx_queue_next(queue)) {
                     ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
+//                    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "channel = %V, command = %V", &listen->channel, &listen->command);
                     if (id.len == listen->channel.len && !ngx_strncasecmp(id.data, listen->channel.data, id.len)) {
                         if (!array && !(array = ngx_array_create(temp_pool, 1, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_array_create"); goto destroy; }
                         ngx_str_t *unlisten = ngx_array_push(array);
