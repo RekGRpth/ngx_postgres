@@ -57,6 +57,7 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     ngx_queue_init(&server->free);
     ngx_queue_init(&server->idle);
+    ngx_queue_init(&server->pd);
     ngx_queue_init(&server->peer);
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NULL; }

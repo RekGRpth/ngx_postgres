@@ -38,6 +38,7 @@ typedef struct {
     ngx_msec_t timeout;
     ngx_queue_t free;
     ngx_queue_t idle;
+    ngx_queue_t pd;
     ngx_queue_t peer;
     ngx_uint_t max_requests;
     ngx_uint_t max_save;
@@ -74,6 +75,7 @@ typedef struct {
     ngx_int_t status;
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
+    ngx_queue_t queue;
     ngx_str_t sql;
     ngx_uint_t hash;
     ngx_uint_t nParams;

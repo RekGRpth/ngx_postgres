@@ -99,6 +99,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (pd->common.server->max_save && !pd->common.server->single && ngx_postgres_peer_multi(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
     if (pd->common.server->save >= pd->common.server->max_save) {
         if (pd->common.server->reject) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "max_save"); return NGX_DECLINED; }
+        else { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "queue peer %p", pd); ngx_queue_insert_tail(&pd->common.server->pd, &pd->queue); return NGX_AGAIN; }
     }
     if (ngx_postgres_connect(pd, peer) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_postgres_connect != NGX_OK"); return NGX_DECLINED; }
     pd->common.server->save++; /* take spot in keepalive connection pool */
