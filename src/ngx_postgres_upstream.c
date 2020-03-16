@@ -128,7 +128,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (pd->common.server->max_save && !pd->common.server->single && ngx_postgres_peer_multi(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
     if (pd->common.server->save >= pd->common.server->max_save) {
         if (pd->common.server->reject) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "max_save"); return NGX_DECLINED; }
-        else { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "queue peer %p", pd); ngx_queue_insert_tail(&pd->common.server->pd, &pd->queue); return NGX_AGAIN; }
+        else { ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "queue peer %p", pd); ngx_queue_insert_tail(&pd->common.server->pd, &pd->queue); return NGX_AGAIN; }
     }
     return ngx_postgres_connect(pd);
 }
@@ -311,6 +311,12 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     if (listen) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
         if (!PQsendQuery(common->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery(%s) and %s", listen, PQerrorMessageMy(common->conn)); }
+    }
+    if (!ngx_queue_empty(&common->server->pd)) {
+        ngx_queue_t *queue = ngx_queue_head(&common->server->pd);
+        ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "dequeue peer %p", pd);
+        ngx_queue_remove(&pd->queue);
     }
 }
 
