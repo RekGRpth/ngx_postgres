@@ -89,9 +89,9 @@ static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes) {
 
 ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *r, ngx_url_t *url) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_main_conf_t *m = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
-    ngx_http_upstream_srv_conf_t **s = m->upstreams.elts;
-    for (ngx_uint_t i = 0; i < m->upstreams.nelts; i++) if (s[i]->host.len == url->host.len && !ngx_strncasecmp(s[i]->host.data, url->host.data, url->host.len)) return s[i];
+    ngx_http_upstream_main_conf_t *conf = ngx_http_get_module_main_conf(r, ngx_http_upstream_module);
+    ngx_http_upstream_srv_conf_t **elts = conf->upstreams.elts;
+    for (ngx_uint_t i = 0; i < conf->upstreams.nelts; i++) if (elts[i]->host.len == url->host.len && !ngx_strncasecmp(elts[i]->host.data, url->host.data, url->host.len)) return elts[i];
     return NULL;
 }
 
