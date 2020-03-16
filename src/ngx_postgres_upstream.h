@@ -73,6 +73,7 @@ typedef struct {
     ngx_flag_t failed;
     ngx_http_request_t *request;
     ngx_int_t status;
+    ngx_peer_connection_t *pc;
     ngx_postgres_common_t common;
     ngx_postgres_peer_t *peer;
     ngx_postgres_result_t result;
