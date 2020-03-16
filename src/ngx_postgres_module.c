@@ -147,9 +147,9 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
 static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
     ngx_http_upstream_srv_conf_t *upstream_srv_conf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
     if (!upstream_srv_conf->servers && !(upstream_srv_conf->servers = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_server_t)))) return "!ngx_array_create";
-    ngx_postgres_upstream_t *server = ngx_array_push(upstream_srv_conf->servers);
-    if (!server) return "!ngx_array_push";
-    ngx_memzero(server, sizeof(ngx_postgres_upstream_t));
+    ngx_postgres_upstream_t *upstream = ngx_array_push(upstream_srv_conf->servers);
+    if (!upstream) return "!ngx_array_push";
+    ngx_memzero(upstream, sizeof(ngx_postgres_upstream_t));
     ngx_str_t *elts = cf->args->elts;
     size_t len = 0;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
@@ -206,25 +206,25 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         if (url.err) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "ngx_parse_url != NGX_OK and %s %V:%i", url.err, &url.url, url.default_port); return NGX_CONF_ERROR; }
         return "ngx_parse_url != NGX_OK";
     }
-    server->addrs = url.addrs;
-    server->naddrs = url.naddrs;
-    server->family = url.family;
-    if (host && server->family != AF_UNIX) arg++;
-    if (!(server->keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) return "!ngx_pnalloc";
-    if (!(server->values = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) return "!ngx_pnalloc";
+    upstream->addrs = url.addrs;
+    upstream->naddrs = url.naddrs;
+    upstream->family = url.family;
+    if (host && upstream->family != AF_UNIX) arg++;
+    if (!(upstream->keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) return "!ngx_pnalloc";
+    if (!(upstream->values = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) return "!ngx_pnalloc";
     arg = 0;
-    server->keywords[arg] = server->family == AF_UNIX ? "host" : "hostaddr";
+    upstream->keywords[arg] = upstream->family == AF_UNIX ? "host" : "hostaddr";
     arg++;
-    server->keywords[arg] = "fallback_application_name";
-    server->values[arg] = "nginx";
+    upstream->keywords[arg] = "fallback_application_name";
+    upstream->values[arg] = "nginx";
     arg++;
-    server->keywords[arg] = "options";
-    server->values[arg] = (const char *)options;
-    if (host && server->family != AF_UNIX) {
+    upstream->keywords[arg] = "options";
+    upstream->values[arg] = (const char *)options;
+    if (host && upstream->family != AF_UNIX) {
         arg++;
-        server->keywords[arg] = "host";
-        if (!(server->values[arg] = ngx_pnalloc(cf->pool, url.host.len + 1))) return "!ngx_pnalloc";
-        (void) ngx_cpystrn((u_char *)server->values[arg], url.host.data, url.host.len + 1);
+        upstream->keywords[arg] = "host";
+        if (!(upstream->values[arg] = ngx_pnalloc(cf->pool, url.host.len + 1))) return "!ngx_pnalloc";
+        (void) ngx_cpystrn((u_char *)upstream->values[arg], url.host.data, url.host.len + 1);
     }
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
         if (!opt->val) continue;
@@ -234,15 +234,15 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"options", sizeof("options") - 1)) continue;
         arg++;
         size_t keyword_len = ngx_strlen(opt->keyword);
-        if (!(server->keywords[arg] = ngx_pnalloc(cf->pool, keyword_len + 1))) return "!ngx_pnalloc";
-        (void) ngx_cpystrn((u_char *)server->keywords[arg], (u_char *)opt->keyword, keyword_len + 1);
+        if (!(upstream->keywords[arg] = ngx_pnalloc(cf->pool, keyword_len + 1))) return "!ngx_pnalloc";
+        (void) ngx_cpystrn((u_char *)upstream->keywords[arg], (u_char *)opt->keyword, keyword_len + 1);
         size_t val_len = ngx_strlen(opt->val);
-        if (!(server->values[arg] = ngx_pnalloc(cf->pool, val_len + 1))) return "!ngx_pnalloc";
-        (void) ngx_cpystrn((u_char *)server->values[arg], (u_char *)opt->val, val_len + 1);
+        if (!(upstream->values[arg] = ngx_pnalloc(cf->pool, val_len + 1))) return "!ngx_pnalloc";
+        (void) ngx_cpystrn((u_char *)upstream->values[arg], (u_char *)opt->val, val_len + 1);
     }
     arg++;
-    server->keywords[arg] = NULL;
-    server->values[arg] = NULL;
+    upstream->keywords[arg] = NULL;
+    upstream->values[arg] = NULL;
     PQconninfoFree(opts);
     upstream_srv_conf->peer.init_upstream = ngx_postgres_peer_init_upstream;
     return NGX_CONF_OK;
