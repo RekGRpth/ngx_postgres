@@ -185,8 +185,12 @@ again:
     const char *charset = PQparameterStatus(pd->common.conn, "client_encoding");
     if (charset) {
         pd->result.charset.len = ngx_strlen(charset);
-        if (pd->result.charset.len == sizeof("UTF8") - 1 && !ngx_strncasecmp((u_char *)charset, (u_char *)"UTF8", sizeof("UTF8") - 1)) {
+        if (pd->result.charset.len == sizeof("utf8") - 1 && !ngx_strncasecmp((u_char *)charset, (u_char *)"utf8", sizeof("utf8") - 1)) {
             ngx_str_set(&pd->result.charset, "utf-8");
+        } else if (pd->result.charset.len == sizeof("windows1251") - 1 && !ngx_strncasecmp((u_char *)charset, (u_char *)"windows1251", sizeof("windows1251") - 1)) {
+            ngx_str_set(&pd->result.charset, "windows-1251");
+        } else if (pd->result.charset.len == sizeof("koi8r") - 1 && !ngx_strncasecmp((u_char *)charset, (u_char *)"koi8r", sizeof("koi8r") - 1)) {
+            ngx_str_set(&pd->result.charset, "koi8-r");
         } else {
             if (!(pd->result.charset.data = ngx_pnalloc(r->pool, pd->result.charset.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             ngx_memcpy(pd->result.charset.data, charset, pd->result.charset.len);
