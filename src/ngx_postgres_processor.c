@@ -53,10 +53,9 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                     PQfreemem(str);
                     ids[i] = id;
                     if (!i && query->listen) {
-                        ngx_http_core_main_conf_t *cmcf = ngx_http_get_module_main_conf(r, ngx_http_core_module);
-                        ngx_http_variable_t *v = cmcf->variables.elts;
-                        if (!(channel.data = ngx_pstrdup(pd->common.connection->pool, &v[elts[i]].name))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pstrdup"); return NGX_ERROR; }
-                        channel.len = v[elts[i]].name.len;
+                        channel.len = value->len;
+                        if (!(channel.data = ngx_pnalloc(pd->common.connection->pool, channel.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                        ngx_memcpy(channel.data, value->data, value->len);
                         command.len = sizeof("UNLISTEN ") - 1 + id.len;
                         if (!(command.data = ngx_pnalloc(pd->common.connection->pool, command.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
                         command.len = ngx_snprintf(command.data, command.len, "UNLISTEN %V", &id) - command.data;
