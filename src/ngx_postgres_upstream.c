@@ -156,7 +156,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
                 if (common->listen) for (ngx_queue_t *queue = ngx_queue_head(common->listen); queue != ngx_queue_sentinel(common->listen); queue = ngx_queue_next(queue)) {
                     ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
 //                    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "channel = %V, command = %V", &listen->channel, &listen->command);
-                    if (id.len == listen->channel.len && !ngx_strncasecmp(id.data, listen->channel.data, id.len)) {
+                    if (id.len == listen->channel.len && !ngx_strncmp(id.data, listen->channel.data, id.len)) {
                         if (!array && !(array = ngx_array_create(temp_pool, 1, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_array_create"); goto destroy; }
                         ngx_str_t *unlisten = ngx_array_push(array);
                         if (!listen) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_array_push"); goto destroy; }
@@ -237,7 +237,7 @@ static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t 
         }
         for (ngx_queue_t *queue_ps = ngx_queue_head(ps->common.listen); queue_ps != ngx_queue_sentinel(ps->common.listen); queue_ps = ngx_queue_next(queue_ps)) {
             ngx_postgres_listen_t *listen_ps = ngx_queue_data(queue_ps, ngx_postgres_listen_t, queue);
-            if (listen_ps->channel.len == listen_pd->channel.len && !ngx_strncasecmp(listen_ps->channel.data, listen_pd->channel.data, listen_pd->channel.len)) goto cont;
+            if (listen_ps->channel.len == listen_pd->channel.len && !ngx_strncmp(listen_ps->channel.data, listen_pd->channel.data, listen_pd->channel.len)) goto cont;
         }
         if (!array && !(array = ngx_array_create(r->pool, 1, sizeof(ngx_postgres_listen_t)))) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_array_create"); return NULL; }
         ngx_postgres_listen_t *listen = ngx_array_push(array);

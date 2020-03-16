@@ -85,7 +85,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 }
                 for (ngx_queue_t *queue = ngx_queue_head(pd->common.listen); queue != ngx_queue_sentinel(pd->common.listen); queue = ngx_queue_next(queue)) {
                     ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
-                    if (listen->channel.len == channel.len && !ngx_strncasecmp(listen->channel.data, channel.data, channel.len)) goto cont;
+                    if (listen->channel.len == channel.len && !ngx_strncmp(listen->channel.data, channel.data, channel.len)) goto cont;
                 }
                 ngx_postgres_listen_t *listen = ngx_pcalloc(pd->common.connection->pool, sizeof(ngx_postgres_listen_t));
                 if (!listen) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
