@@ -478,18 +478,6 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
 }
 
 
-void ngx_postgres_output_error(ngx_http_request_t *r) {
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
-    if (!pd->result.error.len) return;
-    if (!r->header_sent) {
-        ngx_http_clear_content_length(r);
-        r->headers_out.status = pd->status ? ngx_abs(pd->status) : NGX_HTTP_OK;
-        ngx_int_t rc = ngx_http_send_header(r);
-        if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return;
-    }
-}
-
-
 void ngx_postgres_output_chain(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     if (!r->header_sent) {
