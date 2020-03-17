@@ -221,10 +221,10 @@ static ngx_int_t ngx_postgres_get_ack(ngx_http_request_t *r) {
     if (!PQconsumeInput(pd->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
     if (PQisBusy(pd->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); pd->common.state = state_db_ack; return NGX_AGAIN; }
     if (pd->common.connection->read->timer_set) ngx_del_timer(pd->common.connection->read); /* remove result timeout */
-    PGresult *res = PQgetResult(pd->common.conn);
-    if (res) {
+    if ((pd->result.res = PQgetResult(pd->common.conn))) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQgetResult");
-        PQclear(res);
+        ngx_postgres_variable_set2(r);
+        PQclear(pd->result.res);
         pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     return ngx_postgres_done(r);
