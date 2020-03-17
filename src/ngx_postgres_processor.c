@@ -104,6 +104,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     for (PGresult *res; (res = PQgetResult(pd->common.conn)); PQclear(res)) {
         if (PQresultStatus(res) == PGRES_FATAL_ERROR) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res));
+            ngx_postgres_variable_set2(r);
             PQclear(res);
             pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
             if (pd->stmtName && pd->common.prepare) {
@@ -240,6 +241,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetResult and %s", PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
     if (PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessageMy(res));
+        ngx_postgres_variable_set2(r);
         PQclear(res);
         pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         goto ret;

@@ -113,13 +113,20 @@ ngx_int_t ngx_postgres_variable_set2(ngx_http_request_t *r) {
     pd->result.ntuples = PQntuples(pd->result.res);
     pd->result.nfields = PQnfields(pd->result.res);
     const char *cmdTuples = PQcmdTuples(pd->result.res);
-    pd->result.cmdTuples.len = ngx_strlen(cmdTuples);
-    if (!(pd->result.cmdTuples.data = ngx_pnalloc(r->pool, pd->result.cmdTuples.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-    ngx_memcpy(pd->result.cmdTuples.data, cmdTuples, pd->result.cmdTuples.len);
+    if (cmdTuples && (pd->result.cmdTuples.len = ngx_strlen(cmdTuples))) {
+        if (!(pd->result.cmdTuples.data = ngx_pnalloc(r->pool, pd->result.cmdTuples.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+        ngx_memcpy(pd->result.cmdTuples.data, cmdTuples, pd->result.cmdTuples.len);
+    }
     const char *cmdStatus = PQcmdStatus(pd->result.res);
-    pd->result.cmdStatus.len = ngx_strlen(cmdStatus);
-    if (!(pd->result.cmdStatus.data = ngx_pnalloc(r->pool, pd->result.cmdStatus.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-    ngx_memcpy(pd->result.cmdStatus.data, cmdStatus, pd->result.cmdStatus.len);
+    if (cmdStatus && (pd->result.cmdStatus.len = ngx_strlen(cmdStatus))) {
+        if (!(pd->result.cmdStatus.data = ngx_pnalloc(r->pool, pd->result.cmdStatus.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+        ngx_memcpy(pd->result.cmdStatus.data, cmdStatus, pd->result.cmdStatus.len);
+    }
+    const char *error = PQresultErrorMessageMy(pd->result.res);
+    if (error && (pd->result.error.len = ngx_strlen(error))) {
+        if (!(pd->result.error.data = ngx_pnalloc(r->pool, pd->result.error.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+        ngx_memcpy(pd->result.error.data, error, pd->result.error.len);
+    }
     return NGX_OK;
 }
 
