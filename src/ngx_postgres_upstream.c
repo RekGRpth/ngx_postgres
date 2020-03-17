@@ -5,6 +5,38 @@
 #include "ngx_postgres_upstream.h"
 
 
+/*static void ngx_http_upstream_handler(ngx_event_t *ev) {
+    ngx_connection_t     *c;
+    ngx_http_request_t   *r;
+    ngx_http_upstream_t  *u;
+
+    c = ev->data;
+    r = c->data;
+
+    u = r->upstream;
+    c = r->connection;
+
+    ngx_http_set_log_request(c->log, r);
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http upstream request: \"%V?%V\"", &r->uri, &r->args);
+
+    if (ev->delayed && ev->timedout) {
+        ev->delayed = 0;
+        ev->timedout = 0;
+    }
+
+    if (ev->write) {
+        u->write_event_handler(r, u);
+
+    } else {
+        u->read_event_handler(r, u);
+    }
+
+    ngx_http_run_posted_requests(c);
+}*/
+
+
 static void ngx_postgres_idle_to_free(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
@@ -20,6 +52,8 @@ static void ngx_postgres_idle_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     pc->connection->log_error = pc->log_error;
     pc->connection->read->log = pc->log;
     pc->connection->write->log = pc->log;
+//    pc->connection->write->handler = ngx_http_upstream_handler;
+//    pc->connection->read->handler = ngx_http_upstream_handler;
     if (pc->connection->pool) pc->connection->pool->log = pc->log;
     pc->name = &pd->common.name;
     pc->sockaddr = pd->common.sockaddr;
@@ -279,6 +313,7 @@ static void ngx_postgres_free_to_idle(ngx_postgres_data_t *pd, ngx_postgres_save
     common->connection->write->log = common->connection->log;
     if (common->connection->pool) common->connection->pool->log = common->connection->log;
     if (common->server->timeout) {
+        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ps->timeout.log = common->connection->log;
         ps->timeout.data = common->connection;
         ps->timeout.handler = ngx_postgres_timeout;
@@ -302,7 +337,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty");
         ngx_queue_t *queue = ngx_queue_head(&common->server->idle);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
+//        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         if (ngx_http_push_stream_add_msg_to_channel_my && ngx_http_push_stream_delete_channel_my) listen = ngx_postgres_listen(pd, ps);
         ngx_postgres_free_connection(&ps->common, 1);
     } else {
@@ -320,9 +355,24 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_http_request_t *r = pd->request;
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "dequeue peer %p", pd);
         ngx_queue_remove(&pd->queue);
-        ngx_peer_connection_t *pc = &r->upstream->peer;
+        ngx_http_upstream_init(r);
+        /* override the read/write event handler to our own */
         if (r->upstream->reinit_request(r) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "reinit_request != NGX_OK"); }
-        if (ngx_postgres_peer_get(pc, pc->data) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_postgres_peer_get != NGX_OK"); }
+//        r->upstream->write_event_handler = ngx_postgres_write_event_handler;
+//        r->upstream->read_event_handler = ngx_postgres_read_event_handler;
+        /* a bit hack-ish way to return error response (clean-up part) */
+/*        if (r->upstream->peer.connection && !r->upstream->peer.connection->fd) {
+            if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write);
+            if (r->upstream->peer.connection->pool) {
+                ngx_destroy_pool(r->upstream->peer.connection->pool);
+                r->upstream->peer.connection->pool = NULL;
+            }
+            ngx_free_connection(r->upstream->peer.connection);
+            r->upstream->peer.connection = NULL;
+            ngx_postgres_finalize_upstream(r, r->upstream, NGX_HTTP_SERVICE_UNAVAILABLE);
+        }*/
+//        ngx_peer_connection_t *pc = &r->upstream->peer;
+//        if (ngx_postgres_peer_get(pc, pc->data) != NGX_AGAIN) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_postgres_peer_get != NGX_AGAIN"); }
     }
 }
 
