@@ -161,7 +161,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
                     }
                 }
                 break;
-            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify ok"); break;
+            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_OK"); break;
             default: ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == unknown"); break;
         }
         ngx_destroy_pool(temp_pool);
@@ -177,7 +177,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
         }
         *p = '\0';
         if (!PQsendQuery(common->conn, (const char *)unlisten)) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!PQsendQuery(%s) and %s", unlisten, PQerrorMessageMy(common->conn)); }
-        else { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s sent successfully", unlisten); }
+        else { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "PQsendQuery(%s)", unlisten); }
         ngx_pfree(common->connection->pool, unlisten);
     }
 destroy:
@@ -267,7 +267,7 @@ static void ngx_postgres_free_to_idle(ngx_postgres_data_t *pd, ngx_postgres_save
     ngx_postgres_common_t *common = &pd->common;
     ngx_queue_remove(&ps->queue);
     ngx_queue_insert_tail(&common->server->idle, &ps->queue);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "free keepalive peer: saving connection %p", common->connection);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connection = %p", common->connection);
     pc->connection = NULL;
     ps->common = pd->common;
     common->connection->data = ps;
