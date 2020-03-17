@@ -313,7 +313,7 @@ static void ngx_postgres_free_to_idle(ngx_postgres_data_t *pd, ngx_postgres_save
     common->connection->write->log = common->connection->log;
     if (common->connection->pool) common->connection->pool->log = common->connection->log;
     if (common->server->timeout) {
-        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
+//        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ps->timeout.log = common->connection->log;
         ps->timeout.data = common->connection;
         ps->timeout.handler = ngx_postgres_timeout;
@@ -337,7 +337,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty");
         ngx_queue_t *queue = ngx_queue_head(&common->server->idle);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-//        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
+        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         if (ngx_http_push_stream_add_msg_to_channel_my && ngx_http_push_stream_delete_channel_my) listen = ngx_postgres_listen(pd, ps);
         ngx_postgres_free_connection(&ps->common, 1);
     } else {
