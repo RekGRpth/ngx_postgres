@@ -14,6 +14,7 @@ typedef struct {
     ngx_flag_t string;
     ngx_postgres_handler_pt handler;
     ngx_str_t null;
+    size_t size;
     u_char delimiter;
     u_char escape;
     u_char quote;
