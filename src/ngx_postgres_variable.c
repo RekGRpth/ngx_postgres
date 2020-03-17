@@ -70,6 +70,19 @@ static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_var
 }
 
 
+static ngx_int_t ngx_postgres_variable_error(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    v->not_found = 1;
+    if (!pd || !pd->result.error.len) return NGX_OK;
+    v->valid = 1;
+    v->no_cacheable = 0;
+    v->not_found = 0;
+    v->len = pd->result.error.len;
+    v->data = pd->result.error.data;
+    return NGX_OK;
+}
+
+
 static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
@@ -95,8 +108,7 @@ typedef struct {
 } ngx_postgres_variable_t;
 
 
-ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+ngx_int_t ngx_postgres_variable_set2(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     pd->result.ntuples = PQntuples(pd->result.res);
     pd->result.nfields = PQnfields(pd->result.res);
@@ -108,8 +120,16 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     pd->result.cmdStatus.len = ngx_strlen(cmdStatus);
     if (!(pd->result.cmdStatus.data = ngx_pnalloc(r->pool, pd->result.cmdStatus.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
     ngx_memcpy(pd->result.cmdStatus.data, cmdStatus, pd->result.cmdStatus.len);
+    return NGX_OK;
+}
+
+
+ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
+    if (ngx_postgres_variable_set2(r) != NGX_OK) return NGX_ERROR;
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (!location->variables.elts) return NGX_OK;
     ngx_postgres_variable_t *variable = location->variables.elts;
+    ngx_postgres_data_t *pd = r->upstream->peer.data;
     ngx_str_t *elts = pd->variables.elts;
     for (ngx_uint_t i = 0; i < location->variables.nelts; i++) {
         if (variable[i].col == NGX_ERROR) {
@@ -184,6 +204,12 @@ static ngx_http_variable_t ngx_postgres_module_variables[] = {
   { .name = ngx_string("postgres_query"),
     .set_handler = NULL,
     .get_handler = ngx_postgres_variable_query,
+    .data = 0,
+    .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
+    .index = 0 },
+  { .name = ngx_string("postgres_error"),
+    .set_handler = NULL,
+    .get_handler = ngx_postgres_variable_error,
     .data = 0,
     .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
     .index = 0 },

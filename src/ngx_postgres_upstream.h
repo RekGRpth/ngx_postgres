@@ -64,6 +64,7 @@ typedef struct {
     ngx_int_t ntuples;
     ngx_str_t cmdStatus;
     ngx_str_t cmdTuples;
+    ngx_str_t error;
     PGresult *res;
 } ngx_postgres_result_t;
 
