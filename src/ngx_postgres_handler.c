@@ -23,7 +23,7 @@ ngx_int_t ngx_postgres_test_connect(ngx_connection_t *c) {
 
 
 static void ngx_postgres_write_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s (%p ~ %p)", __func__, r->upstream, u);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
     if (u->peer.connection->write->timedout) { ngx_postgres_next_upstream(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); return; }
     if (ngx_postgres_test_connect(u->peer.connection) != NGX_OK) { ngx_postgres_next_upstream(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); return; }
@@ -32,7 +32,7 @@ static void ngx_postgres_write_event_handler(ngx_http_request_t *r, ngx_http_ups
 
 
 static void ngx_postgres_read_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s (%p ~ %p)", __func__, r->upstream, u);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
     if (u->peer.connection->read->timedout) { ngx_postgres_next_upstream(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); return; }
     if (ngx_postgres_test_connect(u->peer.connection) != NGX_OK) { ngx_postgres_next_upstream(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); return; }
@@ -141,6 +141,8 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     r->upstream->write_event_handler = ngx_postgres_write_event_handler;
     r->upstream->read_event_handler = ngx_postgres_read_event_handler;
     /* a bit hack-ish way to return error response (clean-up part) */
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "r->main->count = %i", r->main->count);
+    if (!r->upstream->peer.connection) return NGX_OK;
     /*if (r->upstream->peer.connection && !r->upstream->peer.connection->fd) {
         if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write);
         if (r->upstream->peer.connection->pool) {
@@ -156,7 +158,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
 
 
 void ngx_postgres_finalize_upstream(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t rc) {
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "finalize http upstream request: %i (%p ~ %p)", rc, r->upstream, u);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
     if (u->cleanup) *u->cleanup = NULL;
     if (u->resolved && u->resolved->ctx) {
         ngx_resolve_name_done(u->resolved->ctx);
@@ -169,7 +171,7 @@ void ngx_postgres_finalize_upstream(ngx_http_request_t *r, ngx_http_upstream_t *
     if (u->finalize_request) u->finalize_request(r, rc);
     if (u->peer.free) u->peer.free(&u->peer, u->peer.data, 0);
     if (u->peer.connection) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "close http upstream connection: %i", u->peer.connection->fd);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "fd = %i", u->peer.connection->fd);
         if (u->peer.connection->pool) {
             ngx_destroy_pool(u->peer.connection->pool);
             u->peer.connection->pool = NULL;
@@ -177,7 +179,7 @@ void ngx_postgres_finalize_upstream(ngx_http_request_t *r, ngx_http_upstream_t *
         ngx_close_connection(u->peer.connection);
     }
     u->peer.connection = NULL;
-    if (u->pipe && u->pipe->temp_file) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http upstream temp fd: %i", u->pipe->temp_file->file.fd); }
+    if (u->pipe && u->pipe->temp_file) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "fd = %i", u->pipe->temp_file->file.fd); }
     if (u->header_sent && (rc == NGX_ERROR || rc >= NGX_HTTP_SPECIAL_RESPONSE)) rc = 0;
     if (rc == NGX_DECLINED) return;
     if (!rc) rc = ngx_http_send_special(r, NGX_HTTP_LAST);
@@ -186,7 +188,7 @@ void ngx_postgres_finalize_upstream(ngx_http_request_t *r, ngx_http_upstream_t *
 
 
 void ngx_postgres_next_upstream(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t ft_type) {
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "http next upstream, %xi (%p ~ %p)", ft_type, r->upstream, u);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ft_type = %xi", ft_type);
     ngx_uint_t state = ft_type == NGX_HTTP_UPSTREAM_FT_HTTP_404 ? NGX_PEER_NEXT : NGX_PEER_FAILED;
     if (ft_type != NGX_HTTP_UPSTREAM_FT_NOLIVE) u->peer.free(&u->peer, u->peer.data, state);
     if (ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT) ngx_log_error(NGX_LOG_ERR, r->connection->log, NGX_ETIMEDOUT, "ft_type == NGX_HTTP_UPSTREAM_FT_TIMEOUT");
@@ -203,7 +205,7 @@ void ngx_postgres_next_upstream(ngx_http_request_t *r, ngx_http_upstream_t *u, n
         if (!u->peer.tries || !(u->conf->next_upstream & ft_type)) { ngx_postgres_finalize_upstream(r, u, status); return; }
     }
     if (u->peer.connection) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "close http upstream connection: %i", u->peer.connection->fd);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "fd = %i", u->peer.connection->fd);
         if (u->peer.connection->pool) {
             ngx_destroy_pool(u->peer.connection->pool);
             u->peer.connection->pool = NULL;
