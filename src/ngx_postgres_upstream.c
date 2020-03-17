@@ -355,7 +355,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_http_request_t *r = pd->request;
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "dequeue peer %p", pd);
         ngx_queue_remove(&pd->queue);
-        ngx_http_upstream_init(r);
+        ngx_http_upstream_re_init(r);
         /* override the read/write event handler to our own */
         if (r->upstream->reinit_request(r) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "reinit_request != NGX_OK"); }
 //        r->upstream->write_event_handler = ngx_postgres_write_event_handler;
