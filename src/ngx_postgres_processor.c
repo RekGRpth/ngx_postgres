@@ -101,11 +101,11 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         }
         pd->common.state = pd->common.server->prepare ? state_db_prepare : state_db_query;
     }
-    for (PGresult *res; (res = PQgetResult(pd->common.conn)); PQclear(res)) {
-        if (PQresultStatus(res) == PGRES_FATAL_ERROR) {
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res));
+    for (; (pd->result.res = PQgetResult(pd->common.conn)); PQclear(pd->result.res)) {
+        if (PQresultStatus(pd->result.res) == PGRES_FATAL_ERROR) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
             ngx_postgres_variable_set2(r);
-            PQclear(res);
+            PQclear(pd->result.res);
             pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
             if (pd->stmtName && pd->common.prepare) {
                 for (ngx_queue_t *queue = ngx_queue_head(pd->common.prepare); queue != ngx_queue_sentinel(pd->common.prepare); queue = ngx_queue_next(queue)) {
@@ -115,7 +115,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             }
             return ngx_postgres_done(r);
         }
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "received result on send query: %s: %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessageMy(res));
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "received result on send query: %s: %s", PQresStatus(PQresultStatus(pd->result.res)), PQresultErrorMessageMy(pd->result.res));
     }
     ngx_uint_t hash = 0;
     if (!pd->stmtName) {
@@ -237,19 +237,17 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     if (pd->common.connection->write->timer_set) ngx_del_timer(pd->common.connection->write); /* remove connection timeout from re-used keepalive connection */
     if (!PQconsumeInput(pd->common.conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
     if (PQisBusy(pd->common.conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
-    PGresult *res = PQgetResult(pd->common.conn);
-    if (!res) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetResult and %s", PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
-    if (PQresultStatus(res) != PGRES_COMMAND_OK && PQresultStatus(res) != PGRES_TUPLES_OK) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessageMy(res));
+    if (!(pd->result.res = PQgetResult(pd->common.conn))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetResult and %s", PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
+    if (PQresultStatus(pd->result.res) != PGRES_COMMAND_OK && PQresultStatus(pd->result.res) != PGRES_TUPLES_OK) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQresultErrorMessageMy(pd->result.res));
         ngx_postgres_variable_set2(r);
-        PQclear(res);
+        PQclear(pd->result.res);
         pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         goto ret;
     }
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "result received successfully, cols:%i rows:%i", PQnfields(res), PQntuples(res));
-    pd->result.res = res;
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "result received successfully, cols:%i rows:%i", PQnfields(pd->result.res), PQntuples(pd->result.res));
     ngx_int_t rc = ngx_postgres_process_response(r);
-    PQclear(res);
+    PQclear(pd->result.res);
     if (rc != NGX_DONE) return rc;
 ret:
     return ngx_postgres_get_ack(r);
