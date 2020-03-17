@@ -317,10 +317,11 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     if (!ngx_queue_empty(&common->server->pd)) {
         ngx_queue_t *queue = ngx_queue_head(&common->server->pd);
         ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
-        ngx_log_error(NGX_LOG_INFO, pd->request->connection->log, 0, "dequeue peer %p", pd);
+        ngx_http_request_t *r = pd->request;
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "dequeue peer %p", pd);
         ngx_queue_remove(&pd->queue);
-        ngx_postgres_idle_to_free(pd, ps);
-        ngx_postgres_process_events(pd->request);
+        ngx_peer_connection_t *pc = &r->upstream->peer;
+        if (ngx_postgres_peer_get(pc, pc->data) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_postgres_peer_get != NGX_OK"); }
     }
 }
 

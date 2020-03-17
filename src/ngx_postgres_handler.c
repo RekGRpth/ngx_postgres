@@ -62,7 +62,7 @@ static void ngx_postgres_abort_request(ngx_http_request_t *r) {
 
 
 static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", __func__, rc);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
     if (rc == NGX_OK) ngx_postgres_output_chain(r);
 }
 
