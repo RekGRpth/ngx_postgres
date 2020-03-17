@@ -321,6 +321,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "dequeue peer %p", pd);
         ngx_queue_remove(&pd->queue);
         ngx_peer_connection_t *pc = &r->upstream->peer;
+        if (r->upstream->reinit_request(r) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "reinit_request != NGX_OK"); }
         if (ngx_postgres_peer_get(pc, pc->data) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_postgres_peer_get != NGX_OK"); }
     }
 }
