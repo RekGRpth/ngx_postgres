@@ -130,7 +130,7 @@ ngx_int_t ngx_postgres_variable_set2(ngx_http_request_t *r) {
         if (!(pd->result.cmdStatus.data = ngx_pnalloc(r->pool, pd->result.cmdStatus.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
         ngx_memcpy(pd->result.cmdStatus.data, cmdStatus, pd->result.cmdStatus.len);
     }
-    const char *error = PQresultErrorMessageMy(pd->result.res);
+    const char *error = PQresultErrorMessage(pd->result.res);
     if (error && (pd->result.error.len = ngx_strlen(error))) {
         if (!(pd->result.error.data = ngx_pnalloc(r->pool, pd->result.error.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
         ngx_memcpy(pd->result.error.data, error, pd->result.error.len);
