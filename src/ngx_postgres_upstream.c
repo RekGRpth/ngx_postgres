@@ -20,6 +20,7 @@ static void ngx_postgres_idle_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     pc->connection->log_error = pc->log_error;
     pc->connection->read->log = pc->log;
     pc->connection->write->log = pc->log;
+    if (pc->connection->pool) pc->connection->pool->log = pc->log;
     pc->name = &pd->common.name;
     pc->sockaddr = pd->common.sockaddr;
     pc->socklen = pd->common.socklen;
@@ -103,6 +104,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pd->common.connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
     pd->common.connection->read->log = pc->log;
     pd->common.connection->write->log = pc->log;
+    if (pd->common.connection->pool) pd->common.connection->pool->log = pc->log;
     /* register the connection with postgres connection fd into the nginx event model */
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         if (ngx_add_conn(pd->common.connection) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_conn != NGX_OK"); goto invalid; }
@@ -129,6 +131,16 @@ static void ngx_postgres_write_handler(ngx_event_t *ev) {
 }
 
 
+static void ngx_destroy_pool_debug(ngx_pool_t *pool) {
+    for (ngx_pool_cleanup_t *c = pool->cleanup; c; c = c->next) if (c->handler) ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0, "run cleanup: %p", c);
+    for (ngx_pool_large_t *l = pool->large; l; l = l->next) ngx_log_debug1(NGX_LOG_DEBUG_ALLOC, pool->log, 0, "free: %p", l->alloc);
+    for (ngx_pool_t *p = pool, *n = pool->d.next; ; p = n, n = n->d.next) {
+        ngx_log_debug2(NGX_LOG_DEBUG_ALLOC, pool->log, 0, "free: %p, unused: %uz", p, p->d.end - p->d.last);
+        if (n == NULL) break;
+    }
+}
+
+
 static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
     ngx_postgres_common_t *common = &ps->common;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "%s", __func__);
@@ -137,10 +149,10 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
     for (PGnotify *notify; (notify = PQnotifies(common->conn)); PQfreemem(notify)) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "relname=%s, extra=%s, be_pid=%i", notify->relname, notify->extra, notify->be_pid);
         if (!ngx_http_push_stream_add_msg_to_channel_my) continue;
-        ngx_pool_t *temp_pool = ngx_create_pool(4096, common->connection->log);
-        if (!temp_pool) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_create_pool"); continue; }
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
+        ngx_pool_t *temp_pool = ngx_create_pool(id.len + text.len, common->connection->log);
+        if (!temp_pool) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_create_pool"); continue; }
         ngx_int_t rc = ngx_http_push_stream_add_msg_to_channel_my(common->connection->log, &id, &text, NULL, NULL, 0, temp_pool);
         ngx_destroy_pool(temp_pool);
         switch (rc) {
@@ -151,7 +163,13 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
                     ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
 //                    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "channel = %V, command = %V", &listen->channel, &listen->command);
                     if (id.len == listen->channel.len && !ngx_strncmp(id.data, listen->channel.data, id.len)) {
+                        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "common->connection->log = %p", common->connection->log);
+                        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "common->connection->pool = %p", common->connection->pool);
+                        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "common->connection->pool->max = %i", common->connection->pool->max);
+                        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "common->connection->pool->log = %p", common->connection->pool->log);
+                        ngx_destroy_pool_debug(common->connection->pool);
                         if (!array && !(array = ngx_array_create(common->connection->pool, 1, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_array_create"); break; }
+                        ngx_destroy_pool_debug(common->connection->pool);
                         ngx_str_t *unlisten = ngx_array_push(array);
                         if (!listen) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_array_push"); break; }
                         *unlisten = listen->command;
@@ -168,6 +186,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
     if (len && array && array->nelts) {
         u_char *unlisten = ngx_pnalloc(common->connection->pool, len + 2 * array->nelts - 1);
         if (!unlisten) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_pnalloc"); goto destroy; }
+        ngx_destroy_pool_debug(common->connection->pool);
         ngx_str_t *elts = array->elts;
         u_char *p = unlisten;
         for (ngx_uint_t i = 0; i < array->nelts; i++) {
@@ -276,6 +295,7 @@ static void ngx_postgres_free_to_idle(ngx_postgres_data_t *pd, ngx_postgres_save
     common->connection->log = common->server->log ? common->server->log : ngx_cycle->log;
     common->connection->read->log = common->connection->log;
     common->connection->write->log = common->connection->log;
+    if (common->connection->pool) common->connection->pool->log = common->connection->log;
     if (common->server->timeout) {
         ps->timeout.log = common->connection->log;
         ps->timeout.data = common->connection;
