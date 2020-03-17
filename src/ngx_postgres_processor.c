@@ -119,7 +119,11 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     }
     ngx_uint_t hash = 0;
     if (!pd->stmtName) {
-        if (!PQsendQueryParams(pd->common.conn, (const char *)pd->sql.data, pd->nParams, pd->paramTypes, (const char *const *)pd->paramValues, NULL, NULL, pd->resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryParams(%s) and %s", pd->sql.data, PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
+        if (pd->nParams) {
+            if (!PQsendQueryParams(pd->common.conn, (const char *)pd->sql.data, pd->nParams, pd->paramTypes, (const char *const *)pd->paramValues, NULL, NULL, pd->resultFormat)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryParams(%s) and %s", pd->sql.data, PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
+        } else {
+            if (!PQsendQuery(pd->common.conn, (const char *)pd->sql.data)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(%s) and %s", pd->sql.data, PQerrorMessageMy(pd->common.conn)); return NGX_ERROR; }
+        }
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query %s sent successfully", pd->sql.data);
     } else switch (pd->common.state) {
         case state_db_prepare:
