@@ -143,9 +143,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
         ngx_pool_t *temp_pool = ngx_create_pool(id.len + text.len, common->connection->log);
         if (!temp_pool) { ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "!ngx_create_pool"); continue; }
-        ngx_int_t rc = ngx_http_push_stream_add_msg_to_channel_my(common->connection->log, &id, &text, NULL, NULL, 0, temp_pool);
-        ngx_destroy_pool(temp_pool);
-        switch (rc) {
+        switch (ngx_http_push_stream_add_msg_to_channel_my(common->connection->log, &id, &text, NULL, NULL, 0, temp_pool)) {
             case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_ERROR"); break;
             case NGX_DECLINED:
                 ngx_log_error(NGX_LOG_WARN, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_DECLINED");
@@ -166,6 +164,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
             case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, common->connection->log, 0, "notify ok"); break;
             default: ngx_log_error(NGX_LOG_ERR, common->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == unknown"); break;
         }
+        ngx_destroy_pool(temp_pool);
     }
     if (len && array && array->nelts) {
         u_char *unlisten = ngx_pnalloc(common->connection->pool, len + 2 * array->nelts - 1);
