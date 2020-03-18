@@ -25,7 +25,6 @@ static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
 
 static void ngx_postgres_server_cleanup(void *data) {
     ngx_postgres_server_t *server = data;
-//    server->max_save = 0; /* just to be on the safe-side */
     while (!ngx_queue_empty(&server->save)) {
         ngx_queue_t *queue = ngx_queue_head(&server->save);
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
