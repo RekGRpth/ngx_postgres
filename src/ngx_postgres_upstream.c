@@ -283,9 +283,9 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
 //    if (c->read->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->read, NGX_READ_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
 //    if (c->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
     if (c->requests >= common->server->requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests"); return; }
-    ngx_http_upstream_t *u = r->upstream;
-    if (!u->keepalive) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!keepalive"); return; }
-    if (!u->request_body_sent) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!request_body_sent"); return; }
+//    ngx_http_upstream_t *u = r->upstream;
+//    if (!u->keepalive) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!keepalive"); return; }
+//    if (!u->request_body_sent) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!request_body_sent"); return; }
     if (ngx_terminate) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_terminate"); return; }
     if (ngx_exiting) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_exiting"); return; }
 //    if (ngx_handle_read_event(c->read, 0) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_handle_read_event != NGX_OK"); return; }
@@ -295,7 +295,6 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty(free)");
         ngx_queue_t *queue = ngx_queue_last(&common->server->save);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-//        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         if (ngx_http_push_stream_add_msg_to_channel_my && ngx_http_push_stream_delete_channel_my) listen = ngx_postgres_listen(pd, ps);
         ngx_postgres_free_connection(&ps->common, 1);
     } else {
