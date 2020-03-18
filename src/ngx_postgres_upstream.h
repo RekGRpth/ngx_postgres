@@ -75,6 +75,8 @@ typedef struct {
     ngx_str_t cmdStatus;
     ngx_str_t cmdTuples;
     ngx_str_t error;
+    ngx_str_t sfields;
+    ngx_str_t stuples;
     PGresult *res;
 } ngx_postgres_result_t;
 
