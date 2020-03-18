@@ -6,6 +6,7 @@
 
 
 static ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     if (pd->result.ntuples != 1 || pd->result.nfields != 1) {
         ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -222,6 +223,7 @@ static const char *PQftypeMy(Oid oid) {
 
 
 static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     if (!pd->result.ntuples || !pd->result.nfields) return NGX_DONE;
     size_t size = pd->response && (pd->response->buf->end - pd->response->buf->start > 0) ? 1 : 0;
@@ -360,16 +362,19 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
 
 
 static ngx_int_t ngx_postgres_output_text(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     return ngx_postgres_output_text_csv(r);
 }
 
 
 static ngx_int_t ngx_postgres_output_csv(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     return ngx_postgres_output_text_csv(r);
 }
 
 
 static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
@@ -481,6 +486,7 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
 
 
 void ngx_postgres_output_chain(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     if (!r->header_sent) {
         ngx_http_clear_content_length(r);
