@@ -79,7 +79,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 #ifdef NGX_YIELD
             if (server->cur_data < server->max_data) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "cur_data = %i", server->cur_data);
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
                 ngx_queue_insert_tail(&server->data, &pd->queue);
                 ngx_add_timer(&pd->timeout, server->timeout);
                 server->cur_data++;
