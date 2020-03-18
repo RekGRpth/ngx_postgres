@@ -237,11 +237,14 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
         case PGRES_FATAL_ERROR:
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
             ngx_postgres_variable_set2(r);
-            PQclear(pd->result.res);
             pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-            return ngx_postgres_done(r);
+            break;
         case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(r); break;
         default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQresultErrorMessageMy(pd->result.res)); break;
+    }
+    if (PQtransactionStatus(common->conn) != PQTRANS_IDLE) {
+        if (!PQsendQuery(common->conn, "COMMIT")) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(COMMIT)"); return NGX_ERROR; }
+        return NGX_AGAIN;
     }
     return rc != NGX_DONE ? rc : ngx_postgres_done(r);
 }
