@@ -243,7 +243,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
         case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(r); break;
         default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQresultErrorMessageMy(pd->result.res)); break;
     }
-    return rc;
+    return rc != NGX_DONE ? rc : ngx_postgres_done(r);
 }
 
 
