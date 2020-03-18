@@ -53,7 +53,6 @@ typedef struct {
     ngx_queue_t *prepare;
     ngx_str_t charset;
     ngx_str_t name;
-    ngx_uint_t requests;
     PGconn *conn;
     socklen_t socklen;
     struct sockaddr *sockaddr;
@@ -71,7 +70,6 @@ typedef struct {
 typedef struct {
     ngx_array_t variables;
     ngx_chain_t *response;
-    ngx_flag_t failed;
     ngx_http_request_t *request;
     ngx_int_t status;
     ngx_postgres_common_t common;

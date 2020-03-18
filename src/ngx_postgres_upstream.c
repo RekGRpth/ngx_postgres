@@ -53,7 +53,6 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_data_t *pd = pc->data;
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    pd->failed = 0;
     if (pd->common.server->max_cached && pd->common.server->single && ngx_postgres_peer_single(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
     ngx_queue_t *queue = ngx_queue_head(&pd->common.server->peer);
     ngx_postgres_peer_t *peer = ngx_queue_data(queue, ngx_postgres_peer_t, queue);
@@ -291,11 +290,11 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *common = &pd->common;
-    if (pd->failed || !common || !common->connection || r->upstream->headers_in.status_n != NGX_HTTP_OK) return;
+    if (!common || !common->connection || r->upstream->headers_in.status_n != NGX_HTTP_OK) return;
     if (common->connection->read->timer_set) ngx_del_timer(common->connection->read);
     if (common->connection->write->timer_set) ngx_del_timer(common->connection->write);
     if (common->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(common->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
-    if (common->server->requests && ++common->requests > common->server->requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests"); return; }
+    if (common->connection->requests >= common->server->requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests"); return; }
     u_char *listen = NULL;
     ngx_postgres_cache_t *ps;
     if (ngx_queue_empty(&common->server->free)) {
@@ -329,8 +328,9 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
 
 static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
-    ngx_postgres_data_t *pd = data;
-    if (state & NGX_PEER_FAILED) pd->failed = 1;
+    ngx_connection_t *c = pc->connection;
+    ngx_postgres_data_t *pd = pc->data;
+    if (state & NGX_PEER_FAILED || !c || c->read->eof || c->read->error || c->read->timedout || c->write->error || c->write->timedout); else
     if (pd->common.server->max_cached) ngx_postgres_free_peer(pd);
     if (pc->connection) ngx_postgres_free_connection(&pd->common, 1);
 }
