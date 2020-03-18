@@ -36,13 +36,13 @@ typedef struct {
     ngx_flag_t single;
     ngx_log_t *log;
     ngx_msec_t timeout;
-    ngx_queue_t cache;
     ngx_queue_t free;
     ngx_queue_t pd;
     ngx_queue_t peer;
-    ngx_uint_t max_cached;
+    ngx_queue_t save;
+    ngx_uint_t nsave;
     ngx_uint_t requests;
-    ngx_uint_t save;
+//    ngx_uint_t save;
 } ngx_postgres_server_t;
 
 typedef struct {
@@ -85,10 +85,10 @@ typedef struct {
 } ngx_postgres_data_t;
 
 typedef struct {
-    ngx_event_t timeout;
+//    ngx_event_t timeout;
     ngx_postgres_common_t common;
     ngx_queue_t queue;
-} ngx_postgres_cache_t;
+} ngx_postgres_save_t;
 
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *PQerrorMessageMy(const PGconn *conn);
