@@ -312,9 +312,9 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
 //    if (c->read->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->read, NGX_READ_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
 //    if (c->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
     ngx_postgres_server_t *server = common->server;
-    if (c->requests >= server->requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests"); return; }
-    if (ngx_terminate) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_terminate"); return; }
-    if (ngx_exiting) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_exiting"); return; }
+    if (c->requests >= server->requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests = %i", c->requests); return; }
+    if (ngx_terminate) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_terminate"); return; }
+    if (ngx_exiting) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_exiting"); return; }
     u_char *listen = NULL;
     ngx_postgres_save_t *ps;
     if (ngx_queue_empty(&server->free)) {
