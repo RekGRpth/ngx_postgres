@@ -244,6 +244,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     }
     if (PQtransactionStatus(common->conn) != PQTRANS_IDLE) {
         if (!PQsendQuery(common->conn, "COMMIT")) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(COMMIT)"); return NGX_ERROR; }
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQuery(COMMIT)");
         return NGX_AGAIN;
     }
     return rc != NGX_DONE ? rc : ngx_postgres_done(r);
