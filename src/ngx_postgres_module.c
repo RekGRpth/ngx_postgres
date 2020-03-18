@@ -243,7 +243,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
 
 static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_t *server = conf;
-    if (server->nsave) return "is duplicate";
+    if (server->nsave) return "duplicate";
     ngx_str_t *elts = cf->args->elts;
     ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
     if (n == NGX_ERROR || !n) return "ngx_atoi == NGX_ERROR";
@@ -256,7 +256,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             ngx_conf_enum_t *e = ngx_postgres_overflow_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[2].len && !ngx_strncasecmp(e[j].name.data, elts[2].data, elts[2].len)) { server->ignore = e[j].value; break; }
             if (!e[j].name.len) return "invalid overflow";
-        } else return "invalid parameter";
+        } else return "invalid name";
     }
     return NGX_CONF_OK;
 }
@@ -265,7 +265,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
 #ifdef NGX_YIELD
 static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_t *server = conf;
-    if (server->ndata) return "is duplicate";
+    if (server->ndata) return "duplicate";
     ngx_str_t *elts = cf->args->elts;
     ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
     if (n == NGX_ERROR || !n) return "ngx_atoi == NGX_ERROR";
@@ -277,7 +277,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             ngx_int_t n = ngx_parse_time(&elts[2], 0);
             if (n == NGX_ERROR) return "ngx_parse_time == NGX_ERROR";
             server->timeout = (ngx_msec_t)n;
-        } else return "invalid parameter";
+        } else return "invalid name";
     }
     return NGX_CONF_OK;
 }
@@ -286,7 +286,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    if (location->upstream.upstream || location->complex.value.data) return "is duplicate";
+    if (location->upstream.upstream || location->complex.value.data) return "duplicate";
     ngx_str_t *elts = cf->args->elts;
     if (!elts[1].len) return "empty upstream";
     ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);

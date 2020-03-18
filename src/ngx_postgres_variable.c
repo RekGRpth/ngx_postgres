@@ -277,7 +277,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         ngx_conf_enum_t *e = ngx_postgres_requirement_options;
         ngx_uint_t i;
         for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[4].len && !ngx_strncasecmp(e[i].name.data, elts[4].data, elts[4].len)) { variable->required = e[i].value; break; }
-        if (!e[i].name.len) return "invalid requirement option";
+        if (!e[i].name.len) return "invalid required";
     }
     return NGX_CONF_OK;
 }

@@ -540,12 +540,12 @@ ngx_conf_enum_t ngx_postgres_output_options[] = {
 
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    if (location->output.handler) return "is duplicate";
+    if (location->output.handler) return "duplicate";
     struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
     ngx_str_t *elts = cf->args->elts;
     ngx_uint_t i;
     for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[1].len && !ngx_strncasecmp(e[i].name.data, elts[1].data, elts[1].len)) { location->output.handler = e[i].handler; break; }
-    if (!e[i].name.len) return "invalid output format";
+    if (!e[i].name.len) return "invalid format";
     location->output.binary = e[i].binary;
     if (location->output.handler == ngx_postgres_output_text) {
         location->output.delimiter = '\t';
@@ -600,7 +600,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             else if (elts[i].len > 1) return "invalid escape";
             elts[i].data = &elts[i].data[sizeof("escape=") - 1];
             location->output.escape = *elts[i].data;
-        } else return "invalid parameter";
+        } else return "invalid name";
     }
     return NGX_CONF_OK;
 }
