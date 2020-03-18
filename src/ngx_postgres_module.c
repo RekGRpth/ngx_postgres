@@ -11,12 +11,6 @@
 #define NGX_CONF_TAKE34  (NGX_CONF_TAKE3|NGX_CONF_TAKE4)
 
 
-ngx_conf_enum_t ngx_postgres_mode_options[] = {
-    { ngx_string("multi"), 0 },
-    { ngx_string("single"), 1 },
-    { ngx_null_string, 0 }
-};
-
 ngx_conf_enum_t ngx_postgres_overflow_options[] = {
     { ngx_string("queue"), 0 },
     { ngx_string("reject"), 1 },
@@ -45,7 +39,6 @@ static void ngx_postgres_server_cleanup(void *data) {
     while (!ngx_queue_empty(&server->save)) {
         ngx_queue_t *queue = ngx_queue_head(&server->save);
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-//        if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ngx_postgres_free_connection(&ps->common, 0);
         ngx_queue_remove(&ps->queue);
     }
