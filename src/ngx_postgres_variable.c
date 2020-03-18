@@ -135,12 +135,12 @@ ngx_int_t ngx_postgres_variable_set2(ngx_http_request_t *r) {
         case PGRES_TUPLES_OK:
             result->ntuples = PQntuples(res);
             result->nfields = PQnfields(res);
-            if ((value = PQcmdTuples(res)) && !result->cmdTuples.len && (result->cmdTuples.len = ngx_strlen(value))) {
+            if ((value = PQcmdTuples(res)) && (result->cmdTuples.len = ngx_strlen(value))) {
                 if (!(result->cmdTuples.data = ngx_pnalloc(r->pool, result->cmdTuples.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
                 ngx_memcpy(result->cmdTuples.data, value, result->cmdTuples.len);
             } // fall through
         case PGRES_COMMAND_OK:
-            if ((value = PQcmdStatus(res)) && !result->cmdStatus.len && (result->cmdStatus.len = ngx_strlen(value))) {
+            if ((value = PQcmdStatus(res)) && (result->cmdStatus.len = ngx_strlen(value))) {
                 if (!(result->cmdStatus.data = ngx_pnalloc(r->pool, result->cmdStatus.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
                 ngx_memcpy(result->cmdStatus.data, value, result->cmdStatus.len);
             } // fall through
