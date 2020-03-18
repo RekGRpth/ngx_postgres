@@ -63,8 +63,8 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (server->nsave) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nsave");
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
-        if (server->ignore) {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ignore");
+        if (!server->reject) {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!reject");
         } else if (server->nfree >= server->nsave) {
             ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "nfree");
 #ifdef NGX_YIELD
