@@ -224,7 +224,7 @@ static const char *PQftypeMy(Oid oid) {
 static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     if (!pd->result.ntuples || !pd->result.nfields) return NGX_DONE;
-    size_t size = pd->response ? 1 : 0;
+    size_t size = pd->response && (pd->response->buf->end - pd->response->buf->start > 0) ? 1 : 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location->output.header) {
         size += pd->result.nfields - 1; // header delimiters
@@ -291,7 +291,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     chain->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
-    if (pd->response) *b->last++ = '\n';
+    if (pd->response && (pd->response->buf->end - pd->response->buf->start > 0)) *b->last++ = '\n';
     if (location->output.header) {
         for (ngx_int_t col = 0; col < pd->result.nfields; col++) {
             int len = ngx_strlen(PQfname(pd->result.res, col));
@@ -503,7 +503,10 @@ void ngx_postgres_output_chain(ngx_http_request_t *r) {
             r->headers_out.content_type_len = core_loc_conf->default_type.len;
         }
         r->headers_out.content_type_lowcase = NULL;
-        for (ngx_chain_t *chain = pd->response; chain; chain = chain->next) r->headers_out.content_length_n += chain->buf->end - chain->buf->start;
+        if (pd->response) {
+            r->headers_out.content_length_n = 0;
+            for (ngx_chain_t *chain = pd->response; chain; chain = chain->next) r->headers_out.content_length_n += chain->buf->end - chain->buf->start;
+        }
         ngx_int_t rc = ngx_http_send_header(r);
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return;
     }
