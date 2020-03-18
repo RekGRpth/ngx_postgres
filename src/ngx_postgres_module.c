@@ -12,8 +12,8 @@
 
 
 ngx_conf_enum_t ngx_postgres_overflow_options[] = {
-    { ngx_string("ignore"), 0 },
-    { ngx_string("reject"), 1 },
+    { ngx_string("reject"), 0 },
+    { ngx_string("ignore"), 1 },
     { ngx_null_string, 0 }
 };
 
