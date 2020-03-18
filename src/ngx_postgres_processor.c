@@ -118,7 +118,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 }
             }
             return ngx_postgres_done(r);
-        default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQresultErrorMessageMy(pd->result.res)); break;
+        default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
     }
     ngx_uint_t hash = 0;
     if (!pd->stmtName) {
@@ -239,8 +239,8 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
             ngx_postgres_variable_set2(r);
             pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
             break;
-        case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(r); break;
-        default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQresultErrorMessageMy(pd->result.res)); break;
+        case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(r); // fall through
+        default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
     }
     if (PQtransactionStatus(common->conn) != PQTRANS_IDLE) {
         if (!PQsendQuery(common->conn, "COMMIT")) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(COMMIT)"); return NGX_ERROR; }
