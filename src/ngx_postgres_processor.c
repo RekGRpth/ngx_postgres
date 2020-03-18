@@ -269,7 +269,7 @@ ret:
 
 void ngx_postgres_process_events(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    if (!ngx_postgres_is_my_peer(&r->upstream->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_is_my_peer"); goto failed; }
+    if (!ngx_postgres_is_my_peer(&r->upstream->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_is_my_peer"); return ngx_postgres_next_upstream(r, r->upstream, NGX_HTTP_UPSTREAM_FT_ERROR); }
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     ngx_int_t rc;
     switch (pd->common.state) {
@@ -279,11 +279,9 @@ void ngx_postgres_process_events(ngx_http_request_t *r) {
         case state_db_prepare: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_prepare"); rc = ngx_postgres_send_query(r); break;
         case state_db_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_query"); rc = ngx_postgres_send_query(r); break;
         case state_db_result: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_result"); rc = ngx_postgres_get_result(r); break;
-        default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "state == %i", pd->common.state); goto failed;
+        default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "state == %i", pd->common.state); return ngx_postgres_next_upstream(r, r->upstream, NGX_HTTP_UPSTREAM_FT_ERROR);
     }
-    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) ngx_postgres_finalize_upstream(r, r->upstream, rc);
-    else if (rc == NGX_ERROR) goto failed;
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) return ngx_postgres_finalize_upstream(r, r->upstream, rc);
+    if (rc == NGX_ERROR) return ngx_postgres_next_upstream(r, r->upstream, NGX_HTTP_UPSTREAM_FT_ERROR);
     return;
-failed:
-    ngx_postgres_next_upstream(r, r->upstream, NGX_HTTP_UPSTREAM_FT_ERROR);
 }
