@@ -24,6 +24,7 @@ typedef struct {
     ngx_array_t ids;
     ngx_array_t params;
     ngx_flag_t listen;
+    ngx_flag_t prepare;
     ngx_str_t sql;
     ngx_uint_t percent;
 } ngx_postgres_query_t;

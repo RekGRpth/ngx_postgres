@@ -644,6 +644,10 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     ngx_postgres_query_t *query = &location->query;
     if (query->sql.data) return "is duplicate";
+    if (cf->args->nelts > 2) {
+        if (elts[1].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"prepare", sizeof("prepare") - 1)) query->prepare = 1;
+        else return "invalid parameter";
+    }
     if (sql.len > sizeof("file://") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file://", sizeof("file://") - 1)) {
         sql.data += sizeof("file://") - 1;
         sql.len -= sizeof("file://") - 1;

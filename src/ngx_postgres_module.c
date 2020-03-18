@@ -17,7 +17,7 @@
     { ngx_null_string, 0 }
 };*/
 
-ngx_conf_enum_t ngx_postgres_prepare_options[] = {
+/*ngx_conf_enum_t ngx_postgres_prepare_options[] = {
     { ngx_string("off"), 0 },
     { ngx_string("no"), 0 },
     { ngx_string("false"), 0 },
@@ -25,7 +25,7 @@ ngx_conf_enum_t ngx_postgres_prepare_options[] = {
     { ngx_string("yes"), 1 },
     { ngx_string("true"), 1 },
     { ngx_null_string, 0 }
-};
+};*/
 
 
 static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
@@ -269,13 +269,15 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
     if (n == NGX_ERROR || !n) return "ngx_atoi == NGX_ERROR";
     server->ndata = n;
-    if (elts[2].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[2].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
-        elts[2].len = elts[2].len - (sizeof("timeout=") - 1);
-        elts[2].data = &elts[2].data[sizeof("timeout=") - 1];
-        ngx_int_t n = ngx_parse_time(&elts[2], 0);
-        if (n == NGX_ERROR) return "ngx_parse_time == NGX_ERROR";
-        server->timeout = (ngx_msec_t)n;
-    } else return "invalid parameter";
+    if (cf->args->nelts > 2) {
+        if (elts[2].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[2].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
+            elts[2].len = elts[2].len - (sizeof("timeout=") - 1);
+            elts[2].data = &elts[2].data[sizeof("timeout=") - 1];
+            ngx_int_t n = ngx_parse_time(&elts[2], 0);
+            if (n == NGX_ERROR) return "ngx_parse_time == NGX_ERROR";
+            server->timeout = (ngx_msec_t)n;
+        } else return "invalid parameter";
+    }
     return NGX_CONF_OK;
 }
 #endif
@@ -362,7 +364,7 @@ static ngx_command_t ngx_postgres_commands[] = {
     .offset = 0,
     .post = NULL },
   { .name = ngx_string("postgres_query"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE12,
     .set = ngx_postgres_query_conf,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,

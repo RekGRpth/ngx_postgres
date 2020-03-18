@@ -97,13 +97,13 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 listen->command = command;
                 ngx_queue_insert_tail(common->listen, &listen->queue);
                 cont:;
-            } else if (server->prepare) {
+            } else if (query->prepare) {
                 if (!(pd->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
                 u_char *last = ngx_snprintf(pd->stmtName, 31, "ngx_%ul", (unsigned long)(pd->hash = ngx_hash_key(sql.data, sql.len)));
                 *last = '\0';
             }
         }
-        common->state = server->prepare ? state_db_prepare : state_db_query;
+        common->state = query->prepare ? state_db_prepare : state_db_query;
     }
     for (; (pd->result.res = PQgetResult(common->conn)); PQclear(pd->result.res)) {
         if (PQresultStatus(pd->result.res) == PGRES_FATAL_ERROR) {
