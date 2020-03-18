@@ -228,7 +228,7 @@ static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t 
         ngx_postgres_listen_t *listen_pd = ngx_queue_data(queue_pd, ngx_postgres_listen_t, queue);
         ngx_postgres_common_t *common = &ps->common;
         if (!common->listen) {
-            if (!(common->listen = ngx_pcalloc(common->connection->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NULL; }
+            if (!(common->listen = ngx_pcalloc(c->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NULL; }
             ngx_queue_init(common->listen);
         }
         for (ngx_queue_t *queue_ps = ngx_queue_head(common->listen); queue_ps != ngx_queue_sentinel(common->listen); queue_ps = ngx_queue_next(queue_ps)) {
@@ -238,9 +238,9 @@ static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t 
         if (!array && !(array = ngx_array_create(r->pool, 1, sizeof(ngx_postgres_listen_t)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_create"); return NULL; }
         ngx_postgres_listen_t *listen = ngx_array_push(array);
         if (!listen) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_push"); return NULL; }
-        if (!(listen->channel.data = ngx_pstrdup(common->connection->pool, &listen_pd->channel))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pstrdup"); return NULL; }
+        if (!(listen->channel.data = ngx_pstrdup(c->pool, &listen_pd->channel))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pstrdup"); return NULL; }
         listen->channel.len = listen_pd->channel.len;
-        if (!(listen->command.data = ngx_pstrdup(common->connection->pool, &listen_pd->command))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pstrdup"); return NULL; }
+        if (!(listen->command.data = ngx_pstrdup(c->pool, &listen_pd->command))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pstrdup"); return NULL; }
         listen->command.len = listen_pd->command.len;
         len += listen_pd->command.len - 2;
         ngx_queue_insert_tail(common->listen, &listen->queue);
