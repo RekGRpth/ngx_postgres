@@ -17,7 +17,6 @@ typedef enum {
     state_db_prepare,
     state_db_query,
     state_db_result,
-    state_db_ack,
     state_db_idle
 } ngx_postgres_state_t;
 
