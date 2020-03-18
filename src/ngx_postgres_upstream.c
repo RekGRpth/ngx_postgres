@@ -72,14 +72,20 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!reject");
         } else
 #endif
-        if (server->cur_save >= server->max_save) {
-            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "cur_save");
+        if (server->cur_save < server->max_save) {
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "cur_save = %i", server->cur_save);
+        } else {
+            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "cur_save = %i", server->cur_save);
 #ifdef NGX_YIELD
-            if (server->max_data) {
+            if (server->cur_data < server->max_data) {
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "cur_data = %i", server->cur_data);
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
                 ngx_queue_insert_tail(&server->data, &pd->queue);
                 ngx_add_timer(&pd->timeout, server->timeout);
+                server->cur_data++;
                 return NGX_YIELD;
+            } else {
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "cur_data = %i", server->cur_data);
             }
 #endif
             return NGX_DECLINED;
@@ -333,6 +339,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_http_request_t *r = pd->request;
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
         ngx_queue_remove(&pd->queue);
+        server->cur_save--;
         if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
         ngx_http_upstream_re_init(r);
         /* override the read/write event handler to our own */
@@ -369,6 +376,9 @@ static void ngx_postgres_timeout(ngx_event_t *ev) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
     ngx_queue_remove(&pd->queue);
+    ngx_postgres_common_t *common = &pd->common;
+    ngx_postgres_server_t *server = common->server;
+    server->cur_save--;
     ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
 }
 #endif

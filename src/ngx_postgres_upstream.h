@@ -4,6 +4,8 @@
 #include <libpq-fe.h>
 #include <ngx_http.h>
 
+//#undef NGX_YIELD
+
 typedef struct {
     ngx_queue_t queue;
     ngx_str_t channel;

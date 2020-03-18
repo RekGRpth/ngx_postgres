@@ -345,13 +345,13 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
-#endif
   { .name = ngx_string("postgres_timeout"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
     .set = ngx_conf_set_msec_slot,
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_server_t, timeout),
     .post = NULL },
+#endif
   { .name = ngx_string("postgres_requests"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
     .set = ngx_conf_set_num_slot,
