@@ -138,10 +138,11 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     r->main->count++;
     ngx_http_upstream_init(r);
     /* override the read/write event handler to our own */
-    r->upstream->write_event_handler = ngx_postgres_write_event_handler;
-    r->upstream->read_event_handler = ngx_postgres_read_event_handler;
+    if (r->upstream->reinit_request(r) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "reinit_request != NGX_OK"); }
+//    r->upstream->write_event_handler = ngx_postgres_write_event_handler;
+//    r->upstream->read_event_handler = ngx_postgres_read_event_handler;
     /* a bit hack-ish way to return error response (clean-up part) */
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "r->main->count = %i", r->main->count);
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "r->main->count = %i", r->main->count);
     /*if (r->upstream->peer.connection && !r->upstream->peer.connection->fd) {
         if (r->upstream->peer.connection->write->timer_set) ngx_del_timer(r->upstream->peer.connection->write);
         if (r->upstream->peer.connection->pool) {

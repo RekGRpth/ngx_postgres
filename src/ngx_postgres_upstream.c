@@ -55,18 +55,22 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     common->name = peer->name;
     common->sockaddr = peer->sockaddr;
     common->socklen = peer->socklen;
-    if (common->server->nsave && ngx_postgres_peer_multi(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
-    if (common->server->nsave && ngx_queue_empty(&common->server->free)) {
+    if (common->server->nsave) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nsave");
+        if (ngx_postgres_peer_multi(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
+        if (ngx_queue_empty(&common->server->free)) {
+            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty(free)");
 #ifdef NGX_YIELD
-        if (common->server->ndata) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "queue peer %p", pd);
-            ngx_queue_insert_tail(&common->server->data, &pd->queue);
-            ngx_add_timer(&pd->timeout, common->server->timeout);
-            return NGX_YIELD;
-        }
+            if (common->server->ndata) {
+                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
+                ngx_queue_insert_tail(&common->server->data, &pd->queue);
+                ngx_add_timer(&pd->timeout, common->server->timeout);
+                return NGX_YIELD;
+            }
 #endif
-        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "nsave and ngx_queue_empty(free)");
-        return NGX_DECLINED;
+//        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "nsave and ngx_queue_empty(free)");
+            return NGX_DECLINED;
+        }
     }
     const char *host = peer->values[0];
     peer->values[0] = (const char *)peer->value;
