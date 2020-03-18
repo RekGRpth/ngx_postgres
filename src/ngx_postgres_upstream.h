@@ -37,7 +37,7 @@ typedef struct {
 #ifdef NGX_YIELD
     ngx_msec_t timeout;
 #endif
-    ngx_pool_t *pool;
+//    ngx_pool_t *pool;
     ngx_queue_t free;
 #ifdef NGX_YIELD
     ngx_queue_t data;

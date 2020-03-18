@@ -128,6 +128,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_conf_init_msec_value(server->timeout, 60 * 1000);
     ngx_queue_init(&server->data);
 #endif
+//    server->pool = cf->pool;
     ngx_queue_init(&server->save);
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t) * server->nsave);
     if (!ps) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
