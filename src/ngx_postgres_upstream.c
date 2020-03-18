@@ -63,11 +63,13 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (server->nsave) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nsave");
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
-        if (!server->ignore && ngx_queue_empty(&server->free)) {
-            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty(free)");
+        if (server->ignore) {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ignore");
+        } else if (server->nfree >= server->nsave) {
+            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "nfree");
 #ifdef NGX_YIELD
             if (server->ndata) {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
                 ngx_queue_insert_tail(&server->data, &pd->queue);
                 ngx_add_timer(&pd->timeout, server->timeout);
                 return NGX_YIELD;
@@ -125,6 +127,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     } else goto bad_add;
     common->state = state_db_connect;
     pc->connection = c;
+    server->nfree++;
     return NGX_AGAIN;
 bad_add:
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_event_flags not NGX_USE_RTSIG_EVENT or NGX_USE_CLEAR_EVENT or NGX_USE_LEVEL_EVENT");
@@ -321,7 +324,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_queue_t *queue = ngx_queue_head(&server->data);
         ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
         ngx_http_request_t *r = pd->request;
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "dequeue peer %p", pd);
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
         ngx_queue_remove(&pd->queue);
         if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
         ngx_http_upstream_re_init(r);
@@ -416,6 +419,8 @@ ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *pc) {
 void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_flag_t delete) {
     ngx_connection_t *c = common->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    ngx_postgres_server_t *server = common->server;
+    server->nfree--;
     if (!c) {
         if (common->conn) {
             PQfinish(common->conn);

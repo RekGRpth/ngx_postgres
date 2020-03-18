@@ -47,6 +47,7 @@ typedef struct {
 #ifdef NGX_YIELD
     ngx_uint_t ndata;
 #endif
+    ngx_uint_t nfree;
     ngx_uint_t nsave;
     ngx_uint_t requests;
 } ngx_postgres_server_t;
