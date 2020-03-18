@@ -45,10 +45,13 @@ typedef struct {
     ngx_queue_t peer;
     ngx_queue_t save;
 #ifdef NGX_YIELD
-    ngx_uint_t ndata;
+    ngx_uint_t cur_data;
 #endif
-    ngx_uint_t nfree;
-    ngx_uint_t nsave;
+    ngx_uint_t cur_save;
+#ifdef NGX_YIELD
+    ngx_uint_t max_data;
+#endif
+    ngx_uint_t max_save;
     ngx_uint_t requests;
 } ngx_postgres_server_t;
 
