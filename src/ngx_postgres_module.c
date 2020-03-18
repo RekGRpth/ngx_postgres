@@ -17,16 +17,6 @@ ngx_conf_enum_t ngx_postgres_overflow_options[] = {
     { ngx_null_string, 0 }
 };
 
-/*ngx_conf_enum_t ngx_postgres_prepare_options[] = {
-    { ngx_string("off"), 0 },
-    { ngx_string("no"), 0 },
-    { ngx_string("false"), 0 },
-    { ngx_string("on"), 1 },
-    { ngx_string("yes"), 1 },
-    { ngx_string("true"), 1 },
-    { ngx_null_string, 0 }
-};*/
-
 
 static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
     return ngx_postgres_variable_add(cf);

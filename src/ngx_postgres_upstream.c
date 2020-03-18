@@ -63,7 +63,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (server->nsave) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nsave");
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
-        if (ngx_queue_empty(&server->free)) {
+        if (!server->ignore && ngx_queue_empty(&server->free)) {
             ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty(free)");
 #ifdef NGX_YIELD
             if (server->ndata) {
@@ -73,7 +73,6 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
                 return NGX_YIELD;
             }
 #endif
-//        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "nsave and ngx_queue_empty(free)");
             return NGX_DECLINED;
         }
     }
