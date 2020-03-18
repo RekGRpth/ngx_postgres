@@ -39,12 +39,12 @@ typedef struct {
 #endif
     ngx_queue_t free;
 #ifdef NGX_YIELD
-    ngx_queue_t pd;
+    ngx_queue_t data;
 #endif
     ngx_queue_t peer;
     ngx_queue_t save;
 #ifdef NGX_YIELD
-    ngx_uint_t nqueue;
+    ngx_uint_t ndata;
 #endif
     ngx_uint_t nsave;
     ngx_uint_t requests;

@@ -57,7 +57,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (common->server->nsave && ngx_postgres_peer_multi(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
     if (common->server->nsave && ngx_queue_empty(&common->server->free)) {
 #ifdef NGX_YIELD
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "queue peer %p", pd); ngx_queue_insert_tail(&common->server->pd, &pd->queue);
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "queue peer %p", pd); ngx_queue_insert_tail(&common->server->data, &pd->queue);
         return NGX_YIELD;
 #else
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "nsave and ngx_queue_empty(free)"); return NGX_DECLINED;
@@ -300,8 +300,8 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         if (!PQsendQuery(common->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery(%s) and %s", listen, PQerrorMessageMy(common->conn)); }
     }
 #ifdef NGX_YIELD
-    if (!ngx_queue_empty(&common->server->pd)) {
-        ngx_queue_t *queue = ngx_queue_head(&common->server->pd);
+    if (!ngx_queue_empty(&common->server->data)) {
+        ngx_queue_t *queue = ngx_queue_head(&common->server->data);
         ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
         ngx_http_request_t *r = pd->request;
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "dequeue peer %p", pd);

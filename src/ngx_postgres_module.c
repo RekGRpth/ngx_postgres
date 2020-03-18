@@ -132,7 +132,8 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     cln->data = server;
     ngx_queue_init(&server->free);
 #ifdef NGX_YIELD
-    ngx_queue_init(&server->pd);
+    ngx_conf_init_msec_value(server->timeout, 60 * 1000);
+    ngx_queue_init(&server->data);
 #endif
     ngx_queue_init(&server->save);
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t) * server->nsave);
@@ -260,11 +261,11 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
 #ifdef NGX_YIELD
 static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_t *server = conf;
-    if (server->nqueue) return "is duplicate";
+    if (server->ndata) return "is duplicate";
     ngx_str_t *elts = cf->args->elts;
     ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
     if (n == NGX_ERROR || !n) return "ngx_atoi == NGX_ERROR";
-    server->nqueue = n;
+    server->ndata = n;
     if (elts[2].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[2].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
         elts[2].len = elts[2].len - (sizeof("timeout=") - 1);
         elts[2].data = &elts[2].data[sizeof("timeout=") - 1];
