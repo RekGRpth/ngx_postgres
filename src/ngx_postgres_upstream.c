@@ -85,7 +85,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
                 server->cur_data++;
                 return NGX_YIELD;
             } else {
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "cur_data = %i", server->cur_data);
+                ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "cur_data = %i", server->cur_data);
             }
 #endif
             return NGX_DECLINED;
