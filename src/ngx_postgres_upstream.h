@@ -90,7 +90,7 @@ typedef struct {
     ngx_event_t timeout;
     ngx_postgres_common_t common;
     ngx_queue_t queue;
-} ngx_postgres_save_t;
+} ngx_postgres_cache_t;
 
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *PQerrorMessageMy(const PGconn *conn);

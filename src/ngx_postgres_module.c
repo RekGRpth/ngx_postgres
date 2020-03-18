@@ -44,7 +44,7 @@ static void ngx_postgres_server_cleanup(void *data) {
     server->max_cached = 0; /* just to be on the safe-side */
     while (!ngx_queue_empty(&server->cache)) {
         ngx_queue_t *queue = ngx_queue_head(&server->cache);
-        ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
+        ngx_postgres_cache_t *ps = ngx_queue_data(queue, ngx_postgres_cache_t, queue);
         if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
         ngx_postgres_free_connection(&ps->common, 0);
         ngx_queue_remove(&ps->queue);
@@ -111,14 +111,8 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
     ngx_conf_init_msec_value(server->timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(server->requests, 1000);
-    ngx_queue_init(&server->cache);
-    ngx_queue_init(&server->free);
     ngx_queue_init(&server->pd);
     ngx_queue_init(&server->peer);
-    ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
-    if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
-    cln->handler = ngx_postgres_server_cleanup;
-    cln->data = server;
     ngx_uint_t npeers = 0;
     ngx_postgres_upstream_t *elts = upstream_srv_conf->servers->elts;
     for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) npeers += elts[i].naddrs;
@@ -141,7 +135,13 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     }
     server->save = 0;
     if (!server->max_cached) return NGX_OK;
-    ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t) * server->max_cached);
+    ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
+    cln->handler = ngx_postgres_server_cleanup;
+    cln->data = server;
+    ngx_queue_init(&server->cache);
+    ngx_queue_init(&server->free);
+    ngx_postgres_cache_t *ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_cache_t) * server->max_cached);
     if (!ps) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0; i < server->max_cached; i++) {
         ngx_queue_insert_tail(&server->free, &ps[i].queue);
