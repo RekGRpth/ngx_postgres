@@ -36,8 +36,8 @@ typedef struct {
     ngx_flag_t single;
     ngx_log_t *log;
     ngx_msec_t timeout;
+    ngx_queue_t cache;
     ngx_queue_t free;
-    ngx_queue_t idle;
     ngx_queue_t pd;
     ngx_queue_t peer;
     ngx_uint_t max_requests;
