@@ -50,6 +50,7 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     server->keepalive = NGX_CONF_UNSET_MSEC;
     server->requests = NGX_CONF_UNSET_UINT;
+    server->timeout = NGX_CONF_UNSET_MSEC;
     return server;
 }
 
