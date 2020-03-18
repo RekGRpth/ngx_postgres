@@ -48,7 +48,7 @@ static void ngx_postgres_server_cleanup(void *data) {
 static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_server_t *server = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_server_t));
     if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
-    server->timeout = NGX_CONF_UNSET_MSEC;
+    server->keepalive = NGX_CONF_UNSET_MSEC;
     server->requests = NGX_CONF_UNSET_UINT;
     return server;
 }
@@ -102,7 +102,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     upstream_srv_conf->peer.init = ngx_postgres_peer_init;
     ngx_postgres_server_t *server = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
     if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
-    ngx_conf_init_msec_value(server->timeout, 60 * 60 * 1000);
+    ngx_conf_init_msec_value(server->keepalive, 60 * 60 * 1000);
     ngx_conf_init_uint_value(server->requests, 1000);
     ngx_queue_init(&server->peer);
     ngx_uint_t npeers = 0;
@@ -125,7 +125,6 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
             (void) ngx_cpystrn(peer->value, peer->host.data + (elts[i].family == AF_UNIX ? 5 : 0), peer->host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0));
         }
     }
-//    server->save = 0;
     if (!server->nsave) return NGX_OK;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
@@ -252,10 +251,30 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
     if (server->nsave) return "is duplicate";
     ngx_str_t *elts = cf->args->elts;
     ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
-    if (n == NGX_ERROR || !n) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid value \"%V\" in \"%V\" directive", &elts[1], &cmd->name); return NGX_CONF_ERROR; }
-    server->nsave = n;
+    if (n == NGX_ERROR || !n) return "ngx_atoi == NGX_ERROR";
+    server->nsave = (ngx_uint_t)n;
     return NGX_CONF_OK;
 }
+
+
+#ifdef NGX_YIELD
+static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_postgres_server_t *server = conf;
+    if (server->nqueue) return "is duplicate";
+    ngx_str_t *elts = cf->args->elts;
+    ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
+    if (n == NGX_ERROR || !n) return "ngx_atoi == NGX_ERROR";
+    server->nqueue = n;
+    if (elts[2].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[2].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
+        elts[2].len = elts[2].len - (sizeof("timeout=") - 1);
+        elts[2].data = &elts[2].data[sizeof("timeout=") - 1];
+        ngx_int_t n = ngx_parse_time(&elts[2], 0);
+        if (n == NGX_ERROR) return "ngx_parse_time == NGX_ERROR";
+        server->timeout = (ngx_msec_t)n;
+    } else return "invalid parameter";
+    return NGX_CONF_OK;
+}
+#endif
 
 
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
@@ -312,6 +331,14 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
+#ifdef NGX_YIELD
+  { .name = ngx_string("postgres_queue"),
+    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12,
+    .set = ngx_postgres_queue_conf,
+    .conf = NGX_HTTP_SRV_CONF_OFFSET,
+    .offset = 0,
+    .post = NULL },
+#endif
   { .name = ngx_string("postgres_timeout"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
     .set = ngx_conf_set_msec_slot,

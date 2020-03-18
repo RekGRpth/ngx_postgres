@@ -170,7 +170,6 @@ void ngx_postgres_finalize_upstream(ngx_http_request_t *r, ngx_http_upstream_t *
     if (u->finalize_request) u->finalize_request(r, rc);
     if (u->peer.free) u->peer.free(&u->peer, u->peer.data, 0);
     if (u->peer.connection) {
-//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "c = %p", u->peer.connection);
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "fd = %i", u->peer.connection->fd);
         if (u->peer.connection->pool) {
             ngx_destroy_pool(u->peer.connection->pool);

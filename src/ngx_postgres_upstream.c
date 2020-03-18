@@ -55,7 +55,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     common->sockaddr = peer->sockaddr;
     common->socklen = peer->socklen;
     if (common->server->nsave && ngx_postgres_peer_multi(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
-    if (/*common->server->save >= */common->server->nsave && ngx_queue_empty(&common->server->free)) {
+    if (common->server->nsave && ngx_queue_empty(&common->server->free)) {
 #ifdef NGX_YIELD
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "queue peer %p", pd); ngx_queue_insert_tail(&common->server->pd, &pd->queue);
         return NGX_YIELD;
@@ -90,7 +90,6 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         return NGX_DECLINED;
     }
 //    PQtrace(common->conn, stderr);
-//    common->server->save++; /* take spot in keepalive connection pool */
     int fd;
     if ((fd = PQsocket(common->conn)) == -1) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == -1"); goto invalid; }
     ngx_connection_t *c = ngx_get_connection(fd, pc->log);
@@ -146,7 +145,6 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
                 ngx_log_error(NGX_LOG_WARN, c->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_DECLINED");
                 if (common->listen) for (ngx_queue_t *queue = ngx_queue_head(common->listen); queue != ngx_queue_sentinel(common->listen); queue = ngx_queue_next(queue)) {
                     ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
-//                    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "channel = %V, command = %V", &listen->channel, &listen->command);
                     if (id.len == listen->channel.len && !ngx_strncmp(id.data, listen->channel.data, id.len)) {
                         if (!array && !(array = ngx_array_create(c->pool, 1, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_create"); break; }
                         ngx_str_t *unlisten = ngx_array_push(array);
@@ -261,7 +259,7 @@ static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     c->idle = 1;
     c->log = common->server->log ? common->server->log : ngx_cycle->log;
     if (c->pool) c->pool->log = c->log;
-    ngx_add_timer(c->read, common->server->timeout);
+    ngx_add_timer(c->read, common->server->keepalive);
     c->read->delayed = 0;
     c->read->handler = ngx_postgres_read_handler;
     c->read->log = c->log;
@@ -275,7 +273,6 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (r->upstream->headers_in.status_n != NGX_HTTP_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "status_n != NGX_HTTP_OK"); return; }
     ngx_postgres_common_t *common = &pd->common;
-//    if (!common) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!common"); return; }
     ngx_connection_t *c = common->connection;
     if (!c) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!connection"); return; }
     if (c->read->timer_set) ngx_del_timer(c->read);
@@ -283,12 +280,8 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
 //    if (c->read->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->read, NGX_READ_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
 //    if (c->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
     if (c->requests >= common->server->requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests"); return; }
-//    ngx_http_upstream_t *u = r->upstream;
-//    if (!u->keepalive) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!keepalive"); return; }
-//    if (!u->request_body_sent) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!request_body_sent"); return; }
     if (ngx_terminate) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_terminate"); return; }
     if (ngx_exiting) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_exiting"); return; }
-//    if (ngx_handle_read_event(c->read, 0) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_handle_read_event != NGX_OK"); return; }
     u_char *listen = NULL;
     ngx_postgres_save_t *ps;
     if (ngx_queue_empty(&common->server->free)) {
@@ -381,7 +374,6 @@ ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *pc) {
 void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_flag_t delete) {
     ngx_connection_t *c = common->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-//    common->server->save--; /* free spot in keepalive connection pool */
     if (!c) {
         if (common->conn) {
             PQfinish(common->conn);
@@ -418,8 +410,6 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_flag_t dele
     }
     ngx_free_connection(c);
     c->fd = (ngx_socket_t) -1;
-//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "c = %p", c);
-//    common->connection = NULL;
 }
 
 
