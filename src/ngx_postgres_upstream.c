@@ -342,7 +342,6 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         server->cur_data--;
         if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
         ngx_http_upstream_re_init(r);
-        /* override the read/write event handler to our own */
         if (r->upstream->reinit_request(r) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "reinit_request != NGX_OK"); }
     }
 #endif
