@@ -295,7 +295,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     if (common->connection->read->timer_set) ngx_del_timer(common->connection->read);
     if (common->connection->write->timer_set) ngx_del_timer(common->connection->write);
     if (common->connection->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(common->connection->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
-    if (common->server->max_requests && ++common->requests > common->server->max_requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "max_requests"); return; }
+    if (common->server->requests && ++common->requests > common->server->requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests"); return; }
     u_char *listen = NULL;
     ngx_postgres_save_t *ps;
     if (ngx_queue_empty(&common->server->free)) {
