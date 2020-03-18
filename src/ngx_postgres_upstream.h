@@ -41,7 +41,7 @@ typedef struct {
     ngx_queue_t pd;
     ngx_queue_t peer;
     ngx_uint_t max_requests;
-    ngx_uint_t max_save;
+    ngx_uint_t max_cached;
     ngx_uint_t save;
 } ngx_postgres_server_t;
 
