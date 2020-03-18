@@ -150,7 +150,7 @@ ngx_int_t ngx_postgres_variable_set2(ngx_http_request_t *r) {
                 ngx_memcpy(result->error.data, value, result->error.len);
             }
             break;
-        default: break;
+        default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(res)), PQresultErrorMessageMy(res)); break;
     }
     return NGX_OK;
 }
