@@ -32,11 +32,13 @@ typedef struct {
 
 typedef struct {
     ngx_flag_t prepare;
-    ngx_flag_t reject;
+//    ngx_flag_t reject;
     ngx_log_t *log;
     ngx_msec_t timeout;
     ngx_queue_t free;
+#ifdef NGX_YIELD
     ngx_queue_t pd;
+#endif
     ngx_queue_t peer;
     ngx_queue_t save;
     ngx_uint_t nsave;
@@ -73,7 +75,9 @@ typedef struct {
     ngx_int_t status;
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
+#ifdef NGX_YIELD
     ngx_queue_t queue;
+#endif
     ngx_str_t sql;
     ngx_uint_t hash;
     ngx_uint_t nParams;

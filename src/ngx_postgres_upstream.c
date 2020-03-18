@@ -45,18 +45,23 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_data_t *pd = pc->data;
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_queue_t *queue = ngx_queue_head(&pd->common.server->peer);
+    ngx_postgres_common_t *common = &pd->common;
+    ngx_queue_t *queue = ngx_queue_head(&common->server->peer);
     ngx_postgres_peer_t *peer = ngx_queue_data(queue, ngx_postgres_peer_t, queue);
     ngx_queue_remove(&peer->queue);
-    ngx_queue_insert_tail(&pd->common.server->peer, &peer->queue);
+    ngx_queue_insert_tail(&common->server->peer, &peer->queue);
 //    pc->cached = 0;
-    pd->common.name = peer->name;
-    pd->common.sockaddr = peer->sockaddr;
-    pd->common.socklen = peer->socklen;
-    if (pd->common.server->nsave && ngx_postgres_peer_multi(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
-    if (/*pd->common.server->save >= */pd->common.server->nsave) {
-        if (pd->common.server->reject) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "nsave"); return NGX_DECLINED; }
-        else { ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "queue peer %p", pd); ngx_queue_insert_tail(&pd->common.server->pd, &pd->queue); return NGX_YIELD; }
+    common->name = peer->name;
+    common->sockaddr = peer->sockaddr;
+    common->socklen = peer->socklen;
+    if (common->server->nsave && ngx_postgres_peer_multi(pd) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
+    if (/*common->server->save >= */common->server->nsave && ngx_queue_empty(&common->server->free)) {
+#ifdef NGX_YIELD
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "queue peer %p", pd); ngx_queue_insert_tail(&common->server->pd, &pd->queue);
+        return NGX_YIELD;
+#else
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "nsave and ngx_queue_empty(free)"); return NGX_DECLINED;
+#endif
     }
     const char *host = peer->values[0];
     peer->values[0] = (const char *)peer->value;
@@ -75,38 +80,39 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         *p = '\0';
         peer->values[2] = (const char *)buf;
     }
-    pd->common.conn = PQconnectStartParams(peer->keywords, peer->values, 0); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
+    common->conn = PQconnectStartParams(peer->keywords, peer->values, 0); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
     peer->values[0] = host;
     peer->values[2] = options;
-    if (PQstatus(pd->common.conn) == CONNECTION_BAD || PQsetnonblocking(pd->common.conn, 1) == -1) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(pd->common.conn), peer->name);
-        PQfinish(pd->common.conn);
-        pd->common.conn = NULL;
+    if (PQstatus(common->conn) == CONNECTION_BAD || PQsetnonblocking(common->conn, 1) == -1) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(common->conn), peer->name);
+        PQfinish(common->conn);
+        common->conn = NULL;
         return NGX_DECLINED;
     }
-//    PQtrace(pd->common.conn, stderr);
-//    pd->common.server->save++; /* take spot in keepalive connection pool */
+//    PQtrace(common->conn, stderr);
+//    common->server->save++; /* take spot in keepalive connection pool */
     int fd;
-    if ((fd = PQsocket(pd->common.conn)) == -1) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == -1"); goto invalid; }
-    if (!(pd->common.connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto invalid; }
-    pd->common.connection->log = pc->log;
-    pd->common.connection->log_error = pc->log_error;
-    pd->common.connection->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
-    pd->common.connection->read->log = pc->log;
-    pd->common.connection->write->log = pc->log;
-    if (pd->common.connection->pool) pd->common.connection->pool->log = pc->log;
+    if ((fd = PQsocket(common->conn)) == -1) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == -1"); goto invalid; }
+    ngx_connection_t *c;
+    if (!(c = common->connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto invalid; }
+    c->log_error = pc->log_error;
+    c->log = pc->log;
+    c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
+    if (c->pool) c->pool->log = pc->log;
+    c->read->log = pc->log;
+    c->write->log = pc->log;
     /* register the connection with postgres connection fd into the nginx event model */
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
-        if (ngx_add_conn(pd->common.connection) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_conn != NGX_OK"); goto invalid; }
+        if (ngx_add_conn(c) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_conn != NGX_OK"); goto invalid; }
     } else if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
-        if (ngx_add_event(pd->common.connection->read, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
-        if (ngx_add_event(pd->common.connection->write, NGX_WRITE_EVENT, NGX_CLEAR_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
+        if (ngx_add_event(c->read, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
+        if (ngx_add_event(c->write, NGX_WRITE_EVENT, NGX_CLEAR_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
     } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
-        if (ngx_add_event(pd->common.connection->read, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
-        if (ngx_add_event(pd->common.connection->write, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
+        if (ngx_add_event(c->read, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
+        if (ngx_add_event(c->write, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
     } else goto bad_add;
-    pd->common.state = state_db_connect;
-    pc->connection = pd->common.connection;
+    common->state = state_db_connect;
+    pc->connection = c;
     return NGX_AGAIN;
 bad_add:
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_event_flags not NGX_USE_RTSIG_EVENT or NGX_USE_CLEAR_EVENT or NGX_USE_LEVEL_EVENT");
@@ -305,6 +311,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
         if (!PQsendQuery(common->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery(%s) and %s", listen, PQerrorMessageMy(common->conn)); }
     }
+#ifdef NGX_YIELD
     if (!ngx_queue_empty(&common->server->pd)) {
         ngx_queue_t *queue = ngx_queue_head(&common->server->pd);
         ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
@@ -315,6 +322,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         /* override the read/write event handler to our own */
         if (r->upstream->reinit_request(r) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "reinit_request != NGX_OK"); }
     }
+#endif
 }
 
 

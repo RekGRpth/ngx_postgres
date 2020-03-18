@@ -11,11 +11,11 @@
 #define NGX_CONF_TAKE34  (NGX_CONF_TAKE3|NGX_CONF_TAKE4)
 
 
-ngx_conf_enum_t ngx_postgres_overflow_options[] = {
+/*ngx_conf_enum_t ngx_postgres_overflow_options[] = {
     { ngx_string("queue"), 0 },
     { ngx_string("reject"), 1 },
     { ngx_null_string, 0 }
-};
+};*/
 
 ngx_conf_enum_t ngx_postgres_prepare_options[] = {
     { ngx_string("off"), 0 },
@@ -104,7 +104,6 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
     ngx_conf_init_msec_value(server->timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(server->requests, 1000);
-    ngx_queue_init(&server->pd);
     ngx_queue_init(&server->peer);
     ngx_uint_t npeers = 0;
     ngx_postgres_upstream_t *elts = upstream_srv_conf->servers->elts;
@@ -133,6 +132,9 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     cln->handler = ngx_postgres_server_cleanup;
     cln->data = server;
     ngx_queue_init(&server->free);
+#ifdef NGX_YIELD
+    ngx_queue_init(&server->pd);
+#endif
     ngx_queue_init(&server->save);
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t) * server->nsave);
     if (!ps) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
