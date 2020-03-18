@@ -345,7 +345,7 @@ static void ngx_postgres_timeout(ngx_event_t *ev) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
     ngx_queue_remove(&pd->queue);
-    ngx_postgres_next_upstream(r, r->upstream, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
 }
 #endif
 
