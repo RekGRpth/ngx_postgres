@@ -55,14 +55,8 @@ static void ngx_postgres_server_cleanup(void *data) {
 static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_server_t *server = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_server_t));
     if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
-    ngx_queue_init(&server->cache);
-    ngx_queue_init(&server->free);
-    ngx_queue_init(&server->pd);
-    ngx_queue_init(&server->peer);
-    ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
-    if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NULL; }
-    cln->handler = ngx_postgres_server_cleanup;
-    cln->data = server;
+    server->timeout = NGX_CONF_UNSET_MSEC;
+    server->requests = NGX_CONF_UNSET_UINT;
     return server;
 }
 
@@ -115,6 +109,16 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     upstream_srv_conf->peer.init = ngx_postgres_peer_init;
     ngx_postgres_server_t *server = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
     if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
+    ngx_conf_init_msec_value(server->timeout, 60 * 60 * 1000);
+    ngx_conf_init_uint_value(server->requests, 1000);
+    ngx_queue_init(&server->cache);
+    ngx_queue_init(&server->free);
+    ngx_queue_init(&server->pd);
+    ngx_queue_init(&server->peer);
+    ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
+    cln->handler = ngx_postgres_server_cleanup;
+    cln->data = server;
     ngx_uint_t npeers = 0;
     ngx_postgres_upstream_t *elts = upstream_srv_conf->servers->elts;
     for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) npeers += elts[i].naddrs;
@@ -253,51 +257,11 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
 
 static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_t *server = conf;
-    if (server->max_cached/* default */) return "is duplicate";
+    if (server->max_cached) return "is duplicate";
     ngx_str_t *elts = cf->args->elts;
-    if (cf->args->nelts == 2 && ((elts[1].len == sizeof("off") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"off", sizeof("off") - 1)) || (elts[1].len == sizeof("no") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"no", sizeof("no") - 1)) || (elts[1].len == sizeof("false") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"false", sizeof("false") - 1)))) { server->max_cached = 0; server->prepare = 0; return NGX_CONF_OK; }
-    for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
-        if (elts[i].len > sizeof("requests=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"requests=", sizeof("requests=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("requests=") - 1);
-            elts[i].data = &elts[i].data[sizeof("requests=") - 1];
-            ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
-            if (n == NGX_ERROR) return "ngx_atoi == NGX_ERROR";
-            server->requests = (ngx_uint_t) n;
-        } else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
-            elts[i].data = &elts[i].data[sizeof("timeout=") - 1];
-            ngx_int_t n = ngx_parse_time(&elts[i], 0);
-            if (n == NGX_ERROR) return "ngx_parse_time == NGX_ERROR";
-            server->timeout = (ngx_msec_t) n;
-        } else if (elts[i].len > sizeof("save=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"save=", sizeof("save=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("save=") - 1);
-            elts[i].data = &elts[i].data[sizeof("save=") - 1];
-            ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
-            if (n == NGX_ERROR) return "ngx_atoi == NGX_ERROR";
-            server->max_cached = (ngx_uint_t) n;
-        } else if (elts[i].len > sizeof("mode=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"mode=", sizeof("mode=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("mode=") - 1);
-            elts[i].data = &elts[i].data[sizeof("mode=") - 1];
-            ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_mode_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server->single = e[j].value; break; }
-            if (!e[j].name.len) return "invalid mode";
-        } else if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("overflow=") - 1);
-            elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
-            ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_overflow_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server->reject = e[j].value; break; }
-            if (!e[j].name.len) return "invalid overflow";
-        } else if (elts[i].len > sizeof("prepare=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare=", sizeof("prepare=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("prepare=") - 1);
-            elts[i].data = &elts[i].data[sizeof("prepare=") - 1];
-            ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_prepare_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server->prepare = e[j].value; break; }
-            if (!e[j].name.len) return "invalid prepare";
-        } else return "invalid parameter";
-    }
+    ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
+    if (n == NGX_ERROR || !n) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "invalid value \"%V\" in \"%V\" directive", &elts[1], &cmd->name); return NGX_CONF_ERROR; }
+    server->max_cached = n;
     return NGX_CONF_OK;
 }
 
@@ -351,10 +315,22 @@ static ngx_command_t ngx_postgres_commands[] = {
     .offset = 0,
     .post = NULL },
   { .name = ngx_string("postgres_keepalive"),
-    .type = NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
+    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
     .set = ngx_postgres_keepalive_conf,
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
+    .post = NULL },
+  { .name = ngx_string("postgres_timeout"),
+    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+    .set = ngx_conf_set_msec_slot,
+    .conf = NGX_HTTP_SRV_CONF_OFFSET,
+    .offset = offsetof(ngx_postgres_server_t, timeout),
+    .post = NULL },
+  { .name = ngx_string("postgres_requests"),
+    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+    .set = ngx_conf_set_num_slot,
+    .conf = NGX_HTTP_SRV_CONF_OFFSET,
+    .offset = offsetof(ngx_postgres_server_t, requests),
     .post = NULL },
   { .name = ngx_string("postgres_pass"),
     .type = NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
