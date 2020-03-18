@@ -157,12 +157,9 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         if (i > 1) len += sizeof(" ") - 1;
         len += elts[i].len;
     }
-    u_char *equal = (u_char *)ngx_strchr(elts[1].data, '=');
-    if (!equal) len += sizeof("host=") - 1;
     u_char *conninfo = ngx_pnalloc(cf->pool, len + 1);
     if (!conninfo) return "!ngx_pnalloc";
     u_char *p = conninfo;
-    if (!equal) p = ngx_cpymem(p, "host=", sizeof("host=") - 1);
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
         if (i > 1) *p++ = ' ';
         p = ngx_cpymem(p, elts[i].data, elts[i].len);
