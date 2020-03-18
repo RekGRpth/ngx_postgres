@@ -75,6 +75,9 @@ typedef struct {
 typedef struct {
     ngx_array_t variables;
     ngx_chain_t *response;
+#ifdef NGX_YIELD
+    ngx_event_t timeout;
+#endif
     ngx_http_request_t *request;
     ngx_int_t status;
     ngx_postgres_common_t common;
