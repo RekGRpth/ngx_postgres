@@ -339,7 +339,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_http_request_t *r = pd->request;
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
         ngx_queue_remove(&pd->queue);
-        server->cur_save--;
+        server->cur_data--;
         if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
         ngx_http_upstream_re_init(r);
         /* override the read/write event handler to our own */
@@ -378,7 +378,7 @@ static void ngx_postgres_timeout(ngx_event_t *ev) {
     ngx_queue_remove(&pd->queue);
     ngx_postgres_common_t *common = &pd->common;
     ngx_postgres_server_t *server = common->server;
-    server->cur_save--;
+    server->cur_data--;
     ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
 }
 #endif
