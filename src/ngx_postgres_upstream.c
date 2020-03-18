@@ -93,8 +93,8 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 //    common->server->save++; /* take spot in keepalive connection pool */
     int fd;
     if ((fd = PQsocket(common->conn)) == -1) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == -1"); goto invalid; }
-    ngx_connection_t *c;
-    if (!(c = common->connection = ngx_get_connection(fd, pc->log))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto invalid; }
+    ngx_connection_t *c = ngx_get_connection(fd, pc->log);
+    if (!(common->connection = c)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto invalid; }
     c->log_error = pc->log_error;
     c->log = pc->log;
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
