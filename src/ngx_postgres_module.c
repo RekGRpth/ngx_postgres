@@ -11,11 +11,11 @@
 #define NGX_CONF_TAKE34  (NGX_CONF_TAKE3|NGX_CONF_TAKE4)
 
 
-/*ngx_conf_enum_t ngx_postgres_overflow_options[] = {
-    { ngx_string("queue"), 0 },
+ngx_conf_enum_t ngx_postgres_overflow_options[] = {
+    { ngx_string("ignore"), 0 },
     { ngx_string("reject"), 1 },
     { ngx_null_string, 0 }
-};*/
+};
 
 /*ngx_conf_enum_t ngx_postgres_prepare_options[] = {
     { ngx_string("off"), 0 },
@@ -257,6 +257,16 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
     ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
     if (n == NGX_ERROR || !n) return "ngx_atoi == NGX_ERROR";
     server->nsave = (ngx_uint_t)n;
+    if (cf->args->nelts > 2) {
+        if (elts[2].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[2].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
+            elts[2].len = elts[2].len - (sizeof("overflow=") - 1);
+            elts[2].data = &elts[2].data[sizeof("overflow=") - 1];
+            ngx_uint_t j;
+            ngx_conf_enum_t *e = ngx_postgres_overflow_options;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[2].len && !ngx_strncasecmp(e[j].name.data, elts[2].data, elts[2].len)) { server->ignore = e[j].value; break; }
+            if (!e[j].name.len) return "invalid overflow";
+        } else return "invalid parameter";
+    }
     return NGX_CONF_OK;
 }
 
@@ -268,7 +278,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     ngx_str_t *elts = cf->args->elts;
     ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
     if (n == NGX_ERROR || !n) return "ngx_atoi == NGX_ERROR";
-    server->ndata = n;
+    server->ndata = (ngx_uint_t)n;
     if (cf->args->nelts > 2) {
         if (elts[2].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[2].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
             elts[2].len = elts[2].len - (sizeof("timeout=") - 1);
@@ -332,7 +342,7 @@ static ngx_command_t ngx_postgres_commands[] = {
     .offset = 0,
     .post = NULL },
   { .name = ngx_string("postgres_keepalive"),
-    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12,
     .set = ngx_postgres_keepalive_conf,
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
