@@ -328,6 +328,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     if (state & NGX_PEER_FAILED || !c || c->read->eof || c->read->error || c->read->timedout || c->write->error || c->write->timedout); else
     if (pd->common.server->nsave) ngx_postgres_free_peer(pd);
     if (pc->connection) ngx_postgres_free_connection(&pd->common, 1);
+    pc->connection = NULL;
 }
 
 
@@ -417,7 +418,8 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_flag_t dele
     }
     ngx_free_connection(c);
     c->fd = (ngx_socket_t) -1;
-    common->connection = NULL;
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "c = %p", c);
+//    common->connection = NULL;
 }
 
 
