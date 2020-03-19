@@ -235,7 +235,8 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     if (!result->ntuples || !result->nfields) return NGX_DONE;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_output_t *output = location->output;
+    ngx_postgres_query_t *query = location->queries.elts;
+    ngx_postgres_output_t *output = &query[pd->query].output;
     if (output->header) {
         size += result->nfields - 1; // header delimiters
         size++; // header new line
@@ -385,7 +386,8 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_output_t *output = location->output;
+    ngx_postgres_query_t *query = location->queries.elts;
+    ngx_postgres_output_t *output = &query[pd->query].output;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
     if (result->ntuples == 1 && result->nfields == 1 && (PQftype(res, 0) == JSONOID || PQftype(res, 0) == JSONBOID)) size = PQgetlength(res, 0, 0); else {
@@ -504,7 +506,8 @@ void ngx_postgres_output_chain(ngx_http_request_t *r) {
         r->headers_out.status = pd->status ? ngx_abs(pd->status) : NGX_HTTP_OK;
         ngx_postgres_common_t *common = &pd->common;
         if (common->charset.len) r->headers_out.charset = common->charset;
-        ngx_postgres_output_t *output = location->output;
+        ngx_postgres_query_t *query = location->queries.elts;
+        ngx_postgres_output_t *output = &query[pd->query].output;
         if (output->handler == &ngx_postgres_output_json) {
             ngx_str_set(&r->headers_out.content_type, "application/json");
             r->headers_out.content_type_len = r->headers_out.content_type.len;
@@ -559,9 +562,8 @@ ngx_conf_enum_t ngx_postgres_output_options[] = {
 
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    if (location->output != NGX_CONF_UNSET_PTR) return "duplicate";
     if (location->query == NGX_CONF_UNSET_PTR) return "query must defined before";
-    ngx_postgres_output_t *output = location->output = &location->query->output;
+    ngx_postgres_output_t *output = &location->query->output;
     if (output->handler) return "duplicate";
     struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
     ngx_str_t *elts = cf->args->elts;

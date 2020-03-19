@@ -313,9 +313,8 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     elts[1].data++;
     if (!elts[3].len) return "empty col";
     ngx_postgres_location_t *location = conf;
-    if (location->variables != NGX_CONF_UNSET_PTR) return "duplicate";
     if (location->query == NGX_CONF_UNSET_PTR) return "query must defined before";
-    ngx_array_t *variables = location->variables = &location->query->variables;
+    ngx_array_t *variables = &location->query->variables;
     if (!variables->elts && ngx_array_init(variables, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) return "!ngx_array_init != NGX_OK";
     ngx_postgres_variable_t *variable = ngx_array_push(variables);
     if (!variable) return "!ngx_array_push";
