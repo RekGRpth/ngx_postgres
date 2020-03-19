@@ -248,7 +248,6 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     if (rc == NGX_DONE && !pd->status && pd->query < location->queries.nelts - 1) {
         ngx_postgres_query_t *elts = location->queries.elts;
         location->query = &elts[pd->query++];
-//        pd->resultFormat = location->query->output.binary;
         common->state = state_db_idle;
         return NGX_AGAIN;
     }
