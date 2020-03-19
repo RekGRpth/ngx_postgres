@@ -49,17 +49,17 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
 static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_postgres_location_t *location = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_location_t));
     if (!location) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
+    location->output = NGX_CONF_UNSET_PTR;
+//    location->output.size = NGX_CONF_UNSET_SIZE;
+    location->query = NGX_CONF_UNSET_PTR;
+    location->upstream.buffering = 1;
     location->upstream.connect_timeout = NGX_CONF_UNSET_MSEC;
+    location->upstream.ignore_client_abort = 1;
+    location->upstream.intercept_404 = 1;
+    location->upstream.intercept_errors = 1;
     location->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
     location->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
-    location->output.header = 1;
-    location->output.string = 1;
-    location->output.size = NGX_CONF_UNSET_SIZE;
-    /* the hardcoded values */
-    location->upstream.buffering = 1;
-    location->upstream.ignore_client_abort = 1;
-    location->upstream.intercept_errors = 1;
-    location->upstream.intercept_404 = 1;
+    location->variables = NGX_CONF_UNSET_PTR;
     return location;
 }
 
@@ -68,14 +68,16 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_postgres_location_t *prev = parent;
     ngx_postgres_location_t *conf = child;
     if (!conf->complex.value.data) conf->complex = prev->complex;
-    if (!conf->output.handler) conf->output = prev->output;
+//    if (!conf->output.handler) conf->output = prev->output;
     if (!conf->queries.elts) conf->queries = prev->queries;
     if (!conf->upstream.upstream) conf->upstream = prev->upstream;
-    if (!conf->variables.elts) conf->variables = prev->variables;
+//    if (!conf->variables.elts) conf->variables = prev->variables;
     ngx_conf_merge_msec_value(conf->upstream.connect_timeout, prev->upstream.connect_timeout, 60000);
     ngx_conf_merge_msec_value(conf->upstream.read_timeout, prev->upstream.read_timeout, 60000);
     ngx_conf_merge_msec_value(conf->upstream.send_timeout, prev->upstream.send_timeout, 60000);
-    ngx_conf_merge_size_value(conf->output.size, prev->output.size, (size_t) ngx_pagesize);
+    ngx_conf_merge_ptr_value(conf->output, prev->output, NGX_CONF_UNSET_PTR);
+    ngx_conf_merge_ptr_value(conf->variables, prev->variables, NGX_CONF_UNSET_PTR);
+//    ngx_conf_merge_size_value(conf->output.size, prev->output.size, (size_t) ngx_pagesize);
     return NGX_CONF_OK;
 }
 
@@ -401,12 +403,12 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_location_t, upstream.send_timeout),
     .post = NULL },
-  { .name = ngx_string("postgres_size"),
+/*  { .name = ngx_string("postgres_size"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
     .set = ngx_conf_set_size_slot,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_location_t, output.size),
-    .post = NULL },
+    .post = NULL },*/
     ngx_null_command
 };
 

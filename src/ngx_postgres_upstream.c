@@ -99,7 +99,8 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     peer->values[0] = (const char *)peer->value;
     const char *options = peer->values[2];
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (location->output.append) {
+    ngx_postgres_output_t *output = location->output;
+    if (output->append) {
         size_t len = options ? ngx_strlen(options) : 0;
         u_char *buf = ngx_pnalloc(r->pool, len + (len ? 1 : 0) + sizeof("-c config.append_type_to_column_name=true") - 1 + 1);
         if (!buf) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_DECLINED; }
@@ -427,10 +428,11 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
         }
     }
     location->query = &elts[pd->query++];
-    pd->resultFormat = location->output.binary;
-    if (location->variables.elts && location->variables.nelts) {
-        if (ngx_array_init(&pd->variables, r->pool, location->variables.nelts, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
-        pd->variables.nelts = location->variables.nelts;
+//    pd->resultFormat = location->query->output.binary;
+    ngx_array_t *variables = location->variables;
+    if (variables->elts && variables->nelts) {
+        if (ngx_array_init(&pd->variables, r->pool, variables->nelts, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
+        pd->variables.nelts = variables->nelts;
         ngx_memzero(&pd->variables.elts, pd->variables.nelts * pd->variables.size); /* fake ngx_array_push'ing */
     }
     return NGX_OK;
