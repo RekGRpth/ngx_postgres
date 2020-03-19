@@ -96,6 +96,7 @@ typedef struct {
     ngx_str_t sql;
     ngx_uint_t hash;
     ngx_uint_t nParams;
+    ngx_uint_t query;
     ngx_uint_t resultFormat;
     Oid *paramTypes;
     u_char **paramValues;
