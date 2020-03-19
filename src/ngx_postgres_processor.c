@@ -109,7 +109,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     for (; (pd->result.res = PQgetResult(common->conn)); PQclear(pd->result.res)) switch(PQresultStatus(pd->result.res)) {
         case PGRES_FATAL_ERROR:
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
-            ngx_postgres_variable_error(r);
+            if (pd->query < location->queries.nelts) ngx_postgres_variable_error(r);
             PQclear(pd->result.res);
             pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
             if (pd->stmtName && common->prepare) {
@@ -215,12 +215,13 @@ again:
 static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    if (pd->query >= location->queries.nelts) return NGX_DONE;
     if (ngx_postgres_variable_set(r) == NGX_ERROR) {
         pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_set == NGX_ERROR");
         return NGX_DONE;
     }
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *query = location->queries.elts;
     ngx_postgres_output_t *output = &query[pd->query].output;
     if (!pd->status && output->handler) return output->handler(r);
@@ -238,16 +239,16 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     if (!PQconsumeInput(common->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(common->conn)); return NGX_ERROR; }
     if (PQisBusy(common->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
     ngx_int_t rc = NGX_DONE;
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     for (; rc == NGX_DONE && (pd->result.res = PQgetResult(common->conn)); PQclear(pd->result.res)) switch(PQresultStatus(pd->result.res)) {
         case PGRES_FATAL_ERROR:
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
-            ngx_postgres_variable_error(r);
+            if (pd->query < location->queries.nelts) ngx_postgres_variable_error(r);
             pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
             break;
         case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(r); // fall through
         default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
     }
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (rc == NGX_DONE && !pd->status && pd->query < location->queries.nelts - 1) {
         common->state = state_db_idle;
         pd->query++;
@@ -256,6 +257,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     if (PQtransactionStatus(common->conn) != PQTRANS_IDLE) {
         if (!PQsendQuery(common->conn, "COMMIT")) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(COMMIT)"); return NGX_ERROR; }
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQuery(COMMIT)");
+        pd->query++;
         return NGX_AGAIN;
     }
     return rc != NGX_DONE ? rc : ngx_postgres_done(r);

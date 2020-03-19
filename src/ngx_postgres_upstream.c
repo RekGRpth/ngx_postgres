@@ -98,7 +98,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     const char *host = peer->values[0];
     peer->values[0] = (const char *)peer->value;
     const char *options = peer->values[2];
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+/*    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *query = location->queries.elts;
     ngx_postgres_output_t *output = &query[pd->query].output;
     if (output->append) {
@@ -113,7 +113,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         p = ngx_copy(p, "-c config.append_type_to_column_name=true", sizeof("-c config.append_type_to_column_name=true") - 1);
         *p = '\0';
         peer->values[2] = (const char *)buf;
-    }
+    }*/
     common->conn = PQconnectStartParams(peer->keywords, peer->values, 0); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
     peer->values[0] = host;
     peer->values[2] = options;
