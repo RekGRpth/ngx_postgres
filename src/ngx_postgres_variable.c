@@ -117,9 +117,10 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
 
 
 typedef struct {
-    ngx_http_variable_t *variable;
     ngx_int_t col;
     ngx_int_t row;
+    ngx_str_t variable;
+    ngx_uint_t index;
     ngx_uint_t required;
     u_char *name;
 } ngx_postgres_variable_t;
@@ -206,7 +207,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
             if ((variable[i].col = PQfnumber(res, (const char *)variable[i].name)) == -1) {
                 if (variable[i].required) {
                     ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value from col \"%s\" that wasn't found in the received result-set in location \"%V\"", &variable[i].variable->name, variable[i].name, &core_loc_conf->name);
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value from col \"%s\" that wasn't found in the received result-set in location \"%V\"", &variable[i].variable, variable[i].name, &core_loc_conf->name);
                     return NGX_ERROR;
                 }
                 continue;
@@ -215,7 +216,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
         if (variable[i].row >= result->ntuples || variable[i].col >= result->nfields) {
             if (variable[i].required) {
                 ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value out of range of the received result-set (rows:%i cols:%i) in location \"%V\"", &variable[i].variable->name, result->ntuples, result->nfields, &core_loc_conf->name);
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value out of range of the received result-set (rows:%i cols:%i) in location \"%V\"", &variable[i].variable, result->ntuples, result->nfields, &core_loc_conf->name);
                 return NGX_ERROR;
             }
             continue;
@@ -223,24 +224,24 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
         if (PQgetisnull(res, variable[i].row, variable[i].col)) {
             if (variable[i].required) {
                 ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires non-NULL value in location \"%V\"", &variable[i].variable->name, &core_loc_conf->name);
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires non-NULL value in location \"%V\"", &variable[i].variable, &core_loc_conf->name);
                 return NGX_ERROR;
             }
             continue;
         }
-        if (!(elts[i].len = PQgetlength(res, variable[i].row, variable[i].col))) {
+        if (!(elts[variable[i].index].len = PQgetlength(res, variable[i].row, variable[i].col))) {
             if (variable[i].required) {
                 ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires non-zero length value in location \"%V\"", &variable[i].variable->name, &core_loc_conf->name);
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires non-zero length value in location \"%V\"", &variable[i].variable, &core_loc_conf->name);
                 return NGX_ERROR;
             }
             continue;
         }
-        if (!(elts[i].data = ngx_pnalloc(r->pool, elts[i].len))) {
+        if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc");
             return NGX_ERROR;
         }
-        ngx_memcpy(elts[i].data, PQgetvalue(res, variable[i].row, variable[i].col), elts[i].len);
+        ngx_memcpy(elts[variable[i].index].data, PQgetvalue(res, variable[i].row, variable[i].col), elts[variable[i].index].len);
     }
     return NGX_OK;
 }
@@ -318,12 +319,15 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (!variables->elts && ngx_array_init(variables, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) return "!ngx_array_init != NGX_OK";
     ngx_postgres_variable_t *variable = ngx_array_push(variables);
     if (!variable) return "!ngx_array_push";
-    if (!(variable->variable = ngx_http_add_variable(cf, &elts[1], NGX_HTTP_VAR_CHANGEABLE))) return "!ngx_http_add_variable";
-    if (ngx_http_get_variable_index(cf, &elts[1]) == NGX_ERROR) return "ngx_http_get_variable_index == NGX_ERROR";
-    if (!variable->variable->get_handler) {
-        variable->variable->get_handler = ngx_postgres_variable_get;
-        variable->variable->data = (uintptr_t) variables->nelts - 1;
-    }
+    variable->index = location->index++;
+    variable->variable = elts[1];
+    ngx_http_variable_t *var = ngx_http_add_variable(cf, &variable->variable, NGX_HTTP_VAR_CHANGEABLE);
+    if (!var) return "!ngx_http_add_variable";
+    ngx_int_t index = ngx_http_get_variable_index(cf, &variable->variable);
+    if (index == NGX_ERROR) return "ngx_http_get_variable_index == NGX_ERROR";
+    var->index = (ngx_uint_t)index;
+    var->get_handler = ngx_postgres_variable_get;
+    var->data = (uintptr_t)variable->index;
     if ((variable->row = ngx_atoi(elts[2].data, elts[2].len)) == NGX_ERROR) return "invalid row number";
     if ((variable->col = ngx_atoi(elts[3].data, elts[3].len)) == NGX_ERROR) { /* get col by name */
         if (!(variable->name = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "!ngx_pnalloc";

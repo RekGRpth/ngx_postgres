@@ -411,6 +411,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     r->upstream->peer.free = ngx_postgres_peer_free;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *elts = location->queries.elts;
+    ngx_uint_t nelts = 0;
     for (ngx_uint_t i = 0; i < location->queries.nelts; i++) {
         ngx_postgres_query_t *query = &elts[i];
         if (query->params.nelts) {
@@ -427,13 +428,14 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
                 }
             }
         }
+        ngx_array_t *variables = &query->variables;
+        nelts += variables->nelts;
     }
-/*    ngx_array_t *variables = location->variables;
-    if (variables->elts && variables->nelts) {
-        if (ngx_array_init(&pd->variables, r->pool, variables->nelts, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
-        pd->variables.nelts = variables->nelts;
+    if (nelts) {
+        if (ngx_array_init(&pd->variables, r->pool, nelts, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
+        pd->variables.nelts = nelts;
         ngx_memzero(&pd->variables.elts, pd->variables.nelts * pd->variables.size);
-    }*/
+    }
     return NGX_OK;
 }
 

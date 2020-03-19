@@ -35,6 +35,7 @@ typedef struct {
     ngx_http_complex_value_t complex;
     ngx_http_upstream_conf_t upstream;
     ngx_postgres_query_t *query;
+    ngx_uint_t index;
 } ngx_postgres_location_t;
 
 #endif /* _NGX_POSTGRES_MODULE_H_ */
