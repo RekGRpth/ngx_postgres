@@ -109,10 +109,10 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     for (; (pd->result.res = PQgetResult(common->conn)); PQclear(pd->result.res)) switch(PQresultStatus(pd->result.res)) {
         case PGRES_FATAL_ERROR:
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
-            if (pd->query < location->queries.nelts) ngx_postgres_variable_error(r);
+            ngx_postgres_variable_error(r);
             PQclear(pd->result.res);
             pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-            if (pd->stmtName && common->prepare) {
+            if (query->prepare && /*pd->stmtName && */common->prepare) {
                 for (ngx_queue_t *queue = ngx_queue_head(common->prepare); queue != ngx_queue_sentinel(common->prepare); queue = ngx_queue_next(queue)) {
                     ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
                     if (prepare->hash == pd->hash) { ngx_queue_remove(queue); break; }
@@ -122,7 +122,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
     }
     ngx_uint_t hash = 0;
-    if (!pd->stmtName) {
+    if (!query->prepare/* and !pd->stmtName*/) {
         if (pd->nParams) {
             if (!PQsendQueryParams(common->conn, (const char *)pd->sql.data, pd->nParams, pd->paramTypes, (const char *const *)pd->paramValues, NULL, NULL, query->output.binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryParams(%s) and %s", pd->sql.data, PQerrorMessageMy(common->conn)); return NGX_ERROR; }
         } else {
@@ -216,7 +216,6 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (pd->query >= location->queries.nelts) return NGX_DONE;
     if (ngx_postgres_variable_set(r) == NGX_ERROR) {
         pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_set == NGX_ERROR");
@@ -243,7 +242,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     for (; rc == NGX_DONE && (pd->result.res = PQgetResult(common->conn)); PQclear(pd->result.res)) switch(PQresultStatus(pd->result.res)) {
         case PGRES_FATAL_ERROR:
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
-            if (pd->query < location->queries.nelts) ngx_postgres_variable_error(r);
+            ngx_postgres_variable_error(r);
             pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
             break;
         case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(r); // fall through
@@ -255,8 +254,12 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
         return NGX_AGAIN;
     }
     if (PQtransactionStatus(common->conn) != PQTRANS_IDLE) {
-        if (!PQsendQuery(common->conn, "COMMIT")) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(COMMIT)"); return NGX_ERROR; }
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQuery(COMMIT)");
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
+        ngx_postgres_query_t *query = location->query = ngx_array_push(&location->queries);
+        if (!query) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_push"); return NGX_ERROR; }
+        ngx_memzero(query, sizeof(ngx_postgres_query_t));
+        ngx_str_set(&query->sql, "COMMIT");
+        common->state = state_db_idle;
         pd->query++;
         return NGX_AGAIN;
     }

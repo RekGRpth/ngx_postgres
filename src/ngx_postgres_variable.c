@@ -237,6 +237,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
             }
             continue;
         }
+        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "col = %i, row = %i, name = %s, required = %s, index = %i", variable[i].col, variable[i].row, variable[i].name ? variable[i].name : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
         if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc");
             return NGX_ERROR;
