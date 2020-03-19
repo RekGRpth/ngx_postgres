@@ -9,7 +9,7 @@ static ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *r, ngx_http_v
     v->not_found = 1;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
-    if (!result->sfields.len) return NGX_OK;
+    if (!result->sfields.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
@@ -25,7 +25,7 @@ static ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *r, ngx_http_v
     v->not_found = 1;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
-    if (!result->stuples.len) return NGX_OK;
+    if (!result->stuples.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
@@ -41,7 +41,7 @@ static ngx_int_t ngx_postgres_variable_cmdtuples(ngx_http_request_t *r, ngx_http
     v->not_found = 1;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
-    if (!result->cmdTuples.len) return NGX_OK;
+    if (!result->cmdTuples.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
@@ -57,7 +57,7 @@ static ngx_int_t ngx_postgres_variable_cmdstatus(ngx_http_request_t *r, ngx_http
     v->not_found = 1;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
-    if (!result->cmdStatus.len) return NGX_OK;
+    if (!result->cmdStatus.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
@@ -73,7 +73,7 @@ static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_var
     v->not_found = 1;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
-    if (!result->sql.len) return NGX_OK;
+    if (!result->sql.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
@@ -89,7 +89,7 @@ static ngx_int_t ngx_postgres_variable_error_(ngx_http_request_t *r, ngx_http_va
     v->not_found = 1;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
-    if (!result->error.len) return NGX_OK;
+    if (!result->error.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
@@ -106,7 +106,7 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
     if (!pd || !pd->variables.elts) return NGX_OK;
     ngx_str_t *elts = pd->variables.elts;
     ngx_uint_t index = *(ngx_uint_t *)data;
-    if (!elts[index].len) return NGX_OK;
+    if (!elts[index].data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
@@ -129,11 +129,27 @@ ngx_int_t ngx_postgres_variable_error(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    result->sql = location->query->sql;
     PGresult *res = result->res;
+    result->ntuples = 0;
+    result->nfields = 0;
+    if (result->stuples.data) ngx_pfree(r->pool, result->stuples.data);
+    if (result->sfields.data) ngx_pfree(r->pool, result->sfields.data);
+    if (result->cmdTuples.data) ngx_pfree(r->pool, result->cmdTuples.data);
+    if (result->cmdStatus.data) ngx_pfree(r->pool, result->cmdStatus.data);
+    ngx_str_null(&result->stuples);
+    ngx_str_null(&result->sfields);
+    ngx_str_null(&result->cmdTuples);
+    ngx_str_null(&result->cmdStatus);
     const char *value;
     if ((value = PQresultErrorMessage(res)) && !result->error.len && (result->error.len = ngx_strlen(value))) {
         if (!(result->error.data = ngx_pnalloc(r->pool, result->error.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
         ngx_memcpy(result->error.data, value, result->error.len);
+    }
+    if ((value = PQcmdStatus(res)) && (result->cmdStatus.len = ngx_strlen(value))) {
+        if (!(result->cmdStatus.data = ngx_pnalloc(r->pool, result->cmdStatus.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+        ngx_memcpy(result->cmdStatus.data, value, result->cmdStatus.len);
     }
     return NGX_OK;
 }
