@@ -71,12 +71,14 @@ static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_var
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     v->not_found = 1;
-    if (!pd || !pd->sql.len) return NGX_OK;
+    if (!pd) return NGX_OK;
+    ngx_postgres_result_t *result = &pd->result;
+    if (!result->sql.len) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->len = pd->sql.len;
-    v->data = pd->sql.data;
+    v->len = result->sql.len;
+    v->data = result->sql.data;
     return NGX_OK;
 }
 
@@ -87,7 +89,7 @@ static ngx_int_t ngx_postgres_variable_error_(ngx_http_request_t *r, ngx_http_va
     v->not_found = 1;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
-    if (!result->nfields) return NGX_OK;
+    if (!result->error.len) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
@@ -141,6 +143,8 @@ ngx_int_t ngx_postgres_variable_output(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    result->sql = location->query->sql;
     PGresult *res = result->res;
     const char *value;
     result->ntuples = PQntuples(res);
