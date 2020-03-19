@@ -202,7 +202,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
     for (ngx_uint_t i = 0; i < variables->nelts; i++) {
-        ngx_log_debug4(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "col = %i, row = %i, name = %s, required = %s", variable[i].col, variable[i].row, variable[i].name ? variable[i].name : (u_char *)"(null)", variable[i].required ? "true" : "false");
+        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "col = %i, row = %i, name = %s, required = %s, index = %i", variable[i].col, variable[i].row, variable[i].name ? variable[i].name : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
         if (variable[i].col == NGX_ERROR) {
             if ((variable[i].col = PQfnumber(res, (const char *)variable[i].name)) == -1) {
                 if (variable[i].required) {
