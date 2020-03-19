@@ -8,7 +8,6 @@ extern ngx_module_t ngx_postgres_module;
 typedef ngx_int_t (*ngx_postgres_handler_pt) (ngx_http_request_t *r);
 
 typedef struct {
-    ngx_flag_t append;
     ngx_flag_t binary;
     ngx_flag_t header;
     ngx_flag_t string;
@@ -32,6 +31,7 @@ typedef struct {
 
 typedef struct {
     ngx_array_t queries;
+    ngx_flag_t append;
     ngx_http_complex_value_t complex;
     ngx_http_upstream_conf_t upstream;
     ngx_postgres_query_t *query;

@@ -245,7 +245,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
             if (output->quote) size++;
             if (output->escape) size += ngx_postgres_count((u_char *)PQfname(res, col), len, output->escape);
             else size += len;
-            if (output->append && !ngx_strstr(PQfname(res, col), "::")) {
+            if (location->append && !ngx_strstr(PQfname(res, col), "::")) {
                 if (output->escape) size += ngx_postgres_count((u_char *)"::", sizeof("::") - 1, output->escape);
                 else size += sizeof("::") - 1;
                 Oid oid = PQftype(res, col);
@@ -309,7 +309,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
             if (output->quote) *b->last++ = output->quote;
             if (output->escape) b->last = ngx_postgres_escape(b->last, (u_char *)PQfname(res, col), len, output->escape);
             else b->last = ngx_copy(b->last, PQfname(res, col), len);
-            if (output->append && !ngx_strstr(PQfname(res, col), "::")) {
+            if (location->append && !ngx_strstr(PQfname(res, col), "::")) {
                 if (output->escape) b->last = ngx_postgres_escape(b->last, (u_char *)"::", sizeof("::") - 1, output->escape);
                 else b->last = ngx_copy(b->last, "::", sizeof("::") - 1);
                 Oid oid = PQftype(res, col);
@@ -386,8 +386,6 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = location->queries.elts;
-    ngx_postgres_output_t *output = &query[pd->query].output;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
     if (result->ntuples == 1 && result->nfields == 1 && (PQftype(res, 0) == JSONOID || PQftype(res, 0) == JSONBOID)) size = PQgetlength(res, 0, 0); else {
@@ -421,7 +419,7 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
         for (ngx_int_t col = 0; col < result->nfields; col++) {
             int len = ngx_strlen(PQfname(res, col));
             size += (len + 3 + ngx_escape_json(NULL, (u_char *)PQfname(res, col), len)) * result->ntuples; // extra "":
-            if (output->append && !ngx_strstr(PQfname(res, col), "::")) {
+            if (location->append && !ngx_strstr(PQfname(res, col), "::")) {
                 size += 2 * result->ntuples;
                 Oid oid = PQftype(res, col);
                 const char *type = PQftypeMy(oid);
@@ -449,7 +447,7 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
                 if (col > 0) b->last = ngx_copy(b->last, ",", 1);
                 b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
                 b->last = (u_char *)ngx_escape_json(b->last, (u_char *)PQfname(res, col), ngx_strlen(PQfname(res, col)));
-                if (output->append && !ngx_strstr(PQfname(res, col), "::")) {
+                if (location->append && !ngx_strstr(PQfname(res, col), "::")) {
                     b->last = ngx_copy(b->last, "::", sizeof("::") - 1);
                     Oid oid = PQftype(res, col);
                     const char *type = PQftypeMy(oid);
@@ -598,7 +596,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             elts[i].data = &elts[i].data[sizeof("append=") - 1];
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_output_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { output->append = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location->append = e[j].value; break; }
             if (!e[j].name.len) return "invalid append";
         } else if (elts[i].len > sizeof("header=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"header=", sizeof("header=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("header=") - 1);
