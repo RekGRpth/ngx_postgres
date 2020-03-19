@@ -167,4 +167,5 @@ else
     CORE_LIBS="$CORE_LIBS $ngx_feature_libs -lavcall"
 fi
 
+have=T_NGX_HTTP_DYNAMIC_RESOLVE  . auto/have
 have=NGX_POSTGRES_MODULE . auto/have
