@@ -192,12 +192,15 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *query = location->queries.elts;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->query);
     ngx_array_t *variables = &query[pd->query].variables;
     if (!variables->elts) return NGX_OK;
     ngx_postgres_variable_t *variable = variables->elts;
     ngx_str_t *elts = pd->variables.elts;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
+    result->ntuples = PQntuples(res);
+    result->nfields = PQnfields(res);
     for (ngx_uint_t i = 0; i < variables->nelts; i++) {
         if (variable[i].col == NGX_ERROR) {
             if ((variable[i].col = PQfnumber(res, (const char *)variable[i].name)) == -1) {
