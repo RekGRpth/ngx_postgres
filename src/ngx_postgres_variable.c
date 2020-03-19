@@ -149,10 +149,6 @@ ngx_int_t ngx_postgres_variable_error(ngx_http_request_t *r) {
         if (!(result->error.data = ngx_pnalloc(r->pool, result->error.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
         ngx_memcpy(result->error.data, value, result->error.len);
     }
-    if ((value = PQcmdStatus(res)) && (result->cmdStatus.len = ngx_strlen(value))) {
-        if (!(result->cmdStatus.data = ngx_pnalloc(r->pool, result->cmdStatus.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-        ngx_memcpy(result->cmdStatus.data, value, result->cmdStatus.len);
-    }
     return NGX_OK;
 }
 
