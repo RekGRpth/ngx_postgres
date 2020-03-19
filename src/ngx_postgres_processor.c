@@ -155,6 +155,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "common->state == %i", common->state); return NGX_ERROR;
     }
     ngx_add_timer(c->read, r->upstream->conf->read_timeout); /* set result timeout */
+    ngx_add_timer(c->write, r->upstream->conf->send_timeout); /* set result timeout */
     common->state = state_db_result;
     return NGX_DONE;
 }
@@ -190,6 +191,7 @@ again:
             return NGX_AGAIN;
     }
     ngx_connection_t *c = common->connection;
+    if (c->read->timer_set) ngx_del_timer(c->read); /* remove connection timeout from new connection */
     if (c->write->timer_set) ngx_del_timer(c->write); /* remove connection timeout from new connection */
     const char *charset = PQparameterStatus(common->conn, "client_encoding");
     if (charset) {
@@ -228,8 +230,8 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = r->upstream->peer.data;
     ngx_postgres_common_t *common = &pd->common;
     ngx_connection_t *c = common->connection;
-    if (c->write->timer_set) ngx_del_timer(c->write); /* remove connection timeout from re-used keepalive connection */
     if (c->read->timer_set) ngx_del_timer(c->read); /* remove result timeout */
+    if (c->write->timer_set) ngx_del_timer(c->write); /* remove connection timeout from re-used keepalive connection */
     if (!PQconsumeInput(common->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(common->conn)); return NGX_ERROR; }
     if (PQisBusy(common->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
     ngx_int_t rc = NGX_DONE;

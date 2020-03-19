@@ -15,13 +15,14 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     ngx_peer_connection_t *pc = &r->upstream->peer;
     ngx_postgres_common_t *common = &pd->common;
     ngx_connection_t *c = pc->connection = common->connection;
-    c->data = NULL;
+    c->data = r;
     c->idle = 0;
     c->log_error = pc->log_error;
     c->log = pc->log;
     if (c->pool) c->pool->log = pc->log;
     c->read->log = pc->log;
     if (c->read->timer_set) ngx_del_timer(c->read);
+    if (c->write->timer_set) ngx_del_timer(c->write);
     c->sent = 0;
     c->write->log = pc->log;
     pc->cached = 1;
@@ -218,7 +219,8 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     ngx_postgres_save_t *ps = c->data;
     ngx_postgres_common_t *common = &ps->common;
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
-    if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
+    if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "read->timedout"); goto close; }
+    if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write->timedout"); goto close; }
     if (!PQconsumeInput(common->conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(common->conn)); goto close; }
     if (PQisBusy(common->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQisBusy"); return; }
     for (PGresult *res; (res = PQgetResult(common->conn)); PQclear(res)) switch(PQresultStatus(res)) {
@@ -295,6 +297,7 @@ static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     c->log = server->log ? server->log : ngx_cycle->log;
     if (c->pool) c->pool->log = c->log;
     ngx_add_timer(c->read, server->keepalive);
+    ngx_add_timer(c->write, server->keepalive);
     c->read->delayed = 0;
     c->read->handler = ngx_postgres_read_handler;
     c->read->log = c->log;
