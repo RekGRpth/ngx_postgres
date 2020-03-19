@@ -676,6 +676,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (!location->queries.elts && ngx_array_init(&location->queries, cf->pool, 1, sizeof(ngx_postgres_query_t)) != NGX_OK) return "!ngx_array_init != NGX_OK";
     ngx_postgres_query_t *query = location->query = ngx_array_push(&location->queries);
     if (!query) return "!ngx_array_push";
+    ngx_memzero(query, sizeof(ngx_postgres_query_t));
     if (cf->args->nelts > 2) {
         if (elts[1].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"prepare", sizeof("prepare") - 1)) query->prepare = 1;
         else return "invalid parameter";
