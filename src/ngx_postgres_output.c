@@ -230,7 +230,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
     if (!result->ntuples || !result->nfields) return NGX_DONE;
-    size_t size = pd->response ? 1 : 0;
+    size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_output_t *output = location->output;
     if (output->header) {
@@ -298,7 +298,6 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     chain->buf = b;
     b->memory = 1;
     b->tag = r->upstream->output.tag;
-    if (pd->response) *b->last++ = '\n';
     if (output->header) {
         for (ngx_int_t col = 0; col < result->nfields; col++) {
             int len = ngx_strlen(PQfname(res, col));
@@ -360,8 +359,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
     chain->next = NULL;
-    if (pd->response) pd->response->next = chain; /* set output response */
-    else pd->response = chain;
+    pd->response = chain; /* set output response */
     return NGX_DONE;
 }
 
@@ -518,10 +516,7 @@ void ngx_postgres_output_chain(ngx_http_request_t *r) {
             r->headers_out.content_type_len = core_loc_conf->default_type.len;
         }
         r->headers_out.content_type_lowcase = NULL;
-        if (pd->response) {
-            r->headers_out.content_length_n = 0;
-            for (ngx_chain_t *chain = pd->response; chain; chain = chain->next) r->headers_out.content_length_n += chain->buf->end - chain->buf->start;
-        }
+        if (pd->response) r->headers_out.content_length_n = pd->response->buf->end - pd->response->buf->start;
         ngx_int_t rc = ngx_http_send_header(r);
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return;
     }
