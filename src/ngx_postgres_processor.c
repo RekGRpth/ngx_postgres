@@ -34,7 +34,8 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     if (PQisBusy(common->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
     ngx_connection_t *c = common->connection;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = location->query;
+    ngx_postgres_query_t *elts = location->queries.elts;
+    ngx_postgres_query_t *query = &elts[pd->query];
     if (common->state == state_db_connect || common->state == state_db_idle) {
         ngx_str_t sql;
         sql.len = query->sql.len - 2 * query->ids.nelts - query->percent;
@@ -220,7 +221,9 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
         return NGX_DONE;
     }
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (!pd->status && location->query->output.handler) return location->query->output.handler(r);
+    ngx_postgres_query_t *query = location->queries.elts;
+    ngx_postgres_output_t *output = &query[pd->query].output;
+    if (!pd->status && output->handler) return output->handler(r);
     return NGX_DONE;
 }
 
@@ -245,9 +248,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
         default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
     }
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (rc == NGX_DONE && !pd->status && pd->query < location->queries.nelts) {
-        ngx_postgres_query_t *elts = location->queries.elts;
-        location->query = &elts[pd->query++];
+    if (rc == NGX_DONE && !pd->status && pd->query++ < location->queries.nelts) {
         common->state = state_db_idle;
         return NGX_AGAIN;
     }
