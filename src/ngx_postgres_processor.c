@@ -112,7 +112,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             ngx_postgres_variable_error(r);
             PQclear(pd->result.res);
             pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-            if (query->prepare && /*pd->stmtName && */common->prepare) {
+            if (query->prepare && common->prepare) {
                 for (ngx_queue_t *queue = ngx_queue_head(common->prepare); queue != ngx_queue_sentinel(common->prepare); queue = ngx_queue_next(queue)) {
                     ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
                     if (prepare->hash == pd->hash) { ngx_queue_remove(queue); break; }
@@ -122,7 +122,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
     }
     ngx_uint_t hash = 0;
-    if (!query->prepare/* and !pd->stmtName*/) {
+    if (!query->prepare) {
         if (pd->nParams) {
             if (!PQsendQueryParams(common->conn, (const char *)pd->sql.data, pd->nParams, pd->paramTypes, (const char *const *)pd->paramValues, NULL, NULL, query->output.binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryParams(%s) and %s", pd->sql.data, PQerrorMessageMy(common->conn)); return NGX_ERROR; }
         } else {
