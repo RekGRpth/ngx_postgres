@@ -69,7 +69,7 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_postgres_location_t *conf = child;
     if (!conf->complex.value.data) conf->complex = prev->complex;
     if (!conf->output.handler) conf->output = prev->output;
-    if (!conf->query.sql.data) conf->query = prev->query;
+    if (!conf->queries.elts) conf->queries = prev->queries;
     if (!conf->upstream.upstream) conf->upstream = prev->upstream;
     if (!conf->variables.elts) conf->variables = prev->variables;
     ngx_conf_merge_msec_value(conf->upstream.connect_timeout, prev->upstream.connect_timeout, 60000);

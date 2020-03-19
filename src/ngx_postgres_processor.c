@@ -35,7 +35,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     ngx_connection_t *c = common->connection;
     if (common->state == state_db_connect || common->state == state_db_idle) {
         ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-        ngx_postgres_query_t *query = &location->query;
+        ngx_postgres_query_t *query = location->query;
         ngx_str_t sql;
         sql.len = query->sql.len - 2 * query->ids.nelts - query->percent;
     //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &query->sql);
