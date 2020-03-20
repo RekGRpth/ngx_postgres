@@ -324,14 +324,14 @@ ngx_conf_enum_t ngx_postgres_requirement_options[] = {
 
 
 char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_postgres_location_t *location = conf;
+    if (location->query == NGX_CONF_UNSET_PTR) return "must defined after \"postgres_query\" directive";
     ngx_str_t *elts = cf->args->elts;
     if (elts[1].len < 2) return "empty variable name";
     if (elts[1].data[0] != '$') return "invalid variable name";
     elts[1].len--;
     elts[1].data++;
     if (!elts[3].len) return "empty col";
-    ngx_postgres_location_t *location = conf;
-    if (location->query == NGX_CONF_UNSET_PTR) return "query must defined before";
     ngx_array_t *variables = &location->query->variables;
     if (!variables->elts && ngx_array_init(variables, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) return "!ngx_array_init != NGX_OK";
     ngx_postgres_variable_t *variable = ngx_array_push(variables);

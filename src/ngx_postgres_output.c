@@ -564,7 +564,7 @@ ngx_conf_enum_t ngx_postgres_output_options[] = {
 
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    if (location->query == NGX_CONF_UNSET_PTR) return "query must defined before";
+    if (location->query == NGX_CONF_UNSET_PTR) return "must defined after \"postgres_query\" directive";
     ngx_postgres_output_t *output = &location->query->output;
     if (output->handler) return "duplicate";
     struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
