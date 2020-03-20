@@ -76,8 +76,6 @@ typedef struct {
     ngx_chain_t *response;
     ngx_event_t timeout;
     ngx_http_request_t *request;
-    ngx_http_upstream_handler_pt read;
-    ngx_http_upstream_handler_pt write;
     ngx_int_t status;
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
