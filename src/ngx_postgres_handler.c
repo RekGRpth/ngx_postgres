@@ -4,7 +4,7 @@
 #include "ngx_postgres_processor.h"
 
 
-ngx_int_t ngx_postgres_test_connect(ngx_connection_t *c) {
+static ngx_int_t ngx_postgres_test_connect(ngx_connection_t *c) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
 #if (NGX_HAVE_KQUEUE)
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
