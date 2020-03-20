@@ -310,7 +310,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    if (u->headers_in.status_n != NGX_HTTP_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "status_n != NGX_HTTP_OK"); return; }
+//    if (u->headers_in.status_n != NGX_HTTP_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "status_n != NGX_HTTP_OK"); return; }
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_connection_t *c = pdc->connection;
     if (!c) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!connection"); return; }
