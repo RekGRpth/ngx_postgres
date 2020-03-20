@@ -28,7 +28,8 @@ static void ngx_postgres_server_cleanup(void *data) {
     while (!ngx_queue_empty(&server->save)) {
         ngx_queue_t *queue = ngx_queue_head(&server->save);
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-        ngx_postgres_free_connection(&ps->common, 0);
+        ngx_postgres_common_t *psc = &ps->common;
+        ngx_postgres_free_connection(psc, 0);
         ngx_queue_remove(&ps->queue);
     }
 }
