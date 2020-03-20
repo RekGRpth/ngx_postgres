@@ -14,8 +14,8 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     pd->common = ps->common;
     ngx_http_upstream_t *u = r->upstream;
     ngx_peer_connection_t *pc = &u->peer;
-    ngx_postgres_common_t *common = &pd->common;
-    ngx_connection_t *c = pc->connection = common->connection;
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_connection_t *c = pc->connection = pdc->connection;
     c->data = r;
     c->idle = 0;
     c->log_error = pc->log_error;
@@ -27,9 +27,9 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     c->sent = 0;
     c->write->log = pc->log;
     pc->cached = 1;
-    pc->name = &common->name;
-    pc->sockaddr = common->sockaddr;
-    pc->socklen = common->socklen;
+    pc->name = &pdc->name;
+    pc->sockaddr = pdc->sockaddr;
+    pc->socklen = pdc->socklen;
 }
 
 
@@ -37,11 +37,11 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_common_t *common = &pd->common;
-    ngx_postgres_server_t *server = common->server;
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_postgres_server_t *server = pdc->server;
     for (ngx_queue_t *queue = ngx_queue_head(&server->save); queue != ngx_queue_sentinel(&server->save); queue = ngx_queue_next(queue)) {
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
-        if (ngx_memn2cmp((u_char *)pd->common.sockaddr, (u_char *)ps->common.sockaddr, pd->common.socklen, ps->common.socklen)) continue;
+        if (ngx_memn2cmp((u_char *)pdc->sockaddr, (u_char *)ps->common.sockaddr, pdc->socklen, ps->common.socklen)) continue;
         ngx_postgres_save_to_free(pd, ps);
         return NGX_DONE;
     }
@@ -53,16 +53,16 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_data_t *pd = pc->data;
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_common_t *common = &pd->common;
-    ngx_postgres_server_t *server = common->server;
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_postgres_server_t *server = pdc->server;
     ngx_queue_t *queue = ngx_queue_head(&server->peer);
     ngx_postgres_peer_t *peer = ngx_queue_data(queue, ngx_postgres_peer_t, queue);
     ngx_queue_remove(&peer->queue);
     ngx_queue_insert_tail(&server->peer, &peer->queue);
 //    pc->cached = 0;
-    common->name = peer->name;
-    common->sockaddr = peer->sockaddr;
-    common->socklen = peer->socklen;
+    pdc->name = peer->name;
+    pdc->sockaddr = peer->sockaddr;
+    pdc->socklen = peer->socklen;
     if (server->max_save) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "max_save");
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
@@ -104,20 +104,20 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         *p = '\0';
         peer->values[2] = (const char *)buf;
     }
-    common->conn = PQconnectStartParams(peer->keywords, peer->values, 0); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
+    pdc->conn = PQconnectStartParams(peer->keywords, peer->values, 0); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
     peer->values[0] = host;
     peer->values[2] = options;
-    if (PQstatus(common->conn) == CONNECTION_BAD || PQsetnonblocking(common->conn, 1) == -1) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(common->conn), peer->name);
-        PQfinish(common->conn);
-        common->conn = NULL;
+    if (PQstatus(pdc->conn) == CONNECTION_BAD || PQsetnonblocking(pdc->conn, 1) == -1) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(pdc->conn), peer->name);
+        PQfinish(pdc->conn);
+        pdc->conn = NULL;
         return NGX_DECLINED;
     }
-//    PQtrace(common->conn, stderr);
+//    PQtrace(pdc->conn, stderr);
     int fd;
-    if ((fd = PQsocket(common->conn)) == -1) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == -1"); goto invalid; }
+    if ((fd = PQsocket(pdc->conn)) == -1) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == -1"); goto invalid; }
     ngx_connection_t *c = ngx_get_connection(fd, pc->log);
-    if (!(common->connection = c)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto invalid; }
+    if (!(pdc->connection = c)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto invalid; }
     c->log_error = pc->log_error;
     c->log = pc->log;
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
@@ -134,14 +134,14 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         if (ngx_add_event(c->read, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
         if (ngx_add_event(c->write, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
     } else goto bad_add;
-    common->state = state_db_connect;
+    pdc->state = state_db_connect;
     pc->connection = c;
     server->cur_save++;
     return NGX_AGAIN;
 bad_add:
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_event_flags not NGX_USE_RTSIG_EVENT or NGX_USE_CLEAR_EVENT or NGX_USE_LEVEL_EVENT");
 invalid:
-    ngx_postgres_free_connection(&pd->common, 0);
+    ngx_postgres_free_connection(pdc, 0);
     return NGX_ERROR;
 }
 
@@ -231,12 +231,12 @@ close:
 
 static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
     ngx_http_request_t *r = pd->request;
-    ngx_postgres_common_t *common = &pd->common;
-    ngx_connection_t *c = common->connection;
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_connection_t *c = pdc->connection;
     u_char *listen = NULL;
     ngx_array_t *array = NULL;
     size_t len = 0;
-    if (common->listen) for (ngx_queue_t *queue_pd = ngx_queue_head(common->listen); queue_pd != ngx_queue_sentinel(common->listen); queue_pd = ngx_queue_next(queue_pd)) {
+    if (pdc->listen) for (ngx_queue_t *queue_pd = ngx_queue_head(pdc->listen); queue_pd != ngx_queue_sentinel(pdc->listen); queue_pd = ngx_queue_next(queue_pd)) {
         ngx_postgres_listen_t *listen_pd = ngx_queue_data(queue_pd, ngx_postgres_listen_t, queue);
         ngx_postgres_common_t *common = &ps->common;
         if (!common->listen) {
@@ -275,11 +275,11 @@ static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t 
 
 static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
     ngx_http_request_t *r = pd->request;
-    ngx_postgres_common_t *common = &pd->common;
+    ngx_postgres_common_t *pdc = &pd->common;
     ngx_queue_remove(&ps->queue);
-    ngx_postgres_server_t *server = common->server;
+    ngx_postgres_server_t *server = pdc->server;
     ngx_queue_insert_tail(&server->save, &ps->queue);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connection = %p", common->connection);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connection = %p", pdc->connection);
     ngx_http_upstream_t *u = r->upstream;
     ngx_peer_connection_t *pc = &u->peer;
     pc->connection = NULL;
@@ -304,14 +304,14 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
     if (u->headers_in.status_n != NGX_HTTP_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "status_n != NGX_HTTP_OK"); return; }
-    ngx_postgres_common_t *common = &pd->common;
-    ngx_connection_t *c = common->connection;
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_connection_t *c = pdc->connection;
     if (!c) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!connection"); return; }
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
 //    if (c->read->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->read, NGX_READ_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
 //    if (c->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
-    ngx_postgres_server_t *server = common->server;
+    ngx_postgres_server_t *server = pdc->server;
     if (c->requests >= server->requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests = %i", c->requests); return; }
     if (ngx_terminate) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_terminate"); return; }
     if (ngx_exiting) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_exiting"); return; }
@@ -330,7 +330,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_postgres_free_to_save(pd, ps);
     if (listen) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
-        if (!PQsendQuery(common->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery(%s) and %s", listen, PQerrorMessageMy(common->conn)); }
+        if (!PQsendQuery(pdc->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery(%s) and %s", listen, PQerrorMessageMy(pdc->conn)); }
     }
     if (!ngx_queue_empty(&server->data)) {
         ngx_queue_t *queue = ngx_queue_head(&server->data);
@@ -350,11 +350,11 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_connection_t *c = pc->connection;
     ngx_postgres_data_t *pd = pc->data;
-    ngx_postgres_common_t *common = &pd->common;
-    ngx_postgres_server_t *server = common->server;
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_postgres_server_t *server = pdc->server;
     if (state & NGX_PEER_FAILED || !c || c->read->eof || c->read->error || c->read->timedout || c->write->error || c->write->timedout); else
     if (server->max_save) ngx_postgres_free_peer(pd);
-    if (pc->connection) ngx_postgres_free_connection(&pd->common, 1);
+    if (pc->connection) ngx_postgres_free_connection(pdc, 1);
     pc->connection = NULL;
 }
 
@@ -373,8 +373,8 @@ static void ngx_postgres_timeout(ngx_event_t *ev) {
     ngx_postgres_data_t *pd = u->peer.data;
     if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
     ngx_queue_remove(&pd->queue);
-    ngx_postgres_common_t *common = &pd->common;
-    ngx_postgres_server_t *server = common->server;
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_postgres_server_t *server = pdc->server;
     server->cur_data--;
     ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
 }
@@ -384,9 +384,9 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = ngx_pcalloc(r->pool, sizeof(ngx_postgres_data_t));
     if (!pd) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-    ngx_postgres_common_t *common = &pd->common;
-    common->server = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
-    ngx_postgres_server_t *server = common->server;
+    ngx_postgres_common_t *pdc = &pd->common;
+    pdc->server = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
+    ngx_postgres_server_t *server = pdc->server;
     if (server->max_data) {
         pd->timeout.log = r->connection->log;
         pd->timeout.data = r->connection;
