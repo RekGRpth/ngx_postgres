@@ -153,6 +153,17 @@ invalid:
 
 static void ngx_postgres_write_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
+    ngx_connection_t *c = ev->data;
+    ngx_postgres_save_t *ps = c->data;
+    ngx_postgres_common_t *psc = &ps->common;
+    if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
+    if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write->timedout"); goto close; }
+    return;
+close:
+    ngx_postgres_free_connection(psc, 0);
+    ngx_queue_remove(&ps->queue);
+    ngx_postgres_server_t *server = psc->server;
+    ngx_queue_insert_tail(&server->free, &ps->queue);
 }
 
 
@@ -217,7 +228,6 @@ static void ngx_postgres_read_handler(ngx_event_t *ev) {
     ngx_postgres_common_t *psc = &ps->common;
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "read->timedout"); goto close; }
-    if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write->timedout"); goto close; }
     if (!PQconsumeInput(psc->conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(psc->conn)); goto close; }
     if (PQisBusy(psc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQisBusy"); return; }
     for (PGresult *res; (res = PQgetResult(psc->conn)); PQclear(res)) switch(PQresultStatus(res)) {
