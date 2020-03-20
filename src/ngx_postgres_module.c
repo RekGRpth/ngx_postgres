@@ -264,7 +264,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be number", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             server->requests = (ngx_uint_t)n;
-        } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_keepalive\" directive error: invalid additional parameter \"%V\"", &elts[i]); return NGX_CONF_ERROR; }
+        } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
     }
     return NGX_CONF_OK;
 }
@@ -287,10 +287,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             server->timeout = (ngx_msec_t)n;
-        } else {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_queue\" directive error: invalid additional parameter \"%V\"", &elts[i]);
-            return NGX_CONF_ERROR;
-        }
+        } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
     }
     return NGX_CONF_OK;
 }
