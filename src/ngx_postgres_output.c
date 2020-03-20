@@ -571,7 +571,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_str_t *elts = cf->args->elts;
     ngx_uint_t i;
     for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[1].len && !ngx_strncasecmp(e[i].name.data, elts[1].data, elts[1].len)) { output->handler = e[i].handler; break; }
-    if (!e[i].name.len) return "error: invalid output format ()";
+    if (!e[i].name.len) return "error: invalid output format (must be \"none\", \"text\", \"csv\", \"value\", \"binary\" or \"json\")";
     output->binary = e[i].binary;
     output->header = 1;
     output->string = 1;
@@ -587,12 +587,12 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
         if (elts[i].len > sizeof("delimiter=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"delimiter=", sizeof("delimiter=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("delimiter=") - 1);
-            if (!elts[i].len || elts[i].len > 1) return "invalid delimiter";
+            if (!elts[i].len || elts[i].len > 1) return "error: invalid \"delimiter\" value (must be one character)";
             elts[i].data = &elts[i].data[sizeof("delimiter=") - 1];
             output->delimiter = *elts[i].data;
         } else if (elts[i].len > sizeof("null=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"null=", sizeof("null=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("null=") - 1);
-            if (!(output->null.len = elts[i].len)) return "invalid null";
+            if (!(output->null.len = elts[i].len)) return "error: empty \"null\" value";
             elts[i].data = &elts[i].data[sizeof("null=") - 1];
             output->null.data = elts[i].data;
         } else if (elts[i].len > sizeof("append=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"append=", sizeof("append=") - 1)) {
@@ -601,34 +601,34 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_output_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location->append = e[j].value; break; }
-            if (!e[j].name.len) return "invalid append";
+            if (!e[j].name.len) return "error: invalid \"append\" value (must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\")";
         } else if (elts[i].len > sizeof("header=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"header=", sizeof("header=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("header=") - 1);
             elts[i].data = &elts[i].data[sizeof("header=") - 1];
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_output_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { output->header = e[j].value; break; }
-            if (!e[j].name.len) return "invalid header";
+            if (!e[j].name.len) return "error: invalid \"header\" value (must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\")";
         } else if (elts[i].len > sizeof("string=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"string=", sizeof("string=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("string=") - 1);
             elts[i].data = &elts[i].data[sizeof("string=") - 1];
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_output_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { output->string = e[j].value; break; }
-            if (!e[j].name.len) return "invalid string";
+            if (!e[j].name.len) return "error: invalid \"string\" value (must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\")";
         } else if (elts[i].len >= sizeof("quote=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"quote=", sizeof("quote=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("quote=") - 1);
             if (!elts[i].len) { output->quote = '\0'; continue; }
-            else if (elts[i].len > 1) return "invalid quote";
+            else if (elts[i].len > 1) return "error: invalid \"quote\" value (must be one character)";
             elts[i].data = &elts[i].data[sizeof("quote=") - 1];
             output->quote = *elts[i].data;
         } else if (elts[i].len >= sizeof("escape=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"escape=", sizeof("escape=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("escape=") - 1);
             if (!elts[i].len) { output->escape = '\0'; continue; }
-            else if (elts[i].len > 1) return "invalid escape";
+            else if (elts[i].len > 1) return "error: invalid \"escape\" value (must be one character)";
             elts[i].data = &elts[i].data[sizeof("escape=") - 1];
             output->escape = *elts[i].data;
-        } else return "invalid name";
+        } else return "error: invalid additional parameter name";
     }
     return NGX_CONF_OK;
 }

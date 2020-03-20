@@ -327,27 +327,27 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     if (location->query == NGX_CONF_UNSET_PTR) return "must defined after \"postgres_query\" directive";
     ngx_str_t *elts = cf->args->elts;
-    if (elts[1].len < 2) return "empty variable name";
-    if (elts[1].data[0] != '$') return "invalid variable name";
+    if (elts[1].len < 2) return "error: empty variable name";
+    if (elts[1].data[0] != '$') return "error: invalid variable name";
     elts[1].len--;
     elts[1].data++;
-    if (!elts[3].len) return "empty col";
+    if (!elts[3].len) return "error: empty col";
     ngx_array_t *variables = &location->query->variables;
-    if (!variables->elts && ngx_array_init(variables, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) return "!ngx_array_init != NGX_OK";
+    if (!variables->elts && ngx_array_init(variables, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) return "error: !ngx_array_init != NGX_OK";
     ngx_postgres_variable_t *variable = ngx_array_push(variables);
-    if (!variable) return "!ngx_array_push";
+    if (!variable) return "error: !ngx_array_push";
     variable->index = location->index++;
     variable->variable = elts[1];
     ngx_http_variable_t *var = ngx_http_add_variable(cf, &variable->variable, NGX_HTTP_VAR_CHANGEABLE);
-    if (!var) return "!ngx_http_add_variable";
+    if (!var) return "error: !ngx_http_add_variable";
     ngx_int_t index = ngx_http_get_variable_index(cf, &variable->variable);
-    if (index == NGX_ERROR) return "ngx_http_get_variable_index == NGX_ERROR";
+    if (index == NGX_ERROR) return "error: ngx_http_get_variable_index == NGX_ERROR";
     var->index = (ngx_uint_t)index;
     var->get_handler = ngx_postgres_variable_get;
     var->data = (uintptr_t)variable->index;
-    if ((variable->row = ngx_atoi(elts[2].data, elts[2].len)) == NGX_ERROR) return "invalid row number";
+    if ((variable->row = ngx_atoi(elts[2].data, elts[2].len)) == NGX_ERROR) return "error: invalid row number";
     if ((variable->col = ngx_atoi(elts[3].data, elts[3].len)) == NGX_ERROR) { /* get col by name */
-        if (!(variable->name = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "!ngx_pnalloc";
+        if (!(variable->name = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "error: !ngx_pnalloc";
         (void) ngx_cpystrn(variable->name, elts[3].data, elts[3].len + 1);
     }
     if (cf->args->nelts == 4) variable->required = 0; else { /* user-specified value */

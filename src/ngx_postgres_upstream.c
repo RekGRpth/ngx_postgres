@@ -669,37 +669,37 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_str_t *elts = cf->args->elts;
     ngx_str_t sql = elts[cf->args->nelts - 1];
-    if (!sql.len) return "empty query";
+    if (!sql.len) return "error: empty query";
     ngx_postgres_location_t *location = conf;
-    if (!location->queries.elts && ngx_array_init(&location->queries, cf->pool, 1, sizeof(ngx_postgres_query_t)) != NGX_OK) return "!ngx_array_init != NGX_OK";
+    if (!location->queries.elts && ngx_array_init(&location->queries, cf->pool, 1, sizeof(ngx_postgres_query_t)) != NGX_OK) return "error: !ngx_array_init != NGX_OK";
     ngx_postgres_query_t *query = location->query = ngx_array_push(&location->queries);
-    if (!query) return "!ngx_array_push";
+    if (!query) return "error: !ngx_array_push";
     ngx_memzero(query, sizeof(ngx_postgres_query_t));
     if (cf->args->nelts > 2) {
         if (elts[1].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"prepare", sizeof("prepare") - 1)) query->prepare = 1;
-        else return "invalid parameter";
+        else return "error: invalid additional parameter name";
     }
     if (sql.len > sizeof("file://") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file://", sizeof("file://") - 1)) {
         sql.data += sizeof("file://") - 1;
         sql.len -= sizeof("file://") - 1;
-        if (ngx_conf_full_name(cf->cycle, &sql, 0) != NGX_OK) return "ngx_conf_full_name != NGX_OK";
+        if (ngx_conf_full_name(cf->cycle, &sql, 0) != NGX_OK) return "error: ngx_conf_full_name != NGX_OK";
         ngx_fd_t fd = ngx_open_file(sql.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
-        if (fd == NGX_INVALID_FILE) return "ngx_open_file == NGX_INVALID_FILE";
+        if (fd == NGX_INVALID_FILE) return "error: ngx_open_file == NGX_INVALID_FILE";
         ngx_file_info_t fi;
-        if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "ngx_close_file == NGX_FILE_ERROR"; return "ngx_fd_info == NGX_FILE_ERROR"; }
+        if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "error: ngx_close_file == NGX_FILE_ERROR"; return "error: ngx_fd_info == NGX_FILE_ERROR"; }
         size_t len = ngx_file_size(&fi);
         u_char *data = ngx_pnalloc(cf->pool, len);
-        if (!data) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "ngx_close_file == NGX_FILE_ERROR"; return "!ngx_pnalloc"; }
+        if (!data) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "error: ngx_close_file == NGX_FILE_ERROR"; return "error: !ngx_pnalloc"; }
         ssize_t n = ngx_read_fd(fd, data, len);
-        if (n == -1) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "ngx_close_file == NGX_FILE_ERROR"; return "ngx_read_fd == -1"; }
-        if ((size_t) n != len) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "ngx_close_file == NGX_FILE_ERROR"; return "ngx_read_fd != len"; }
-        if (ngx_close_file(fd) == NGX_FILE_ERROR) return "ngx_close_file == NGX_FILE_ERROR";
+        if (n == -1) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "error: ngx_close_file == NGX_FILE_ERROR"; return "error: ngx_read_fd == -1"; }
+        if ((size_t) n != len) { if (ngx_close_file(fd) == NGX_FILE_ERROR) return "error: ngx_close_file == NGX_FILE_ERROR"; return "error: ngx_read_fd != len"; }
+        if (ngx_close_file(fd) == NGX_FILE_ERROR) return "error: ngx_close_file == NGX_FILE_ERROR";
         sql.data = data;
         sql.len = len;
     }
-    if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) return "!ngx_palloc";
-    if (ngx_array_init(&query->params, cf->pool, 1, sizeof(ngx_postgres_param_t)) != NGX_OK) return "ngx_array_init != NGX_OK";
-    if (ngx_array_init(&query->ids, cf->pool, 1, sizeof(ngx_uint_t)) != NGX_OK) return "ngx_array_init != NGX_OK";
+    if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) return "error: !ngx_palloc";
+    if (ngx_array_init(&query->params, cf->pool, 1, sizeof(ngx_postgres_param_t)) != NGX_OK) return "error: ngx_array_init != NGX_OK";
+    if (ngx_array_init(&query->ids, cf->pool, 1, sizeof(ngx_uint_t)) != NGX_OK) return "error: ngx_array_init != NGX_OK";
     u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
     query->percent = 0;
     for (ngx_uint_t k = 0; s < e; *p++ = *s++) {
@@ -714,18 +714,18 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             if (s[0] == ':' && s[1] == ':') for (s += 2, type.data = s, type.len = 0; s < e && is_variable_character(*s); s++, type.len++);
             if (!type.len) { *p++ = '$'; p = ngx_copy(p, name.data, name.len); continue; }
             ngx_int_t index = ngx_http_get_variable_index(cf, &name);
-            if (index == NGX_ERROR) return "ngx_http_get_variable_index == NGX_ERROR";
+            if (index == NGX_ERROR) return "error: ngx_http_get_variable_index == NGX_ERROR";
             ngx_uint_t oid = type2oid(&type);
-            if (!oid) return "!type2oid";
+            if (!oid) return "error: !type2oid";
             if (oid == IDOID) {
                 ngx_uint_t *id = ngx_array_push(&query->ids);
-                if (!id) return "!ngx_array_push";
+                if (!id) return "error: !ngx_array_push";
                 *id = (ngx_uint_t) index;
                 *p++ = '%';
                 *p++ = 'V';
             } else {
                 ngx_postgres_param_t *param = ngx_array_push(&query->params);
-                if (!param) return "!ngx_array_push";
+                if (!param) return "error: !ngx_array_push";
                 param->index = (ngx_uint_t) index;
                 param->oid = oid;
                 p += ngx_sprintf(p, "$%i", ++k) - p;
@@ -735,7 +735,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     }
     query->sql.len = p - query->sql.data;
     query->listen = query->sql.len > sizeof("LISTEN ") - 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1);
-    if (query->listen && !ngx_http_push_stream_add_msg_to_channel_my && !ngx_http_push_stream_delete_channel_my) return "LISTEN requires ngx_http_push_stream_module!";
+    if (query->listen && !ngx_http_push_stream_add_msg_to_channel_my && !ngx_http_push_stream_delete_channel_my) return "error: LISTEN requires ngx_http_push_stream_module!";
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "sql = `%V`", &query->sql);
     return NGX_CONF_OK;
 }
