@@ -2,6 +2,7 @@
 #include "ngx_postgres_module.h"
 #include "ngx_postgres_output.h"
 #include "ngx_postgres_processor.h"
+#include "ngx_postgres_upstream.h"
 
 
 static ngx_int_t ngx_postgres_test_connect(ngx_connection_t *c) {
@@ -56,8 +57,11 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     /* override the read/write event handler to our own */
     ngx_http_upstream_t *u = r->upstream;
-    u->write_event_handler = ngx_postgres_write_event_handler;
+    ngx_postgres_data_t *pd = u->peer.data;
+    if (u->read_event_handler != ngx_postgres_read_event_handler) pd->read = u->read_event_handler;
+    if (u->write_event_handler != ngx_postgres_write_event_handler) pd->write = u->write_event_handler;
     u->read_event_handler = ngx_postgres_read_event_handler;
+    u->write_event_handler = ngx_postgres_write_event_handler;
     return NGX_OK;
 }
 
@@ -70,6 +74,10 @@ static void ngx_postgres_abort_request(ngx_http_request_t *r) {
 static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
     if (rc == NGX_OK) ngx_postgres_output_chain(r);
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_postgres_data_t *pd = u->peer.data;
+    u->read_event_handler = pd->read;
+    u->write_event_handler = pd->write;
 }
 
 
