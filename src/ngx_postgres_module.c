@@ -76,7 +76,7 @@ typedef struct {
     const char **values;
     int family;
     ngx_addr_t *addrs;
-    ngx_msec_t timeout;
+    ngx_msec_t connect;
     ngx_uint_t naddrs;
 } ngx_postgres_upstream_t;
 
@@ -100,11 +100,11 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
         for (ngx_uint_t j = 0; j < elts[i].naddrs; j++) {
             ngx_postgres_peer_t *peer = &peers[n++];
             ngx_queue_insert_tail(&server->peer, &peer->queue);
+            peer->connect = elts[i].connect;
             peer->keywords = elts[i].keywords;
             peer->name = elts[i].addrs[j].name;
             peer->sockaddr = elts[i].addrs[j].sockaddr;
             peer->socklen = elts[i].addrs[j].socklen;
-            peer->timeout = elts[i].timeout;
             peer->values = elts[i].values;
             if (!(peer->host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             if (!(peer->host.len = ngx_sock_ntop(peer->sockaddr, peer->socklen, peer->host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_sock_ntop"); return NGX_ERROR; }
@@ -166,7 +166,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     u_char *host = NULL;
     u_char *hostaddr = NULL;
     u_char *options = NULL;
-    u_char *timeout = NULL;
+    u_char *connect = NULL;
     in_port_t port = DEF_PGPORT;
     int arg = 4;
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
@@ -175,7 +175,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"host", sizeof("host") - 1)) { host = (u_char *)opt->val; continue; }
         if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"hostaddr", sizeof("hostaddr") - 1)) { hostaddr = (u_char *)opt->val; continue; }
         if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"options", sizeof("options") - 1)) { options = (u_char *)opt->val; continue; }
-        if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"connect_timeout", sizeof("connect_timeout") - 1)) timeout = (u_char *)opt->val; else
+        if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"connect_timeout", sizeof("connect_timeout") - 1)) connect = (u_char *)opt->val; else
         if (!ngx_strncasecmp((u_char *)opt->keyword, (u_char *)"port", sizeof("port") - 1)) {
             ngx_int_t n = ngx_atoi((u_char *)opt->val, ngx_strlen(opt->val));
             if (n == NGX_ERROR) return "error: ngx_atoi == NGX_ERROR";
@@ -183,10 +183,10 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         }
         arg++;
     }
-    if (!timeout) upstream->timeout = 60000; else {
-        ngx_int_t n = ngx_parse_time(&(ngx_str_t){ngx_strlen(timeout), timeout}, 0);
+    if (!connect) upstream->connect = 60000; else {
+        ngx_int_t n = ngx_parse_time(&(ngx_str_t){ngx_strlen(connect), connect}, 0);
         if (n == NGX_ERROR) return "error: ngx_parse_time == NGX_ERROR";
-        upstream->timeout = (ngx_msec_t)n;
+        upstream->connect = (ngx_msec_t)n;
     }
     if (!host && !hostaddr) host = (u_char *)"unix:///run/postgresql";
     ngx_url_t url;

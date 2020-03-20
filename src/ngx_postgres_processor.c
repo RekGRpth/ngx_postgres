@@ -157,7 +157,6 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pdc->state == %i", pdc->state); return NGX_ERROR;
     }
     ngx_add_timer(c->read, u->conf->read_timeout); /* set result timeout */
-    ngx_add_timer(c->write, u->conf->send_timeout); /* set result timeout */
     pdc->state = state_db_result;
     return NGX_DONE;
 }
