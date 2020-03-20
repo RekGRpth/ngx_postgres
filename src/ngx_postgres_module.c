@@ -248,23 +248,22 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_overflow_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server->reject = e[j].value; break; }
-            if (!e[j].name.len) return "error: invalid \"overflow\" value (must \"ignore\" or \"reject\")";
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
         } else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
             elts[i].data = &elts[i].data[sizeof("timeout=") - 1];
             ngx_int_t n = ngx_parse_time(&elts[i], 0);
-            if (n == NGX_ERROR) return "error: ngx_parse_time == NGX_ERROR";
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             server->keepalive = (ngx_msec_t)n;
         } else if (elts[i].len > sizeof("requests=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"requests=", sizeof("requests=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("requests=") - 1);
             elts[i].data = &elts[i].data[sizeof("requests=") - 1];
             ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
-            if (n == NGX_ERROR) return "error: ngx_atoi == NGX_ERROR";
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be number", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             server->requests = (ngx_uint_t)n;
-        } else {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_keepalive\" directive error: invalid additional parameter \"%V\"", &elts[i]);
-            return NGX_CONF_ERROR;
-        }
+        } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_keepalive\" directive error: invalid additional parameter \"%V\"", &elts[i]); return NGX_CONF_ERROR; }
     }
     return NGX_CONF_OK;
 }
@@ -284,7 +283,8 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
             elts[i].data = &elts[i].data[sizeof("timeout=") - 1];
             ngx_int_t n = ngx_parse_time(&elts[i], 0);
-            if (n == NGX_ERROR) return "error: ngx_parse_time == NGX_ERROR";
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             server->timeout = (ngx_msec_t)n;
         } else {
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_queue\" directive error: invalid additional parameter \"%V\"", &elts[i]);
