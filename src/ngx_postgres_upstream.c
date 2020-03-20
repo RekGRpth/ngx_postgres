@@ -384,7 +384,7 @@ static void ngx_postgres_timeout(ngx_event_t *ev) {
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_server_t *server = pdc->server;
     server->cur_data--;
-    ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
 }
 
 
