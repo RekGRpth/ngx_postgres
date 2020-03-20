@@ -16,7 +16,7 @@ static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     pdc->state = state_db_idle;
-    ngx_postgres_finalize_upstream(r, pd->status >= NGX_HTTP_SPECIAL_RESPONSE ? pd->status : NGX_OK);
+    ngx_http_upstream_finalize_request(r, u, pd->status >= NGX_HTTP_SPECIAL_RESPONSE ? pd->status : NGX_OK);
     return NGX_DONE;
 }
 
@@ -287,7 +287,7 @@ void ngx_postgres_process_events(ngx_http_request_t *r) {
         case state_db_result: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_result"); rc = ngx_postgres_get_result(r); break;
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "state == %i", pdc->state); return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR);
     }
-    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) return ngx_postgres_finalize_upstream(r, rc);
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) return ngx_http_upstream_finalize_request(r, u, rc);
     if (rc == NGX_ERROR) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR);
     return;
 }

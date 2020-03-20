@@ -527,6 +527,7 @@ void ngx_postgres_output_chain(ngx_http_request_t *r) {
         r->headers_out.content_type_lowcase = NULL;
         if (pd->response) r->headers_out.content_length_n = pd->response->buf->end - pd->response->buf->start;
         ngx_int_t rc = ngx_http_send_header(r);
+        u->header_sent = r->header_sent;
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return;
     }
     if (!pd->response) return;
