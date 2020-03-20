@@ -107,8 +107,8 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "r->subrequest_in_memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; } /* TODO: add support for subrequest in memory by emitting output into u->buffer instead */
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (!location->queries.elts) {
-        ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "missing \"postgres_query\" in location \"%V\"", &core_loc_conf->name);
+        ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "missing \"postgres_query\" in location \"%V\"", &core->name);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     ngx_int_t rc = ngx_http_discard_request_body(r);
@@ -118,8 +118,8 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
         ngx_str_t host;
         if (ngx_http_complex_value(r, &location->complex, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_complex_value != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
         if (!host.len) {
-            ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location->complex.value, &core_loc_conf->name);
+            ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location->complex.value, &core->name);
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         ngx_url_t url;

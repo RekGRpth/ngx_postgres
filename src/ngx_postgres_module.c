@@ -279,9 +279,9 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     if (location->upstream.upstream || location->complex.value.data) return "duplicate";
     ngx_str_t *elts = cf->args->elts;
     if (!elts[1].len) return "error: empty upstream name";
-    ngx_http_core_loc_conf_t *core_loc_conf = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
-    core_loc_conf->handler = ngx_postgres_handler;
-    if (core_loc_conf->name.data[core_loc_conf->name.len - 1] == '/') core_loc_conf->auto_redirect = 1;
+    ngx_http_core_loc_conf_t *core = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
+    core->handler = ngx_postgres_handler;
+    if (core->name.data[core->name.len - 1] == '/') core->auto_redirect = 1;
     if (ngx_http_script_variables_count(&elts[1])) { /* complex value */
         ngx_http_compile_complex_value_t ccv = {cf, &elts[1], &location->complex, 0, 0, 0};
         if (ngx_http_compile_complex_value(&ccv) != NGX_OK) return "error: ngx_http_compile_complex_value != NGX_OK";
