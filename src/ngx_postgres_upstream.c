@@ -11,7 +11,8 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_queue_remove(&ps->queue);
     ngx_postgres_common_t *psc = &ps->common;
-    ngx_queue_insert_tail(&psc->server->free, &ps->queue);
+    ngx_postgres_server_t *server = psc->server;
+    ngx_queue_insert_tail(&server->free, &ps->queue);
     pd->common = ps->common;
     ngx_http_upstream_t *u = r->upstream;
     ngx_peer_connection_t *pc = &u->peer;
