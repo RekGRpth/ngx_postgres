@@ -139,6 +139,9 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     } else goto bad_add;
     pdc->state = state_db_connect;
     pc->connection = c;
+    pc->name = &pdc->name;
+    pc->sockaddr = pdc->sockaddr;
+    pc->socklen = pdc->socklen;
     server->cur_save++;
     return NGX_AGAIN;
 bad_add:
