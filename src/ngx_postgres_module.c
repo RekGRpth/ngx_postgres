@@ -238,7 +238,8 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
     if (server->max_save) return "duplicate";
     ngx_str_t *elts = cf->args->elts;
     ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
-    if (n == NGX_ERROR || !n) return "error: ngx_atoi == NGX_ERROR";
+    if (n == NGX_ERROR) return "error: ngx_atoi == NGX_ERROR";
+    if (n <= 0) return "error: must be positive";
     server->max_save = (ngx_uint_t)n;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
         if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
@@ -275,7 +276,8 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     if (server->max_data) return "duplicate";
     ngx_str_t *elts = cf->args->elts;
     ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
-    if (n == NGX_ERROR || !n) return "error: ngx_atoi == NGX_ERROR";
+    if (n == NGX_ERROR) return "error: ngx_atoi == NGX_ERROR";
+    if (n <= 0) return "error: must be positive";
     server->max_data = (ngx_uint_t)n;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
         if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
