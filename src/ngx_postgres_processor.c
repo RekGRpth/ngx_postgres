@@ -15,6 +15,8 @@ static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     pdc->state = state_db_idle;
+    ngx_connection_t *c = pdc->connection;
+    if (c->read->timer_set) ngx_del_timer(c->read); // remove result timeout
     ngx_http_upstream_finalize_request(r, u, pd->status >= NGX_HTTP_SPECIAL_RESPONSE ? pd->status : NGX_OK);
     return NGX_DONE;
 }
@@ -31,9 +33,10 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
+    ngx_connection_t *c = pdc->connection;
+    if (c->write->timer_set) ngx_del_timer(c->write); // remove connection timeout from re-used keepalive connection
     if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
     if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
-    ngx_connection_t *c = pdc->connection;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *elts = location->queries.elts;
     ngx_postgres_query_t *query = &elts[pd->query];
@@ -156,7 +159,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             break;
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pdc->state == %i", pdc->state); return NGX_ERROR;
     }
-    ngx_add_timer(c->read, u->conf->read_timeout); /* set result timeout */
+    if (!c->read->timer_set) ngx_add_timer(c->read, u->conf->read_timeout); // set result timeout
     pdc->state = state_db_result;
     return NGX_DONE;
 }
@@ -193,7 +196,7 @@ again:
             return NGX_AGAIN;
     }
     ngx_connection_t *c = pdc->connection;
-    if (c->write->timer_set) ngx_del_timer(c->write); /* remove connection timeout from new connection */
+    if (c->write->timer_set) ngx_del_timer(c->write); // remove connection timeout from new connection
     const char *charset = PQparameterStatus(pdc->conn, "client_encoding");
     if (charset) {
         pdc->charset.len = ngx_strlen(charset);
@@ -234,9 +237,6 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
-    ngx_connection_t *c = pdc->connection;
-    if (c->read->timer_set) ngx_del_timer(c->read); /* remove result timeout */
-    if (c->write->timer_set) ngx_del_timer(c->write); /* remove connection timeout from re-used keepalive connection */
     if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
     if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
     ngx_int_t rc = NGX_DONE;
