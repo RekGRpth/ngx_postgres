@@ -8,9 +8,6 @@
 #include "ngx_postgres_variable.h"
 
 
-#define NGX_CONF_TAKE34  (NGX_CONF_TAKE3|NGX_CONF_TAKE4)
-
-
 ngx_conf_enum_t ngx_postgres_overflow_options[] = {
     { ngx_string("ignore"), 0 },
     { ngx_string("reject"), 1 },
@@ -389,7 +386,7 @@ static ngx_command_t ngx_postgres_commands[] = {
     .offset = 0,
     .post = NULL },
   { .name = ngx_string("postgres_set"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE34,
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE3|NGX_CONF_TAKE4,
     .set = ngx_postgres_set_conf,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,
