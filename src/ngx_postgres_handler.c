@@ -25,8 +25,10 @@ static ngx_int_t ngx_postgres_test_connect(ngx_connection_t *c) {
 static void ngx_postgres_write_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
-    if (u->peer.connection->write->timedout) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
-    if (ngx_postgres_test_connect(u->peer.connection) != NGX_OK) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR);
+    ngx_peer_connection_t *pc = &u->peer;
+    ngx_connection_t *c = pc->connection;
+    if (c->write->timedout) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    if (ngx_postgres_test_connect(c) != NGX_OK) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR);
     ngx_postgres_process_events(r);
 }
 
@@ -34,8 +36,10 @@ static void ngx_postgres_write_event_handler(ngx_http_request_t *r, ngx_http_ups
 static void ngx_postgres_read_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
-    if (u->peer.connection->read->timedout) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
-    if (ngx_postgres_test_connect(u->peer.connection) != NGX_OK) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR);
+    ngx_peer_connection_t *pc = &u->peer;
+    ngx_connection_t *c = pc->connection;
+    if (c->read->timedout) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    if (ngx_postgres_test_connect(c) != NGX_OK) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR);
     ngx_postgres_process_events(r);
 }
 
