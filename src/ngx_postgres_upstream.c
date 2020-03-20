@@ -383,7 +383,7 @@ typedef struct {
 } ngx_postgres_param_t;
 
 
-static void ngx_postgres_timeout(ngx_event_t *ev) {
+static void ngx_postgres_data_timeout(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
     ngx_connection_t *c = ev->data;
     ngx_http_request_t *r = c->data;
@@ -408,7 +408,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     if (server->max_data) {
         pd->timeout.log = r->connection->log;
         pd->timeout.data = r->connection;
-        pd->timeout.handler = ngx_postgres_timeout;
+        pd->timeout.handler = ngx_postgres_data_timeout;
     }
     pd->request = r;
     ngx_http_upstream_t *u = r->upstream;
