@@ -40,8 +40,8 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
     /* override the read/write event handler to our own */
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_data_t *pd = u->peer.data;
-    if (u->read_event_handler != ngx_postgres_read_event_handler) pd->read = u->read_event_handler;
-    if (u->write_event_handler != ngx_postgres_write_event_handler) pd->write = u->write_event_handler;
+    if (!pd->read) pd->read = u->read_event_handler;
+    if (!pd->write) pd->write = u->write_event_handler;
     u->read_event_handler = ngx_postgres_read_event_handler;
     u->write_event_handler = ngx_postgres_write_event_handler;
     return NGX_OK;
@@ -58,8 +58,8 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
     if (rc == NGX_OK) ngx_postgres_output_chain(r);
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_data_t *pd = u->peer.data;
-    u->read_event_handler = pd->read;
-    u->write_event_handler = pd->write;
+    if (pd->read) u->read_event_handler = pd->read;
+    if (pd->write) u->write_event_handler = pd->write;
 }
 
 
