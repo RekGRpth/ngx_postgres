@@ -108,13 +108,13 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
         ngx_memzero(&url, sizeof(ngx_url_t));
         url.host = host;
         url.no_resolve = 1;
-        if (!(location->upstream.upstream = ngx_postgres_find_upstream(r, &url))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "upstream name \"%V\" not found", &host); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+        if (!(location->conf.upstream = ngx_postgres_find_upstream(r, &url))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "upstream name \"%V\" not found", &host); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     }
     ngx_http_upstream_t *u = r->upstream;
     u->schema.len = sizeof("postgres://") - 1;
     u->schema.data = (u_char *) "postgres://";
     u->output.tag = (ngx_buf_tag_t) &ngx_postgres_module;
-    u->conf = &location->upstream;
+    u->conf = &location->conf;
     u->create_request = ngx_postgres_create_request;
     u->reinit_request = ngx_postgres_reinit_request;
 //    u->process_header = ngx_postgres_process_header;

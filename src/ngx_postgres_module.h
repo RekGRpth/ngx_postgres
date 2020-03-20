@@ -33,7 +33,7 @@ typedef struct {
     ngx_array_t queries;
     ngx_flag_t append;
     ngx_http_complex_value_t complex;
-    ngx_http_upstream_conf_t upstream;
+    ngx_http_upstream_conf_t conf;
     ngx_postgres_query_t *query;
     ngx_uint_t index;
 } ngx_postgres_location_t;

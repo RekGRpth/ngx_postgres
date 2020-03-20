@@ -49,11 +49,11 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_postgres_location_t *location = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_location_t));
     if (!location) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     location->query = NGX_CONF_UNSET_PTR;
-    location->upstream.buffering = 1;
-    location->upstream.ignore_client_abort = 1;
-    location->upstream.intercept_404 = 1;
-    location->upstream.intercept_errors = 1;
-    location->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
+    location->conf.buffering = 1;
+    location->conf.ignore_client_abort = 1;
+    location->conf.intercept_404 = 1;
+    location->conf.intercept_errors = 1;
+    location->conf.read_timeout = NGX_CONF_UNSET_MSEC;
     return location;
 }
 
@@ -63,8 +63,8 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_postgres_location_t *conf = child;
     if (!conf->complex.value.data) conf->complex = prev->complex;
     if (!conf->queries.elts) conf->queries = prev->queries;
-    if (!conf->upstream.upstream) conf->upstream = prev->upstream;
-    ngx_conf_merge_msec_value(conf->upstream.read_timeout, prev->upstream.read_timeout, 60000);
+    if (!conf->conf.upstream) conf->conf = prev->conf;
+    ngx_conf_merge_msec_value(conf->conf.read_timeout, prev->conf.read_timeout, 60000);
     return NGX_CONF_OK;
 }
 
@@ -300,7 +300,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    if (location->upstream.upstream || location->complex.value.data) return "duplicate";
+    if (location->conf.upstream || location->complex.value.data) return "duplicate";
     ngx_str_t *elts = cf->args->elts;
     if (!elts[1].len) return "error: empty upstream name";
     ngx_http_core_loc_conf_t *core = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
@@ -315,7 +315,7 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
         ngx_memzero(&url, sizeof(ngx_url_t));
         url.url = elts[1];
         url.no_resolve = 1;
-        if (!(location->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) return "error: !ngx_http_upstream_add";
+        if (!(location->conf.upstream = ngx_http_upstream_add(cf, &url, 0))) return "error: !ngx_http_upstream_add";
         return NGX_CONF_OK;
     }
 }
@@ -404,7 +404,7 @@ static ngx_command_t ngx_postgres_commands[] = {
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
     .set = ngx_conf_set_msec_slot,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_location_t, upstream.read_timeout),
+    .offset = offsetof(ngx_postgres_location_t, conf.read_timeout),
     .post = NULL },
 /*  { .name = ngx_string("postgres_send"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
