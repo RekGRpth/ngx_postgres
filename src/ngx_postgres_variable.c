@@ -129,7 +129,7 @@ typedef struct {
     ngx_uint_t index;
     ngx_uint_t required;
     ngx_uint_t row;
-    u_char *name;
+    u_char *field;
 } ngx_postgres_variable_t;
 
 
@@ -213,19 +213,19 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
     for (ngx_uint_t i = 0; i < variables->nelts; i++) {
-//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, name = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].name ? variable[i].name : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
-        if (variable[i].name) {
-            ngx_int_t n = PQfnumber(res, (const char *)variable[i].name);
+//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
+        if (variable[i].field) {
+            ngx_int_t n = PQfnumber(res, (const char *)variable[i].field);
             if (n >= 0) variable[i].col = (ngx_uint_t)n; else {
                 if (variable[i].required) {
                     ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value from col \"%s\" that wasn't found in the received result-set in location \"%V\"", &variable[i].variable, variable[i].name, &core->name);
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value from col \"%s\" that wasn't found in the received result-set in location \"%V\"", &variable[i].variable, variable[i].field, &core->name);
                     return NGX_ERROR;
                 }
                 continue;
             }
         }
-//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, name = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].name ? variable[i].name : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
+//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
         if (variable[i].row >= result->ntuples || variable[i].col >= result->nfields) {
             if (variable[i].required) {
                 ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -234,7 +234,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
             }
             continue;
         }
-//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, name = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].name ? variable[i].name : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
+//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
         if (PQgetisnull(res, variable[i].row, variable[i].col)) {
             if (variable[i].required) {
                 ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -243,7 +243,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
             }
             continue;
         }
-//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, name = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].name ? variable[i].name : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
+//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
         if (!(elts[variable[i].index].len = PQgetlength(res, variable[i].row, variable[i].col))) {
             if (variable[i].required) {
                 ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -252,12 +252,12 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
             }
             continue;
         }
-//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, name = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].name ? variable[i].name : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
+//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
         if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc");
             return NGX_ERROR;
         }
-//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, name = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].name ? variable[i].name : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
+//        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
         ngx_memcpy(elts[variable[i].index].data, PQgetvalue(res, variable[i].row, variable[i].col), elts[variable[i].index].len);
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%V = %V", &variable[i].variable, &elts[variable[i].index]);
     }
@@ -350,8 +350,8 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: row \"%V\" must be number", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
     variable->row = (ngx_uint_t)n;
     if ((n = ngx_atoi(elts[3].data, elts[3].len)) != NGX_ERROR) variable->col = (ngx_uint_t)n; else { /* get col by name */
-        if (!(variable->name = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "error: !ngx_pnalloc";
-        (void)ngx_cpystrn(variable->name, elts[3].data, elts[3].len + 1);
+        if (!(variable->field = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "error: !ngx_pnalloc";
+        (void)ngx_cpystrn(variable->field, elts[3].data, elts[3].len + 1);
     }
     if (cf->args->nelts == 4) variable->required = 0; else { /* user-specified value */
         ngx_conf_enum_t *e = ngx_postgres_requirement_options;
