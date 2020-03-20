@@ -44,9 +44,9 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
 }
 
 
-static void ngx_postgres_abort_request(ngx_http_request_t *r) {
+/*static void ngx_postgres_abort_request(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-}
+}*/
 
 
 static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
@@ -118,7 +118,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     u->create_request = ngx_postgres_create_request;
     u->reinit_request = ngx_postgres_reinit_request;
 //    u->process_header = ngx_postgres_process_header;
-    u->abort_request = ngx_postgres_abort_request;
+//    u->abort_request = ngx_postgres_abort_request;
     u->finalize_request = ngx_postgres_finalize_request;
     /* we bypass the upstream input filter mechanism in ngx_http_upstream_process_headers */
 //    u->input_filter_init = ngx_postgres_input_filter_init;
