@@ -5,31 +5,13 @@
 #include "ngx_postgres_upstream.h"
 
 
-static ngx_int_t ngx_postgres_test_connect(ngx_connection_t *c) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-#if (NGX_HAVE_KQUEUE)
-    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
-        if (c->write->pending_eof) { (void) ngx_connection_error(c, c->write->kq_errno, "kevent() reported that connect() failed"); return NGX_ERROR; }
-    } else
-#endif
-    {
-        int err = 0;
-        socklen_t len = sizeof(int);
-        /* BSDs and Linux return 0 and set a pending error in err, Solaris returns -1 and sets errno */
-        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1) err = ngx_errno;
-        if (err) { (void) ngx_connection_error(c, err, "connect() failed"); return NGX_ERROR; }
-    }
-    return NGX_OK;
-}
-
-
 static void ngx_postgres_write_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
     ngx_peer_connection_t *pc = &u->peer;
     ngx_connection_t *c = pc->connection;
     if (c->write->timedout) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
-    if (ngx_postgres_test_connect(c) != NGX_OK) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR);
+    if (ngx_http_upstream_test_connect(c) != NGX_OK) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR);
     ngx_postgres_process_events(r);
 }
 
@@ -40,7 +22,7 @@ static void ngx_postgres_read_event_handler(ngx_http_request_t *r, ngx_http_upst
     ngx_peer_connection_t *pc = &u->peer;
     ngx_connection_t *c = pc->connection;
     if (c->read->timedout) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
-    if (ngx_postgres_test_connect(c) != NGX_OK) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR);
+    if (ngx_http_upstream_test_connect(c) != NGX_OK) return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR);
     ngx_postgres_process_events(r);
 }
 
