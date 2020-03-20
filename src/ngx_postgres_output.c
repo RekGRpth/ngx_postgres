@@ -629,7 +629,10 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             else if (elts[i].len > 1) return "error: invalid \"escape\" value (must be one character)";
             elts[i].data = &elts[i].data[sizeof("escape=") - 1];
             output->escape = *elts[i].data;
-        } else return "error: invalid additional parameter name";
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_output\" directive error: invalid additional parameter \"%V\"", &elts[i]);
+            return NGX_CONF_ERROR;
+        }
     }
     return NGX_CONF_OK;
 }

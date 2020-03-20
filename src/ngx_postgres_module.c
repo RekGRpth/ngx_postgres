@@ -260,7 +260,10 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
             if (n == NGX_ERROR) return "error: ngx_atoi == NGX_ERROR";
             server->requests = (ngx_uint_t)n;
-        } else return "error: invalid additional parameter name";
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_keepalive\" directive error: invalid additional parameter \"%V\"", &elts[i]);
+            return NGX_CONF_ERROR;
+        }
     }
     return NGX_CONF_OK;
 }
@@ -281,7 +284,10 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             ngx_int_t n = ngx_parse_time(&elts[i], 0);
             if (n == NGX_ERROR) return "error: ngx_parse_time == NGX_ERROR";
             server->timeout = (ngx_msec_t)n;
-        } else return "error: invalid additional parameter name";
+        } else {
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_queue\" directive error: invalid additional parameter \"%V\"", &elts[i]);
+            return NGX_CONF_ERROR;
+        }
     }
     return NGX_CONF_OK;
 }
