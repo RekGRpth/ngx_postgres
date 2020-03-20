@@ -44,7 +44,7 @@ static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
     }
     u->schema.len = sizeof("postgres://") - 1;
     u->schema.data = (u_char *) "postgres://";
-    u->output.tag = (ngx_buf_tag_t) &ngx_postgres_module;
+    u->output.tag = (ngx_buf_tag_t)&ngx_postgres_module;
     return NGX_OK;
 }
 
