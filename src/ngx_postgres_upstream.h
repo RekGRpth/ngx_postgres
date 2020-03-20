@@ -21,6 +21,7 @@ typedef enum {
 typedef struct {
     const char **keywords;
     const char **values;
+    ngx_msec_t timeout;
     ngx_queue_t queue;
     ngx_str_t host;
     ngx_str_t name;
