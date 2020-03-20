@@ -4,8 +4,6 @@
 #include <libpq-fe.h>
 #include <ngx_http.h>
 
-//#undef NGX_YIELD
-
 typedef struct {
     ngx_queue_t queue;
     ngx_str_t channel;
@@ -35,23 +33,15 @@ typedef struct {
     ngx_flag_t reject;
     ngx_log_t *log;
     ngx_msec_t keepalive;
-#ifdef NGX_YIELD
     ngx_msec_t timeout;
-#endif
 //    ngx_pool_t *pool;
-    ngx_queue_t free;
-#ifdef NGX_YIELD
     ngx_queue_t data;
-#endif
+    ngx_queue_t free;
     ngx_queue_t peer;
     ngx_queue_t save;
-#ifdef NGX_YIELD
     ngx_uint_t cur_data;
-#endif
     ngx_uint_t cur_save;
-#ifdef NGX_YIELD
     ngx_uint_t max_data;
-#endif
     ngx_uint_t max_save;
     ngx_uint_t requests;
 } ngx_postgres_server_t;
@@ -84,16 +74,12 @@ typedef struct {
 typedef struct {
     ngx_array_t variables;
     ngx_chain_t *response;
-#ifdef NGX_YIELD
     ngx_event_t timeout;
-#endif
     ngx_http_request_t *request;
     ngx_int_t status;
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
-#ifdef NGX_YIELD
     ngx_queue_t queue;
-#endif
     ngx_str_t sql;
     ngx_uint_t hash;
     ngx_uint_t nParams;

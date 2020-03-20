@@ -39,9 +39,7 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     server->keepalive = NGX_CONF_UNSET_MSEC;
     server->requests = NGX_CONF_UNSET_UINT;
-#ifdef NGX_YIELD
     server->timeout = NGX_CONF_UNSET_MSEC;
-#endif
     return server;
 }
 
@@ -119,10 +117,8 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     cln->handler = ngx_postgres_server_cleanup;
     cln->data = server;
     ngx_queue_init(&server->free);
-#ifdef NGX_YIELD
     ngx_conf_init_msec_value(server->timeout, 60 * 1000);
     ngx_queue_init(&server->data);
-#endif
 //    server->pool = cf->pool;
     ngx_queue_init(&server->save);
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t) * server->max_save);
@@ -257,7 +253,6 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
 }
 
 
-#ifdef NGX_YIELD
 static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_t *server = conf;
     if (server->max_data) return "duplicate";
@@ -276,7 +271,6 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     }
     return NGX_CONF_OK;
 }
-#endif
 
 
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
@@ -333,7 +327,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
-#ifdef NGX_YIELD
   { .name = ngx_string("postgres_queue"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12,
     .set = ngx_postgres_queue_conf,
@@ -346,7 +339,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_server_t, timeout),
     .post = NULL },
-#endif
   { .name = ngx_string("postgres_requests"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
     .set = ngx_conf_set_num_slot,

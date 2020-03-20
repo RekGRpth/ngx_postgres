@@ -66,19 +66,10 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
         if (server->cur_save < server->max_save) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "cur_save = %i", server->cur_save);
-        } else
-#ifdef NGX_YIELD
-        if (!server->reject && !server->max_data) {
+        } else if (!server->reject && !server->max_data) {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!reject and !max_data");
-        } else
-#else
-        if (!server->reject) {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!reject");
-        } else
-#endif
-        {
+        } else {
             ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "cur_save = %i", server->cur_save);
-#ifdef NGX_YIELD
             if (server->cur_data < server->max_data) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "cur_data = %i", server->cur_data);
                 ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
@@ -92,7 +83,6 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
                 ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "cur_data = %i", server->cur_data);
                 return NGX_DECLINED;
             }
-#endif
         }
     }
     const char *host = peer->values[0];
@@ -338,7 +328,6 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
         if (!PQsendQuery(common->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery(%s) and %s", listen, PQerrorMessageMy(common->conn)); }
     }
-#ifdef NGX_YIELD
     if (!ngx_queue_empty(&server->data)) {
         ngx_queue_t *queue = ngx_queue_head(&server->data);
         ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
@@ -350,7 +339,6 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_http_upstream_connect(r, r->upstream);
         if (r->upstream->reinit_request(r) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "reinit_request != NGX_OK"); }
     }
-#endif
 }
 
 
@@ -373,7 +361,6 @@ typedef struct {
 } ngx_postgres_param_t;
 
 
-#ifdef NGX_YIELD
 static void ngx_postgres_timeout(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
     ngx_connection_t *c = ev->data;
@@ -386,7 +373,6 @@ static void ngx_postgres_timeout(ngx_event_t *ev) {
     server->cur_data--;
     ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
 }
-#endif
 
 
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
@@ -395,14 +381,12 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     if (!pd) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     ngx_postgres_common_t *common = &pd->common;
     common->server = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
-#ifdef NGX_YIELD
     ngx_postgres_server_t *server = common->server;
     if (server->max_data) {
         pd->timeout.log = r->connection->log;
         pd->timeout.data = r->connection;
         pd->timeout.handler = ngx_postgres_timeout;
     }
-#endif
     pd->request = r;
     r->upstream->peer.data = pd;
     r->upstream->peer.get = ngx_postgres_peer_get;
