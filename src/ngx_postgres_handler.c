@@ -7,7 +7,7 @@
 
 static void ngx_postgres_write_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
+//    u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
     ngx_peer_connection_t *pc = &u->peer;
     ngx_connection_t *c = pc->connection;
     if (c->write->timedout) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
@@ -18,7 +18,7 @@ static void ngx_postgres_write_event_handler(ngx_http_request_t *r, ngx_http_ups
 
 static void ngx_postgres_read_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
+//    u->request_sent = 1; /* just to ensure u->reinit_request always gets called for upstream_next */
     ngx_peer_connection_t *pc = &u->peer;
     ngx_connection_t *c = pc->connection;
     if (c->read->timedout) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
@@ -37,7 +37,6 @@ static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
 
 static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    /* override the read/write event handler to our own */
     ngx_http_upstream_t *u = r->upstream;
     u->read_event_handler = ngx_postgres_read_event_handler;
     u->write_event_handler = ngx_postgres_write_event_handler;
