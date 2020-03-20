@@ -220,3 +220,45 @@ void ngx_postgres_next_upstream(ngx_http_request_t *r, ngx_int_t ft_type) {
     if (!status) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!status"); status = NGX_HTTP_INTERNAL_SERVER_ERROR; /* TODO: ngx_http_upstream_connect(r, u); */ }
     return ngx_postgres_finalize_upstream(r, status);
 }
+
+
+void ngx_postgres_next_upstream_timeout(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_http_upstream_t *u = r->upstream;
+    u->peer.free(&u->peer, u->peer.data, NGX_PEER_FAILED);
+    if (r->connection->error) return ngx_postgres_finalize_upstream(r, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+    u->state->status = NGX_HTTP_GATEWAY_TIME_OUT;
+    if (!u->peer.tries || !(u->conf->next_upstream & NGX_HTTP_UPSTREAM_FT_TIMEOUT)) return ngx_postgres_finalize_upstream(r, NGX_HTTP_GATEWAY_TIME_OUT);
+    if (u->peer.connection) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "fd = %i", u->peer.connection->fd);
+        if (u->peer.connection->pool) {
+            ngx_destroy_pool(u->peer.connection->pool);
+            u->peer.connection->pool = NULL;
+        }
+        ngx_close_connection(u->peer.connection);
+    }
+    return ngx_postgres_finalize_upstream(r, NGX_HTTP_GATEWAY_TIME_OUT);
+}
+
+
+void ngx_postgres_next_upstream_error(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_http_upstream_t *u = r->upstream;
+    u->peer.free(&u->peer, u->peer.data, NGX_PEER_FAILED);
+    ngx_uint_t status = u->peer.cached ? 0 : NGX_HTTP_BAD_GATEWAY;
+    if (r->connection->error) return ngx_postgres_finalize_upstream(r, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+    if (status) {
+        u->state->status = NGX_HTTP_BAD_GATEWAY;
+        if (!u->peer.tries || !(u->conf->next_upstream & NGX_HTTP_UPSTREAM_FT_ERROR)) return ngx_postgres_finalize_upstream(r, NGX_HTTP_BAD_GATEWAY);
+    }
+    if (u->peer.connection) {
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "fd = %i", u->peer.connection->fd);
+        if (u->peer.connection->pool) {
+            ngx_destroy_pool(u->peer.connection->pool);
+            u->peer.connection->pool = NULL;
+        }
+        ngx_close_connection(u->peer.connection);
+    }
+    if (status) return ngx_postgres_finalize_upstream(r, NGX_HTTP_BAD_GATEWAY);
+    return ngx_http_upstream_connect(r, u);
+}
