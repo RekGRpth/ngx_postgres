@@ -23,14 +23,13 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     c->log = pc->log;
     if (c->pool) c->pool->log = pc->log;
     c->read->log = pc->log;
-    if (c->read->timer_set) ngx_del_timer(c->read);
-    if (c->write->timer_set) ngx_del_timer(c->write);
     c->sent = 0;
     c->write->log = pc->log;
     pc->cached = 1;
     pc->name = &pdc->name;
     pc->sockaddr = pdc->sockaddr;
     pc->socklen = pdc->socklen;
+    if (ps->timeout.timer_set) ngx_del_timer(&ps->timeout);
 }
 
 
@@ -401,7 +400,6 @@ static void ngx_postgres_data_timeout(ngx_event_t *ev) {
     ngx_http_request_t *r = c->data;
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_data_t *pd = u->peer.data;
-    if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
     ngx_queue_remove(&pd->queue);
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_server_t *server = pdc->server;
