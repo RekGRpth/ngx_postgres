@@ -157,7 +157,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         int len;
         if (err && (len = strlen(err))) {
             err[len - 1] = '\0';
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "error: %s", err);
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: %s", &cmd->name, err);
             PQfreemem(err);
             return NGX_CONF_ERROR;
         }
@@ -187,8 +187,9 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     url.url = hostaddr ? (ngx_str_t){ngx_strlen(hostaddr), hostaddr} : (ngx_str_t){ngx_strlen(host), host};
     url.default_port = port;
     if (ngx_parse_url(cf->pool, &url) != NGX_OK) {
-        if (url.err) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "error: ngx_parse_url(%V:%i) != NGX_OK and %s", &url.url, url.default_port, url.err); return NGX_CONF_ERROR; }
-        return "error: ngx_parse_url != NGX_OK";
+        if (url.err) ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_parse_url(%V:%i) != NGX_OK and %s", &cmd->name, &url.url, url.default_port, url.err);
+        else ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_parse_url(%V:%i) != NGX_OK", &cmd->name, &url.url, url.default_port);
+        return NGX_CONF_ERROR;
     }
     upstream->addrs = url.addrs;
     upstream->naddrs = url.naddrs;
