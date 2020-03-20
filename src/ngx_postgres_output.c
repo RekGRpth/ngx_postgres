@@ -9,7 +9,8 @@
 static ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (ngx_postgres_variable_output(r) != NGX_OK) return NGX_ERROR;
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
     if (result->ntuples != 1 || result->nfields != 1) {
@@ -37,7 +38,7 @@ static ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
     if (!chain) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_alloc_chain_link"); return NGX_ERROR; }
     chain->buf = b;
     b->memory = 1;
-    b->tag = r->upstream->output.tag;
+    b->tag = u->output.tag;
     b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0), size);
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
     chain->next = NULL;
@@ -229,7 +230,8 @@ static const char *PQftypeMy(Oid oid) {
 static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (ngx_postgres_variable_output(r) != NGX_OK) return NGX_ERROR;
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
     if (!result->ntuples || !result->nfields) return NGX_DONE;
@@ -301,7 +303,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     if (!chain) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_alloc_chain_link"); return NGX_ERROR; }
     chain->buf = b;
     b->memory = 1;
-    b->tag = r->upstream->output.tag;
+    b->tag = u->output.tag;
     if (output->header) {
         for (ngx_int_t col = 0; col < result->nfields; col++) {
             int len = ngx_strlen(PQfname(res, col));
@@ -383,7 +385,8 @@ static ngx_int_t ngx_postgres_output_csv(ngx_http_request_t *r) {
 static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (ngx_postgres_variable_output(r) != NGX_OK) return NGX_ERROR;
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_postgres_data_t *pd = u->peer.data;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_result_t *result = &pd->result;
@@ -436,7 +439,7 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     if (!chain) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_alloc_chain_link"); return NGX_ERROR; }
     chain->buf = b;
     b->memory = 1;
-    b->tag = r->upstream->output.tag;
+    b->tag = u->output.tag;
     if (result->ntuples == 1 && result->nfields == 1 && (PQftype(res, 0) == JSONOID || PQftype(res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0), PQgetlength(res, 0, 0)); else { /* fill data */
         if (result->ntuples > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
         for (ngx_int_t row = 0; row < result->ntuples; row++) {
@@ -497,7 +500,8 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
 
 void ngx_postgres_output_chain(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_postgres_data_t *pd = u->peer.data;
     if (!r->header_sent) {
         ngx_http_clear_content_length(r);
         ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
@@ -528,7 +532,7 @@ void ngx_postgres_output_chain(ngx_http_request_t *r) {
     if (!pd->response) return;
     ngx_int_t rc = ngx_http_output_filter(r, pd->response);
     if (rc == NGX_ERROR || rc > NGX_OK) return;
-    ngx_chain_update_chains(r->pool, &r->upstream->free_bufs, &r->upstream->busy_bufs, &pd->response, r->upstream->output.tag);
+    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &pd->response, u->output.tag);
 }
 
 

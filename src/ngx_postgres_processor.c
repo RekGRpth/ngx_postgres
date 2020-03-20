@@ -11,8 +11,9 @@
 
 static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    r->upstream->headers_in.status_n = NGX_HTTP_OK; /* flag for keepalive */
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_http_upstream_t *u = r->upstream;
+    u->headers_in.status_n = NGX_HTTP_OK; /* flag for keepalive */
+    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *common = &pd->common;
     common->state = state_db_idle;
     ngx_postgres_finalize_upstream(r, pd->status >= NGX_HTTP_SPECIAL_RESPONSE ? pd->status : NGX_OK);
@@ -28,7 +29,8 @@ typedef struct {
 
 static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *common = &pd->common;
     if (!PQconsumeInput(common->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(common->conn)); return NGX_ERROR; }
     if (PQisBusy(common->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
@@ -155,8 +157,8 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             break;
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "common->state == %i", common->state); return NGX_ERROR;
     }
-    ngx_add_timer(c->read, r->upstream->conf->read_timeout); /* set result timeout */
-    ngx_add_timer(c->write, r->upstream->conf->send_timeout); /* set result timeout */
+    ngx_add_timer(c->read, u->conf->read_timeout); /* set result timeout */
+    ngx_add_timer(c->write, u->conf->send_timeout); /* set result timeout */
     common->state = state_db_result;
     return NGX_DONE;
 }
@@ -164,7 +166,8 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
 
 static ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *common = &pd->common;
     switch (PQstatus(common->conn)) {
         case CONNECTION_AUTH_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_AUTH_OK"); break;
@@ -214,7 +217,8 @@ again:
 
 static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (ngx_postgres_variable_set(r) == NGX_ERROR) {
         pd->status = NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -230,7 +234,8 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
 
 static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *common = &pd->common;
     ngx_connection_t *c = common->connection;
     if (c->read->timer_set) ngx_del_timer(c->read); /* remove result timeout */
@@ -269,8 +274,9 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
 
 void ngx_postgres_process_events(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    if (!ngx_postgres_is_my_peer(&r->upstream->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_is_my_peer"); return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR); }
-    ngx_postgres_data_t *pd = r->upstream->peer.data;
+    ngx_http_upstream_t *u = r->upstream;
+    if (!ngx_postgres_is_my_peer(&u->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_is_my_peer"); return ngx_postgres_next_upstream(r, NGX_HTTP_UPSTREAM_FT_ERROR); }
+    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *common = &pd->common;
     ngx_int_t rc;
     switch (common->state) {
