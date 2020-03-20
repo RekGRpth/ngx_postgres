@@ -440,7 +440,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
                 ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, param[i].index);
                 if (!value || !value->data || !value->len) pd->paramValues[i] = NULL; else {
                     if (!(pd->paramValues[i] = ngx_pnalloc(r->pool, value->len + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-                    (void) ngx_cpystrn(pd->paramValues[i], value->data, value->len + 1);
+                    (void)ngx_cpystrn(pd->paramValues[i], value->data, value->len + 1);
                 }
             }
         }

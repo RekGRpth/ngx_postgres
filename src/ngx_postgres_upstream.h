@@ -60,14 +60,14 @@ typedef struct {
 } ngx_postgres_common_t;
 
 typedef struct {
-    ngx_int_t nfields;
-    ngx_int_t ntuples;
     ngx_str_t cmdStatus;
     ngx_str_t cmdTuples;
     ngx_str_t error;
     ngx_str_t sfields;
     ngx_str_t sql;
     ngx_str_t stuples;
+    ngx_uint_t nfields;
+    ngx_uint_t ntuples;
     PGresult *res;
 } ngx_postgres_result_t;
 

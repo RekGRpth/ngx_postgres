@@ -124,11 +124,11 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
 
 
 typedef struct {
-    ngx_int_t col;
-    ngx_int_t row;
     ngx_str_t variable;
+    ngx_uint_t col;
     ngx_uint_t index;
     ngx_uint_t required;
+    ngx_uint_t row;
     u_char *name;
 } ngx_postgres_variable_t;
 
@@ -214,8 +214,9 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     result->nfields = PQnfields(res);
     for (ngx_uint_t i = 0; i < variables->nelts; i++) {
 //        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, name = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].name ? variable[i].name : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
-        if (variable[i].col == NGX_ERROR) {
-            if ((variable[i].col = PQfnumber(res, (const char *)variable[i].name)) == -1) {
+        if (variable[i].name) {
+            ngx_int_t n = PQfnumber(res, (const char *)variable[i].name);
+            if (n >= 0) variable[i].col = (ngx_uint_t)n; else {
                 if (variable[i].required) {
                     ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires value from col \"%s\" that wasn't found in the received result-set in location \"%V\"", &variable[i].variable, variable[i].name, &core->name);
@@ -345,16 +346,18 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     var->index = (ngx_uint_t)index;
     var->get_handler = ngx_postgres_variable_get;
     var->data = (uintptr_t)variable->index;
-    if ((variable->row = ngx_atoi(elts[2].data, elts[2].len)) == NGX_ERROR) return "error: invalid row number";
-    if ((variable->col = ngx_atoi(elts[3].data, elts[3].len)) == NGX_ERROR) { /* get col by name */
+    ngx_int_t n = ngx_atoi(elts[2].data, elts[2].len);
+    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: row \"%V\" must be number", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
+    variable->row = (ngx_uint_t)n;
+    if ((n = ngx_atoi(elts[3].data, elts[3].len)) != NGX_ERROR) variable->col = (ngx_uint_t)n; else { /* get col by name */
         if (!(variable->name = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "error: !ngx_pnalloc";
-        (void) ngx_cpystrn(variable->name, elts[3].data, elts[3].len + 1);
+        (void)ngx_cpystrn(variable->name, elts[3].data, elts[3].len + 1);
     }
     if (cf->args->nelts == 4) variable->required = 0; else { /* user-specified value */
         ngx_conf_enum_t *e = ngx_postgres_requirement_options;
         ngx_uint_t i;
         for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[4].len && !ngx_strncasecmp(e[i].name.data, elts[4].data, elts[4].len)) { variable->required = e[i].value; break; }
-        if (!e[i].name.len) return "error: invalid \"required\" value (must be \"optional\" or \"required\")";
+        if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: requirment \"%V\" must be \"optional\" or \"required\"", &cmd->name, &elts[4]); return NGX_CONF_ERROR; }
     }
     return NGX_CONF_OK;
 }

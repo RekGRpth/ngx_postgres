@@ -109,7 +109,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
             if (!(peer->host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             if (!(peer->host.len = ngx_sock_ntop(peer->sockaddr, peer->socklen, peer->host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_sock_ntop"); return NGX_ERROR; }
             if (!(peer->value = ngx_pnalloc(cf->pool, peer->host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-            (void) ngx_cpystrn(peer->value, peer->host.data + (elts[i].family == AF_UNIX ? 5 : 0), peer->host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0));
+            (void)ngx_cpystrn(peer->value, peer->host.data + (elts[i].family == AF_UNIX ? 5 : 0), peer->host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0));
         }
     }
     if (!server->max_save) return NGX_OK;
@@ -209,7 +209,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         arg++;
         upstream->keywords[arg] = "host";
         if (!(upstream->values[arg] = ngx_pnalloc(cf->pool, url.host.len + 1))) return "error: !ngx_pnalloc";
-        (void) ngx_cpystrn((u_char *)upstream->values[arg], url.host.data, url.host.len + 1);
+        (void)ngx_cpystrn((u_char *)upstream->values[arg], url.host.data, url.host.len + 1);
     }
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
         if (!opt->val) continue;
@@ -220,10 +220,10 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         arg++;
         size_t keyword_len = ngx_strlen(opt->keyword);
         if (!(upstream->keywords[arg] = ngx_pnalloc(cf->pool, keyword_len + 1))) return "error: !ngx_pnalloc";
-        (void) ngx_cpystrn((u_char *)upstream->keywords[arg], (u_char *)opt->keyword, keyword_len + 1);
+        (void)ngx_cpystrn((u_char *)upstream->keywords[arg], (u_char *)opt->keyword, keyword_len + 1);
         size_t val_len = ngx_strlen(opt->val);
         if (!(upstream->values[arg] = ngx_pnalloc(cf->pool, val_len + 1))) return "error: !ngx_pnalloc";
-        (void) ngx_cpystrn((u_char *)upstream->values[arg], (u_char *)opt->val, val_len + 1);
+        (void)ngx_cpystrn((u_char *)upstream->values[arg], (u_char *)opt->val, val_len + 1);
     }
     arg++;
     upstream->keywords[arg] = NULL;

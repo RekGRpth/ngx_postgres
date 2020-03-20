@@ -242,7 +242,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     if (output->header) {
         size += result->nfields - 1; // header delimiters
         size++; // header new line
-        for (ngx_int_t col = 0; col < result->nfields; col++) {
+        for (ngx_uint_t col = 0; col < result->nfields; col++) {
             int len = ngx_strlen(PQfname(res, col));
             if (output->quote) size++;
             if (output->escape) size += ngx_postgres_count((u_char *)PQfname(res, col), len, output->escape);
@@ -268,7 +268,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     }
     size += result->ntuples * (result->nfields - 1); // value delimiters
     size += result->ntuples - 1; // value new line
-    for (ngx_int_t row = 0; row < result->ntuples; row++) for (ngx_int_t col = 0; col < result->nfields; col++) {
+    for (ngx_uint_t row = 0; row < result->ntuples; row++) for (ngx_uint_t col = 0; col < result->nfields; col++) {
         int len = PQgetlength(res, row, col);
         if (PQgetisnull(res, row, col)) size += output->null.len; else switch (PQftype(res, col)) {
             case BITOID:
@@ -305,7 +305,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     b->memory = 1;
     b->tag = u->output.tag;
     if (output->header) {
-        for (ngx_int_t col = 0; col < result->nfields; col++) {
+        for (ngx_uint_t col = 0; col < result->nfields; col++) {
             int len = ngx_strlen(PQfname(res, col));
             if (col > 0) *b->last++ = output->delimiter;
             if (output->quote) *b->last++ = output->quote;
@@ -331,9 +331,9 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
         }
         *b->last++ = '\n';
     }
-    for (ngx_int_t row = 0; row < result->ntuples; row++) {
+    for (ngx_uint_t row = 0; row < result->ntuples; row++) {
         if (row > 0) *b->last++ = '\n';
-        for (ngx_int_t col = 0; col < result->nfields; col++) {
+        for (ngx_uint_t col = 0; col < result->nfields; col++) {
             int len = PQgetlength(res, row, col);
             if (col > 0) *b->last++ = output->delimiter;
             if (PQgetisnull(res, row, col)) b->last = ngx_copy(b->last, output->null.data, output->null.len); else switch (PQftype(res, col)) {
@@ -393,9 +393,9 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     PGresult *res = result->res;
     if (result->ntuples == 1 && result->nfields == 1 && (PQftype(res, 0) == JSONOID || PQftype(res, 0) == JSONBOID)) size = PQgetlength(res, 0, 0); else {
         if (result->ntuples > 1) size += 2; // [] + \0
-        for (ngx_int_t row = 0; row < result->ntuples; row++) {
+        for (ngx_uint_t row = 0; row < result->ntuples; row++) {
             size += sizeof("{}") - 1;
-            for (ngx_int_t col = 0; col < result->nfields; col++) {
+            for (ngx_uint_t col = 0; col < result->nfields; col++) {
                 int len = PQgetlength(res, row, col);
                 if (PQgetisnull(res, row, col)) size += sizeof("null") - 1; else switch (PQftype(res, col)) {
                     case BITOID:
@@ -419,7 +419,7 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
                 }
             }
         }
-        for (ngx_int_t col = 0; col < result->nfields; col++) {
+        for (ngx_uint_t col = 0; col < result->nfields; col++) {
             int len = ngx_strlen(PQfname(res, col));
             size += (len + 3 + ngx_escape_json(NULL, (u_char *)PQfname(res, col), len)) * result->ntuples; // extra "":
             if (location->append && !ngx_strstr(PQfname(res, col), "::")) {
@@ -442,10 +442,10 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     b->tag = u->output.tag;
     if (result->ntuples == 1 && result->nfields == 1 && (PQftype(res, 0) == JSONOID || PQftype(res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0), PQgetlength(res, 0, 0)); else { /* fill data */
         if (result->ntuples > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
-        for (ngx_int_t row = 0; row < result->ntuples; row++) {
+        for (ngx_uint_t row = 0; row < result->ntuples; row++) {
             if (row > 0) b->last = ngx_copy(b->last, ",", 1);
             b->last = ngx_copy(b->last, "{", sizeof("{") - 1);
-            for (ngx_int_t col = 0; col < result->nfields; col++) {
+            for (ngx_uint_t col = 0; col < result->nfields; col++) {
                 int len = PQgetlength(res, row, col);
                 if (col > 0) b->last = ngx_copy(b->last, ",", 1);
                 b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
