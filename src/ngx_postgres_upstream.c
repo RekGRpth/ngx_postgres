@@ -364,7 +364,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
 
 
 static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "state = %i", state);
     ngx_connection_t *c = pc->connection;
     ngx_postgres_data_t *pd = pc->data;
     ngx_postgres_common_t *pdc = &pd->common;
