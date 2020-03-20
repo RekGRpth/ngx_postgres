@@ -571,7 +571,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_str_t *elts = cf->args->elts;
     ngx_uint_t i;
     for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[1].len && !ngx_strncasecmp(e[i].name.data, elts[1].data, elts[1].len)) { output->handler = e[i].handler; break; }
-    if (!e[i].name.len) return "invalid format";
+    if (!e[i].name.len) return "error: invalid output format ()";
     output->binary = e[i].binary;
     output->header = 1;
     output->string = 1;
