@@ -194,7 +194,6 @@ again:
             return NGX_AGAIN;
     }
     ngx_connection_t *c = pdc->connection;
-    if (c->read->timer_set) ngx_del_timer(c->read); /* remove connection timeout from new connection */
     if (c->write->timer_set) ngx_del_timer(c->write); /* remove connection timeout from new connection */
     const char *charset = PQparameterStatus(pdc->conn, "client_encoding");
     if (charset) {
