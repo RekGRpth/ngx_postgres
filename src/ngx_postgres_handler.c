@@ -31,6 +31,23 @@ static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
     u->request_bufs = NULL;
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    if (location->complex.value.data) { /* use complex value */
+        ngx_str_t host;
+        if (ngx_http_complex_value(r, &location->complex, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_complex_value != NGX_OK"); return NGX_ERROR; }
+        if (!host.len) {
+            ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location->complex.value, &core->name);
+            return NGX_ERROR;
+        }
+        if (!(u->resolved = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_resolved_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+        u->resolved->host = host;
+        u->resolved->no_port = 1;
+    }
+    u->schema.len = sizeof("postgres://") - 1;
+    u->schema.data = (u_char *) "postgres://";
+    u->output.tag = (ngx_buf_tag_t) &ngx_postgres_module;
+//    u->conf = &location->conf;
     return NGX_OK;
 }
 
@@ -97,7 +114,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     if (rc != NGX_OK) return rc;
     if (ngx_http_upstream_create(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_upstream_create != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
-    if (location->complex.value.data) { /* use complex value */
+/*    if (location->complex.value.data) {
         ngx_str_t host;
         if (ngx_http_complex_value(r, &location->complex, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_complex_value != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
         if (!host.len) {
@@ -116,7 +133,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     }
     u->schema.len = sizeof("postgres://") - 1;
     u->schema.data = (u_char *) "postgres://";
-    u->output.tag = (ngx_buf_tag_t) &ngx_postgres_module;
+    u->output.tag = (ngx_buf_tag_t) &ngx_postgres_module;*/
     u->conf = &location->conf;
     u->create_request = ngx_postgres_create_request;
     u->reinit_request = ngx_postgres_reinit_request;
