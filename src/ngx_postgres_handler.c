@@ -55,7 +55,7 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
 }
 
 
-static ngx_int_t ngx_postgres_process_header(ngx_http_request_t *r) {
+/*static ngx_int_t ngx_postgres_process_header(ngx_http_request_t *r) {
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "should not be called by the upstream");
     return NGX_ERROR;
 }
@@ -72,7 +72,7 @@ static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes) {
     ngx_http_request_t *r = data;
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "should not be called by the upstream");
     return NGX_ERROR;
-}
+}*/
 
 
 static ngx_http_upstream_srv_conf_t *ngx_postgres_find_upstream(ngx_http_request_t *r, ngx_url_t *url) {
@@ -117,13 +117,13 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     u->conf = &location->upstream;
     u->create_request = ngx_postgres_create_request;
     u->reinit_request = ngx_postgres_reinit_request;
-    u->process_header = ngx_postgres_process_header;
+//    u->process_header = ngx_postgres_process_header;
     u->abort_request = ngx_postgres_abort_request;
     u->finalize_request = ngx_postgres_finalize_request;
     /* we bypass the upstream input filter mechanism in ngx_http_upstream_process_headers */
-    u->input_filter_init = ngx_postgres_input_filter_init;
-    u->input_filter = ngx_postgres_input_filter;
-    u->input_filter_ctx = NULL;
+//    u->input_filter_init = ngx_postgres_input_filter_init;
+//    u->input_filter = ngx_postgres_input_filter;
+//    u->input_filter_ctx = NULL;
     r->main->count++;
     ngx_http_upstream_init(r);
     /* override the read/write event handler to our own */
