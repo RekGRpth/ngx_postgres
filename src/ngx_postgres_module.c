@@ -54,7 +54,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     location->upstream.intercept_404 = 1;
     location->upstream.intercept_errors = 1;
     location->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
-    location->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
     return location;
 }
 
@@ -66,7 +65,6 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     if (!conf->queries.elts) conf->queries = prev->queries;
     if (!conf->upstream.upstream) conf->upstream = prev->upstream;
     ngx_conf_merge_msec_value(conf->upstream.read_timeout, prev->upstream.read_timeout, 60000);
-    ngx_conf_merge_msec_value(conf->upstream.send_timeout, prev->upstream.send_timeout, 60000);
     return NGX_CONF_OK;
 }
 
@@ -408,12 +406,12 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_location_t, upstream.read_timeout),
     .post = NULL },
-  { .name = ngx_string("postgres_send"),
+/*  { .name = ngx_string("postgres_send"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
     .set = ngx_conf_set_msec_slot,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_location_t, upstream.send_timeout),
-    .post = NULL },
+    .post = NULL },*/
 /*  { .name = ngx_string("postgres_size"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
     .set = ngx_conf_set_size_slot,
