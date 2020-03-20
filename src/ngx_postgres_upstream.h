@@ -90,6 +90,7 @@ typedef struct {
 } ngx_postgres_data_t;
 
 typedef struct {
+    ngx_event_t timeout;
     ngx_postgres_common_t common;
     ngx_queue_t queue;
 } ngx_postgres_save_t;
