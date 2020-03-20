@@ -128,7 +128,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
 
 static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
     ngx_http_upstream_srv_conf_t *server = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
-    if (!server->servers && !(server->servers = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_server_t)))) return "error: !ngx_array_create";
+    if (!server->servers && !(server->servers = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_upstream_t)))) return "error: !ngx_array_create";
     ngx_postgres_upstream_t *upstream = ngx_array_push(server->servers);
     if (!upstream) return "error: !ngx_array_push";
     ngx_memzero(upstream, sizeof(ngx_postgres_upstream_t));
