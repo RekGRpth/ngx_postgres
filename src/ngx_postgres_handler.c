@@ -28,7 +28,6 @@ static void ngx_postgres_read_event_handler(ngx_http_request_t *r, ngx_http_upst
 static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    u->request_bufs = NULL;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location->complex.value.data) { // use complex value
         ngx_str_t host;
