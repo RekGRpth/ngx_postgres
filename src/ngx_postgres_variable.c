@@ -317,7 +317,7 @@ ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf) {
 }
 
 
-ngx_conf_enum_t ngx_postgres_requirement_options[] = {
+static ngx_conf_enum_t ngx_postgres_requirement_options[] = {
     { ngx_string("optional"), 0 },
     { ngx_string("required"), 1 },
     { ngx_null_string, 0 }

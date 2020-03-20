@@ -552,7 +552,7 @@ struct ngx_postgres_output_enum_t {
 };
 
 
-ngx_conf_enum_t ngx_postgres_output_options[] = {
+static ngx_conf_enum_t ngx_postgres_output_options[] = {
     { ngx_string("off"), 0 },
     { ngx_string("no"), 0 },
     { ngx_string("false"), 0 },
