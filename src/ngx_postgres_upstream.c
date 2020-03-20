@@ -699,10 +699,8 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (!query) return "error: !ngx_array_push";
     ngx_memzero(query, sizeof(ngx_postgres_query_t));
     for (ngx_uint_t i = 1; i < cf->args->nelts - 1; i++) {
-        if (elts[i].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare", sizeof("prepare") - 1)) query->prepare = 1; else {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_query\" directive error: invalid additional parameter \"%V\"", &elts[i]);
-            return NGX_CONF_ERROR;
-        }
+        if (elts[i].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare", sizeof("prepare") - 1)) query->prepare = 1;
+        else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
     }
     if (sql.len > sizeof("file://") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file://", sizeof("file://") - 1)) {
         sql.data += sizeof("file://") - 1;
