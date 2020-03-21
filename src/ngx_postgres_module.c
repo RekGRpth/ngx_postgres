@@ -321,7 +321,7 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
 
 static char *ngx_postgres_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_t *server = conf;
-    return ngx_log_set_log(cf, &server->log);
+    return ngx_log_set_log(cf, &server->ps.log);
 }
 
 

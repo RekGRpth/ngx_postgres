@@ -40,6 +40,7 @@ typedef struct {
     } pd;
     struct {
         ngx_flag_t reject;
+        ngx_log_t *log;
         ngx_msec_t timeout;
         ngx_queue_t queue;
         ngx_uint_t max;
@@ -49,7 +50,6 @@ typedef struct {
     struct {
         ngx_queue_t queue;
     } free;
-    ngx_log_t *log;
     ngx_queue_t peer;
 } ngx_postgres_server_t;
 

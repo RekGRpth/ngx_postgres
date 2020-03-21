@@ -331,7 +331,7 @@ static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     ngx_connection_t *c = psc->connection;
     c->data = ps;
     c->idle = 1;
-    c->log = server->log ? server->log : ngx_cycle->log;
+    c->log = server->ps.log ? server->ps.log : ngx_cycle->log;
     if (c->pool) c->pool->log = c->log;
     c->read->delayed = 0;
     c->read->handler = ngx_postgres_read_handler;
