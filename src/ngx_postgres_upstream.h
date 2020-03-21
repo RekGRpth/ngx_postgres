@@ -32,24 +32,25 @@ typedef struct {
 
 typedef struct {
     struct {
+        ngx_flag_t reject;
         ngx_msec_t timeout;
         ngx_queue_t queue;
         ngx_uint_t max;
         ngx_uint_t size;
     } pd;
     struct {
+        ngx_flag_t reject;
         ngx_msec_t timeout;
         ngx_queue_t queue;
         ngx_uint_t max;
+        ngx_uint_t requests;
         ngx_uint_t size;
     } ps;
     struct {
         ngx_queue_t queue;
     } free;
-    ngx_flag_t reject;
     ngx_log_t *log;
     ngx_queue_t peer;
-    ngx_uint_t requests;
 } ngx_postgres_server_t;
 
 typedef struct {

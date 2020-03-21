@@ -36,7 +36,7 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_server_t *server = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_server_t));
     if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     server->ps.timeout = NGX_CONF_UNSET_MSEC;
-    server->requests = NGX_CONF_UNSET_UINT;
+    server->ps.requests = NGX_CONF_UNSET_UINT;
     server->pd.timeout = NGX_CONF_UNSET_MSEC;
     return server;
 }
@@ -78,7 +78,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_postgres_server_t *server = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
     if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
     ngx_conf_init_msec_value(server->ps.timeout, 60 * 60 * 1000);
-    ngx_conf_init_uint_value(server->requests, 1000);
+    ngx_conf_init_uint_value(server->ps.requests, 1000);
     ngx_queue_init(&server->peer);
     ngx_uint_t npeers = 0;
     ngx_postgres_upstream_t *elts = upstream_srv_conf->servers->elts;
@@ -244,7 +244,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
             ngx_uint_t j;
             ngx_conf_enum_t *e = ngx_postgres_overflow_options;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server->reject = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server->ps.reject = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
         } else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
@@ -259,7 +259,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be number", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            server->requests = (ngx_uint_t)n;
+            server->ps.requests = (ngx_uint_t)n;
         } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
     }
     return NGX_CONF_OK;
@@ -276,7 +276,14 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
     server->pd.max = (ngx_uint_t)n;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
+        if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("overflow=") - 1);
+            elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
+            ngx_uint_t j;
+            ngx_conf_enum_t *e = ngx_postgres_overflow_options;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server->pd.reject = e[j].value; break; }
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+        } else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
             elts[i].data = &elts[i].data[sizeof("timeout=") - 1];
             ngx_int_t n = ngx_parse_time(&elts[i], 0);

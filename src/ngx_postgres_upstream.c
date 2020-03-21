@@ -85,8 +85,8 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
         if (server->ps.size < server->ps.max) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.size = %i", server->ps.size);
-        } else if (!server->reject && !server->pd.max) {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!reject and !pd.max");
+        } else if (!server->ps.reject && !server->pd.max) {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!server->ps.reject and !pd.max");
         } else {
             ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ps.size = %i", server->ps.size);
             if (server->pd.size < server->pd.max) {
@@ -97,8 +97,8 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
                 ngx_add_timer(&pd->timeout, server->pd.timeout);
                 server->pd.size++;
                 return NGX_YIELD;
-            } if (!server->reject) {
-                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!reject");
+            } if (!server->pd.reject) {
+                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!server->pd.reject");
             } else {
                 ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "pd.size = %i", server->pd.size);
                 return NGX_DECLINED;
@@ -354,7 +354,7 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     ngx_connection_t *c = pdc->connection;
     if (!c) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!connection"); return; }
     ngx_postgres_server_t *server = pdc->server;
-    if (c->requests >= server->requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests = %i", c->requests); return; }
+    if (c->requests >= server->ps.requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests = %i", c->requests); return; }
     if (ngx_terminate) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_terminate"); return; }
     if (ngx_exiting) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_exiting"); return; }
     u_char *listen = NULL;
