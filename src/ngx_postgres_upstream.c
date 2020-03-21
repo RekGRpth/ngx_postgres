@@ -695,9 +695,13 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (!query) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(query, sizeof(ngx_postgres_query_t));
     ngx_str_t sql = ngx_null_string;
+    ngx_uint_t j = 1;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
-        if (i == 1 && elts[i].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare", sizeof("prepare") - 1)) query->prepare = 1;
-        else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
+        if (i == 1 && elts[i].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare", sizeof("prepare") - 1)) {
+            query->prepare = 1;
+            j = i + 1;
+        } else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
+            j = i + 1;
             elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
             elts[i].data = &elts[i].data[sizeof("timeout=") - 1];
             ngx_int_t n = ngx_parse_time(&elts[i], 0);
@@ -709,11 +713,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (!sql.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty query", &cmd->name); return NGX_CONF_ERROR; }
     if (!(sql.data = ngx_pnalloc(cf->pool, sql.len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
     u_char *q = sql.data;
-    for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
-        if (i == 1 && elts[i].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare", sizeof("prepare") - 1));
-        else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1));
-        else q = ngx_cpymem(q, elts[i].data, elts[i].len);
-    }
+    for (ngx_uint_t i = j; i < cf->args->nelts; i++) q = ngx_cpymem(q, elts[i].data, elts[i].len);
     if (!(query->sql.data = ngx_pnalloc(cf->pool, sql.len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
     if (ngx_array_init(&query->params, cf->pool, 1, sizeof(ngx_postgres_param_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     if (ngx_array_init(&query->ids, cf->pool, 1, sizeof(ngx_uint_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
@@ -750,6 +750,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             if (s >= e) break;
         }
     }
+    ngx_pfree(cf->pool, sql.data);
     query->sql.len = p - query->sql.data;
     query->listen = query->sql.len > sizeof("LISTEN ") - 1 && !ngx_strncasecmp(query->sql.data, (u_char *)"LISTEN ", sizeof("LISTEN ") - 1);
     if (query->listen && !ngx_http_push_stream_add_msg_to_channel_my && !ngx_http_push_stream_delete_channel_my) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: LISTEN requires ngx_http_push_stream_module!", &cmd->name); return NGX_CONF_ERROR; }
