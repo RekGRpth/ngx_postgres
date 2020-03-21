@@ -321,6 +321,7 @@ static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     c->read->delayed = 0;
     c->read->handler = ngx_postgres_read_handler;
     c->read->log = c->log;
+    c->write->delayed = 0;
     c->write->handler = ngx_postgres_write_handler;
     c->write->log = c->log;
     ps->timeout.log = c->log;
