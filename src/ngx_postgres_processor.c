@@ -165,8 +165,10 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pdc->state == %i", pdc->state); return NGX_ERROR;
     }
     if (query->timeout) {
-        pd->timeout.handler = ngx_postgres_query_timeout;
-        ngx_add_timer(&pd->timeout, query->timeout);
+        pdc->timeout.handler = ngx_postgres_query_timeout;
+        pdc->timeout.log = r->connection->log;
+        pdc->timeout.data = r->connection;
+        ngx_add_timer(&pdc->timeout, query->timeout);
     }
     pdc->state = state_db_result;
     return NGX_DONE;
@@ -247,7 +249,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     ngx_postgres_common_t *pdc = &pd->common;
     if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
     if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
-    if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
+    if (pdc->timeout.timer_set) ngx_del_timer(&pdc->timeout);
     ngx_int_t rc = NGX_DONE;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     for (; rc == NGX_DONE && (pd->result.res = PQgetResult(pdc->conn)); PQclear(pd->result.res)) switch(PQresultStatus(pd->result.res)) {
