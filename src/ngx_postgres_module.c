@@ -128,7 +128,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_str_t *elts = cf->args->elts;
     size_t len = 0;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
-        if (i > 1) len += sizeof(" ") - 1;
+        if (i > 1) len++;
         len += elts[i].len;
     }
     u_char *conninfo = ngx_pnalloc(cf->pool, len + 1);

@@ -713,7 +713,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     }
     ngx_str_t sql = ngx_null_string;
     for (ngx_uint_t i = j; i < cf->args->nelts; i++) {
-        if (i > j) sql.len += sizeof(" ") - 1;
+        if (i > j) sql.len++;
         else sql.len += elts[i].len;
     }
     if (!sql.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty query", &cmd->name); return NGX_CONF_ERROR; }
