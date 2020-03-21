@@ -103,6 +103,6 @@ extern ngx_int_t ngx_http_push_stream_add_msg_to_channel_my(ngx_log_t *log, ngx_
 extern ngx_int_t ngx_http_push_stream_delete_channel_my(ngx_log_t *log, ngx_str_t *id, u_char *text, size_t len, ngx_pool_t *temp_pool) __attribute__((weak));
 ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *pc);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
-void ngx_postgres_free_connection(ngx_postgres_common_t *common, ngx_flag_t delete);
+void ngx_postgres_free_connection(ngx_postgres_common_t *common);
 
 #endif /* _NGX_HTTP_UPSTREAM_POSTGRES_H_ */
