@@ -46,11 +46,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_postgres_location_t *location = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_location_t));
     if (!location) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     location->query = NGX_CONF_UNSET_PTR;
-//    location->conf.buffering = 1;
-//    location->conf.ignore_client_abort = 1;
-//    location->conf.intercept_404 = 1;
-//    location->conf.intercept_errors = 1;
-    location->conf.read_timeout = NGX_CONF_UNSET_MSEC;
     return location;
 }
 
@@ -61,7 +56,6 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     if (!conf->complex.value.data) conf->complex = prev->complex;
     if (!conf->queries.elts) conf->queries = prev->queries;
     if (!conf->conf.upstream) conf->conf = prev->conf;
-    ngx_conf_merge_msec_value(conf->conf.read_timeout, prev->conf.read_timeout, 60000);
     return NGX_CONF_OK;
 }
 
@@ -115,7 +109,6 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_queue_init(&server->free);
     ngx_conf_init_msec_value(server->timeout, 60 * 1000);
     ngx_queue_init(&server->data);
-//    server->pool = cf->pool;
     ngx_queue_init(&server->save);
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t) * server->max_save);
     if (!ps) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
@@ -326,12 +319,6 @@ static char *ngx_postgres_log(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
 
 
 static ngx_command_t ngx_postgres_commands[] = {
-/*  { .name = ngx_string("postgres_access_log"),
-    .type = NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
-    .set = ngx_http_log_set_log,
-    .conf = NGX_HTTP_SRV_CONF_OFFSET,
-    .offset = 0,
-    .post = NULL },*/
   { .name = ngx_string("postgres_log"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
     .set = ngx_postgres_log,
@@ -356,18 +343,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
-/*  { .name = ngx_string("postgres_timeout"),
-    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
-    .set = ngx_conf_set_msec_slot,
-    .conf = NGX_HTTP_SRV_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_server_t, keepalive),
-    .post = NULL },
-  { .name = ngx_string("postgres_requests"),
-    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
-    .set = ngx_conf_set_num_slot,
-    .conf = NGX_HTTP_SRV_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_server_t, requests),
-    .post = NULL },*/
   { .name = ngx_string("postgres_pass"),
     .type = NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
     .set = ngx_postgres_pass_conf,
@@ -375,7 +350,7 @@ static ngx_command_t ngx_postgres_commands[] = {
     .offset = 0,
     .post = NULL },
   { .name = ngx_string("postgres_query"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE12,
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE12|NGX_CONF_TAKE3,
     .set = ngx_postgres_query_conf,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,
@@ -392,30 +367,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
-/*  { .name = ngx_string("postgres_connect"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
-    .set = ngx_conf_set_msec_slot,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_location_t, upstream.connect_timeout),
-    .post = NULL },*/
-  { .name = ngx_string("postgres_timeout"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
-    .set = ngx_conf_set_msec_slot,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_location_t, conf.read_timeout),
-    .post = NULL },
-/*  { .name = ngx_string("postgres_send"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
-    .set = ngx_conf_set_msec_slot,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_location_t, upstream.send_timeout),
-    .post = NULL },*/
-/*  { .name = ngx_string("postgres_size"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-    .set = ngx_conf_set_size_slot,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_location_t, output.size),
-    .post = NULL },*/
     ngx_null_command
 };
 

@@ -35,7 +35,6 @@ typedef struct {
     ngx_log_t *log;
     ngx_msec_t keepalive;
     ngx_msec_t timeout;
-//    ngx_pool_t *pool;
     ngx_queue_t data;
     ngx_queue_t free;
     ngx_queue_t peer;

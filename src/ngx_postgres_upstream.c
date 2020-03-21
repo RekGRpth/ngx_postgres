@@ -50,6 +50,20 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_http_request_t *r) {
 }
 
 
+static void ngx_postgres_data_timeout(ngx_event_t *ev) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
+    ngx_connection_t *c = ev->data;
+    ngx_http_request_t *r = c->data;
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_postgres_data_t *pd = u->peer.data;
+    ngx_queue_remove(&pd->queue);
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_postgres_server_t *server = pdc->server;
+    server->cur_data--;
+    ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+}
+
+
 static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_data_t *pd = pc->data;
     ngx_http_request_t *r = pd->request;
@@ -79,6 +93,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "cur_data = %i", server->cur_data);
                 ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
                 ngx_queue_insert_tail(&server->data, &pd->queue);
+                pd->timeout.handler = ngx_postgres_data_timeout;
                 ngx_add_timer(&pd->timeout, server->timeout);
                 server->cur_data++;
                 return NGX_YIELD;
@@ -335,14 +350,9 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_data_t *pd = u->peer.data;
-//    if (u->headers_in.status_n != NGX_HTTP_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "status_n != NGX_HTTP_OK"); return; }
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_connection_t *c = pdc->connection;
     if (!c) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!connection"); return; }
-    if (c->read->timer_set) ngx_del_timer(c->read);
-    if (c->write->timer_set) ngx_del_timer(c->write);
-//    if (c->read->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->read, NGX_READ_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
-//    if (c->write->active && ngx_event_flags & NGX_USE_LEVEL_EVENT && ngx_del_event(c->write, NGX_WRITE_EVENT, 0) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_del_event != NGX_OK"); return; }
     ngx_postgres_server_t *server = pdc->server;
     if (c->requests >= server->requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests = %i", c->requests); return; }
     if (ngx_terminate) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_terminate"); return; }
@@ -408,20 +418,6 @@ typedef struct {
 } ngx_postgres_param_t;
 
 
-static void ngx_postgres_data_timeout(ngx_event_t *ev) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
-    ngx_connection_t *c = ev->data;
-    ngx_http_request_t *r = c->data;
-    ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_data_t *pd = u->peer.data;
-    ngx_queue_remove(&pd->queue);
-    ngx_postgres_common_t *pdc = &pd->common;
-    ngx_postgres_server_t *server = pdc->server;
-    server->cur_data--;
-    ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
-}
-
-
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = ngx_pcalloc(r->pool, sizeof(ngx_postgres_data_t));
@@ -432,7 +428,6 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     if (server->max_data) {
         pd->timeout.log = r->connection->log;
         pd->timeout.data = r->connection;
-        pd->timeout.handler = ngx_postgres_data_timeout;
     }
     pd->request = r;
     ngx_http_upstream_t *u = r->upstream;
@@ -714,7 +709,14 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_memzero(query, sizeof(ngx_postgres_query_t));
     for (ngx_uint_t i = 1; i < cf->args->nelts - 1; i++) {
         if (elts[i].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare", sizeof("prepare") - 1)) query->prepare = 1;
-        else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+        else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
+            elts[i].data = &elts[i].data[sizeof("timeout=") - 1];
+            ngx_int_t n = ngx_parse_time(&elts[i], 0);
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+            query->timeout = (ngx_msec_t)n;
+        } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
     }
     if (sql.len > sizeof("file://") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file://", sizeof("file://") - 1)) {
         sql.data += sizeof("file://") - 1;
