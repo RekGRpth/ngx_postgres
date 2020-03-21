@@ -334,15 +334,15 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     elts[1].data++;
     if (!elts[3].len) return "error: empty col";
     ngx_array_t *variables = &location->query->variables;
-    if (!variables->elts && ngx_array_init(variables, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) return "error: !ngx_array_init != NGX_OK";
+    if (!variables->elts && ngx_array_init(variables, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     ngx_postgres_variable_t *variable = ngx_array_push(variables);
-    if (!variable) return "error: !ngx_array_push";
+    if (!variable) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     variable->index = location->index++;
     variable->name = elts[1];
     ngx_http_variable_t *var = ngx_http_add_variable(cf, &variable->name, NGX_HTTP_VAR_CHANGEABLE);
-    if (!var) return "error: !ngx_http_add_variable";
+    if (!var) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_http_add_variable", &cmd->name); return NGX_CONF_ERROR; }
     ngx_int_t index = ngx_http_get_variable_index(cf, &variable->name);
-    if (index == NGX_ERROR) return "error: ngx_http_get_variable_index == NGX_ERROR";
+    if (index == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_http_get_variable_index == NGX_ERROR", &cmd->name); return NGX_CONF_ERROR; }
     var->index = (ngx_uint_t)index;
     var->get_handler = ngx_postgres_variable_get;
     var->data = (uintptr_t)variable->index;
@@ -350,7 +350,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: row \"%V\" must be number", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
     variable->row = (ngx_uint_t)n;
     if ((n = ngx_atoi(elts[3].data, elts[3].len)) != NGX_ERROR) variable->col = (ngx_uint_t)n; else { /* get col by name */
-        if (!(variable->field = ngx_pnalloc(cf->pool, elts[3].len + 1))) return "error: !ngx_pnalloc";
+        if (!(variable->field = ngx_pnalloc(cf->pool, elts[3].len + 1))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
         (void)ngx_cpystrn(variable->field, elts[3].data, elts[3].len + 1);
     }
     if (cf->args->nelts == 4) variable->required = 0; else { /* user-specified value */
