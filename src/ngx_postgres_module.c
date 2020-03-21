@@ -296,6 +296,29 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 }
 
 
+static ngx_conf_enum_t ngx_postgres_output_options[] = {
+    { ngx_string("off"), 0 },
+    { ngx_string("no"), 0 },
+    { ngx_string("false"), 0 },
+    { ngx_string("on"), 1 },
+    { ngx_string("yes"), 1 },
+    { ngx_string("true"), 1 },
+    { ngx_null_string, 0 }
+};
+
+
+static char *ngx_postgres_trace_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_postgres_server_t *server = conf;
+    if (server->trace) return "duplicate";
+    ngx_str_t *elts = cf->args->elts;
+    ngx_uint_t j;
+    ngx_conf_enum_t *e = ngx_postgres_output_options;
+    for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[1].len && !ngx_strncasecmp(e[j].name.data, elts[1].data, elts[1].len)) { server->trace = e[j].value; break; }
+    if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"append\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    return NGX_CONF_OK;
+}
+
+
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     if (location->conf.upstream || location->complex.value.data) return "duplicate";
@@ -347,6 +370,12 @@ static ngx_command_t ngx_postgres_commands[] = {
   { .name = ngx_string("postgres_queue"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12,
     .set = ngx_postgres_queue_conf,
+    .conf = NGX_HTTP_SRV_CONF_OFFSET,
+    .offset = 0,
+    .post = NULL },
+  { .name = ngx_string("postgres_trace"),
+    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE1,
+    .set = ngx_postgres_trace_conf,
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
     .post = NULL },

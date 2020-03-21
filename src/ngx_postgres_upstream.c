@@ -125,7 +125,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         *p = '\0';
         peer->values[2] = (const char *)buf;
     }
-    pdc->conn = PQconnectStartParams(peer->keywords, peer->values, 0); /* internal checks in PQsetnonblocking are taking care of any PQconnectStart failures, so we don't need to check them here. */
+    pdc->conn = PQconnectStartParams(peer->keywords, peer->values, 0);
     peer->values[0] = host;
     peer->values[2] = options;
     if (PQstatus(pdc->conn) == CONNECTION_BAD || PQsetnonblocking(pdc->conn, 1) == -1) {
