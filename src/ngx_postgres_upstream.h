@@ -50,7 +50,9 @@ typedef struct {
     struct {
         ngx_queue_t queue;
     } free;
-    ngx_flag_t trace;
+    struct {
+        ngx_log_t *log;
+    } trace;
     ngx_queue_t peer;
 } ngx_postgres_server_t;
 
