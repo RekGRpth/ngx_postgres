@@ -12,10 +12,10 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     ngx_postgres_common_t *psc = &ps->common;
     ngx_postgres_server_t *server = psc->server;
     ngx_queue_insert_tail(&server->free.queue, &ps->queue);
-    pd->common = ps->common;
     ngx_http_upstream_t *u = r->upstream;
     ngx_peer_connection_t *pc = &u->peer;
     ngx_postgres_common_t *pdc = &pd->common;
+    *pdc = *psc;
     ngx_connection_t *c = pc->connection = pdc->connection;
     c->data = r;
     c->idle = 0;
@@ -328,8 +328,8 @@ static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     ngx_http_upstream_t *u = r->upstream;
     ngx_peer_connection_t *pc = &u->peer;
     pc->connection = NULL;
-    ps->common = pd->common;
     ngx_postgres_common_t *psc = &ps->common;
+    *psc = *pdc;
     ngx_connection_t *c = psc->connection;
     c->data = ps;
     c->idle = 1;
