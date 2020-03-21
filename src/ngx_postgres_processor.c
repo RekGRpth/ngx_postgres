@@ -196,7 +196,6 @@ again:
             if (PQstatus(pdc->conn) == CONNECTION_MADE) goto again;
             return NGX_AGAIN;
     }
-    ngx_connection_t *c = pdc->connection;
     const char *charset = PQparameterStatus(pdc->conn, "client_encoding");
     if (charset) {
         pdc->charset.len = ngx_strlen(charset);
