@@ -250,27 +250,29 @@ static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t 
     u_char *listen = NULL;
     ngx_array_t *array = NULL;
     size_t len = 0;
-    if (pdc->listen) for (ngx_queue_t *queue_pd = ngx_queue_head(pdc->listen); queue_pd != ngx_queue_sentinel(pdc->listen); queue_pd = ngx_queue_next(queue_pd)) {
-        ngx_postgres_listen_t *listen_pd = ngx_queue_data(queue_pd, ngx_postgres_listen_t, queue);
+    if (pdc->listen) while (!ngx_queue_empty(pdc->listen)) {
+        ngx_queue_t *queue_pd = ngx_queue_head(pdc->listen);
+        ngx_postgres_listen_t *pdl = ngx_queue_data(queue_pd, ngx_postgres_listen_t, queue);
         ngx_postgres_common_t *psc = &ps->common;
         if (!psc->listen) {
             if (!(psc->listen = ngx_pcalloc(c->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NULL; }
             ngx_queue_init(psc->listen);
         }
         for (ngx_queue_t *queue_ps = ngx_queue_head(psc->listen); queue_ps != ngx_queue_sentinel(psc->listen); queue_ps = ngx_queue_next(queue_ps)) {
-            ngx_postgres_listen_t *listen_ps = ngx_queue_data(queue_ps, ngx_postgres_listen_t, queue);
-            if (listen_ps->channel.len == listen_pd->channel.len && !ngx_strncmp(listen_ps->channel.data, listen_pd->channel.data, listen_pd->channel.len)) goto cont;
+            ngx_postgres_listen_t *psl = ngx_queue_data(queue_ps, ngx_postgres_listen_t, queue);
+            if (psl->channel.len == pdl->channel.len && !ngx_strncmp(psl->channel.data, pdl->channel.data, pdl->channel.len)) goto cont;
         }
         if (!array && !(array = ngx_array_create(r->pool, 1, sizeof(ngx_postgres_listen_t)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_create"); return NULL; }
-        ngx_postgres_listen_t *listen = ngx_array_push(array);
-        if (!listen) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_push"); return NULL; }
-        if (!(listen->channel.data = ngx_pstrdup(c->pool, &listen_pd->channel))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pstrdup"); return NULL; }
-        listen->channel.len = listen_pd->channel.len;
-        if (!(listen->command.data = ngx_pstrdup(c->pool, &listen_pd->command))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pstrdup"); return NULL; }
-        listen->command.len = listen_pd->command.len;
-        len += listen_pd->command.len - 2;
-        ngx_queue_insert_tail(psc->listen, &listen->queue);
-        cont:;
+        ngx_postgres_listen_t *psl = ngx_array_push(array);
+        if (!psl) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_push"); return NULL; }
+        if (!(psl->channel.data = ngx_pstrdup(c->pool, &pdl->channel))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pstrdup"); return NULL; }
+        psl->channel.len = pdl->channel.len;
+        if (!(psl->command.data = ngx_pstrdup(c->pool, &pdl->command))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pstrdup"); return NULL; }
+        psl->command.len = pdl->command.len;
+        len += pdl->command.len - 2;
+        ngx_queue_insert_tail(psc->listen, &psl->queue);
+cont:
+        ngx_queue_remove(&pdl->queue);
     }
     if (len && array && array->nelts) {
         listen = ngx_pnalloc(r->pool, len + 2 * array->nelts - 1);
