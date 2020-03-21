@@ -36,7 +36,7 @@ typedef struct {
         ngx_queue_t queue;
         ngx_uint_t max;
         ngx_uint_t size;
-    } queue;
+    } pd;
     ngx_flag_t reject;
     ngx_log_t *log;
     ngx_msec_t keepalive;
