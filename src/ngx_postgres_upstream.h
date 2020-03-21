@@ -37,14 +37,16 @@ typedef struct {
         ngx_uint_t max;
         ngx_uint_t size;
     } pd;
+    struct {
+        ngx_msec_t timeout;
+        ngx_queue_t queue;
+        ngx_uint_t max;
+        ngx_uint_t size;
+    } ps;
     ngx_flag_t reject;
     ngx_log_t *log;
-    ngx_msec_t keepalive;
     ngx_queue_t free;
     ngx_queue_t peer;
-    ngx_queue_t save;
-    ngx_uint_t cur_save;
-    ngx_uint_t max_save;
     ngx_uint_t requests;
 } ngx_postgres_server_t;
 
