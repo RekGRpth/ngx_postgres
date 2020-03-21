@@ -82,13 +82,13 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pdc->socklen = peer->socklen;
     if (server->ps.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
-        if (ngx_postgres_peer_multi(r) != NGX_DECLINED) { ngx_postgres_process_events(r); return NGX_AGAIN; }
+        if (ngx_postgres_peer_multi(r) != NGX_DECLINED) {
+            ngx_postgres_process_events(r);
+            return NGX_AGAIN;
+        }
         if (server->ps.size < server->ps.max) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.size = %i", server->ps.size);
-        } else if (!server->ps.reject && !server->pd.max) {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!server->ps.reject and !pd.max");
-        } else {
-            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ps.size = %i", server->ps.size);
+        } else if (server->pd.max) {
             if (server->pd.size < server->pd.max) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd.size = %i", server->pd.size);
                 ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
@@ -99,12 +99,13 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
                 ngx_add_timer(&pdc->timeout, server->pd.timeout);
                 server->pd.size++;
                 return NGX_YIELD;
-            } if (!server->pd.reject) {
-                ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!server->pd.reject");
-            } else {
+            } if (server->pd.reject) {
                 ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "pd.size = %i", server->pd.size);
                 return NGX_DECLINED;
             }
+        } if (server->ps.reject) {
+            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ps.size = %i", server->ps.size);
+            return NGX_DECLINED;
         }
     }
     const char *host = peer->values[0];
