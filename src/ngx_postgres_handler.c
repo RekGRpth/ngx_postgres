@@ -43,6 +43,7 @@ static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
     }
     ngx_str_set(&u->schema, "postgres://");
     u->output.tag = (ngx_buf_tag_t)&ngx_postgres_module;
+    u->request_sent = 1;
     return NGX_OK;
 }
 
@@ -89,6 +90,5 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     u->finalize_request = ngx_postgres_finalize_request;
     r->main->count++;
     ngx_http_upstream_init(r);
-    if (u->reinit_request(r) != NGX_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "reinit_request != NGX_OK"); }
     return NGX_DONE;
 }
