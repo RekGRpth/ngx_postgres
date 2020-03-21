@@ -46,10 +46,10 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_postgres_location_t *location = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_location_t));
     if (!location) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     location->query = NGX_CONF_UNSET_PTR;
-    location->conf.buffering = 1;
-    location->conf.ignore_client_abort = 1;
-    location->conf.intercept_404 = 1;
-    location->conf.intercept_errors = 1;
+//    location->conf.buffering = 1;
+//    location->conf.ignore_client_abort = 1;
+//    location->conf.intercept_404 = 1;
+//    location->conf.intercept_errors = 1;
     location->conf.read_timeout = NGX_CONF_UNSET_MSEC;
     return location;
 }
