@@ -99,11 +99,11 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
                 ngx_add_timer(&pdc->timeout, server->pd.timeout);
                 server->pd.size++;
                 return NGX_YIELD;
-            } if (server->pd.reject) {
+            } else if (server->pd.reject) {
                 ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "pd.size = %i", server->pd.size);
                 return NGX_DECLINED;
             }
-        } if (server->ps.reject) {
+        } else if (server->ps.reject) {
             ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ps.size = %i", server->ps.size);
             return NGX_DECLINED;
         }
