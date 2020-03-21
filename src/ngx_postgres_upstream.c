@@ -698,15 +698,14 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
 
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_str_t *elts = cf->args->elts;
-    ngx_str_t sql = elts[cf->args->nelts - 1];
-    if (!sql.len) return "error: empty query";
     ngx_postgres_location_t *location = conf;
     if (!location->queries.elts && ngx_array_init(&location->queries, cf->pool, 1, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     ngx_postgres_query_t *query = location->query = ngx_array_push(&location->queries);
     if (!query) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(query, sizeof(ngx_postgres_query_t));
-    for (ngx_uint_t i = 1; i < cf->args->nelts - 1; i++) {
-        if (elts[i].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare", sizeof("prepare") - 1)) query->prepare = 1;
+    ngx_str_t sql = ngx_null_string;
+    for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
+        if (i == 1 && elts[i].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare", sizeof("prepare") - 1)) query->prepare = 1;
         else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
             elts[i].data = &elts[i].data[sizeof("timeout=") - 1];
@@ -714,27 +713,17 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             query->timeout = (ngx_msec_t)n;
-        } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+        } else sql.len += elts[i].len;
     }
-    if (sql.len > sizeof("file://") - 1 && !ngx_strncasecmp(sql.data, (u_char *)"file://", sizeof("file://") - 1)) {
-        sql.data += sizeof("file://") - 1;
-        sql.len -= sizeof("file://") - 1;
-        if (ngx_conf_full_name(cf->cycle, &sql, 0) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_conf_full_name != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
-        ngx_fd_t fd = ngx_open_file(sql.data, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
-        if (fd == NGX_INVALID_FILE) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_open_file == NGX_INVALID_FILE", &cmd->name); return NGX_CONF_ERROR; }
-        ngx_file_info_t fi;
-        if (ngx_fd_info(fd, &fi) == NGX_FILE_ERROR) { if (ngx_close_file(fd) == NGX_FILE_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_close_file == NGX_FILE_ERROR", &cmd->name); return NGX_CONF_ERROR; } ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_fd_info == NGX_FILE_ERROR", &cmd->name); return NGX_CONF_ERROR; }
-        size_t len = ngx_file_size(&fi);
-        u_char *data = ngx_pnalloc(cf->pool, len);
-        if (!data) { if (ngx_close_file(fd) == NGX_FILE_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_close_file == NGX_FILE_ERROR", &cmd->name); return NGX_CONF_ERROR; } ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
-        ssize_t n = ngx_read_fd(fd, data, len);
-        if (n == -1) { if (ngx_close_file(fd) == NGX_FILE_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_close_file == NGX_FILE_ERROR", &cmd->name); return NGX_CONF_ERROR; } ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_read_fd == -1", &cmd->name); return NGX_CONF_ERROR; }
-        if ((size_t) n != len) { if (ngx_close_file(fd) == NGX_FILE_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_close_file == NGX_FILE_ERROR", &cmd->name); return NGX_CONF_ERROR; } ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_read_fd != len", &cmd->name); return NGX_CONF_ERROR; }
-        if (ngx_close_file(fd) == NGX_FILE_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_close_file == NGX_FILE_ERROR", &cmd->name); return NGX_CONF_ERROR; }
-        sql.data = data;
-        sql.len = len;
+    if (!sql.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty query", &cmd->name); return NGX_CONF_ERROR; }
+    if (!(sql.data = ngx_pnalloc(cf->pool, sql.len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
+    u_char *q = sql.data;
+    for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
+        if (i == 1 && elts[i].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare", sizeof("prepare") - 1));
+        else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1));
+        else q = ngx_cpymem(q, elts[i].data, elts[i].len);
     }
-    if (!(query->sql.data = ngx_palloc(cf->pool, sql.len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_palloc", &cmd->name); return NGX_CONF_ERROR; }
+    if (!(query->sql.data = ngx_pnalloc(cf->pool, sql.len))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
     if (ngx_array_init(&query->params, cf->pool, 1, sizeof(ngx_postgres_param_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     if (ngx_array_init(&query->ids, cf->pool, 1, sizeof(ngx_uint_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     u_char *p = query->sql.data, *s = sql.data, *e = sql.data + sql.len;
