@@ -134,7 +134,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         pdc->conn = NULL;
         return NGX_DECLINED;
     }
-//    PQtrace(pdc->conn, stderr);
+    if (server->trace.log) PQtrace(pdc->conn, fdopen(server->trace.log->file->fd, "a+"));
     int fd;
     if ((fd = PQsocket(pdc->conn)) == -1) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == -1"); goto invalid; }
     ngx_connection_t *c = ngx_get_connection(fd, pc->log);
