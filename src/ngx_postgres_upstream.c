@@ -262,12 +262,12 @@ static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t 
             ngx_postgres_listen_t *psl = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
             if (psl->channel.len == pdl->channel.len && !ngx_strncmp(psl->channel.data, pdl->channel.data, pdl->channel.len)) goto cont;
         }
-        if (!array && !(array = ngx_array_create(r->pool, 1, sizeof(ngx_postgres_listen_t)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_create"); return NULL; }
+        if (!array && !(array = ngx_array_create(r->pool, 1, sizeof(ngx_postgres_listen_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_create"); return NULL; }
         ngx_postgres_listen_t *psl = ngx_array_push(array);
-        if (!psl) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_push"); return NULL; }
-        if (!(psl->channel.data = ngx_pstrdup(c->pool, &pdl->channel))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pstrdup"); return NULL; }
+        if (!psl) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_push"); return NULL; }
+        if (!(psl->channel.data = ngx_pstrdup(c->pool, &pdl->channel))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pstrdup"); return NULL; }
         psl->channel.len = pdl->channel.len;
-        if (!(psl->command.data = ngx_pstrdup(c->pool, &pdl->command))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pstrdup"); return NULL; }
+        if (!(psl->command.data = ngx_pstrdup(c->pool, &pdl->command))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pstrdup"); return NULL; }
         psl->command.len = pdl->command.len;
         len += pdl->command.len - 2;
         ngx_queue_insert_tail(psc->listen, &psl->queue);
@@ -276,7 +276,7 @@ cont:
     }
     if (len && array && array->nelts) {
         listen = ngx_pnalloc(r->pool, len + 2 * array->nelts - 1);
-        if (!listen) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NULL; }
+        if (!listen) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NULL; }
         ngx_postgres_listen_t *elts = array->elts;
         u_char *p = listen;
         for (ngx_uint_t i = 0; i < array->nelts; i++) {
@@ -336,14 +336,6 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = u->peer.data;
 //    if (u->headers_in.status_n != NGX_HTTP_OK) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "status_n != NGX_HTTP_OK"); return; }
     ngx_postgres_common_t *pdc = &pd->common;
-    if (PQtransactionStatus(pdc->conn) != PQTRANS_IDLE) {
-        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
-        PGcancel *cancel = PQgetCancel(pdc->conn);
-        if (!cancel) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetCancel"); return; }
-        char err[256];
-        if (!PQcancel(cancel, err, 256)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err); PQfreeCancel(cancel); return; }
-        PQfreeCancel(cancel);
-    }
     ngx_connection_t *c = pdc->connection;
     if (!c) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!connection"); return; }
     if (c->read->timer_set) ngx_del_timer(c->read);
@@ -368,6 +360,15 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
     }
     ngx_postgres_free_to_save(pd, ps);
+    ngx_postgres_common_t *psc = &ps->common;
+    if (PQtransactionStatus(psc->conn) != PQTRANS_IDLE) {
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
+        PGcancel *cancel = PQgetCancel(psc->conn);
+        if (!cancel) ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetCancel");
+        char err[256];
+        if (!PQcancel(cancel, err, 256)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err); PQfreeCancel(cancel); }
+        PQfreeCancel(cancel);
+    }
     if (listen) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
         if (!PQsendQuery(pdc->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsendQuery(%s) and %s", listen, PQerrorMessageMy(pdc->conn)); }
