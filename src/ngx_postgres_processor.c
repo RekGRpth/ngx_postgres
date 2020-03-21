@@ -47,7 +47,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         ngx_str_t command = ngx_null_string;
         if (query->ids.nelts) {
             ngx_uint_t *elts = query->ids.elts;
-            if (!(ids = ngx_pnalloc(r->pool, query->ids.nelts * sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+            if (!(ids = ngx_pnalloc(r->pool, query->ids.nelts * sizeof(*ids)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             for (ngx_uint_t i = 0; i < query->ids.nelts; i++) {
                 ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, elts[i]);
                 if (!value || !value->data || !value->len) { ngx_str_set(&ids[i], "NULL"); } else {
@@ -94,7 +94,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                     ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
                     if (listen->channel.len == channel.len && !ngx_strncmp(listen->channel.data, channel.data, channel.len)) goto cont;
                 }
-                ngx_postgres_listen_t *listen = ngx_pcalloc(c->pool, sizeof(ngx_postgres_listen_t));
+                ngx_postgres_listen_t *listen = ngx_pcalloc(c->pool, sizeof(*listen));
                 if (!listen) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                 listen->channel = channel;
                 listen->command = command;
@@ -144,7 +144,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                     if (!(pdc->prepare = ngx_pcalloc(c->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                     ngx_queue_init(pdc->prepare);
                 }
-                ngx_postgres_prepare_t *prepare = ngx_pcalloc(c->pool, sizeof(ngx_postgres_prepare_t));
+                ngx_postgres_prepare_t *prepare = ngx_pcalloc(c->pool, sizeof(*prepare));
                 if (!prepare) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                 prepare->hash = pd->hash;
                 ngx_queue_insert_tail(pdc->prepare, &prepare->queue);
@@ -261,7 +261,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
         ngx_postgres_query_t *query = location->query = ngx_array_push(&location->queries);
         if (!query) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_push"); return NGX_ERROR; }
-        ngx_memzero(query, sizeof(ngx_postgres_query_t));
+        ngx_memzero(query, sizeof(*query));
         ngx_str_set(&query->sql, "COMMIT");
         pdc->state = state_db_idle;
         pd->query++;

@@ -33,7 +33,7 @@ static void ngx_postgres_server_cleanup(void *data) {
 
 
 static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
-    ngx_postgres_server_t *server = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_server_t));
+    ngx_postgres_server_t *server = ngx_pcalloc(cf->pool, sizeof(*server));
     if (!server) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     server->ps.timeout = NGX_CONF_UNSET_MSEC;
     server->ps.requests = NGX_CONF_UNSET_UINT;
@@ -43,7 +43,7 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
 
 
 static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
-    ngx_postgres_location_t *location = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_location_t));
+    ngx_postgres_location_t *location = ngx_pcalloc(cf->pool, sizeof(*location));
     if (!location) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     location->query = NGX_CONF_UNSET_PTR;
     return location;
@@ -83,7 +83,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_uint_t npeers = 0;
     ngx_postgres_upstream_t *elts = upstream_srv_conf->servers->elts;
     for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) npeers += elts[i].naddrs;
-    ngx_postgres_peer_t *peers = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_peer_t) * npeers);
+    ngx_postgres_peer_t *peers = ngx_pcalloc(cf->pool, sizeof(*peers) * npeers);
     if (!peers) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0, n = 0; i < upstream_srv_conf->servers->nelts; i++) {
         for (ngx_uint_t j = 0; j < elts[i].naddrs; j++) {
@@ -110,7 +110,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_conf_init_msec_value(server->pd.timeout, 60 * 1000);
     ngx_queue_init(&server->pd.queue);
     ngx_queue_init(&server->ps.queue);
-    ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t) * server->ps.max);
+    ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(*ps) * server->ps.max);
     if (!ps) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0; i < server->ps.max; i++) {
         ngx_queue_insert_tail(&server->free.queue, &ps[i].queue);
@@ -124,7 +124,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     if (!server->servers && !(server->servers = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_upstream_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_create", &cmd->name); return NGX_CONF_ERROR; }
     ngx_postgres_upstream_t *upstream = ngx_array_push(server->servers);
     if (!upstream) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_memzero(upstream, sizeof(ngx_postgres_upstream_t));
+    ngx_memzero(upstream, sizeof(*upstream));
     ngx_str_t *elts = cf->args->elts;
     size_t len = 0;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
@@ -177,7 +177,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     }
     if (!host && !hostaddr) host = (u_char *)"unix:///run/postgresql";
     ngx_url_t url;
-    ngx_memzero(&url, sizeof(ngx_url_t));
+    ngx_memzero(&url, sizeof(url));
     url.url = hostaddr ? (ngx_str_t){ngx_strlen(hostaddr), hostaddr} : (ngx_str_t){ngx_strlen(host), host};
     url.default_port = port;
     if (ngx_parse_url(cf->pool, &url) != NGX_OK) {
@@ -309,7 +309,7 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
         return NGX_CONF_OK;
     } else { /* simple value */
         ngx_url_t url;
-        ngx_memzero(&url, sizeof(ngx_url_t));
+        ngx_memzero(&url, sizeof(url));
         url.url = elts[1];
         url.no_resolve = 1;
         if (!(location->conf.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_http_upstream_add", &cmd->name); return NGX_CONF_ERROR; }
