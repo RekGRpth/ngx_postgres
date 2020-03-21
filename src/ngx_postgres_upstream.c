@@ -11,7 +11,7 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     ngx_queue_remove(&ps->queue);
     ngx_postgres_common_t *psc = &ps->common;
     ngx_postgres_server_t *server = psc->server;
-    ngx_queue_insert_tail(&server->free, &ps->queue);
+    ngx_queue_insert_tail(&server->free.queue, &ps->queue);
     pd->common = ps->common;
     ngx_http_upstream_t *u = r->upstream;
     ngx_peer_connection_t *pc = &u->peer;
@@ -178,7 +178,7 @@ close:
     ngx_postgres_free_connection(psc);
     ngx_queue_remove(&ps->queue);
     ngx_postgres_server_t *server = psc->server;
-    ngx_queue_insert_tail(&server->free, &ps->queue);
+    ngx_queue_insert_tail(&server->free.queue, &ps->queue);
 }
 
 
@@ -254,7 +254,7 @@ close:
     ngx_postgres_free_connection(psc);
     ngx_queue_remove(&ps->queue);
     ngx_postgres_server_t *server = psc->server;
-    ngx_queue_insert_tail(&server->free, &ps->queue);
+    ngx_queue_insert_tail(&server->free.queue, &ps->queue);
 }
 
 
@@ -312,7 +312,7 @@ static void ngx_postgres_save_timeout(ngx_event_t *ev) {
     ngx_postgres_free_connection(psc);
     ngx_queue_remove(&ps->queue);
     ngx_postgres_server_t *server = psc->server;
-    ngx_queue_insert_tail(&server->free, &ps->queue);
+    ngx_queue_insert_tail(&server->free.queue, &ps->queue);
 }
 
 
@@ -359,7 +359,7 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     if (ngx_exiting) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_exiting"); return; }
     u_char *listen = NULL;
     ngx_postgres_save_t *ps;
-    if (ngx_queue_empty(&server->free)) {
+    if (ngx_queue_empty(&server->free.queue)) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty(free)");
         ngx_queue_t *queue = ngx_queue_last(&server->ps.queue);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
@@ -367,7 +367,7 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
         ngx_postgres_common_t *psc = &ps->common;
         ngx_postgres_free_connection(psc);
     } else {
-        ngx_queue_t *queue = ngx_queue_head(&server->free);
+        ngx_queue_t *queue = ngx_queue_head(&server->free.queue);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
     }
     ngx_postgres_free_to_save(pd, ps);

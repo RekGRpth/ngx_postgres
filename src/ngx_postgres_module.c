@@ -106,14 +106,14 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
     cln->handler = ngx_postgres_server_cleanup;
     cln->data = server;
-    ngx_queue_init(&server->free);
+    ngx_queue_init(&server->free.queue);
     ngx_conf_init_msec_value(server->pd.timeout, 60 * 1000);
     ngx_queue_init(&server->pd.queue);
     ngx_queue_init(&server->ps.queue);
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(ngx_postgres_save_t) * server->ps.max);
     if (!ps) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0; i < server->ps.max; i++) {
-        ngx_queue_insert_tail(&server->free, &ps[i].queue);
+        ngx_queue_insert_tail(&server->free.queue, &ps[i].queue);
     }
     return NGX_OK;
 }
