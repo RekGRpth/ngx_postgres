@@ -394,7 +394,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     ngx_postgres_server_t *server = pdc->server;
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state = %i", state);
-    if (state & NGX_PEER_FAILED || !c || c->read->eof || c->read->error || c->read->timedout || c->write->error || c->write->timedout); else
+    if (!c || c->read->error || c->write->error || (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout)); else
     if (server->max_save) ngx_postgres_free_peer(r);
     if (pc->connection) ngx_postgres_free_connection(pdc);
     pc->connection = NULL;
