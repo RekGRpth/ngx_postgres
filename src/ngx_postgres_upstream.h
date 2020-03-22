@@ -25,11 +25,7 @@ typedef struct {
 } ngx_postgres_connect_t;
 
 typedef struct {
-    struct {
-        ngx_str_t name;
-        socklen_t socklen;
-        struct sockaddr *sockaddr;
-    } pc;
+    ngx_addr_t pc;
     ngx_postgres_connect_t connect;
     ngx_queue_t queue;
     ngx_str_t host;
