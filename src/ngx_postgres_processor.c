@@ -198,14 +198,14 @@ again:
     }
     const char *charset = PQparameterStatus(pdc->conn, "client_encoding");
     if (charset) {
-        pdc->charset.len = ngx_strlen(charset);
-        if (pdc->charset.len == sizeof("utf8") - 1 && !ngx_strncasecmp((u_char *)charset, (u_char *)"utf8", sizeof("utf8") - 1)) {
+        if (!ngx_strcasecmp((u_char *)charset, (u_char *)"utf8")) {
             ngx_str_set(&pdc->charset, "utf-8");
-        } else if (pdc->charset.len == sizeof("windows1251") - 1 && !ngx_strncasecmp((u_char *)charset, (u_char *)"windows1251", sizeof("windows1251") - 1)) {
+        } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"windows1251")) {
             ngx_str_set(&pdc->charset, "windows-1251");
-        } else if (pdc->charset.len == sizeof("koi8r") - 1 && !ngx_strncasecmp((u_char *)charset, (u_char *)"koi8r", sizeof("koi8r") - 1)) {
+        } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"koi8r")) {
             ngx_str_set(&pdc->charset, "koi8-r");
         } else {
+            pdc->charset.len = ngx_strlen(charset);
             if (!(pdc->charset.data = ngx_pnalloc(r->pool, pdc->charset.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             ngx_memcpy(pdc->charset.data, charset, pdc->charset.len);
         }
