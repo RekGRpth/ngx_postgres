@@ -25,7 +25,7 @@ typedef struct {
 } ngx_postgres_connect_t;
 
 typedef struct {
-    ngx_addr_t pc;
+    ngx_addr_t addr;
     ngx_postgres_connect_t connect;
     ngx_queue_t queue;
     ngx_str_t host;
@@ -65,7 +65,7 @@ typedef struct {
     struct {
         ngx_queue_t *queue;
     } listen;
-    ngx_addr_t pc;
+    ngx_addr_t addr;
     ngx_connection_t *connection;
     ngx_postgres_server_t *server;
     ngx_postgres_state_t state;
