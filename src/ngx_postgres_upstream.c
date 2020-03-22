@@ -77,7 +77,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_queue_insert_tail(&server->peer, &peer->queue);
 //    pc->cached = 0;
     ngx_http_upstream_t *u = r->upstream;
-    u->conf->connect_timeout = peer->connect;
+    u->conf->connect_timeout = peer->params.timeout;
     pdc->pc.name = peer->pc.name;
     pdc->pc.sockaddr = peer->pc.sockaddr;
     pdc->pc.socklen = peer->pc.socklen;

@@ -56,7 +56,6 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 typedef struct {
     int family;
     ngx_addr_t *addrs;
-    ngx_msec_t connect;
     ngx_postgres_params_t params;
     ngx_uint_t naddrs;
 } ngx_postgres_upstream_t;
@@ -81,7 +80,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
         for (ngx_uint_t j = 0; j < elts[i].naddrs; j++) {
             ngx_postgres_peer_t *peer = &peers[n++];
             ngx_queue_insert_tail(&server->peer, &peer->queue);
-            peer->connect = elts[i].connect;
+            peer->params.timeout = elts[i].params.timeout;
             peer->params.keywords = elts[i].params.keywords;
             peer->pc.name = elts[i].addrs[j].name;
             peer->pc.sockaddr = elts[i].addrs[j].sockaddr;
@@ -162,10 +161,10 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         }
         arg++;
     }
-    if (!connect) upstream->connect = 60000; else {
+    if (!connect) upstream->params.timeout = 60000; else {
         ngx_int_t n = ngx_parse_time(&(ngx_str_t){ngx_strlen(connect), connect}, 0);
         if (n == NGX_ERROR) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_parse_time == NGX_ERROR", &cmd->name); return NGX_CONF_ERROR; }
-        upstream->connect = (ngx_msec_t)n;
+        upstream->params.timeout = (ngx_msec_t)n;
     }
     if (!host && !hostaddr) host = (u_char *)"unix:///run/postgresql";
     ngx_url_t url;

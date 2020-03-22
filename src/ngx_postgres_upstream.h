@@ -21,6 +21,7 @@ typedef enum {
 typedef struct {
     const char **keywords;
     const char **values;
+    ngx_msec_t timeout;
 } ngx_postgres_params_t;
 
 typedef struct {
@@ -29,7 +30,6 @@ typedef struct {
         socklen_t socklen;
         struct sockaddr *sockaddr;
     } pc;
-    ngx_msec_t connect;
     ngx_postgres_params_t params;
     ngx_queue_t queue;
     ngx_str_t host;
