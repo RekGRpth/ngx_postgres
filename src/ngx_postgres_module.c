@@ -54,13 +54,10 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 
 
 typedef struct {
-    struct {
-        const char **keywords;
-        const char **values;
-    } params;
     int family;
     ngx_addr_t *addrs;
     ngx_msec_t connect;
+    ngx_postgres_params_t params;
     ngx_uint_t naddrs;
 } ngx_postgres_upstream_t;
 
