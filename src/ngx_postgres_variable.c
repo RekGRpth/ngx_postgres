@@ -327,13 +327,6 @@ ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf) {
 }
 
 
-static ngx_conf_enum_t ngx_postgres_requirement_options[] = {
-    { ngx_string("optional"), 0 },
-    { ngx_string("required"), 1 },
-    { ngx_null_string, 0 }
-};
-
-
 static ngx_conf_enum_t ngx_postgres_type_options[] = {
     { ngx_string("ntuples"), type_ntuples },
     { ngx_string("nfields"), type_nfields },
@@ -382,7 +375,11 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         (void)ngx_cpystrn(variable->field, elts[3].data, elts[3].len + 1);
     }
     if (cf->args->nelts == 4) variable->required = 0; else { /* user-specified value */
-        ngx_conf_enum_t *e = ngx_postgres_requirement_options;
+        ngx_conf_enum_t e[] = {
+            { ngx_string("optional"), 0 },
+            { ngx_string("required"), 1 },
+            { ngx_null_string, 0 }
+        };
         ngx_uint_t i;
         for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[4].len && !ngx_strncasecmp(e[i].name.data, elts[4].data, elts[4].len)) { variable->required = e[i].value; break; }
         if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: requirment \"%V\" must be \"optional\" or \"required\"", &cmd->name, &elts[4]); return NGX_CONF_ERROR; }
