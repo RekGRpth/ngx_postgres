@@ -24,8 +24,10 @@ typedef struct {
         socklen_t socklen;
         struct sockaddr *sockaddr;
     } pc;
-    const char **keywords;
-    const char **values;
+    struct {
+        const char **keywords;
+        const char **values;
+    } params;
     ngx_msec_t connect;
     ngx_queue_t queue;
     ngx_str_t host;
