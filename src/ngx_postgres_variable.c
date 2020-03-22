@@ -327,16 +327,6 @@ ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf) {
 }
 
 
-static ngx_conf_enum_t ngx_postgres_type_options[] = {
-    { ngx_string("ntuples"), type_ntuples },
-    { ngx_string("nfields"), type_nfields },
-    { ngx_string("cmdTuples"), type_cmdTuples },
-    { ngx_string("cmdStatus"), type_cmdStatus },
-    { ngx_string("result"), type_result },
-    { ngx_null_string, 0 }
-};
-
-
 char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     if (location->query == NGX_CONF_UNSET_PTR) return "must defined after \"postgres_query\" directive";
@@ -360,7 +350,14 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     var->get_handler = ngx_postgres_variable_get;
     var->data = (uintptr_t)variable->index;
     if (cf->args->nelts == 3) {
-        ngx_conf_enum_t *e = ngx_postgres_type_options;
+        ngx_conf_enum_t e[] = {
+            { ngx_string("ntuples"), type_ntuples },
+            { ngx_string("nfields"), type_nfields },
+            { ngx_string("cmdTuples"), type_cmdTuples },
+            { ngx_string("cmdStatus"), type_cmdStatus },
+            { ngx_string("result"), type_result },
+            { ngx_null_string, 0 }
+        };
         ngx_uint_t i;
         for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[2].len && !ngx_strncasecmp(e[i].name.data, elts[2].data, elts[2].len)) { variable->type = e[i].value; break; }
         if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: type \"%V\" must be \"nfields\", \"ntuples\", \"cmdTuples\", \"cmdStatus\" or \"result\"", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
