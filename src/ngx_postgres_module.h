@@ -35,6 +35,7 @@ typedef struct {
     ngx_flag_t append;
     ngx_http_complex_value_t complex;
     ngx_http_upstream_conf_t conf;
+    ngx_msec_t timeout;
     ngx_postgres_output_t *output;
     ngx_postgres_query_t *query;
     ngx_uint_t index;

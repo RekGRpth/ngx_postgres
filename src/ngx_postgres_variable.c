@@ -371,13 +371,14 @@ ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf) {
 
 char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    if (!location->query) return "must defined after \"postgres_query\" directive";
+    ngx_postgres_query_t *query = location->query;
+    if (!query) return "must defined after \"postgres_query\" directive";
     ngx_str_t *elts = cf->args->elts;
     if (elts[1].len < 2) return "error: empty variable name";
     if (elts[1].data[0] != '$') return "error: invalid variable name";
     elts[1].len--;
     elts[1].data++;
-    ngx_array_t *variables = &location->query->variables;
+    ngx_array_t *variables = &query->variables;
     if (!variables->elts && ngx_array_init(variables, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     ngx_postgres_variable_t *variable = ngx_array_push(variables);
     if (!variable) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }

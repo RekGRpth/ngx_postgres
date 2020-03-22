@@ -539,9 +539,10 @@ void ngx_postgres_output_chain(ngx_http_request_t *r) {
 
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    if (!location->query) return "must defined after \"postgres_query\" directive";
+    ngx_postgres_query_t *query = location->query;
+    if (!query) return "must defined after \"postgres_query\" directive";
     if (location->output) return "duplicate";
-    ngx_postgres_output_t *output = location->output = &location->query->output;
+    ngx_postgres_output_t *output = location->output = &query->output;
     if (output->handler) return "duplicate";
     ngx_str_t *elts = cf->args->elts;
     static const struct {
