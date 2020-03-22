@@ -537,28 +537,25 @@ void ngx_postgres_output_chain(ngx_http_request_t *r) {
 }
 
 
-struct ngx_postgres_output_enum_t {
-    ngx_str_t name;
-    unsigned binary:1;
-    ngx_postgres_handler_pt handler;
-} ngx_postgres_output_handlers[] = {
-    { ngx_string("none"), 0, NULL },
-    { ngx_string("text"), 0, ngx_postgres_output_text },
-    { ngx_string("csv"), 0, ngx_postgres_output_csv },
-    { ngx_string("value"), 0, ngx_postgres_output_value },
-    { ngx_string("binary"), 1, ngx_postgres_output_value },
-    { ngx_string("json"), 0, ngx_postgres_output_json },
-    { ngx_null_string, 0, NULL }
-};
-
-
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     if (location->query == NGX_CONF_UNSET_PTR) return "must defined after \"postgres_query\" directive";
     ngx_postgres_output_t *output = &location->query->output;
     if (output->handler) return "duplicate";
-    struct ngx_postgres_output_enum_t *e = ngx_postgres_output_handlers;
     ngx_str_t *elts = cf->args->elts;
+    static const struct ngx_postgres_output_enum_t {
+        ngx_str_t name;
+        unsigned binary:1;
+        ngx_postgres_handler_pt handler;
+    } e[] = {
+        { ngx_string("none"), 0, NULL },
+        { ngx_string("text"), 0, ngx_postgres_output_text },
+        { ngx_string("csv"), 0, ngx_postgres_output_csv },
+        { ngx_string("value"), 0, ngx_postgres_output_value },
+        { ngx_string("binary"), 1, ngx_postgres_output_value },
+        { ngx_string("json"), 0, ngx_postgres_output_json },
+        { ngx_null_string, 0, NULL }
+    };
     ngx_uint_t i;
     for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[1].len && !ngx_strncasecmp(e[i].name.data, elts[1].data, elts[1].len)) { output->handler = e[i].handler; break; }
     if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: format \"%V\" must be \"none\", \"text\", \"csv\", \"value\", \"binary\" or \"json\"", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
