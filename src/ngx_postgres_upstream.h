@@ -76,6 +76,7 @@ typedef struct {
 } ngx_postgres_common_t;
 
 typedef struct {
+    ngx_int_t status;
     ngx_str_t cmdStatus;
     ngx_str_t cmdTuples;
     ngx_str_t error;
@@ -101,7 +102,6 @@ typedef struct {
     ngx_array_t variables;
     ngx_chain_t *response;
     ngx_http_request_t *request;
-    ngx_int_t status;
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
     ngx_queue_t queue;
