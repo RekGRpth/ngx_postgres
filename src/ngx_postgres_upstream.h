@@ -88,6 +88,9 @@ typedef struct {
 } ngx_postgres_result_t;
 
 typedef struct {
+    struct {
+        ngx_uint_t index;
+    } query;
     ngx_array_t variables;
     ngx_chain_t *response;
     ngx_event_t timeout;
@@ -99,7 +102,6 @@ typedef struct {
     ngx_str_t sql;
     ngx_uint_t hash;
     ngx_uint_t nParams;
-    ngx_uint_t query;
     Oid *paramTypes;
     u_char **paramValues;
     u_char *stmtName;

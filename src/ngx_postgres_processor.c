@@ -35,7 +35,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *elts = location->queries.elts;
-    ngx_postgres_query_t *query = &elts[pd->query];
+    ngx_postgres_query_t *query = &elts[pd->query.index];
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
     if (pdc->state == state_db_connect || pdc->state == state_db_idle) {
@@ -225,7 +225,7 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
         return NGX_DONE;
     }
     ngx_postgres_query_t *query = location->queries.elts;
-    ngx_postgres_output_t *output = &query[pd->query].output;
+    ngx_postgres_output_t *output = &query[pd->query.index].output;
     if (!pd->status && output->handler) return output->handler(r);
     return NGX_DONE;
 }
@@ -252,9 +252,9 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
         case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(r); // fall through
         default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
     }
-    if (rc == NGX_DONE && !pd->status && pd->query < location->queries.nelts - 1) {
+    if (rc == NGX_DONE && !pd->status && pd->query.index < location->queries.nelts - 1) {
         pdc->state = state_db_idle;
-        pd->query++;
+        pd->query.index++;
         return NGX_AGAIN;
     }
     if (PQtransactionStatus(pdc->conn) != PQTRANS_IDLE) {
@@ -264,7 +264,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
         ngx_memzero(query, sizeof(*query));
         ngx_str_set(&query->sql, "COMMIT");
         pdc->state = state_db_idle;
-        pd->query++;
+        pd->query.index++;
         return NGX_AGAIN;
     }
     return rc != NGX_DONE ? rc : ngx_postgres_done(r);
