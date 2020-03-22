@@ -22,7 +22,7 @@ typedef struct {
     const char **keywords;
     const char **values;
     ngx_msec_t timeout;
-} ngx_postgres_params_t;
+} ngx_postgres_connect_t;
 
 typedef struct {
     struct {
@@ -30,7 +30,7 @@ typedef struct {
         socklen_t socklen;
         struct sockaddr *sockaddr;
     } pc;
-    ngx_postgres_params_t params;
+    ngx_postgres_connect_t connect;
     ngx_queue_t queue;
     ngx_str_t host;
     u_char *value;

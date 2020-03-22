@@ -77,7 +77,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_queue_insert_tail(&server->peer, &peer->queue);
 //    pc->cached = 0;
     ngx_http_upstream_t *u = r->upstream;
-    u->conf->connect_timeout = peer->params.timeout;
+    u->conf->connect_timeout = peer->connect.timeout;
     pdc->pc.name = peer->pc.name;
     pdc->pc.sockaddr = peer->pc.sockaddr;
     pdc->pc.socklen = peer->pc.socklen;
@@ -109,9 +109,9 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             return NGX_DECLINED;
         }
     }
-    const char *host = peer->params.values[0];
-    peer->params.values[0] = (const char *)peer->value;
-    const char *options = peer->params.values[2];
+    const char *host = peer->connect.values[0];
+    peer->connect.values[0] = (const char *)peer->value;
+    const char *options = peer->connect.values[2];
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location->append) {
         size_t len = options ? ngx_strlen(options) : 0;
@@ -124,11 +124,11 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         }
         p = ngx_copy(p, "-c config.append_type_to_column_name=true", sizeof("-c config.append_type_to_column_name=true") - 1);
         *p = '\0';
-        peer->params.values[2] = (const char *)buf;
+        peer->connect.values[2] = (const char *)buf;
     }
-    pdc->conn = PQconnectStartParams(peer->params.keywords, peer->params.values, 0);
-    peer->params.values[0] = host;
-    peer->params.values[2] = options;
+    pdc->conn = PQconnectStartParams(peer->connect.keywords, peer->connect.values, 0);
+    peer->connect.values[0] = host;
+    peer->connect.values[2] = options;
     if (PQstatus(pdc->conn) == CONNECTION_BAD || PQsetnonblocking(pdc->conn, 1) == -1) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(pdc->conn), peer->pc.name);
         PQfinish(pdc->conn);
