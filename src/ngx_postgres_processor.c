@@ -125,7 +125,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             if (pdc->prepare.max && pdc->prepare.queue) {
                 for (ngx_queue_t *queue = ngx_queue_head(pdc->prepare.queue); queue != ngx_queue_sentinel(pdc->prepare.queue); queue = ngx_queue_next(queue)) {
                     ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
-                    if (prepare->hash == pd->query.hash) { ngx_queue_remove(queue); break; }
+                    if (prepare->hash == pd->query.hash) { ngx_queue_remove(queue); pdc->prepare.size--; break; }
                 }
             }
             return ngx_postgres_done(r);
@@ -156,6 +156,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 if (!prepare) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                 prepare->hash = pd->query.hash;
                 ngx_queue_insert_tail(pdc->prepare.queue, &prepare->queue);
+                pdc->prepare.size++;
                 pdc->state = state_db_query;
                 return NGX_DONE;
             } // fall through
