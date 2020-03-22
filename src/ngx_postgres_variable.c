@@ -259,11 +259,11 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
             default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res)); break;
         }
     } else if (variable[i].handler) {
-        ngx_chain_t *chain = pd->response;
+        ngx_chain_t *chain = pd->result.response;
         if (variable[i].handler(r) != NGX_DONE) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
-        elts[variable[i].index].len = pd->response->buf->end - pd->response->buf->start;
-        elts[variable[i].index].data = pd->response->buf->start;
-        pd->response = chain;
+        elts[variable[i].index].len = pd->result.response->buf->end - pd->result.response->buf->start;
+        elts[variable[i].index].data = pd->result.response->buf->start;
+        pd->result.response = chain;
     } else {
 //        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
         if (variable[i].field) {

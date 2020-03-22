@@ -42,7 +42,7 @@ ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
     b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0), size);
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
     chain->next = NULL;
-    pd->response = chain;
+    pd->result.response = chain;
     return NGX_DONE;
 }
 
@@ -365,7 +365,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
     chain->next = NULL;
-    pd->response = chain;
+    pd->result.response = chain;
     return NGX_DONE;
 }
 
@@ -493,7 +493,7 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
     chain->next = NULL;
-    pd->response = chain;
+    pd->result.response = chain;
     return NGX_DONE;
 }
 
@@ -525,15 +525,15 @@ void ngx_postgres_output_chain(ngx_http_request_t *r) {
             r->headers_out.content_type_len = core->default_type.len;
         }
         r->headers_out.content_type_lowcase = NULL;
-        if (pd->response) r->headers_out.content_length_n = pd->response->buf->end - pd->response->buf->start;
+        if (pd->result.response) r->headers_out.content_length_n = pd->result.response->buf->end - pd->result.response->buf->start;
         ngx_int_t rc = ngx_http_send_header(r);
         u->header_sent = r->header_sent;
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return;
     }
-    if (!pd->response) return;
-    ngx_int_t rc = ngx_http_output_filter(r, pd->response);
+    if (!pd->result.response) return;
+    ngx_int_t rc = ngx_http_output_filter(r, pd->result.response);
     if (rc == NGX_ERROR || rc > NGX_OK) return;
-    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &pd->response, u->output.tag);
+    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &pd->result.response, u->output.tag);
 }
 
 
