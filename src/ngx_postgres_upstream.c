@@ -171,22 +171,6 @@ invalid:
 }
 
 
-static void ngx_postgres_write_handler(ngx_event_t *ev) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
-    ngx_connection_t *c = ev->data;
-    ngx_postgres_save_t *ps = c->data;
-    ngx_postgres_common_t *psc = &ps->common;
-    if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
-    if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
-    return;
-close:
-    ngx_postgres_free_connection(psc);
-    ngx_queue_remove(&ps->queue);
-    ngx_postgres_server_t *server = psc->server;
-    ngx_queue_insert_tail(&server->free.queue, &ps->queue);
-}
-
-
 static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
     ngx_postgres_common_t *psc = &ps->common;
     ngx_connection_t *c = psc->connection;
@@ -241,13 +225,15 @@ destroy:
 }
 
 
-static void ngx_postgres_read_handler(ngx_event_t *ev) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
+static void ngx_postgres_event_handler(ngx_event_t *ev) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write = %s", ev->write ? "true" : "false");
     ngx_connection_t *c = ev->data;
     ngx_postgres_save_t *ps = c->data;
     ngx_postgres_common_t *psc = &ps->common;
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
+    if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
+    if (ev->write) return;
     if (!PQconsumeInput(psc->conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(psc->conn)); goto close; }
     if (PQisBusy(psc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQisBusy"); return; }
     for (PGresult *res; (res = PQgetResult(psc->conn)); PQclear(res)) switch(PQresultStatus(res)) {
@@ -327,13 +313,13 @@ static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     c->idle = 1;
     c->log = server->ps.log ? server->ps.log : ngx_cycle->log;
     if (c->pool) c->pool->log = c->log;
-    c->read->delayed = 0;
-    c->read->handler = ngx_postgres_read_handler;
+//    c->read->delayed = 0;
+    c->read->handler = ngx_postgres_event_handler;
     c->read->log = c->log;
     ngx_add_timer(c->read, server->ps.timeout);
     c->read->timedout = 0;
-    c->write->delayed = 0;
-    c->write->handler = ngx_postgres_write_handler;
+//    c->write->delayed = 0;
+    c->write->handler = ngx_postgres_event_handler;
     c->write->log = c->log;
     ngx_add_timer(c->write, server->ps.timeout);
     c->write->timedout = 0;
