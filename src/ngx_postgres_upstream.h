@@ -50,6 +50,10 @@ typedef struct {
         ngx_uint_t size;
     } ps;
     struct {
+        ngx_flag_t reject;
+        ngx_uint_t max;
+    } prepare;
+    struct {
         ngx_queue_t queue;
     } free;
     struct {
@@ -60,7 +64,10 @@ typedef struct {
 
 typedef struct {
     struct {
+        ngx_flag_t reject;
         ngx_queue_t *queue;
+        ngx_uint_t max;
+        ngx_uint_t size;
     } prepare;
     struct {
         ngx_queue_t *queue;

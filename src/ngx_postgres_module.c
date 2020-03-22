@@ -100,6 +100,8 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     if (!ps) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0; i < server->ps.max; i++) {
         ngx_queue_insert_tail(&server->free.queue, &ps[i].queue);
+        ps[i].common.prepare.max = server->prepare.max;
+        ps[i].common.prepare.reject = server->prepare.reject;
     }
     return NGX_OK;
 }
@@ -255,6 +257,33 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
 }
 
 
+static char *ngx_postgres_prepare_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_postgres_server_t *server = conf;
+    if (!server->ps.max) return "works only with \"postgres_keepalive\"";
+    if (server->prepare.max) return "duplicate";
+    ngx_str_t *elts = cf->args->elts;
+    ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
+    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be number", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    server->prepare.max = (ngx_uint_t)n;
+    for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
+        if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("overflow=") - 1);
+            elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
+            static const ngx_conf_enum_t e[] = {
+                { ngx_string("ignore"), 0 },
+                { ngx_string("reject"), 1 },
+                { ngx_null_string, 0 }
+            };
+            ngx_uint_t j;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server->prepare.reject = e[j].value; break; }
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+        } else { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+    }
+    return NGX_CONF_OK;
+}
+
+
 static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_t *server = conf;
     if (!server->ps.max) return "works only with \"postgres_keepalive\"";
@@ -359,8 +388,14 @@ static ngx_command_t ngx_postgres_commands[] = {
     .offset = 0,
     .post = NULL },
   { .name = ngx_string("postgres_queue"),
-    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12,
+    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12|NGX_CONF_TAKE3,
     .set = ngx_postgres_queue_conf,
+    .conf = NGX_HTTP_SRV_CONF_OFFSET,
+    .offset = 0,
+    .post = NULL },
+  { .name = ngx_string("postgres_prepare"),
+    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12,
+    .set = ngx_postgres_prepare_conf,
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
