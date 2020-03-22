@@ -94,10 +94,10 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd.size = %i", server->pd.size);
                 ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
                 ngx_queue_insert_tail(&server->pd.queue, &pd->queue);
-                pd->timeout.handler = ngx_postgres_data_timeout;
-                pd->timeout.log = r->connection->log;
-                pd->timeout.data = r->connection;
-                ngx_add_timer(&pd->timeout, server->pd.timeout);
+                pd->query.timeout.handler = ngx_postgres_data_timeout;
+                pd->query.timeout.log = r->connection->log;
+                pd->query.timeout.data = r->connection;
+                ngx_add_timer(&pd->query.timeout, server->pd.timeout);
                 server->pd.size++;
                 return NGX_YIELD;
             } else if (server->pd.reject) {
@@ -373,7 +373,7 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
         ngx_queue_remove(&pd->queue);
         server->pd.size--;
-        if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
+        if (pd->query.timeout.timer_set) ngx_del_timer(&pd->query.timeout);
         ngx_http_upstream_connect(r, r->upstream);
     }
 }

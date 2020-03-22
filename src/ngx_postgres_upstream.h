@@ -89,11 +89,11 @@ typedef struct {
 
 typedef struct {
     struct {
+        ngx_event_t timeout;
         ngx_uint_t index;
     } query;
     ngx_array_t variables;
     ngx_chain_t *response;
-    ngx_event_t timeout;
     ngx_http_request_t *request;
     ngx_int_t status;
     ngx_postgres_common_t common;
