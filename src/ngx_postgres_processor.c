@@ -108,13 +108,13 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 listen->command = command;
                 ngx_queue_insert_tail(pdc->listen.queue, &listen->queue);
                 cont:;
-            } else if (query->prepare) {
+            } else if (pdc->prepare.max) {
                 if (!(pd->query.stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
                 u_char *last = ngx_snprintf(pd->query.stmtName, 31, "ngx_%ul", (unsigned long)(pd->query.hash = ngx_hash_key(sql.data, sql.len)));
                 *last = '\0';
             }
         }
-        pdc->state = query->prepare ? state_db_prepare : state_db_query;
+        pdc->state = pdc->prepare.max ? state_db_prepare : state_db_query;
     }
     for (; (pd->result.res = PQgetResult(pdc->conn)); PQclear(pd->result.res)) switch(PQresultStatus(pd->result.res)) {
         case PGRES_FATAL_ERROR:
@@ -122,7 +122,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             ngx_postgres_variable_error(r);
             PQclear(pd->result.res);
             pd->result.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-            if (query->prepare && pdc->prepare.queue) {
+            if (pdc->prepare.max && pdc->prepare.queue) {
                 for (ngx_queue_t *queue = ngx_queue_head(pdc->prepare.queue); queue != ngx_queue_sentinel(pdc->prepare.queue); queue = ngx_queue_next(queue)) {
                     ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
                     if (prepare->hash == pd->query.hash) { ngx_queue_remove(queue); break; }
@@ -132,7 +132,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
     }
     ngx_uint_t hash = 0;
-    if (!query->prepare) {
+    if (!pdc->prepare.max) {
         if (pd->query.nParams) {
             if (!PQsendQueryParams(pdc->conn, (const char *)pd->query.sql.data, pd->query.nParams, pd->query.paramTypes, (const char *const *)pd->query.paramValues, NULL, NULL, query->output.binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryParams(%s) and %s", pd->query.sql.data, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
         } else {
