@@ -28,9 +28,9 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     c->write->log = pc->log;
     if (c->write->timer_set) ngx_del_timer(c->write);
     pc->cached = 1;
-    pc->name = &pdc->name;
-    pc->sockaddr = pdc->sockaddr;
-    pc->socklen = pdc->socklen;
+    pc->name = &pdc->pc.name;
+    pc->sockaddr = pdc->pc.sockaddr;
+    pc->socklen = pdc->pc.socklen;
 }
 
 
@@ -43,7 +43,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_http_request_t *r) {
     for (ngx_queue_t *queue = ngx_queue_head(&server->ps.queue); queue != ngx_queue_sentinel(&server->ps.queue); queue = ngx_queue_next(queue)) {
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         ngx_postgres_common_t *psc = &ps->common;
-        if (ngx_memn2cmp((u_char *)pdc->sockaddr, (u_char *)psc->sockaddr, pdc->socklen, psc->socklen)) continue;
+        if (ngx_memn2cmp((u_char *)pdc->pc.sockaddr, (u_char *)psc->pc.sockaddr, pdc->pc.socklen, psc->pc.socklen)) continue;
         ngx_postgres_save_to_free(pd, ps);
         return NGX_DONE;
     }
@@ -78,9 +78,9 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 //    pc->cached = 0;
     ngx_http_upstream_t *u = r->upstream;
     u->conf->connect_timeout = peer->connect;
-    pdc->name = peer->name;
-    pdc->sockaddr = peer->sockaddr;
-    pdc->socklen = peer->socklen;
+    pdc->pc.name = peer->name;
+    pdc->pc.sockaddr = peer->sockaddr;
+    pdc->pc.socklen = peer->socklen;
     if (server->ps.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) {
@@ -158,9 +158,9 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     } else goto bad_add;
     pdc->state = state_db_connect;
     pc->connection = c;
-    pc->name = &pdc->name;
-    pc->sockaddr = pdc->sockaddr;
-    pc->socklen = pdc->socklen;
+    pc->name = &pdc->pc.name;
+    pc->sockaddr = pdc->pc.sockaddr;
+    pc->socklen = pdc->pc.socklen;
     server->ps.size++;
     return NGX_AGAIN;
 bad_add:
