@@ -8,13 +8,6 @@
 #include "ngx_postgres_variable.h"
 
 
-static ngx_conf_enum_t ngx_postgres_overflow_options[] = {
-    { ngx_string("ignore"), 0 },
-    { ngx_string("reject"), 1 },
-    { ngx_null_string, 0 }
-};
-
-
 static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
     return ngx_postgres_variable_add(cf);
 }
@@ -241,8 +234,12 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
         if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("overflow=") - 1);
             elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
+            static ngx_conf_enum_t e[] = {
+                { ngx_string("ignore"), 0 },
+                { ngx_string("reject"), 1 },
+                { ngx_null_string, 0 }
+            };
             ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_overflow_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server->ps.reject = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
         } else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
@@ -278,8 +275,12 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("overflow=") - 1);
             elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
+            static ngx_conf_enum_t e[] = {
+                { ngx_string("ignore"), 0 },
+                { ngx_string("reject"), 1 },
+                { ngx_null_string, 0 }
+            };
             ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_overflow_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { server->pd.reject = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
         } else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
