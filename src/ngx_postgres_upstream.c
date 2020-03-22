@@ -16,7 +16,7 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     ngx_peer_connection_t *pc = &u->peer;
     ngx_postgres_common_t *pdc = &pd->common;
     *pdc = *psc;
-    ngx_connection_t *c = pc->connection = pdc->connection;
+    ngx_connection_t *c = pc->connection = pdc->pc.connection;
     c->data = r;
     c->idle = 0;
     c->log_error = pc->log_error;
@@ -139,7 +139,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     int fd;
     if ((fd = PQsocket(pdc->conn)) == -1) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == -1"); goto invalid; }
     ngx_connection_t *c = ngx_get_connection(fd, pc->log);
-    if (!(pdc->connection = c)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto invalid; }
+    if (!(pdc->pc.connection = c)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto invalid; }
     c->log_error = pc->log_error;
     c->log = pc->log;
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
@@ -173,7 +173,7 @@ invalid:
 
 static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
     ngx_postgres_common_t *psc = &ps->common;
-    ngx_connection_t *c = psc->connection;
+    ngx_connection_t *c = psc->pc.connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_array_t *array = NULL;
     size_t len = 0;
@@ -253,7 +253,7 @@ close:
 static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
     ngx_http_request_t *r = pd->request;
     ngx_postgres_common_t *pdc = &pd->common;
-    ngx_connection_t *c = pdc->connection;
+    ngx_connection_t *c = pdc->pc.connection;
     u_char *listen = NULL;
     ngx_array_t *array = NULL;
     size_t len = 0;
@@ -302,13 +302,13 @@ static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     ngx_queue_remove(&ps->queue);
     ngx_postgres_server_t *server = pdc->server;
     ngx_queue_insert_tail(&server->ps.queue, &ps->queue);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connection = %p", pdc->connection);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "connection = %p", pdc->pc.connection);
     ngx_http_upstream_t *u = r->upstream;
     ngx_peer_connection_t *pc = &u->peer;
     pc->connection = NULL;
     ngx_postgres_common_t *psc = &ps->common;
     *psc = *pdc;
-    ngx_connection_t *c = psc->connection;
+    ngx_connection_t *c = psc->pc.connection;
     c->data = ps;
     c->idle = 1;
     c->log = server->ps.log ? server->ps.log : ngx_cycle->log;
@@ -331,7 +331,7 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
-    ngx_connection_t *c = pdc->connection;
+    ngx_connection_t *c = pdc->pc.connection;
     if (!c) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!connection"); return; }
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
@@ -450,7 +450,7 @@ ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *pc) {
 
 
 void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
-    ngx_connection_t *c = common->connection;
+    ngx_connection_t *c = common->pc.connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_server_t *server = common->server;
     server->ps.size--;
