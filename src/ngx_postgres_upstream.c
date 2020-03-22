@@ -209,7 +209,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
                     if (id.len == listen->channel.len && !ngx_strncmp(id.data, listen->channel.data, id.len)) {
                         if (!array && !(array = ngx_array_create(c->pool, 1, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_create"); break; }
                         ngx_str_t *unlisten = ngx_array_push(array);
-                        if (!listen) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_push"); break; }
+                        if (!unlisten) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_push"); break; }
                         *unlisten = listen->command;
                         len += unlisten->len;
                         ngx_queue_remove(&listen->queue);
