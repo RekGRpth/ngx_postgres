@@ -234,7 +234,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
         if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("overflow=") - 1);
             elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
-            static ngx_conf_enum_t e[] = {
+            static const ngx_conf_enum_t e[] = {
                 { ngx_string("ignore"), 0 },
                 { ngx_string("reject"), 1 },
                 { ngx_null_string, 0 }
@@ -275,7 +275,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("overflow=") - 1);
             elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
-            static ngx_conf_enum_t e[] = {
+            static const ngx_conf_enum_t e[] = {
                 { ngx_string("ignore"), 0 },
                 { ngx_string("reject"), 1 },
                 { ngx_null_string, 0 }

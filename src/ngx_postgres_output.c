@@ -552,17 +552,6 @@ struct ngx_postgres_output_enum_t {
 };
 
 
-static ngx_conf_enum_t ngx_postgres_output_options[] = {
-    { ngx_string("off"), 0 },
-    { ngx_string("no"), 0 },
-    { ngx_string("false"), 0 },
-    { ngx_string("on"), 1 },
-    { ngx_string("yes"), 1 },
-    { ngx_string("true"), 1 },
-    { ngx_null_string, 0 }
-};
-
-
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     if (location->query == NGX_CONF_UNSET_PTR) return "must defined after \"postgres_query\" directive";
@@ -600,22 +589,46 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         } else if (elts[i].len > sizeof("append=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"append=", sizeof("append=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("append=") - 1);
             elts[i].data = &elts[i].data[sizeof("append=") - 1];
+            static const ngx_conf_enum_t e[] = {
+                { ngx_string("off"), 0 },
+                { ngx_string("no"), 0 },
+                { ngx_string("false"), 0 },
+                { ngx_string("on"), 1 },
+                { ngx_string("yes"), 1 },
+                { ngx_string("true"), 1 },
+                { ngx_null_string, 0 }
+            };
             ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_output_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location->append = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"append\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
         } else if (elts[i].len > sizeof("header=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"header=", sizeof("header=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("header=") - 1);
             elts[i].data = &elts[i].data[sizeof("header=") - 1];
+            static const ngx_conf_enum_t e[] = {
+                { ngx_string("off"), 0 },
+                { ngx_string("no"), 0 },
+                { ngx_string("false"), 0 },
+                { ngx_string("on"), 1 },
+                { ngx_string("yes"), 1 },
+                { ngx_string("true"), 1 },
+                { ngx_null_string, 0 }
+            };
             ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_output_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { output->header = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"header\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
         } else if (elts[i].len > sizeof("string=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"string=", sizeof("string=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("string=") - 1);
             elts[i].data = &elts[i].data[sizeof("string=") - 1];
+            static const ngx_conf_enum_t e[] = {
+                { ngx_string("off"), 0 },
+                { ngx_string("no"), 0 },
+                { ngx_string("false"), 0 },
+                { ngx_string("on"), 1 },
+                { ngx_string("yes"), 1 },
+                { ngx_string("true"), 1 },
+                { ngx_null_string, 0 }
+            };
             ngx_uint_t j;
-            ngx_conf_enum_t *e = ngx_postgres_output_options;
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { output->string = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"string\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
         } else if (elts[i].len >= sizeof("quote=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"quote=", sizeof("quote=") - 1)) {

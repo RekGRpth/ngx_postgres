@@ -350,7 +350,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     var->get_handler = ngx_postgres_variable_get;
     var->data = (uintptr_t)variable->index;
     if (cf->args->nelts == 3) {
-        ngx_conf_enum_t e[] = {
+        static const ngx_conf_enum_t e[] = {
             { ngx_string("ntuples"), type_ntuples },
             { ngx_string("nfields"), type_nfields },
             { ngx_string("cmdTuples"), type_cmdTuples },
@@ -372,7 +372,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         (void)ngx_cpystrn(variable->field, elts[3].data, elts[3].len + 1);
     }
     if (cf->args->nelts == 4) variable->required = 0; else { /* user-specified value */
-        ngx_conf_enum_t e[] = {
+        static const ngx_conf_enum_t e[] = {
             { ngx_string("optional"), 0 },
             { ngx_string("required"), 1 },
             { ngx_null_string, 0 }
