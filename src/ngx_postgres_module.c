@@ -54,8 +54,10 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 
 
 typedef struct {
-    const char **keywords;
-    const char **values;
+    struct {
+        const char **keywords;
+        const char **values;
+    } params;
     int family;
     ngx_addr_t *addrs;
     ngx_msec_t connect;
@@ -83,11 +85,11 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
             ngx_postgres_peer_t *peer = &peers[n++];
             ngx_queue_insert_tail(&server->peer, &peer->queue);
             peer->connect = elts[i].connect;
-            peer->params.keywords = elts[i].keywords;
+            peer->params.keywords = elts[i].params.keywords;
             peer->pc.name = elts[i].addrs[j].name;
             peer->pc.sockaddr = elts[i].addrs[j].sockaddr;
             peer->pc.socklen = elts[i].addrs[j].socklen;
-            peer->params.values = elts[i].values;
+            peer->params.values = elts[i].params.values;
             if (!(peer->host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             if (!(peer->host.len = ngx_sock_ntop(peer->pc.sockaddr, peer->pc.socklen, peer->host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_sock_ntop"); return NGX_ERROR; }
             if (!(peer->value = ngx_pnalloc(cf->pool, peer->host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
@@ -183,21 +185,21 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     upstream->naddrs = url.naddrs;
     upstream->family = url.family;
     if (host && upstream->family != AF_UNIX) arg++;
-    if (!(upstream->keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
-    if (!(upstream->values = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
+    if (!(upstream->params.keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
+    if (!(upstream->params.values = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
     arg = 0;
-    upstream->keywords[arg] = upstream->family == AF_UNIX ? "host" : "hostaddr";
+    upstream->params.keywords[arg] = upstream->family == AF_UNIX ? "host" : "hostaddr";
     arg++;
-    upstream->keywords[arg] = "fallback_application_name";
-    upstream->values[arg] = "nginx";
+    upstream->params.keywords[arg] = "fallback_application_name";
+    upstream->params.values[arg] = "nginx";
     arg++;
-    upstream->keywords[arg] = "options";
-    upstream->values[arg] = (const char *)options;
+    upstream->params.keywords[arg] = "options";
+    upstream->params.values[arg] = (const char *)options;
     if (host && upstream->family != AF_UNIX) {
         arg++;
-        upstream->keywords[arg] = "host";
-        if (!(upstream->values[arg] = ngx_pnalloc(cf->pool, url.host.len + 1))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
-        (void)ngx_cpystrn((u_char *)upstream->values[arg], url.host.data, url.host.len + 1);
+        upstream->params.keywords[arg] = "host";
+        if (!(upstream->params.values[arg] = ngx_pnalloc(cf->pool, url.host.len + 1))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
+        (void)ngx_cpystrn((u_char *)upstream->params.values[arg], url.host.data, url.host.len + 1);
     }
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
         if (!opt->val) continue;
@@ -207,15 +209,15 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"options")) continue;
         arg++;
         size_t keyword_len = ngx_strlen(opt->keyword);
-        if (!(upstream->keywords[arg] = ngx_pnalloc(cf->pool, keyword_len + 1))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
-        (void)ngx_cpystrn((u_char *)upstream->keywords[arg], (u_char *)opt->keyword, keyword_len + 1);
+        if (!(upstream->params.keywords[arg] = ngx_pnalloc(cf->pool, keyword_len + 1))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
+        (void)ngx_cpystrn((u_char *)upstream->params.keywords[arg], (u_char *)opt->keyword, keyword_len + 1);
         size_t val_len = ngx_strlen(opt->val);
-        if (!(upstream->values[arg] = ngx_pnalloc(cf->pool, val_len + 1))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
-        (void)ngx_cpystrn((u_char *)upstream->values[arg], (u_char *)opt->val, val_len + 1);
+        if (!(upstream->params.values[arg] = ngx_pnalloc(cf->pool, val_len + 1))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
+        (void)ngx_cpystrn((u_char *)upstream->params.values[arg], (u_char *)opt->val, val_len + 1);
     }
     arg++;
-    upstream->keywords[arg] = NULL;
-    upstream->values[arg] = NULL;
+    upstream->params.keywords[arg] = NULL;
+    upstream->params.values[arg] = NULL;
     PQconninfoFree(opts);
     server->peer.init_upstream = ngx_postgres_peer_init_upstream;
     return NGX_CONF_OK;
