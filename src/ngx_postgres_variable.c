@@ -392,7 +392,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     var->get_handler = ngx_postgres_variable_get;
     var->data = (uintptr_t)variable->index;
     if (cf->args->nelts == 3) {
-        static const struct ngx_postgres_type_enum_t {
+        static const struct {
             ngx_str_t name;
             ngx_postgres_type_t type;
             ngx_postgres_handler_pt handler;

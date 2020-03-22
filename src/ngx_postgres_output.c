@@ -543,7 +543,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_output_t *output = &location->query->output;
     if (output->handler) return "duplicate";
     ngx_str_t *elts = cf->args->elts;
-    static const struct ngx_postgres_output_enum_t {
+    static const struct {
         ngx_str_t name;
         unsigned binary:1;
         ngx_postgres_handler_pt handler;
