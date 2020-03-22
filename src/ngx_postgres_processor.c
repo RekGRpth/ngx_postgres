@@ -14,6 +14,12 @@ static ngx_int_t ngx_postgres_done(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     pdc->state = state_db_idle;
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    if (location->timeout) {
+        ngx_connection_t *c = pdc->connection;
+        if (c->read->timer_set) ngx_del_timer(c->read);
+        if (c->write->timer_set) ngx_del_timer(c->write);
+    }
     ngx_http_upstream_finalize_request(r, u, pd->result.status >= NGX_HTTP_SPECIAL_RESPONSE ? pd->result.status : NGX_OK);
     return NGX_DONE;
 }
@@ -36,8 +42,10 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *elts = location->queries.elts;
     ngx_postgres_query_t *query = &elts[pd->query.index];
-    if (c->read->timer_set) ngx_del_timer(c->read);
-    if (c->write->timer_set) ngx_del_timer(c->write);
+    if (query->timeout) {
+        if (c->read->timer_set) ngx_del_timer(c->read);
+        if (c->write->timer_set) ngx_del_timer(c->write);
+    }
     if (pdc->state == state_db_connect || pdc->state == state_db_idle) {
         ngx_str_t sql;
         sql.len = query->sql.len - 2 * query->ids.nelts - query->percent;
@@ -157,7 +165,10 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             break;
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pdc->state == %i", pdc->state); return NGX_ERROR;
     }
-    if (query->timeout) {
+    if (location->timeout) {
+        if (!c->read->timer_set) ngx_add_timer(c->read, location->timeout);
+        if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);
+    } else if (query->timeout) {
         ngx_add_timer(c->read, query->timeout);
         ngx_add_timer(c->write, query->timeout);
     }
@@ -196,6 +207,9 @@ again:
             if (PQstatus(pdc->conn) == CONNECTION_MADE) goto again;
             return NGX_AGAIN;
     }
+    ngx_connection_t *c = pdc->connection;
+    if (c->read->timer_set) ngx_del_timer(c->read);
+    if (c->write->timer_set) ngx_del_timer(c->write);
     const char *charset = PQparameterStatus(pdc->conn, "client_encoding");
     if (charset) {
         if (!ngx_strcasecmp((u_char *)charset, (u_char *)"utf8")) {
@@ -224,8 +238,9 @@ static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_set == NGX_ERROR");
         return NGX_DONE;
     }
-    ngx_postgres_query_t *query = location->queries.elts;
-    ngx_postgres_output_t *output = &query[pd->query.index].output;
+    ngx_postgres_query_t *elts = location->queries.elts;
+    ngx_postgres_query_t *query = &elts[pd->query.index];
+    ngx_postgres_output_t *output = &query->output;
     if (!pd->result.status && output->handler) return output->handler(r);
     return NGX_DONE;
 }
@@ -238,11 +253,15 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
     ngx_postgres_common_t *pdc = &pd->common;
     if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
     if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
-    ngx_connection_t *c = pdc->connection;
-    if (c->read->timer_set) ngx_del_timer(c->read);
-    if (c->write->timer_set) ngx_del_timer(c->write);
-    ngx_int_t rc = NGX_DONE;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    ngx_postgres_query_t *elts = location->queries.elts;
+    ngx_postgres_query_t *query = &elts[pd->query.index];
+    if (query->timeout) {
+        ngx_connection_t *c = pdc->connection;
+        if (c->read->timer_set) ngx_del_timer(c->read);
+        if (c->write->timer_set) ngx_del_timer(c->write);
+    }
+    ngx_int_t rc = NGX_DONE;
     for (; rc == NGX_DONE && (pd->result.res = PQgetResult(pdc->conn)); PQclear(pd->result.res)) switch(PQresultStatus(pd->result.res)) {
         case PGRES_FATAL_ERROR:
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));

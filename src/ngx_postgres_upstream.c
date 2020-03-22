@@ -685,14 +685,6 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         if (i == 1 && elts[i].len == sizeof("prepare") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"prepare", sizeof("prepare") - 1)) {
             query->prepare = 1;
             j = i + 1;
-        /*} else if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
-            j = i + 1;
-            elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
-            elts[i].data = &elts[i].data[sizeof("timeout=") - 1];
-            ngx_int_t n = ngx_parse_time(&elts[i], 0);
-            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            query->timeout = (ngx_msec_t)n;*/
         }
     }
     ngx_str_t sql = ngx_null_string;

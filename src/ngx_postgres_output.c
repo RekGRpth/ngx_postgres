@@ -237,8 +237,9 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     if (!result->ntuples || !result->nfields) return NGX_DONE;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = location->queries.elts;
-    ngx_postgres_output_t *output = &query[pd->query.index].output;
+    ngx_postgres_query_t *elts = location->queries.elts;
+    ngx_postgres_query_t *query = &elts[pd->query.index];
+    ngx_postgres_output_t *output = &query->output;
     if (output->header) {
         size += result->nfields - 1; // header delimiters
         size++; // header new line
@@ -508,8 +509,9 @@ void ngx_postgres_output_chain(ngx_http_request_t *r) {
         r->headers_out.status = pd->result.status ? ngx_abs(pd->result.status) : NGX_HTTP_OK;
         ngx_postgres_common_t *pdc = &pd->common;
         if (pdc->charset.len) r->headers_out.charset = pdc->charset;
-        ngx_postgres_query_t *query = location->queries.elts;
-        ngx_postgres_output_t *output = &query[pd->query.index].output;
+        ngx_postgres_query_t *elts = location->queries.elts;
+        ngx_postgres_query_t *query = &elts[pd->query.index];
+        ngx_postgres_output_t *output = &query->output;
         if (output->handler == &ngx_postgres_output_json) {
             ngx_str_set(&r->headers_out.content_type, "application/json");
             r->headers_out.content_type_len = r->headers_out.content_type.len;

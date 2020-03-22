@@ -150,8 +150,9 @@ ngx_int_t ngx_postgres_variable_error(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = location->queries.elts;
-    result->sql = query[pd->query.index].sql;
+    ngx_postgres_query_t *elts = location->queries.elts;
+    ngx_postgres_query_t *query = &elts[pd->query.index];
+    result->sql = query->sql;
     PGresult *res = result->res;
     result->ntuples = 0;
     result->nfields = 0;
@@ -178,8 +179,9 @@ ngx_int_t ngx_postgres_variable_output(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = location->queries.elts;
-    result->sql = query[pd->query.index].sql;
+    ngx_postgres_query_t *elts = location->queries.elts;
+    ngx_postgres_query_t *query = &elts[pd->query.index];
+    result->sql = query->sql;
     PGresult *res = result->res;
     const char *value;
     result->ntuples = PQntuples(res);
@@ -212,9 +214,10 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = location->queries.elts;
+    ngx_postgres_query_t *elts_ = location->queries.elts;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->query.index);
-    ngx_array_t *variables = &query[pd->query.index].variables;
+    ngx_postgres_query_t *query = &elts_[pd->query.index];
+    ngx_array_t *variables = &query->variables;
     if (!variables->elts) return NGX_OK;
     ngx_postgres_variable_t *variable = variables->elts;
     ngx_str_t *elts = pd->variables.elts;
