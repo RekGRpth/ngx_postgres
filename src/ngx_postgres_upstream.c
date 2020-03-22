@@ -188,7 +188,7 @@ static void ngx_postgres_process_notify(ngx_postgres_save_t *ps) {
             case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_ERROR"); break;
             case NGX_DECLINED:
                 ngx_log_error(NGX_LOG_WARN, c->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_DECLINED");
-                if (psc->listen) for (ngx_queue_t *queue = ngx_queue_head(psc->listen); queue != ngx_queue_sentinel(psc->listen); queue = ngx_queue_next(queue)) {
+                if (psc->listen.queue) for (ngx_queue_t *queue = ngx_queue_head(psc->listen.queue); queue != ngx_queue_sentinel(psc->listen.queue); queue = ngx_queue_next(queue)) {
                     ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
                     if (id.len == listen->channel.len && !ngx_strncmp(id.data, listen->channel.data, id.len)) {
                         if (!array && !(array = ngx_array_create(c->pool, 1, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_create"); break; }
@@ -257,15 +257,15 @@ static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t 
     u_char *listen = NULL;
     ngx_array_t *array = NULL;
     size_t len = 0;
-    if (pdc->listen) while (!ngx_queue_empty(pdc->listen)) {
-        ngx_queue_t *queue = ngx_queue_head(pdc->listen);
+    if (pdc->listen.queue) while (!ngx_queue_empty(pdc->listen.queue)) {
+        ngx_queue_t *queue = ngx_queue_head(pdc->listen.queue);
         ngx_postgres_listen_t *pdl = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
         ngx_postgres_common_t *psc = &ps->common;
-        if (!psc->listen) {
-            if (!(psc->listen = ngx_pcalloc(c->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NULL; }
-            ngx_queue_init(psc->listen);
+        if (!psc->listen.queue) {
+            if (!(psc->listen.queue = ngx_pcalloc(c->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NULL; }
+            ngx_queue_init(psc->listen.queue);
         }
-        for (ngx_queue_t *queue = ngx_queue_head(psc->listen); queue != ngx_queue_sentinel(psc->listen); queue = ngx_queue_next(queue)) {
+        for (ngx_queue_t *queue = ngx_queue_head(psc->listen.queue); queue != ngx_queue_sentinel(psc->listen.queue); queue = ngx_queue_next(queue)) {
             ngx_postgres_listen_t *psl = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
             if (psl->channel.len == pdl->channel.len && !ngx_strncmp(psl->channel.data, pdl->channel.data, pdl->channel.len)) goto cont;
         }
@@ -277,7 +277,7 @@ static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t 
         if (!(psl->command.data = ngx_pstrdup(c->pool, &pdl->command))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pstrdup"); return NULL; }
         psl->command.len = pdl->command.len;
         len += pdl->command.len - 2;
-        ngx_queue_insert_tail(psc->listen, &psl->queue);
+        ngx_queue_insert_tail(psc->listen.queue, &psl->queue);
 cont:
         ngx_queue_remove(&pdl->queue);
     }
@@ -462,9 +462,9 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
         return;
     }
     if (common->conn) {
-        if (!c->close && common->listen && ngx_http_push_stream_delete_channel_my) {
-            while (!ngx_queue_empty(common->listen)) {
-                ngx_queue_t *queue = ngx_queue_head(common->listen);
+        if (!c->close && common->listen.queue && ngx_http_push_stream_delete_channel_my) {
+            while (!ngx_queue_empty(common->listen.queue)) {
+                ngx_queue_t *queue = ngx_queue_head(common->listen.queue);
                 ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
                 ngx_log_error(NGX_LOG_INFO, c->log, 0, "delete channel = %V", &listen->channel);
                 ngx_http_push_stream_delete_channel_my(c->log, &listen->channel, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, c->pool);

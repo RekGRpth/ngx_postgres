@@ -86,11 +86,11 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         ngx_postgres_server_t *server = pdc->server;
         if (server->ps.max) {
             if (query->listen && channel.data && command.data) {
-                if (!pdc->listen) {
-                    if (!(pdc->listen = ngx_pcalloc(c->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-                    ngx_queue_init(pdc->listen);
+                if (!pdc->listen.queue) {
+                    if (!(pdc->listen.queue = ngx_pcalloc(c->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+                    ngx_queue_init(pdc->listen.queue);
                 }
-                for (ngx_queue_t *queue = ngx_queue_head(pdc->listen); queue != ngx_queue_sentinel(pdc->listen); queue = ngx_queue_next(queue)) {
+                for (ngx_queue_t *queue = ngx_queue_head(pdc->listen.queue); queue != ngx_queue_sentinel(pdc->listen.queue); queue = ngx_queue_next(queue)) {
                     ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
                     if (listen->channel.len == channel.len && !ngx_strncmp(listen->channel.data, channel.data, channel.len)) goto cont;
                 }
@@ -98,7 +98,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 if (!listen) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                 listen->channel = channel;
                 listen->command = command;
-                ngx_queue_insert_tail(pdc->listen, &listen->queue);
+                ngx_queue_insert_tail(pdc->listen.queue, &listen->queue);
                 cont:;
             } else if (query->prepare) {
                 if (!(pd->stmtName = ngx_pnalloc(r->pool, 32))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
