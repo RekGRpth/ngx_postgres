@@ -80,12 +80,8 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
         for (ngx_uint_t j = 0; j < elts[i].naddrs; j++) {
             ngx_postgres_peer_t *peer = &peers[n++];
             ngx_queue_insert_tail(&server->peer, &peer->queue);
-            peer->connect.timeout = elts[i].connect.timeout;
-            peer->connect.keywords = elts[i].connect.keywords;
-            peer->addr.name = elts[i].addrs[j].name;
-            peer->addr.sockaddr = elts[i].addrs[j].sockaddr;
-            peer->addr.socklen = elts[i].addrs[j].socklen;
-            peer->connect.values = elts[i].connect.values;
+            peer->connect = elts[i].connect;
+            peer->addr = elts[i].addrs[j];
             if (!(peer->host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             if (!(peer->host.len = ngx_sock_ntop(peer->addr.sockaddr, peer->addr.socklen, peer->host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_sock_ntop"); return NGX_ERROR; }
             if (!(peer->value = ngx_pnalloc(cf->pool, peer->host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
