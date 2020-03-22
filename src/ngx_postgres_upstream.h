@@ -57,11 +57,13 @@ typedef struct {
 } ngx_postgres_server_t;
 
 typedef struct {
+    struct {
+        ngx_queue_t *queue;
+    } prepare;
     ngx_connection_t *connection;
     ngx_postgres_server_t *server;
     ngx_postgres_state_t state;
     ngx_queue_t *listen;
-    ngx_queue_t *prepare;
     ngx_str_t charset;
     ngx_str_t name;
     PGconn *conn;
