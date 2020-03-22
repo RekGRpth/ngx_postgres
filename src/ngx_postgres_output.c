@@ -42,7 +42,7 @@ static ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
     b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0), size);
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
     chain->next = NULL;
-    pd->response = chain; /* set output response */
+    pd->response = chain;
     return NGX_DONE;
 }
 
@@ -365,7 +365,7 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
     chain->next = NULL;
-    pd->response = chain; /* set output response */
+    pd->response = chain;
     return NGX_DONE;
 }
 
@@ -493,7 +493,7 @@ static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
     chain->next = NULL;
-    pd->response = chain; /* set output response */
+    pd->response = chain;
     return NGX_DONE;
 }
 
