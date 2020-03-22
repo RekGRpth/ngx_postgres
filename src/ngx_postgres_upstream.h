@@ -65,12 +65,8 @@ typedef struct {
     struct {
         ngx_queue_t *queue;
     } listen;
-    struct {
-        ngx_connection_t *connection;
-        ngx_str_t name;
-        socklen_t socklen;
-        struct sockaddr *sockaddr;
-    } pc;
+    ngx_addr_t pc;
+    ngx_connection_t *connection;
     ngx_postgres_server_t *server;
     ngx_postgres_state_t state;
     ngx_str_t charset;

@@ -47,7 +47,7 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
-    ngx_connection_t *c = pdc->pc.connection;
+    ngx_connection_t *c = pdc->connection;
     c->data = pd;
     c->read->handler = ngx_postgres_event_handler;
     c->write->handler = ngx_postgres_event_handler;
