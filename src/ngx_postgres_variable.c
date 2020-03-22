@@ -128,7 +128,8 @@ typedef enum {
     type_ntuples,
     type_cmdTuples,
     type_cmdStatus,
-    type_result
+    type_value,
+    type_json
 } ngx_postgres_type_t;
 
 
@@ -222,7 +223,49 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
-    for (ngx_uint_t i = 0; i < variables->nelts; i++) {
+    const char *value;
+    ngx_uint_t ntuples = PQntuples(res);
+    ngx_uint_t nfields = PQnfields(res);
+    for (ngx_uint_t i = 0; i < variables->nelts; i++) if (variable[i].type) {
+        switch (PQresultStatus(res)) {
+            case PGRES_TUPLES_OK:
+                switch (variable[i].type) {
+                    case type_nfields:
+                        elts[variable[i].index].len = snprintf(NULL, 0, "%li", nfields);
+                        if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                        elts[variable[i].index].len = ngx_snprintf(elts[variable[i].index].data, elts[variable[i].index].len, "%li", nfields) - elts[variable[i].index].data;
+                        break;
+                    case type_ntuples:
+                        elts[variable[i].index].len = snprintf(NULL, 0, "%li", ntuples);
+                        if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                        elts[variable[i].index].len = ngx_snprintf(elts[variable[i].index].data, elts[variable[i].index].len, "%li", ntuples) - elts[variable[i].index].data;
+                        break;
+                    case type_cmdTuples:
+                        if ((value = PQcmdTuples(res)) && (elts[variable[i].index].len = ngx_strlen(value))) {
+                            if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                            ngx_memcpy(elts[variable[i].index].data, value, elts[variable[i].index].len);
+                        }
+                        break;
+                    default: break;
+                } // fall through
+            case PGRES_COMMAND_OK:
+                switch (variable[i].type) {
+                    case type_cmdStatus:
+                        if ((value = PQcmdStatus(res)) && (elts[variable[i].index].len = ngx_strlen(value))) {
+                            if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                            ngx_memcpy(elts[variable[i].index].data, value, elts[variable[i].index].len);
+                        }
+                        break;
+                    default: break;
+                } // fall through
+            default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res)); break;
+        }
+        switch (variable[i].type) {
+            case type_value: break;
+            case type_json: break;
+            default: break;
+        }
+    } else {
 //        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
         if (variable[i].field) {
             ngx_int_t n = PQfnumber(res, (const char *)variable[i].field);
@@ -355,12 +398,13 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             { ngx_string("nfields"), type_nfields },
             { ngx_string("cmdTuples"), type_cmdTuples },
             { ngx_string("cmdStatus"), type_cmdStatus },
-            { ngx_string("result"), type_result },
+            { ngx_string("value"), type_value },
+            { ngx_string("json"), type_json },
             { ngx_null_string, 0 }
         };
         ngx_uint_t i;
         for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[2].len && !ngx_strncasecmp(e[i].name.data, elts[2].data, elts[2].len)) { variable->type = e[i].value; break; }
-        if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: type \"%V\" must be \"nfields\", \"ntuples\", \"cmdTuples\", \"cmdStatus\" or \"result\"", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
+        if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: type \"%V\" must be \"nfields\", \"ntuples\", \"cmdTuples\", \"cmdStatus\", \"value\" or \"json\"", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
     }
     if (!elts[3].len) return "error: empty col";
