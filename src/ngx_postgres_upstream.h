@@ -19,14 +19,16 @@ typedef enum {
 } ngx_postgres_state_t;
 
 typedef struct {
+    struct {
+        ngx_str_t name;
+        socklen_t socklen;
+        struct sockaddr *sockaddr;
+    } pc;
     const char **keywords;
     const char **values;
     ngx_msec_t connect;
     ngx_queue_t queue;
     ngx_str_t host;
-    ngx_str_t name;
-    socklen_t socklen;
-    struct sockaddr *sockaddr;
     u_char *value;
 } ngx_postgres_peer_t;
 

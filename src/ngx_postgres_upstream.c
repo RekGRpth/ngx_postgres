@@ -78,9 +78,9 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 //    pc->cached = 0;
     ngx_http_upstream_t *u = r->upstream;
     u->conf->connect_timeout = peer->connect;
-    pdc->pc.name = peer->name;
-    pdc->pc.sockaddr = peer->sockaddr;
-    pdc->pc.socklen = peer->socklen;
+    pdc->pc.name = peer->pc.name;
+    pdc->pc.sockaddr = peer->pc.sockaddr;
+    pdc->pc.socklen = peer->pc.socklen;
     if (server->ps.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) {
@@ -130,7 +130,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     peer->values[0] = host;
     peer->values[2] = options;
     if (PQstatus(pdc->conn) == CONNECTION_BAD || PQsetnonblocking(pdc->conn, 1) == -1) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(pdc->conn), peer->name);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(pdc->conn), peer->pc.name);
         PQfinish(pdc->conn);
         pdc->conn = NULL;
         return NGX_DECLINED;
