@@ -91,6 +91,7 @@ typedef struct {
     struct {
         ngx_event_t timeout;
         ngx_str_t sql;
+        ngx_uint_t hash;
         ngx_uint_t index;
         ngx_uint_t nParams;
         Oid *paramTypes;
@@ -104,7 +105,6 @@ typedef struct {
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
     ngx_queue_t queue;
-    ngx_uint_t hash;
 } ngx_postgres_data_t;
 
 typedef struct {
