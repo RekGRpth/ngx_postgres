@@ -224,21 +224,19 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
     const char *value;
-    ngx_uint_t ntuples = PQntuples(res);
-    ngx_uint_t nfields = PQnfields(res);
     for (ngx_uint_t i = 0; i < variables->nelts; i++) if (variable[i].type) {
         switch (PQresultStatus(res)) {
             case PGRES_TUPLES_OK:
                 switch (variable[i].type) {
                     case type_nfields:
-                        elts[variable[i].index].len = snprintf(NULL, 0, "%li", nfields);
+                        elts[variable[i].index].len = snprintf(NULL, 0, "%li", result->nfields);
                         if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-                        elts[variable[i].index].len = ngx_snprintf(elts[variable[i].index].data, elts[variable[i].index].len, "%li", nfields) - elts[variable[i].index].data;
+                        elts[variable[i].index].len = ngx_snprintf(elts[variable[i].index].data, elts[variable[i].index].len, "%li", result->nfields) - elts[variable[i].index].data;
                         break;
                     case type_ntuples:
-                        elts[variable[i].index].len = snprintf(NULL, 0, "%li", ntuples);
+                        elts[variable[i].index].len = snprintf(NULL, 0, "%li", result->ntuples);
                         if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-                        elts[variable[i].index].len = ngx_snprintf(elts[variable[i].index].data, elts[variable[i].index].len, "%li", ntuples) - elts[variable[i].index].data;
+                        elts[variable[i].index].len = ngx_snprintf(elts[variable[i].index].data, elts[variable[i].index].len, "%li", result->ntuples) - elts[variable[i].index].data;
                         break;
                     case type_cmdTuples:
                         if ((value = PQcmdTuples(res)) && (elts[variable[i].index].len = ngx_strlen(value))) {
