@@ -126,7 +126,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
     ngx_uint_t hash = 0;
     if (!query->prepare) {
         if (pd->query.nParams) {
-            if (!PQsendQueryParams(pdc->conn, (const char *)pd->query.sql.data, pd->query.nParams, pd->paramTypes, (const char *const *)pd->paramValues, NULL, NULL, query->output.binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryParams(%s) and %s", pd->query.sql.data, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
+            if (!PQsendQueryParams(pdc->conn, (const char *)pd->query.sql.data, pd->query.nParams, pd->query.paramTypes, (const char *const *)pd->paramValues, NULL, NULL, query->output.binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryParams(%s) and %s", pd->query.sql.data, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
         } else {
             if (!PQsendQuery(pdc->conn, (const char *)pd->query.sql.data)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(%s) and %s", pd->query.sql.data, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
         }
@@ -138,7 +138,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 if (prepare->hash == pd->hash) { hash = prepare->hash; break; }
             }
             if (hash) pdc->state = state_db_query; else {
-                if (!PQsendPrepare(pdc->conn, (const char *)pd->stmtName, (const char *)pd->query.sql.data, pd->query.nParams, pd->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(%s, %s) and %s", pd->stmtName, pd->query.sql.data, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
+                if (!PQsendPrepare(pdc->conn, (const char *)pd->stmtName, (const char *)pd->query.sql.data, pd->query.nParams, pd->query.paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(%s, %s) and %s", pd->stmtName, pd->query.sql.data, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendPrepare(%s, %s)", pd->stmtName, pd->query.sql.data);
                 if (!pdc->prepare.queue) {
                     if (!(pdc->prepare.queue = ngx_pcalloc(c->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }

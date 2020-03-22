@@ -93,6 +93,7 @@ typedef struct {
         ngx_str_t sql;
         ngx_uint_t index;
         ngx_uint_t nParams;
+        Oid *paramTypes;
     } query;
     ngx_array_t variables;
     ngx_chain_t *response;
@@ -102,7 +103,6 @@ typedef struct {
     ngx_postgres_result_t result;
     ngx_queue_t queue;
     ngx_uint_t hash;
-    Oid *paramTypes;
     u_char **paramValues;
     u_char *stmtName;
 } ngx_postgres_data_t;
