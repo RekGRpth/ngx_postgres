@@ -6,7 +6,7 @@
 #include "ngx_postgres_variable.h"
 
 
-static ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
+ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (ngx_postgres_variable_output(r) != NGX_OK) return NGX_ERROR;
     ngx_http_upstream_t *u = r->upstream;
@@ -382,7 +382,7 @@ static ngx_int_t ngx_postgres_output_csv(ngx_http_request_t *r) {
 }
 
 
-static ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
+ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (ngx_postgres_variable_output(r) != NGX_OK) return NGX_ERROR;
     ngx_http_upstream_t *u = r->upstream;

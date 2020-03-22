@@ -1,4 +1,5 @@
 #include "ngx_postgres_module.h"
+#include "ngx_postgres_output.h"
 #include "ngx_postgres_upstream.h"
 #include "ngx_postgres_variable.h"
 
@@ -128,12 +129,11 @@ typedef enum {
     type_ntuples,
     type_cmdTuples,
     type_cmdStatus,
-    type_value,
-    type_json
 } ngx_postgres_type_t;
 
 
 typedef struct {
+    ngx_postgres_handler_pt handler;
     ngx_postgres_type_t type;
     ngx_str_t name;
     ngx_uint_t col;
@@ -258,11 +258,12 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
                 } // fall through
             default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res)); break;
         }
-        switch (variable[i].type) {
-            case type_value: break;
-            case type_json: break;
-            default: break;
-        }
+    } else if (variable[i].handler) {
+        ngx_chain_t *chain = pd->response;
+        if (variable[i].handler(r) != NGX_DONE) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
+        elts[variable[i].index].len = pd->response->buf->end - pd->response->buf->start;
+        elts[variable[i].index].data = pd->response->buf->start;
+        pd->response = chain;
     } else {
 //        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
         if (variable[i].field) {
@@ -391,17 +392,21 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     var->get_handler = ngx_postgres_variable_get;
     var->data = (uintptr_t)variable->index;
     if (cf->args->nelts == 3) {
-        static const ngx_conf_enum_t e[] = {
-            { ngx_string("ntuples"), type_ntuples },
-            { ngx_string("nfields"), type_nfields },
-            { ngx_string("cmdTuples"), type_cmdTuples },
-            { ngx_string("cmdStatus"), type_cmdStatus },
-            { ngx_string("value"), type_value },
-            { ngx_string("json"), type_json },
-            { ngx_null_string, 0 }
+        static const struct ngx_postgres_type_enum_t {
+            ngx_str_t name;
+            ngx_postgres_type_t type;
+            ngx_postgres_handler_pt handler;
+        } e[] = {
+            { ngx_string("ntuples"), type_ntuples, NULL },
+            { ngx_string("nfields"), type_nfields, NULL },
+            { ngx_string("cmdTuples"), type_cmdTuples, NULL },
+            { ngx_string("cmdStatus"), type_cmdStatus, NULL },
+            { ngx_string("value"), 0, ngx_postgres_output_value },
+            { ngx_string("json"), 0, ngx_postgres_output_json },
+            { ngx_null_string, 0, NULL }
         };
         ngx_uint_t i;
-        for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[2].len && !ngx_strncasecmp(e[i].name.data, elts[2].data, elts[2].len)) { variable->type = e[i].value; break; }
+        for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[2].len && !ngx_strncasecmp(e[i].name.data, elts[2].data, elts[2].len)) { variable->type = e[i].type; variable->handler = e[i].handler; break; }
         if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: type \"%V\" must be \"nfields\", \"ntuples\", \"cmdTuples\", \"cmdStatus\", \"value\" or \"json\"", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
     }
