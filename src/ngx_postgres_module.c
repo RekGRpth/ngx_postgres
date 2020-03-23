@@ -46,6 +46,7 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     location->conf.intercept_errors = NGX_CONF_UNSET;
     location->conf.limit_rate = NGX_CONF_UNSET_SIZE;
     location->conf.local = NGX_CONF_UNSET_PTR;
+    location->conf.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE;
     location->conf.next_upstream_timeout = NGX_CONF_UNSET_MSEC;
     location->conf.next_upstream_tries = NGX_CONF_UNSET_UINT;
     location->conf.pass_headers = NGX_CONF_UNSET_PTR;
@@ -103,6 +104,7 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_conf_merge_uint_value(conf->conf.store_access, prev->conf.store_access, 0600);
     ngx_conf_merge_value(conf->conf.buffering, prev->conf.buffering, 1);
     ngx_conf_merge_value(conf->conf.ignore_client_abort, prev->conf.ignore_client_abort, 0);
+    ngx_conf_merge_value(conf->conf.intercept_errors, prev->conf.intercept_errors, 0);
     ngx_conf_merge_value(conf->conf.request_buffering, prev->conf.request_buffering, 1);
     ngx_conf_merge_value(conf->conf.socket_keepalive, prev->conf.socket_keepalive, 0);
     if (conf->conf.bufs.num < 2) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "there must be at least 2 \"postgres_buffers\""); return NGX_CONF_ERROR; }
