@@ -41,7 +41,7 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     location->conf.buffering = NGX_CONF_UNSET;
     location->conf.buffer_size = NGX_CONF_UNSET_SIZE;
     location->conf.hide_headers = NGX_CONF_UNSET_PTR;
-//    location->conf.ignore_client_abort = NGX_CONF_UNSET;
+    location->conf.ignore_client_abort = NGX_CONF_UNSET;
     location->conf.intercept_errors = NGX_CONF_UNSET;
     location->conf.limit_rate = NGX_CONF_UNSET_SIZE;
     location->conf.local = NGX_CONF_UNSET_PTR;
@@ -65,12 +65,20 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     if (!conf->complex.value.data) conf->complex = prev->complex;
     if (!conf->queries.elts) conf->queries = prev->queries;
     if (!conf->conf.upstream) conf->conf = prev->conf;
-    ngx_conf_merge_msec_value(conf->conf.next_upstream_timeout, prev->conf.next_upstream_timeout, 0);
-    ngx_conf_merge_uint_value(conf->conf.next_upstream_tries, prev->conf.next_upstream_tries, 0);
-    ngx_conf_merge_value(conf->conf.buffering, prev->conf.buffering, 1);
-//    ngx_conf_merge_value(conf->conf.ignore_client_abort, prev->conf.ignore_client_abort, 0);
-    ngx_conf_merge_value(conf->conf.request_buffering, prev->conf.request_buffering, 1);
+    if (conf->conf.store == NGX_CONF_UNSET) {
+        ngx_conf_merge_value(conf->conf.store, prev->conf.store, 0);
+        conf->conf.store_lengths = prev->conf.store_lengths;
+        conf->conf.store_values = prev->conf.store_values;
+    }
     ngx_conf_merge_bitmask_value(conf->conf.next_upstream, prev->conf.next_upstream, NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_ERROR|NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    ngx_conf_merge_msec_value(conf->conf.next_upstream_timeout, prev->conf.next_upstream_timeout, 0);
+    ngx_conf_merge_ptr_value(conf->conf.local, prev->conf.local, NULL);
+    ngx_conf_merge_uint_value(conf->conf.next_upstream_tries, prev->conf.next_upstream_tries, 0);
+    ngx_conf_merge_uint_value(conf->conf.store_access, prev->conf.store_access, 0600);
+    ngx_conf_merge_value(conf->conf.buffering, prev->conf.buffering, 1);
+    ngx_conf_merge_value(conf->conf.ignore_client_abort, prev->conf.ignore_client_abort, 0);
+    ngx_conf_merge_value(conf->conf.request_buffering, prev->conf.request_buffering, 1);
+    ngx_conf_merge_value(conf->conf.socket_keepalive, prev->conf.socket_keepalive, 0);
     if (conf->conf.next_upstream & NGX_HTTP_UPSTREAM_FT_OFF) conf->conf.next_upstream = NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_OFF;
     return NGX_CONF_OK;
 }
