@@ -97,15 +97,15 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_str_set(&u->schema, "postgres://");
     u->output.tag = (ngx_buf_tag_t)&ngx_postgres_module;
-    u->conf = &location->conf;
+    u->conf = &location->upstream;
     u->create_request = ngx_postgres_create_request;
     u->reinit_request = ngx_postgres_reinit_request;
     u->process_header = ngx_postgres_process_header;
     u->abort_request = ngx_postgres_abort_request;
     u->finalize_request = ngx_postgres_finalize_request;
     r->state = 0;
-    u->buffering = location->conf.buffering;
-    if (!location->conf.request_buffering && location->conf.pass_request_body && !r->headers_in.chunked) r->request_body_no_buffering = 1;
+    u->buffering = location->upstream.buffering;
+    if (!location->upstream.request_buffering && location->upstream.pass_request_body && !r->headers_in.chunked) r->request_body_no_buffering = 1;
     if ((rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init)) >= NGX_HTTP_SPECIAL_RESPONSE) return rc;
     return NGX_DONE;
 }
