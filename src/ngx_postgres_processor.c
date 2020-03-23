@@ -46,8 +46,9 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
     }
-    ngx_flag_t prepare = pdc->prepare.max && (location->prepare || query->prepare);
-    if (!pdc->prepare.max && (location->prepare || query->prepare)) ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ignoring prepare");
+    ngx_postgres_server_t *server = pdc->server;
+    ngx_flag_t prepare = server->prepare.max && (location->prepare || query->prepare);
+    if (!server->prepare.max && (location->prepare || query->prepare)) ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ignoring prepare");
     if (pdc->state == state_db_connect || pdc->state == state_db_idle) {
         ngx_str_t sql;
         sql.len = query->sql.len - 2 * query->ids.nelts - query->percent;
@@ -93,7 +94,6 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         *last = '\0';
     //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
         pd->query.sql = sql; /* set $postgres_query */
-        ngx_postgres_server_t *server = pdc->server;
         if (server->ps.max) {
             if (query->listen && channel.data && command.data) {
                 if (!pdc->listen.queue) {
@@ -149,7 +149,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
                 if (prepare->hash == pd->query.hash) { hash = prepare->hash; break; }
             }
-            if (hash) pdc->state = state_db_query; else if (pdc->prepare.size >= pdc->prepare.max && pdc->prepare.deallocate) {
+            if (hash) pdc->state = state_db_query; else if (pdc->prepare.size >= server->prepare.max && server->prepare.deallocate) {
                 char *str = PQescapeIdentifier(pdc->conn, (const char *)pd->query.stmtName.data, pd->query.stmtName.len);
                 if (!str) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQescapeIdentifier(%V) and %s", &pd->query.stmtName, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
                 ngx_str_t id = {ngx_strlen(str), NULL};

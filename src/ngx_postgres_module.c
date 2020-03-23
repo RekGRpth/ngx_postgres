@@ -100,8 +100,6 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     if (!ps) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0; i < server->ps.max; i++) {
         ngx_queue_insert_tail(&server->free.queue, &ps[i].queue);
-        ps[i].common.prepare.deallocate = server->prepare.deallocate;
-        ps[i].common.prepare.max = server->prepare.max;
     }
     return NGX_OK;
 }

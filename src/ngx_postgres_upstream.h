@@ -64,9 +64,7 @@ typedef struct {
 
 typedef struct {
     struct {
-        ngx_flag_t deallocate;
         ngx_queue_t *queue;
-        ngx_uint_t max;
         ngx_uint_t size;
     } prepare;
     struct {
