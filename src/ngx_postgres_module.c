@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <pg_config.h>
 
 #include "ngx_postgres_handler.h"
@@ -133,13 +132,9 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 
 typedef struct {
     int family;
-    ngx_addr_t *addrs;
+    ngx_http_upstream_server_t upstream;
     ngx_postgres_connect_t connect;
-    ngx_uint_t naddrs;
 } ngx_postgres_upstream_t;
-
-
-static_assert(sizeof(ngx_postgres_upstream_t) <= sizeof(ngx_http_upstream_server_t), "sizeof(ngx_postgres_upstream_t) <= sizeof(ngx_http_upstream_server_t)");
 
 
 static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
@@ -151,15 +146,15 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_queue_init(&server->peer);
     ngx_uint_t npeers = 0;
     ngx_postgres_upstream_t *elts = upstream_srv_conf->servers->elts;
-    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) npeers += elts[i].naddrs;
+    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) npeers += elts[i].upstream.naddrs;
     ngx_postgres_peer_t *peers = ngx_pcalloc(cf->pool, sizeof(*peers) * npeers);
     if (!peers) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0, n = 0; i < upstream_srv_conf->servers->nelts; i++) {
-        for (ngx_uint_t j = 0; j < elts[i].naddrs; j++) {
+        for (ngx_uint_t j = 0; j < elts[i].upstream.naddrs; j++) {
             ngx_postgres_peer_t *peer = &peers[n++];
             ngx_queue_insert_tail(&server->peer, &peer->queue);
             peer->connect = elts[i].connect;
-            peer->addr = elts[i].addrs[j];
+            peer->addr = elts[i].upstream.addrs[j];
             if (!(peer->host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             if (!(peer->host.len = ngx_sock_ntop(peer->addr.sockaddr, peer->addr.socklen, peer->host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_sock_ntop"); return NGX_ERROR; }
             if (!(peer->value = ngx_pnalloc(cf->pool, peer->host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
@@ -251,8 +246,8 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         PQconninfoFree(opts);
         return NGX_CONF_ERROR;
     }
-    upstream->addrs = url.addrs;
-    upstream->naddrs = url.naddrs;
+    upstream->upstream.addrs = url.addrs;
+    upstream->upstream.naddrs = url.naddrs;
     upstream->family = url.family;
     if (host && upstream->family != AF_UNIX) arg++;
     if (!(upstream->connect.keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
@@ -290,6 +285,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     upstream->connect.values[arg] = NULL;
     PQconninfoFree(opts);
     server->peer.init_upstream = ngx_postgres_peer_init_upstream;
+    server->flags = NGX_HTTP_UPSTREAM_CREATE|NGX_HTTP_UPSTREAM_WEIGHT|NGX_HTTP_UPSTREAM_MAX_CONNS|NGX_HTTP_UPSTREAM_MAX_FAILS|NGX_HTTP_UPSTREAM_FAIL_TIMEOUT|NGX_HTTP_UPSTREAM_DOWN|NGX_HTTP_UPSTREAM_BACKUP;
     return NGX_CONF_OK;
 }
 

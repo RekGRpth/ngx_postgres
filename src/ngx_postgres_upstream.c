@@ -75,7 +75,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_peer_t *peer = ngx_queue_data(queue, ngx_postgres_peer_t, queue);
     ngx_queue_remove(&peer->queue);
     ngx_queue_insert_tail(&server->peer, &peer->queue);
-//    pc->cached = 0;
+    pc->cached = 1;
     ngx_http_upstream_t *u = r->upstream;
     u->conf->connect_timeout = peer->connect.timeout;
     pdc->addr.name = peer->addr.name;
@@ -83,6 +83,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pdc->addr.socklen = peer->addr.socklen;
     if (server->ps.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
+        if (!u->conf->next_upstream_tries) u->conf->next_upstream_tries = server->ps.max;
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) {
             ngx_postgres_process_events(r);
             return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
@@ -103,7 +104,13 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
                 return NGX_YIELD; // and return
             } else if (server->pd.reject) {
                 ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "pd.size = %i", server->pd.size);
-                return NGX_DECLINED; // and ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR) and return
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "tries = %i", u->peer.tries);
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "next_upstream = %i", u->conf->next_upstream);
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "request_sent = %i", u->request_sent);
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "request_body_no_buffering = %i", r->request_body_no_buffering);
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "timeout = %i", u->conf->next_upstream_timeout);
+                if (u->peer.tries < u->conf->next_upstream_tries) return NGX_DECLINED; // and ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR) and return
+                return NGX_ERROR; // and ngx_http_upstream_finalize_request(r, u, NGX_HTTP_INTERNAL_SERVER_ERROR) and return
             }
         } else if (server->ps.reject) {
             ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ps.size = %i", server->ps.size);
