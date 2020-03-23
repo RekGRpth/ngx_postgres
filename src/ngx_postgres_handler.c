@@ -11,8 +11,14 @@ static void ngx_postgres_event_handler(ngx_event_t *ev) {
     ngx_postgres_data_t *pd = c->data;
     ngx_http_request_t *r = pd->request;
     ngx_http_upstream_t *u = r->upstream;
-    if (c->read->timedout) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
-    if (c->write->timedout) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    ngx_postgres_common_t *pdc = &pd->common;
+    if (pdc->state != state_db_connect) {
+        if (c->read->timedout) return ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT);
+        if (c->write->timedout) return ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT);
+    } else {
+        if (c->read->timedout) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+        if (c->write->timedout) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    }
     if (ngx_http_upstream_test_connect(c) != NGX_OK) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
     ngx_postgres_process_events(r);
 //    ngx_http_run_posted_requests(c);
