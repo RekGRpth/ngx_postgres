@@ -72,6 +72,8 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     }
     ngx_conf_merge_bitmask_value(conf->conf.next_upstream, prev->conf.next_upstream, NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_ERROR|NGX_HTTP_UPSTREAM_FT_TIMEOUT);
     ngx_conf_merge_msec_value(conf->conf.next_upstream_timeout, prev->conf.next_upstream_timeout, 0);
+    ngx_conf_merge_msec_value(conf->conf.read_timeout, prev->conf.read_timeout, 60000);
+    ngx_conf_merge_msec_value(conf->conf.send_timeout, prev->conf.send_timeout, 60000);
     ngx_conf_merge_ptr_value(conf->conf.local, prev->conf.local, NULL);
     ngx_conf_merge_uint_value(conf->conf.next_upstream_tries, prev->conf.next_upstream_tries, 0);
     ngx_conf_merge_uint_value(conf->conf.store_access, prev->conf.store_access, 0600);
