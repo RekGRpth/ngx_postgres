@@ -68,7 +68,9 @@ typedef struct {
     struct {
         ngx_log_t *log;
     } trace;
-    ngx_queue_t peer;
+    struct {
+        ngx_queue_t queue;
+    } peer;
 } ngx_postgres_server_t;
 
 typedef struct {

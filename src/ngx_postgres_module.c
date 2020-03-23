@@ -143,7 +143,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
     ngx_conf_init_msec_value(server->ps.timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(server->ps.requests, 1000);
-    ngx_queue_init(&server->peer);
+    ngx_queue_init(&server->peer.queue);
     ngx_postgres_upstream_t *elts = upstream_srv_conf->servers->elts;
 
     ngx_uint_t npeer = 0;
@@ -155,7 +155,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
         if (elts[i].u.backup) continue;
         for (ngx_uint_t j = 0; j < elts[i].u.naddrs; j++, n++) {
             if (n > 0) peer[n - 1].next = &peer[n];
-            ngx_queue_insert_tail(&server->peer, &peer[n].queue);
+            ngx_queue_insert_tail(&server->peer.queue, &peer[n].queue);
             peer[n].addr = elts[i].u.addrs[j];
             peer[n].connect = elts[i].connect;
             peer[n].down = elts[i].u.down;
@@ -181,7 +181,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
         if (!elts[i].u.backup) continue;
         for (ngx_uint_t j = 0; j < elts[i].u.naddrs; j++, n++) {
             if (n > 0) peer[n - 1].next = &peer[n];
-            ngx_queue_insert_tail(&server->peer, &peer[n].queue);
+            ngx_queue_insert_tail(&server->peer.queue, &peer[n].queue);
             peer[n].addr = elts[i].u.addrs[j];
             peer[n].connect = elts[i].connect;
             peer[n].down = elts[i].u.down;

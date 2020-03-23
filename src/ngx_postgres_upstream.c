@@ -71,10 +71,10 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_server_t *server = pdc->server;
-    ngx_queue_t *queue = ngx_queue_head(&server->peer);
+    ngx_queue_t *queue = ngx_queue_head(&server->peer.queue);
     ngx_postgres_peer_t *peer = ngx_queue_data(queue, ngx_postgres_peer_t, queue);
     ngx_queue_remove(&peer->queue);
-    ngx_queue_insert_tail(&server->peer, &peer->queue);
+    ngx_queue_insert_tail(&server->peer.queue, &peer->queue);
     pc->cached = 1;
     ngx_http_upstream_t *u = r->upstream;
     u->conf->connect_timeout = peer->connect.timeout;
