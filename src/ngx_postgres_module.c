@@ -40,11 +40,13 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     if (!location) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     location->conf.buffering = NGX_CONF_UNSET;
 //    location->conf.ignore_client_abort = NGX_CONF_UNSET;
+    location->conf.local = NGX_CONF_UNSET_PTR;
     location->conf.next_upstream_timeout = NGX_CONF_UNSET_MSEC;
     location->conf.next_upstream_tries = NGX_CONF_UNSET_UINT;
     location->conf.request_buffering = NGX_CONF_UNSET;
-    location->conf.store = NGX_CONF_UNSET;
+    location->conf.socket_keepalive = NGX_CONF_UNSET;
     location->conf.store_access = NGX_CONF_UNSET_UINT;
+    location->conf.store = NGX_CONF_UNSET;
     return location;
 }
 
