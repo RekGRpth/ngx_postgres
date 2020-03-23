@@ -196,6 +196,12 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be number", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
             upstream->u.weight = (ngx_uint_t)n;
+        } else if (elts[i].len > sizeof("max_conns=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"max_conns=", sizeof("max_conns=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("max_conns=") - 1);
+            elts[i].data = &elts[i].data[sizeof("max_conns=") - 1];
+            ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"max_conns\" value \"%V\" must be number", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+            upstream->u.max_conns = (ngx_uint_t)n;
         } else {
             if (i > 1) len++;
             len += elts[i].len;
@@ -206,6 +212,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     u_char *p = conninfo;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
         if (elts[i].len > sizeof("weight=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"weight=", sizeof("weight=") - 1));
+        else if (elts[i].len > sizeof("max_conns=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"max_conns=", sizeof("max_conns=") - 1));
         else {
             if (i > 1) *p++ = ' ';
             p = ngx_cpymem(p, elts[i].data, elts[i].len);
