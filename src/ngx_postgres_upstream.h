@@ -84,6 +84,7 @@ typedef struct {
     } peer;
     ngx_postgres_peers_t backs;
     ngx_postgres_peers_t peers;
+    ngx_http_upstream_init_pt original_init_upstream;
 } ngx_postgres_server_t;
 
 typedef struct {
