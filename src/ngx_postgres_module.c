@@ -66,6 +66,16 @@ static ngx_path_init_t ngx_postgres_temp_path = {
 };
 
 
+static ngx_str_t ngx_postgres_hide_headers[] = {
+    ngx_string("X-Accel-Expires"),
+    ngx_string("X-Accel-Redirect"),
+    ngx_string("X-Accel-Limit-Rate"),
+    ngx_string("X-Accel-Buffering"),
+    ngx_string("X-Accel-Charset"),
+    ngx_null_string
+};
+
+
 static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
     ngx_postgres_location_t *prev = parent;
     ngx_postgres_location_t *conf = child;
@@ -110,6 +120,11 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     if (conf->conf.max_temp_file_size != 0 && conf->conf.max_temp_file_size < size) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_max_temp_file_size\" must be equal to zero to disable temporary files usage or must be equal to or greater than the maximum of the value of \"postgres_buffer_size\" and one of the \"postgres_buffers\""); return NGX_CONF_ERROR; }
     if (conf->conf.next_upstream & NGX_HTTP_UPSTREAM_FT_OFF) conf->conf.next_upstream = NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_OFF;
     if (ngx_conf_merge_path_value(cf, &conf->conf.temp_path, prev->conf.temp_path, &ngx_postgres_temp_path) != NGX_OK) return NGX_CONF_ERROR;
+    ngx_hash_init_t hash;
+    hash.max_size = 512;
+    hash.bucket_size = ngx_align(64, ngx_cacheline_size);
+    hash.name = "postgres_hide_headers_hash";
+    if (ngx_http_upstream_hide_headers_hash(cf, &conf->conf, &prev->conf, ngx_postgres_hide_headers, &hash) != NGX_OK) return NGX_CONF_ERROR;
     return NGX_CONF_OK;
 }
 
