@@ -391,6 +391,24 @@ char *ngx_postgres_prepare_conf_(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+static ngx_conf_bitmask_t ngx_postgres_masks[] = {
+    { ngx_string("error"), NGX_HTTP_UPSTREAM_FT_ERROR },
+    { ngx_string("timeout"), NGX_HTTP_UPSTREAM_FT_TIMEOUT },
+    { ngx_string("invalid_header"), NGX_HTTP_UPSTREAM_FT_INVALID_HEADER },
+    { ngx_string("non_idempotent"), NGX_HTTP_UPSTREAM_FT_NON_IDEMPOTENT },
+    { ngx_string("http_500"), NGX_HTTP_UPSTREAM_FT_HTTP_500 },
+    { ngx_string("http_502"), NGX_HTTP_UPSTREAM_FT_HTTP_502 },
+    { ngx_string("http_503"), NGX_HTTP_UPSTREAM_FT_HTTP_503 },
+    { ngx_string("http_504"), NGX_HTTP_UPSTREAM_FT_HTTP_504 },
+    { ngx_string("http_403"), NGX_HTTP_UPSTREAM_FT_HTTP_403 },
+    { ngx_string("http_404"), NGX_HTTP_UPSTREAM_FT_HTTP_404 },
+    { ngx_string("http_429"), NGX_HTTP_UPSTREAM_FT_HTTP_429 },
+    { ngx_string("updating"), NGX_HTTP_UPSTREAM_FT_UPDATING },
+    { ngx_string("off"), NGX_HTTP_UPSTREAM_FT_OFF },
+    { ngx_null_string, 0 }
+};
+
+
 static ngx_command_t ngx_postgres_commands[] = {
   { .name = ngx_string("postgres_log"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
@@ -463,6 +481,24 @@ static ngx_command_t ngx_postgres_commands[] = {
     .set = ngx_postgres_set_conf,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,
+    .post = NULL },
+  { .name = ngx_string("postgres_next_upstream"),
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
+    .set = ngx_conf_set_bitmask_slot,
+    .conf = NGX_HTTP_LOC_CONF_OFFSET,
+    .offset = offsetof(ngx_postgres_location_t, conf.next_upstream),
+    .post = &ngx_postgres_masks },
+  { .name = ngx_string("postgres_next_upstream_tries"),
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+    .set = ngx_conf_set_num_slot,
+    .conf = NGX_HTTP_LOC_CONF_OFFSET,
+    .offset = offsetof(ngx_postgres_location_t, conf.next_upstream_tries),
+    .post = NULL },
+  { .name = ngx_string("postgres_next_upstream_timeout"),
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+    .set = ngx_conf_set_msec_slot,
+    .conf = NGX_HTTP_LOC_CONF_OFFSET,
+    .offset = offsetof(ngx_postgres_location_t, conf.next_upstream_timeout),
     .post = NULL },
     ngx_null_command
 };
