@@ -421,6 +421,28 @@ static ngx_conf_bitmask_t ngx_postgres_next_upstream_masks[] = {
 };
 
 
+static char *ngx_postgres_store_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_postgres_location_t *location = conf;
+    if (location->conf.store != NGX_CONF_UNSET) return "is duplicate";
+    ngx_str_t *elts = cf->args->elts;
+    if (elts[1].len == sizeof("off") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"off", sizeof("off") - 1)) { location->conf.store = 0; return NGX_CONF_OK; }
+    location->conf.store = 1;
+    if (elts[1].len == sizeof("on") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"on", sizeof("on") - 1)) return NGX_CONF_OK;
+    elts[1].len++;
+    ngx_http_script_compile_t sc;
+    ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+    sc.cf = cf;
+    sc.source = &elts[1];
+    sc.lengths = &location->conf.store_lengths;
+    sc.values = &location->conf.store_values;
+    sc.variables = ngx_http_script_variables_count(&elts[1]);
+    sc.complete_lengths = 1;
+    sc.complete_values = 1;
+    if (ngx_http_script_compile(&sc) != NGX_OK) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_http_script_compile != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
+    return NGX_CONF_OK;
+}
+
+
 static ngx_command_t ngx_postgres_commands[] = {
   { .name = ngx_string("postgres_log"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
@@ -486,6 +508,12 @@ static ngx_command_t ngx_postgres_commands[] = {
   { .name = ngx_string("postgres_set"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4,
     .set = ngx_postgres_set_conf,
+    .conf = NGX_HTTP_LOC_CONF_OFFSET,
+    .offset = 0,
+    .post = NULL },
+  { .name = ngx_string("postgres_store"),
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+    .set = ngx_postgres_store_conf,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
