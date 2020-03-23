@@ -358,12 +358,37 @@ char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
     ngx_postgres_query_t *query = location->query;
     ngx_str_t *elts = cf->args->elts;
     ngx_int_t n = ngx_parse_time(&elts[1], 0);
-    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: value \"%V\" must be time", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
-    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: value \"%V\" must be positive", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be time", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
     if (!query) location->timeout = (ngx_msec_t)n;
     else if (location->timeout) return "duplicate";
     else if (query->timeout) return "duplicate";
     else query->timeout = (ngx_msec_t)n;
+    return NGX_CONF_OK;
+}
+
+
+char *ngx_postgres_prepare_conf_(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+    ngx_postgres_location_t *location = conf;
+    ngx_postgres_query_t *query = location->query;
+    ngx_str_t *elts = cf->args->elts;
+    static const ngx_conf_enum_t e[] = {
+        { ngx_string("off"), 0 },
+        { ngx_string("no"), 0 },
+        { ngx_string("false"), 0 },
+        { ngx_string("on"), 1 },
+        { ngx_string("yes"), 1 },
+        { ngx_string("true"), 1 },
+        { ngx_null_string, 0 }
+    };
+    ngx_flag_t prepare;
+    ngx_uint_t j;
+    for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[1].len && !ngx_strncasecmp(e[j].name.data, elts[1].data, elts[1].len)) { prepare = e[j].value; break; }
+    if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"append\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    if (!query) location->prepare = prepare;
+    else if (location->prepare) return "duplicate";
+    else if (query->prepare) return "duplicate";
+    else query->prepare = prepare;
     return NGX_CONF_OK;
 }
 
@@ -420,6 +445,12 @@ static ngx_command_t ngx_postgres_commands[] = {
   { .name = ngx_string("postgres_output"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_1MORE,
     .set = ngx_postgres_output_conf,
+    .conf = NGX_HTTP_LOC_CONF_OFFSET,
+    .offset = 0,
+    .post = NULL },
+  { .name = ngx_string("postgres_prepare"),
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
+    .set = ngx_postgres_prepare_conf_,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
