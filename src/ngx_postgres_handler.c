@@ -105,7 +105,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     u->finalize_request = ngx_postgres_finalize_request;
     r->state = 0;
     u->buffering = location->conf.buffering;
-    r->main->count++;
-    ngx_http_upstream_init(r);
+    if (!location->conf.request_buffering && location->conf.pass_request_body && !r->headers_in.chunked) r->request_body_no_buffering = 1;
+    if ((rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init)) >= NGX_HTTP_SPECIAL_RESPONSE) return rc;
     return NGX_DONE;
 }
