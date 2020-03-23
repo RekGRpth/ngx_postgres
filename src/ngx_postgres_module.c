@@ -132,7 +132,7 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 
 typedef struct {
     int family;
-    ngx_http_upstream_server_t upstream;
+    ngx_http_upstream_server_t u;
     ngx_postgres_connect_t connect;
 } ngx_postgres_upstream_t;
 
@@ -146,15 +146,15 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_queue_init(&server->peer);
     ngx_uint_t npeers = 0;
     ngx_postgres_upstream_t *elts = upstream_srv_conf->servers->elts;
-    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) npeers += elts[i].upstream.naddrs;
+    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) npeers += elts[i].u.naddrs;
     ngx_postgres_peer_t *peers = ngx_pcalloc(cf->pool, sizeof(*peers) * npeers);
     if (!peers) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0, n = 0; i < upstream_srv_conf->servers->nelts; i++) {
-        for (ngx_uint_t j = 0; j < elts[i].upstream.naddrs; j++) {
+        for (ngx_uint_t j = 0; j < elts[i].u.naddrs; j++) {
             ngx_postgres_peer_t *peer = &peers[n++];
             ngx_queue_insert_tail(&server->peer, &peer->queue);
             peer->connect = elts[i].connect;
-            peer->addr = elts[i].upstream.addrs[j];
+            peer->addr = elts[i].u.addrs[j];
             if (!(peer->host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             if (!(peer->host.len = ngx_sock_ntop(peer->addr.sockaddr, peer->addr.socklen, peer->host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_sock_ntop"); return NGX_ERROR; }
             if (!(peer->value = ngx_pnalloc(cf->pool, peer->host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
@@ -185,18 +185,31 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_postgres_upstream_t *upstream = ngx_array_push(server->servers);
     if (!upstream) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(upstream, sizeof(*upstream));
+    upstream->u.weight = 1;
     ngx_str_t *elts = cf->args->elts;
     size_t len = 0;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
-        if (i > 1) len++;
-        len += elts[i].len;
+        if (elts[i].len > sizeof("weight=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"weight=", sizeof("weight=") - 1)) {
+            elts[i].len = elts[i].len - (sizeof("weight=") - 1);
+            elts[i].data = &elts[i].data[sizeof("weight=") - 1];
+            ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be number", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+            upstream->u.weight = (ngx_uint_t)n;
+        } else {
+            if (i > 1) len++;
+            len += elts[i].len;
+        }
     }
     u_char *conninfo = ngx_pnalloc(cf->pool, len + 1);
     if (!conninfo) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
     u_char *p = conninfo;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
-        if (i > 1) *p++ = ' ';
-        p = ngx_cpymem(p, elts[i].data, elts[i].len);
+        if (elts[i].len > sizeof("weight=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"weight=", sizeof("weight=") - 1));
+        else {
+            if (i > 1) *p++ = ' ';
+            p = ngx_cpymem(p, elts[i].data, elts[i].len);
+        }
     }
     *p = '\0';
     char *err;
@@ -246,8 +259,8 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         PQconninfoFree(opts);
         return NGX_CONF_ERROR;
     }
-    upstream->upstream.addrs = url.addrs;
-    upstream->upstream.naddrs = url.naddrs;
+    upstream->u.addrs = url.addrs;
+    upstream->u.naddrs = url.naddrs;
     upstream->family = url.family;
     if (host && upstream->family != AF_UNIX) arg++;
     if (!(upstream->connect.keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
