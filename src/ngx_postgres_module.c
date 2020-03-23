@@ -512,6 +512,18 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_location_t, conf.next_upstream_timeout),
     .post = NULL },
+  { .name = ngx_string("postgres_store_access"),
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE123,
+    .set = ngx_conf_set_access_slot,
+    .conf = NGX_HTTP_LOC_CONF_OFFSET,
+    .offset = offsetof(ngx_postgres_location_t, conf.store_access),
+    .post = NULL },
+  { .name = ngx_string("postgres_buffering"),
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+    .set = ngx_conf_set_flag_slot,
+    .conf = NGX_HTTP_LOC_CONF_OFFSET,
+    .offset = offsetof(ngx_postgres_location_t, conf.buffering),
+    .post = NULL },
     ngx_null_command
 };
 
