@@ -55,6 +55,7 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     location->conf.socket_keepalive = NGX_CONF_UNSET;
     location->conf.store_access = NGX_CONF_UNSET_UINT;
     location->conf.store = NGX_CONF_UNSET;
+    location->conf.temp_file_write_size_conf = NGX_CONF_UNSET_SIZE;
     ngx_str_set(&location->conf.module, "postgres");
     return location;
 }
