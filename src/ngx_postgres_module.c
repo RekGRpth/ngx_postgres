@@ -59,6 +59,11 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
 }
 
 
+static ngx_path_init_t ngx_postgres_temp_path = {
+    ngx_string("/var/cache/nginx/postgres_temp"), { 1, 2, 0 }
+};
+
+
 static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
     ngx_postgres_location_t *prev = parent;
     ngx_postgres_location_t *conf = child;
@@ -70,18 +75,39 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
         conf->conf.store_lengths = prev->conf.store_lengths;
         conf->conf.store_values = prev->conf.store_values;
     }
+    ngx_conf_merge_bitmask_value(conf->conf.ignore_headers, prev->conf.ignore_headers, NGX_CONF_BITMASK_SET);
     ngx_conf_merge_bitmask_value(conf->conf.next_upstream, prev->conf.next_upstream, NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_ERROR|NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    ngx_conf_merge_bufs_value(conf->conf.bufs, prev->conf.bufs, 8, ngx_pagesize);
     ngx_conf_merge_msec_value(conf->conf.next_upstream_timeout, prev->conf.next_upstream_timeout, 0);
     ngx_conf_merge_msec_value(conf->conf.read_timeout, prev->conf.read_timeout, 60000);
     ngx_conf_merge_msec_value(conf->conf.send_timeout, prev->conf.send_timeout, 60000);
     ngx_conf_merge_ptr_value(conf->conf.local, prev->conf.local, NULL);
+    ngx_conf_merge_size_value(conf->conf.buffer_size, prev->conf.buffer_size, (size_t)ngx_pagesize);
+    ngx_conf_merge_size_value(conf->conf.busy_buffers_size_conf, prev->conf.busy_buffers_size_conf, NGX_CONF_UNSET_SIZE);
+    ngx_conf_merge_size_value(conf->conf.limit_rate, prev->conf.limit_rate, 0);
+    ngx_conf_merge_size_value(conf->conf.max_temp_file_size_conf, prev->conf.max_temp_file_size_conf, NGX_CONF_UNSET_SIZE);
+    ngx_conf_merge_size_value(conf->conf.temp_file_write_size_conf, prev->conf.temp_file_write_size_conf, NGX_CONF_UNSET_SIZE);
     ngx_conf_merge_uint_value(conf->conf.next_upstream_tries, prev->conf.next_upstream_tries, 0);
     ngx_conf_merge_uint_value(conf->conf.store_access, prev->conf.store_access, 0600);
     ngx_conf_merge_value(conf->conf.buffering, prev->conf.buffering, 1);
     ngx_conf_merge_value(conf->conf.ignore_client_abort, prev->conf.ignore_client_abort, 0);
     ngx_conf_merge_value(conf->conf.request_buffering, prev->conf.request_buffering, 1);
     ngx_conf_merge_value(conf->conf.socket_keepalive, prev->conf.socket_keepalive, 0);
+    if (conf->conf.bufs.num < 2) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "there must be at least 2 \"postgres_buffers\""); return NGX_CONF_ERROR; }
+    size_t size = conf->conf.buffer_size;
+    if (size < conf->conf.bufs.size) size = conf->conf.bufs.size;
+    if (conf->conf.busy_buffers_size_conf == NGX_CONF_UNSET_SIZE) conf->conf.busy_buffers_size = 2 * size;
+    else conf->conf.busy_buffers_size = conf->conf.busy_buffers_size_conf;
+    if (conf->conf.busy_buffers_size < size) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_busy_buffers_size\" must be equal to or greater than the maximum of the value of \"postgres_buffer_size\" and one of the \"postgres_buffers\""); return NGX_CONF_ERROR; }
+    if (conf->conf.busy_buffers_size > (conf->conf.bufs.num - 1) * conf->conf.bufs.size) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_busy_buffers_size\" must be less than the size of all \"postgres_buffers\" minus one buffer"); return NGX_CONF_ERROR; }
+    if (conf->conf.temp_file_write_size_conf == NGX_CONF_UNSET_SIZE) conf->conf.temp_file_write_size = 2 * size;
+    else conf->conf.temp_file_write_size = conf->conf.temp_file_write_size_conf;
+    if (conf->conf.temp_file_write_size < size) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_temp_file_write_size\" must be equal to or greater than the maximum of the value of \"postgres_buffer_size\" and one of the \"postgres_buffers\""); return NGX_CONF_ERROR; }
+    if (conf->conf.max_temp_file_size_conf == NGX_CONF_UNSET_SIZE) conf->conf.max_temp_file_size = 1024 * 1024 * 1024;
+    else conf->conf.max_temp_file_size = conf->conf.max_temp_file_size_conf;
+    if (conf->conf.max_temp_file_size != 0 && conf->conf.max_temp_file_size < size) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"postgres_max_temp_file_size\" must be equal to zero to disable temporary files usage or must be equal to or greater than the maximum of the value of \"postgres_buffer_size\" and one of the \"postgres_buffers\""); return NGX_CONF_ERROR; }
     if (conf->conf.next_upstream & NGX_HTTP_UPSTREAM_FT_OFF) conf->conf.next_upstream = NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_OFF;
+    if (ngx_conf_merge_path_value(cf, &conf->conf.temp_path, prev->conf.temp_path, &ngx_postgres_temp_path) != NGX_OK) return NGX_CONF_ERROR;
     return NGX_CONF_OK;
 }
 
