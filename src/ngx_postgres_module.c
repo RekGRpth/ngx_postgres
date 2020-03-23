@@ -39,9 +39,9 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_postgres_location_t *location = ngx_pcalloc(cf->pool, sizeof(*location));
     if (!location) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
     location->conf.buffering = NGX_CONF_UNSET;
-//    location->conf.ignore_client_abort = NGX_CONF_UNSET;
     location->conf.buffer_size = NGX_CONF_UNSET_SIZE;
     location->conf.hide_headers = NGX_CONF_UNSET_PTR;
+//    location->conf.ignore_client_abort = NGX_CONF_UNSET;
     location->conf.intercept_errors = NGX_CONF_UNSET;
     location->conf.limit_rate = NGX_CONF_UNSET_SIZE;
     location->conf.local = NGX_CONF_UNSET_PTR;
