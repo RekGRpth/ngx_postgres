@@ -58,6 +58,8 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_conf_merge_value(conf->conf.buffering, prev->conf.buffering, 1);
 //    ngx_conf_merge_value(conf->conf.ignore_client_abort, prev->conf.ignore_client_abort, 0);
     ngx_conf_merge_value(conf->conf.request_buffering, prev->conf.request_buffering, 1);
+    ngx_conf_merge_bitmask_value(conf->conf.next_upstream, prev->conf.next_upstream, NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_ERROR|NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    if (conf->conf.next_upstream & NGX_HTTP_UPSTREAM_FT_OFF) conf->conf.next_upstream = NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_OFF;
     return NGX_CONF_OK;
 }
 
