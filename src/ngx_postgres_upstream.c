@@ -407,12 +407,12 @@ typedef struct {
 } ngx_postgres_param_t;
 
 
-ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *us) {
+ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *usc) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = ngx_pcalloc(r->pool, sizeof(*pd));
     if (!pd) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     ngx_postgres_common_t *pdc = &pd->common;
-    pdc->server = ngx_http_conf_upstream_srv_conf(us, ngx_postgres_module);
+    pdc->server = ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module);
     pd->request = r;
     ngx_http_upstream_t *u = r->upstream;
     u->peer.data = pd;
