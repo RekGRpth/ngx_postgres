@@ -71,6 +71,8 @@ typedef struct {
     struct {
         ngx_queue_t queue;
     } peer;
+    ngx_postgres_peer_t *backs;
+    ngx_postgres_peer_t *peers;
 } ngx_postgres_server_t;
 
 typedef struct {
