@@ -47,6 +47,12 @@ static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
 }
 
 
+static ngx_int_t ngx_postgres_process_header(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    return NGX_OK;
+}
+
+
 static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
@@ -60,9 +66,15 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
     }
+    r->upstream->process_header = ngx_postgres_process_header;
+    r->state = 0;
     return NGX_OK;
 }
 
+
+static void ngx_postgres_abort_request(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+}
 
 
 static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
@@ -88,7 +100,10 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     u->conf = &location->conf;
     u->create_request = ngx_postgres_create_request;
     u->reinit_request = ngx_postgres_reinit_request;
+    u->process_header = ngx_postgres_process_header;
+    u->abort_request = ngx_postgres_abort_request;
     u->finalize_request = ngx_postgres_finalize_request;
+    r->state = 0;
     r->main->count++;
     ngx_http_upstream_init(r);
     return NGX_DONE;
