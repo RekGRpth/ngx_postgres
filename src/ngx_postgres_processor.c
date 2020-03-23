@@ -114,7 +114,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
                 if (!(pd->query.stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
                 u_char *last = ngx_snprintf(pd->query.stmtName.data, 31, "ngx_%ul", (unsigned long)(pd->query.hash = ngx_hash_key(sql.data, sql.len)));
                 *last = '\0';
-                pd->query.stmtName.len = 31;
+                pd->query.stmtName.len = last - pd->query.stmtName.data;
             }
         }
         pdc->state = prepare ? state_db_prepare : state_db_query;
