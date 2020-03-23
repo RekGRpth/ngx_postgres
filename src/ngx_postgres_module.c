@@ -38,6 +38,11 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
 static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_postgres_location_t *location = ngx_pcalloc(cf->pool, sizeof(*location));
     if (!location) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NULL; }
+    location->conf.buffering = NGX_CONF_UNSET;
+//    location->conf.ignore_client_abort = NGX_CONF_UNSET;
+    location->conf.next_upstream_timeout = NGX_CONF_UNSET_MSEC;
+    location->conf.next_upstream_tries = NGX_CONF_UNSET_UINT;
+    location->conf.request_buffering = NGX_CONF_UNSET;
     return location;
 }
 
@@ -48,6 +53,11 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     if (!conf->complex.value.data) conf->complex = prev->complex;
     if (!conf->queries.elts) conf->queries = prev->queries;
     if (!conf->conf.upstream) conf->conf = prev->conf;
+    ngx_conf_merge_msec_value(conf->conf.next_upstream_timeout, prev->conf.next_upstream_timeout, 0);
+    ngx_conf_merge_uint_value(conf->conf.next_upstream_tries, prev->conf.next_upstream_tries, 0);
+    ngx_conf_merge_value(conf->conf.buffering, prev->conf.buffering, 1);
+//    ngx_conf_merge_value(conf->conf.ignore_client_abort, prev->conf.ignore_client_abort, 0);
+    ngx_conf_merge_value(conf->conf.request_buffering, prev->conf.request_buffering, 1);
     return NGX_CONF_OK;
 }
 
