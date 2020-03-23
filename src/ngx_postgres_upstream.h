@@ -24,22 +24,12 @@ typedef struct {
     ngx_msec_t timeout;
 } ngx_postgres_connect_t;
 
-typedef struct ngx_postgres_peer_s ngx_postgres_peer_t;
-struct ngx_postgres_peer_s {
-    ngx_addr_t addr;
-    ngx_int_t current_weight;
-    ngx_int_t effective_weight;
+typedef struct {
+    ngx_http_upstream_rr_peer_t rr; // !!! always first !!!
     ngx_postgres_connect_t connect;
-    ngx_postgres_peer_t *next;
     ngx_queue_t queue;
-    ngx_str_t host;
-    ngx_uint_t down;
-    ngx_uint_t max_conns;
-    ngx_uint_t max_fails;
-    ngx_uint_t weight;
-    time_t fail_timeout;
     u_char *value;
-};
+} ngx_postgres_peer_t;
 
 typedef struct ngx_postgres_peers_s ngx_postgres_peers_t;
 struct ngx_postgres_peers_s {
