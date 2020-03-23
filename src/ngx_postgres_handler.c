@@ -104,6 +104,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     u->abort_request = ngx_postgres_abort_request;
     u->finalize_request = ngx_postgres_finalize_request;
     r->state = 0;
+    u->buffering = location->conf.buffering;
     r->main->count++;
     ngx_http_upstream_init(r);
     return NGX_DONE;
