@@ -98,12 +98,12 @@ typedef struct {
     struct {
         ngx_event_t timeout;
         ngx_str_t sql;
+        ngx_str_t stmtName;
         ngx_uint_t hash;
         ngx_uint_t index;
         ngx_uint_t nParams;
         Oid *paramTypes;
         u_char **paramValues;
-        u_char *stmtName;
     } query;
     ngx_array_t variables;
     ngx_http_request_t *request;
