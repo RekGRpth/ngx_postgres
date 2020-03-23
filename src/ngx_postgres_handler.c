@@ -41,7 +41,6 @@ static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
         u->resolved->host = host;
         u->resolved->no_port = 1;
     }
-    ngx_str_set(&u->schema, "postgres://");
     u->request_sent = 1;
     return NGX_OK;
 }
@@ -96,6 +95,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     if (rc != NGX_OK) return rc;
     if (ngx_http_upstream_create(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_upstream_create != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
+    ngx_str_set(&u->schema, "postgres://");
     u->output.tag = (ngx_buf_tag_t)&ngx_postgres_module;
     u->conf = &location->conf;
     u->create_request = ngx_postgres_create_request;
