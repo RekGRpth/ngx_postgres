@@ -146,12 +146,13 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_queue_init(&server->peer);
     ngx_uint_t npeer = 0;
     ngx_postgres_upstream_t *elts = upstream_srv_conf->servers->elts;
-    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) npeer += elts[i].u.naddrs;
+    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) if (!elts[i].u.backup) npeer += elts[i].u.naddrs;
     ngx_postgres_peer_t *peer = ngx_pcalloc(cf->pool, sizeof(*peer) * npeer);
     if (!peer) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0, n = 0; i < upstream_srv_conf->servers->nelts; i++) {
         if (elts[i].u.backup) continue;
         for (ngx_uint_t j = 0; j < elts[i].u.naddrs; j++, n++) {
+            if (n > 0) peer[n - 1].next = &peer[n];
             ngx_queue_insert_tail(&server->peer, &peer[n].queue);
             peer[n].addr = elts[i].u.addrs[j];
             peer[n].connect = elts[i].connect;
