@@ -137,20 +137,32 @@ typedef struct {
 } ngx_postgres_upstream_t;
 
 
-static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *upstream_srv_conf) {
-    upstream_srv_conf->peer.init = ngx_postgres_peer_init;
-    ngx_postgres_server_t *server = ngx_http_conf_upstream_srv_conf(upstream_srv_conf, ngx_postgres_module);
-    if (!upstream_srv_conf->servers || !upstream_srv_conf->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &upstream_srv_conf->host, upstream_srv_conf->file_name, upstream_srv_conf->line); return NGX_ERROR; }
+static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us) {
+    if (!us->servers || !us->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &us->host, us->file_name, us->line); return NGX_ERROR; }
+    us->peer.init = ngx_postgres_peer_init;
+    ngx_postgres_server_t *server = ngx_http_conf_upstream_srv_conf(us, ngx_postgres_module);
     ngx_conf_init_msec_value(server->ps.timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(server->ps.requests, 1000);
     ngx_queue_init(&server->peer.queue);
-    ngx_postgres_upstream_t *elts = upstream_srv_conf->servers->elts;
-    ngx_uint_t npeer = 0;
-    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) if (!elts[i].u.backup) npeer += elts[i].u.naddrs;
-    ngx_postgres_peer_t *peer = server->peers = ngx_pcalloc(cf->pool, sizeof(*peer) * npeer);
-    if (!peer) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+    ngx_postgres_peers_t *peers = &server->peers;
+    ngx_postgres_peers_t *backs = &server->backs;
+    ngx_postgres_upstream_t *elts = us->servers->elts;
     ngx_uint_t n = 0;
-    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) {
+    ngx_uint_t  w = 0;
+    for (ngx_uint_t i = 0; i < us->servers->nelts; i++) if (!elts[i].u.backup) {
+        n += elts[i].u.naddrs;
+        w += elts[i].u.naddrs * elts[i].u.weight;
+    }
+    if (!n) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "no \"postgres_server\" found in upstream \"%V\" in %s:%ui", &us->host, us->file_name, us->line); return NGX_ERROR; }
+    peers->single = n == 1;
+    peers->number = n;
+    peers->weighted = w != n;
+    peers->total_weight = w;
+    peers->name = us->host;
+    ngx_postgres_peer_t *peer = peers->peer = ngx_pcalloc(cf->pool, sizeof(*peer) * n);
+    if (!peer) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+    n = 0;
+    for (ngx_uint_t i = 0; i < us->servers->nelts; i++) {
         if (elts[i].u.backup) continue;
         for (ngx_uint_t j = 0; j < elts[i].u.naddrs; j++, n++) {
             if (n > 0) peer[n - 1].next = &peer[n];
@@ -169,32 +181,43 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
             (void)ngx_cpystrn(peer[n].value, peer[n].host.data + (elts[i].family == AF_UNIX ? 5 : 0), peer[n].host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0));
         }
     }
-//    peer[n - 1].next = &peer[0];
-    npeer = 0;
-    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) if (elts[i].u.backup) npeer += elts[i].u.naddrs;
-    peer = server->backs = ngx_pcalloc(cf->pool, sizeof(*peer) * npeer);
-    if (!peer) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     n = 0;
-    for (ngx_uint_t i = 0; i < upstream_srv_conf->servers->nelts; i++) {
-        if (!elts[i].u.backup) continue;
-        for (ngx_uint_t j = 0; j < elts[i].u.naddrs; j++, n++) {
-            if (n > 0) peer[n - 1].next = &peer[n];
-//            ngx_queue_insert_tail(&server->peer.queue, &peer[n].queue);
-            peer[n].addr = elts[i].u.addrs[j];
-            peer[n].connect = elts[i].connect;
-            peer[n].down = elts[i].u.down;
-            peer[n].effective_weight = elts[i].u.weight;
-            peer[n].fail_timeout = elts[i].u.fail_timeout;
-            peer[n].max_conns = elts[i].u.max_conns;
-            peer[n].max_fails = elts[i].u.max_fails;
-            peer[n].weight = elts[i].u.weight;
-            if (!(peer[n].host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-            if (!(peer[n].host.len = ngx_sock_ntop(peer[n].addr.sockaddr, peer[n].addr.socklen, peer[n].host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_sock_ntop"); return NGX_ERROR; }
-            if (!(peer[n].value = ngx_pnalloc(cf->pool, peer[n].host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-            (void)ngx_cpystrn(peer[n].value, peer[n].host.data + (elts[i].family == AF_UNIX ? 5 : 0), peer[n].host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0));
+    w = 0;
+    for (ngx_uint_t i = 0; i < us->servers->nelts; i++) if (elts[i].u.backup) {
+        n += elts[i].u.naddrs;
+        w += elts[i].u.naddrs * elts[i].u.weight;
+    }
+    if (n) {
+        peers->single = 0;
+        backs->single = 0;
+        backs->number = n;
+        backs->weighted = w != n;
+        backs->total_weight = w;
+        backs->name = us->host;
+        peers->next = backs;
+        peer = backs->peer = ngx_pcalloc(cf->pool, sizeof(*peer) * n);
+        if (!peer) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+        n = 0;
+        for (ngx_uint_t i = 0; i < us->servers->nelts; i++) {
+            if (!elts[i].u.backup) continue;
+            for (ngx_uint_t j = 0; j < elts[i].u.naddrs; j++, n++) {
+                if (n > 0) peer[n - 1].next = &peer[n];
+    //            ngx_queue_insert_tail(&server->peer.queue, &peer[n].queue);
+                peer[n].addr = elts[i].u.addrs[j];
+                peer[n].connect = elts[i].connect;
+                peer[n].down = elts[i].u.down;
+                peer[n].effective_weight = elts[i].u.weight;
+                peer[n].fail_timeout = elts[i].u.fail_timeout;
+                peer[n].max_conns = elts[i].u.max_conns;
+                peer[n].max_fails = elts[i].u.max_fails;
+                peer[n].weight = elts[i].u.weight;
+                if (!(peer[n].host.data = ngx_pnalloc(cf->pool, NGX_SOCKADDR_STRLEN))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                if (!(peer[n].host.len = ngx_sock_ntop(peer[n].addr.sockaddr, peer[n].addr.socklen, peer[n].host.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_sock_ntop"); return NGX_ERROR; }
+                if (!(peer[n].value = ngx_pnalloc(cf->pool, peer[n].host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                (void)ngx_cpystrn(peer[n].value, peer[n].host.data + (elts[i].family == AF_UNIX ? 5 : 0), peer[n].host.len + 1 + (elts[i].family == AF_UNIX ? -5 : 0));
+            }
         }
     }
-//    peer[n - 1].next = &peer[0];
     if (!server->ps.max) return NGX_OK;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }

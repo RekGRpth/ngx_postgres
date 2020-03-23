@@ -41,6 +41,17 @@ struct ngx_postgres_peer_s {
     u_char *value;
 };
 
+typedef struct ngx_postgres_peers_s ngx_postgres_peers_t;
+struct ngx_postgres_peers_s {
+    ngx_postgres_peers_t *next;
+    ngx_postgres_peer_t *peer;
+    ngx_str_t name;
+    ngx_uint_t number;
+    ngx_uint_t total_weight;
+    unsigned single:1;
+    unsigned weighted:1;
+};
+
 typedef struct {
     struct {
         ngx_flag_t reject;
@@ -71,8 +82,8 @@ typedef struct {
     struct {
         ngx_queue_t queue;
     } peer;
-    ngx_postgres_peer_t *backs;
-    ngx_postgres_peer_t *peers;
+    ngx_postgres_peers_t backs;
+    ngx_postgres_peers_t peers;
 } ngx_postgres_server_t;
 
 typedef struct {
