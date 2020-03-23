@@ -117,7 +117,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (location->append) {
         size_t len = options ? ngx_strlen(options) : 0;
         u_char *buf = ngx_pnalloc(r->pool, len + (len ? 1 : 0) + sizeof("-c config.append_type_to_column_name=true") - 1 + 1);
-        if (!buf) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_DECLINED; }
+        if (!buf) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; } // and ngx_http_upstream_finalize_request(r, u, NGX_HTTP_INTERNAL_SERVER_ERROR);
         u_char *p = buf;
         if (options) {
             p = ngx_copy(p, options, len);
