@@ -61,6 +61,9 @@ typedef struct {
     struct {
         ngx_queue_t queue;
     } peer;
+    ngx_array_t *servers;
+    ngx_http_upstream_init_peer_pt original_init_peer;
+    ngx_http_upstream_init_pt original_init_upstream;
     ngx_http_upstream_rr_peers_t *peers;
 } ngx_postgres_server_t;
 

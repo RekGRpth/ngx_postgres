@@ -143,13 +143,17 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_postgres_server_t *server = ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module);
     ngx_conf_init_msec_value(server->ps.timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(server->ps.requests, 1000);
+    ngx_array_t *array = server->servers;
+    if (server->original_init_upstream(cf, usc) != NGX_OK) return NGX_ERROR;
+    server->peers = usc->peer.data;
+    server->original_init_peer = usc->peer.init;
+/*
     usc->peer.init = ngx_postgres_peer_init;
     ngx_queue_init(&server->peer.queue);
     ngx_http_upstream_rr_peers_t *peers = server->peers = ngx_pcalloc(cf->pool, sizeof(*peers));
     if (!peers) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pcalloc"); return NGX_ERROR; }
 //    ngx_postgres_peers_t *backs = &server->backs;
     ngx_http_upstream_server_t *elts = usc->servers->elts;
-    ngx_array_t *array = usc->peer.data;
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "line = %i", usc->line);
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "array = %p", array);
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "nelts = %i", array->nelts);
@@ -236,7 +240,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
                 (void)ngx_cpystrn(peer[n].value, peer[n].rr.host.data + (pus[i].family == AF_UNIX ? 5 : 0), peer[n].rr.host.len + 1 + (pus[i].family == AF_UNIX ? -5 : 0));
             }
         }
-    }
+    }*/
     if (!server->ps.max) return NGX_OK;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
@@ -261,9 +265,9 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_http_upstream_server_t *us = ngx_array_push(usc->servers);
     if (!us) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(us, sizeof(*us));
-    ngx_array_t *array = usc->peer.data;
-    if (!array && !(array = usc->peer.data = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_upstream_server_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_create", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_postgres_upstream_server_t *pus = ngx_array_push(array);
+    ngx_postgres_server_t *server = conf;
+    if (!server->servers && !(server->servers = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_upstream_server_t)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_create", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_postgres_upstream_server_t *pus = ngx_array_push(server->servers);
     if (!pus) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(pus, sizeof(*pus));
     us->fail_timeout = 10;
@@ -419,8 +423,9 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "line = %i", usc->line);
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "array = %p", array);
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "nelts = %i", array->nelts);
+    server->original_init_upstream = usc->peer.init_upstream ? usc->peer.init_upstream : ngx_http_upstream_init_round_robin;
     usc->peer.init_upstream = ngx_postgres_peer_init_upstream;
-    usc->flags = NGX_HTTP_UPSTREAM_CREATE|NGX_HTTP_UPSTREAM_WEIGHT|NGX_HTTP_UPSTREAM_MAX_CONNS|NGX_HTTP_UPSTREAM_MAX_FAILS|NGX_HTTP_UPSTREAM_FAIL_TIMEOUT|NGX_HTTP_UPSTREAM_DOWN|NGX_HTTP_UPSTREAM_BACKUP;
+//    usc->flags = NGX_HTTP_UPSTREAM_CREATE|NGX_HTTP_UPSTREAM_WEIGHT|NGX_HTTP_UPSTREAM_MAX_CONNS|NGX_HTTP_UPSTREAM_MAX_FAILS|NGX_HTTP_UPSTREAM_FAIL_TIMEOUT|NGX_HTTP_UPSTREAM_DOWN|NGX_HTTP_UPSTREAM_BACKUP;
     return NGX_CONF_OK;
 }
 
