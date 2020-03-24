@@ -264,9 +264,9 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     u_char *hostaddr = NULL;
     u_char *host = NULL;
     u_char *port = NULL;
-    int arg = 0; // 0 - hostaddr or host
-    arg++; // 1 - connect_timeout
-    arg++; // 2 - fallback_application_name
+    int arg = 0; // hostaddr or host
+    arg++; // connect_timeout
+    arg++; // fallback_application_name
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
         if (!opt->val) continue;
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"connect_timeout")) { connect_timeout = (u_char *)opt->val; continue; }
@@ -306,13 +306,13 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     arg++;
     if (!(connect->keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
     if (!(connect->values = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
-    arg = 0; // 0 - hostaddr or host
+    arg = 0; // hostaddr or host
     connect->keywords[arg] = url.family == AF_UNIX ? "host" : "hostaddr";
     connect->values[arg] = (const char *)(url.family == AF_UNIX ? host : hostaddr);
-    arg++; // 1 - connect_timeout
+    arg++; // connect_timeout
     connect->keywords[arg] = "connect_timeout";
     connect->values[arg] = (const char *)connect_timeout;
-    arg++; // 2 - fallback_application_name
+    arg++; // fallback_application_name
     connect->keywords[arg] = "fallback_application_name";
     connect->values[arg] = "nginx";
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
