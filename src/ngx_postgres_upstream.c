@@ -373,7 +373,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pdc->state = state_db_connect;
     pc->connection = c;
     if (pc->data != pd) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "data = %p", pc->data);
+//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "data = %p", pc->data);
         pd->data = pc->data;
         pc->data = pd;
     }
@@ -425,7 +425,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     pd->request = r;
     ngx_http_upstream_t *u = pd->upstream = r->upstream;
     if (u->peer.data != pd) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "data = %p", u->peer.data);
+//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "data = %p", u->peer.data);
         pd->data = u->peer.data;
         u->peer.data = pd;
     }
