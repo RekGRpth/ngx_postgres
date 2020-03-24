@@ -79,6 +79,8 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pdc->addr.name = *pc->name;
     pdc->addr.sockaddr = pc->sockaddr;
     pdc->addr.socklen = pc->socklen;
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pc->data = %p", pc->data);
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
     if (server->ps.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) {
@@ -146,6 +148,8 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     } else goto bad_add;
     pdc->state = state_db_connect;
     pc->connection = c;
+    pd->data = pc->data;
+    pc->data = pd;
     server->ps.size++;
     return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
 bad_add:
