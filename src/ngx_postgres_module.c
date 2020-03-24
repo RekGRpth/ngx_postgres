@@ -259,7 +259,6 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     if (!cln) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pool_cleanup_add"); PQconninfoFree(opts); return NGX_CONF_ERROR; }
     cln->handler = ngx_postgres_opts_cleanup;
     cln->data = opts;
-
     u_char *connect_timeout = NULL;
     u_char *hostaddr = NULL;
     u_char *host = NULL;
