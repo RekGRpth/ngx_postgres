@@ -130,24 +130,11 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 }
 
 
-/*typedef struct {
-//    ngx_http_upstream_server_t u; // !!! always first !!!
-    int family;
-    ngx_postgres_connect_t connect;
-} ngx_postgres_upstream_server_t;*/
-
-
 static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *usc) {
-//    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "line = %i", usc->line);
-//    if (!usc->servers || !usc->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "no \"postgres_server\" defined in upstream \"%V\" in %s:%ui", &usc->host, usc->file_name, usc->line); return NGX_ERROR; }
-//    ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "upstream \"%V\" in %s:%ui, servers = %p", &usc->host, usc->file_name, usc->line, usc->servers);
     ngx_postgres_server_t *server = ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module);
     ngx_conf_init_msec_value(server->ps.timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(server->ps.requests, 1000);
-//    ngx_array_t *array = server->servers;
-//    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "line = %i", usc->line);
     if (server->original_init_upstream(cf, usc) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "original_init_upstream != NGX_OK in upstream \"%V\" in %s:%ui", &usc->host, usc->file_name, usc->line); return NGX_ERROR; }
-//    server->peers = usc->peer.data;
     server->original_init_peer = usc->peer.init;
     usc->peer.init = ngx_postgres_peer_init;
 /*
@@ -358,18 +345,19 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     u_char *connect_timeout = NULL;
     u_char *hostaddr = NULL;
     u_char *host = NULL;
-//    u_char *options = NULL;
+    u_char *options = NULL;
     u_char *port = NULL;
-    int arg = 0; // hostaddr or host
-    arg++; // connect_timeout
-    arg++; //fallback_application_name
+    int arg = 0; // 0 - hostaddr or host
+    arg++; // 1 - options
+    arg++; // 2 - connect_timeout
+    arg++; // 3 - fallback_application_name
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
         if (!opt->val) continue;
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"connect_timeout")) { connect_timeout = (u_char *)opt->val; continue; }
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"fallback_application_name")) continue; // !!! discard any fallback_application_name !!!
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"hostaddr")) { hostaddr = (u_char *)opt->val; continue; }
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"host")) { host = (u_char *)opt->val; continue; }
-//        if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"options")) { options = (u_char *)opt->val; continue; }
+        if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"options")) { options = (u_char *)opt->val; continue; }
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"port")) port = (u_char *)opt->val; // !!! not continue !!!
         arg++;
     }
@@ -400,19 +388,19 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     if (host && url.family != AF_UNIX) arg++; // host
     if (!(connect->keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
     if (!(connect->values = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
-    arg = 0; // hostaddr or host
+    arg = 0; // 0 - hostaddr or host
     connect->keywords[arg] = url.family == AF_UNIX ? "host" : "hostaddr";
-    arg++; // connect_timeout
+    arg++; // 1 - options
+    connect->keywords[arg] = "options";
+    connect->values[arg] = (const char *)options;
+    arg++; // 2 - connect_timeout
     connect->keywords[arg] = "connect_timeout";
     connect->values[arg] = connect_timeout ? (const char *)connect_timeout : "60";
-    arg++; // fallback_application_name
+    arg++; // 3 - fallback_application_name
     connect->keywords[arg] = "fallback_application_name";
     connect->values[arg] = "nginx";
-//    arg++; // options
-//    connect->keywords[arg] = "options";
-//    connect->values[arg] = (const char *)options.data;
     if (host && url.family != AF_UNIX) {
-        arg++; // host
+        arg++; // 4 - host
         connect->keywords[arg] = "host";
         if (!(connect->values[arg] = ngx_pnalloc(cf->pool, url.host.len + 1))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
         (void)ngx_cpystrn((u_char *)connect->values[arg], url.host.data, url.host.len + 1);
@@ -423,7 +411,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"fallback_application_name")) continue;
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"hostaddr")) continue;
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"host")) continue;
-//        if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"options")) continue;
+        if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"options")) continue;
         arg++;
         size_t keyword_len = ngx_strlen(opt->keyword);
         if (!(connect->keywords[arg] = ngx_pnalloc(cf->pool, keyword_len + 1))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
