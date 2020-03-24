@@ -390,8 +390,8 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     if (!(us->host.data = ngx_pstrdup(cf->pool, &url.host))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pstrdup", &cmd->name); return NGX_CONF_ERROR; }
     us->host.len = url.host.len;
     if (host && url.family != AF_UNIX) arg++; // host
-    if (!(connect->keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
-    if (!(connect->values = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
+    if (!(connect->keywords = ngx_pcalloc(cf->pool, arg * sizeof(const char *)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
+    if (!(connect->values = ngx_pcalloc(cf->pool, arg * sizeof(const char *)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
     arg = 0; // 0 - hostaddr or host
     connect->keywords[arg] = url.family == AF_UNIX ? "host" : "hostaddr";
     connect->values[arg] = (const char *)(url.family == AF_UNIX ? host : hostaddr);
@@ -439,7 +439,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     connect->values[arg] = NULL;
     if (usc->host.len == sizeof("atol2_ngx") - 1 && !ngx_strncasecmp(usc->host.data, (u_char *)"atol2_ngx", sizeof("atol2_ngx") - 1)) {
         int arg = 0;
-        for (const char **keywords = connect->keywords, **values = connect->values; *keywords; keywords++, values++, arg++) {
+        for (const char **keywords = connect->keywords, **values = connect->values; keywords && *keywords; keywords++, values++, arg++) {
 //            ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "%i: %s = %s in upstream \"%V\" in %s:%ui", arg, *keywords, *values ? *values : "(null)", &usc->host, usc->file_name, usc->line);
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "%i: %s = %s", arg, *keywords, *values ? *values : "(null)");
         }
