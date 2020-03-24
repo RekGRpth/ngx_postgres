@@ -372,18 +372,18 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     } else goto bad_add;
     pdc->state = state_db_connect;
     pc->connection = c;
-    if (pc->data != pd) {
+/*//    if (pc->data != pd) {
         pd->data = pc->data;
         pc->data = pd;
-    }
-    if (pc->get != ngx_postgres_peer_get) {
+//    }
+//    if (pc->get != ngx_postgres_peer_get) {
         pd->original_get_peer = pc->get;
         pc->get = ngx_postgres_peer_get;
-    }
-    if (pc->free != ngx_postgres_peer_free) {
+//    }
+//    if (pc->free != ngx_postgres_peer_free) {
         pd->original_free_peer = pc->free;
         pc->free = ngx_postgres_peer_free;
-    }
+//    }*/
     server->ps.size++;
     return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
 bad_add:
@@ -423,18 +423,18 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     if (server->original_init_peer(r, usc) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "original_init_peer != NGX_OK"); return NGX_ERROR; }
     pd->request = r;
     ngx_http_upstream_t *u = pd->upstream = r->upstream;
-    if (u->peer.data != pd) {
+//    if (u->peer.data != pd) {
         pd->data = u->peer.data;
         u->peer.data = pd;
-    }
-    if (u->peer.get != ngx_postgres_peer_get) {
+//    }
+//    if (u->peer.get != ngx_postgres_peer_get) {
         pd->original_get_peer = u->peer.get;
         u->peer.get = ngx_postgres_peer_get;
-    }
-    if (u->peer.free != ngx_postgres_peer_free) {
+//    }
+//    if (u->peer.free != ngx_postgres_peer_free) {
         pd->original_free_peer = u->peer.free;
         u->peer.free = ngx_postgres_peer_free;
-    }
+//    }
 #if (NGX_HTTP_SSL)
     pd->original_set_session = u->peer.set_session;
     pd->original_save_session = u->peer.save_session;
