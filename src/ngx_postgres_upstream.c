@@ -265,7 +265,6 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
         ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
         ngx_http_request_t *r = pd->request;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
-//        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "pd = %p", pd);
         ngx_queue_remove(&pd->queue);
         server->pd.size--;
         if (pd->query.timeout.timer_set) ngx_del_timer(&pd->query.timeout);
@@ -303,8 +302,6 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pdc->addr.name = *pc->name;
     pdc->addr.sockaddr = pc->sockaddr;
     pdc->addr.socklen = pc->socklen;
-//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pc->data = %p", pc->data);
-//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
     if (server->ps.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) {
@@ -372,18 +369,6 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     } else goto bad_add;
     pdc->state = state_db_connect;
     pc->connection = c;
-/*//    if (pc->data != pd) {
-        pd->data = pc->data;
-        pc->data = pd;
-//    }
-//    if (pc->get != ngx_postgres_peer_get) {
-        pd->original_get_peer = pc->get;
-        pc->get = ngx_postgres_peer_get;
-//    }
-//    if (pc->free != ngx_postgres_peer_free) {
-        pd->original_free_peer = pc->free;
-        pc->free = ngx_postgres_peer_free;
-//    }*/
     server->ps.size++;
     return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
 bad_add:
@@ -454,17 +439,14 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
                 }
             }
         }
-//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", i);
         ngx_array_t *variables = &query->variables;
         nelts += variables->nelts;
-//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", variables->nelts);
     }
     if (nelts) {
         if (ngx_array_init(&pd->variables, r->pool, pd->variables.nelts, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
         ngx_memzero(&pd->variables.elts, pd->variables.nelts * pd->variables.size);
         pd->variables.nelts = nelts;
     }
-//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", pd->variables.nelts);
     return NGX_OK;
 }
 
@@ -524,8 +506,6 @@ static ngx_flag_t is_variable_character(u_char p) {
 
 
 #define IDOID 9999
-
-
 
 
 static ngx_uint_t type2oid(ngx_str_t *type) {
