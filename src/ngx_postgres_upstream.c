@@ -128,7 +128,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 //    if (!(value = ngx_pnalloc(r->pool, addr.len + 1 + (pc->sockaddr->sa_family == AF_UNIX ? -5 : 0)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
 //    (void)ngx_cpystrn(value, addr.data + (pc->sockaddr->sa_family == AF_UNIX ? 5 : 0), addr.len + 1 + (pc->sockaddr->sa_family == AF_UNIX ? -5 : 0));
     const char *host = connect->values[0];
-    connect->values[0] = (const char *)addr.data;
+    connect->values[0] = (const char *)addr.data + (pc->sockaddr->sa_family == AF_UNIX ? 5 : 0);
     const char *options = connect->values[1];
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location->append) {
@@ -143,6 +143,9 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         p = ngx_copy(p, "-c config.append_type_to_column_name=true", sizeof("-c config.append_type_to_column_name=true") - 1);
         *p = '\0';
         connect->values[1] = (const char *)buf;
+    }
+    for (const char **keywords = connect->keywords, **values = connect->values; keywords && values; keywords++, values++) {
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s = %s", *keywords, *values);
     }
     pdc->conn = PQconnectStartParams(connect->keywords, connect->values, 0);
     connect->values[0] = host;
