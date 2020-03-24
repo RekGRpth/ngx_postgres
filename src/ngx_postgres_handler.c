@@ -5,6 +5,36 @@
 #include "ngx_postgres_upstream.h"
 
 
+static void ngx_postgres_read_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_postgres_data_t *pd = u->peer.data;
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_connection_t *c = pdc->connection;
+    if (pdc->state != state_db_connect) {
+        if (c->read->timedout) return ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT);
+    } else {
+        if (c->read->timedout) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    }
+    if (ngx_http_upstream_test_connect(c) != NGX_OK) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+    ngx_postgres_process_events(r);
+}
+
+
+static void ngx_postgres_write_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_postgres_data_t *pd = u->peer.data;
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_connection_t *c = pdc->connection;
+    if (pdc->state != state_db_connect) {
+        if (c->write->timedout) return ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT);
+    } else {
+        if (c->write->timedout) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    }
+    if (ngx_http_upstream_test_connect(c) != NGX_OK) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+    ngx_postgres_process_events(r);
+}
+
+
 static void ngx_postgres_event_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
     ngx_connection_t *c = ev->data;
@@ -127,5 +157,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     u->input_filter_ctx = r;
     if (!location->upstream.request_buffering && location->upstream.pass_request_body && !r->headers_in.chunked) r->request_body_no_buffering = 1;
     if ((rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init)) >= NGX_HTTP_SPECIAL_RESPONSE) return rc;
+    u->read_event_handler = ngx_postgres_read_event_handler;
+    u->write_event_handler = ngx_postgres_write_event_handler;
     return NGX_DONE;
 }
