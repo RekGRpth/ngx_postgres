@@ -164,8 +164,10 @@ static void ngx_postgres_opts_cleanup(void *data) {
 static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
     ngx_http_upstream_srv_conf_t *usc = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
     ngx_postgres_server_t *server = conf;
-    server->original_init_upstream = usc->peer.init_upstream ? usc->peer.init_upstream : ngx_http_upstream_init_round_robin;
-    usc->peer.init_upstream = ngx_postgres_peer_init_upstream;
+    if (usc->peer.init_upstream != ngx_postgres_peer_init_upstream) {
+        server->original_init_upstream = usc->peer.init_upstream ? usc->peer.init_upstream : ngx_http_upstream_init_round_robin;
+        usc->peer.init_upstream = ngx_postgres_peer_init_upstream;
+    }
     if (!usc->servers && !(usc->servers = ngx_array_create(cf->pool, 1, sizeof(ngx_http_upstream_server_t)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_create", &cmd->name); return NGX_CONF_ERROR; }
     ngx_http_upstream_server_t *us = ngx_array_push(usc->servers);
     if (!us) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
