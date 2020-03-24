@@ -452,18 +452,17 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     ngx_http_core_loc_conf_t *core = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     core->handler = ngx_postgres_handler;
     if (core->name.data[core->name.len - 1] == '/') core->auto_redirect = 1;
-    if (ngx_http_script_variables_count(&elts[1])) { /* complex value */
+    if (ngx_http_script_variables_count(&elts[1])) {
         ngx_http_compile_complex_value_t ccv = {cf, &elts[1], &location->complex, 0, 0, 0};
         if (ngx_http_compile_complex_value(&ccv) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_http_compile_complex_value != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
-    } else { /* simple value */
-        ngx_url_t url;
-        ngx_memzero(&url, sizeof(url));
-        url.url = elts[1];
-        url.no_resolve = 1;
-        if (!(location->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_upstream_add", &cmd->name); return NGX_CONF_ERROR; }
-        return NGX_CONF_OK;
     }
+    ngx_url_t url;
+    ngx_memzero(&url, sizeof(url));
+    url.url = elts[1];
+    url.no_resolve = 1;
+    if (!(location->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_upstream_add", &cmd->name); return NGX_CONF_ERROR; }
+    return NGX_CONF_OK;
 }
 
 
