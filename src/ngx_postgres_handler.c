@@ -82,6 +82,20 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
 }
 
 
+static ngx_int_t ngx_postgres_input_filter_init(void *data) {
+    ngx_http_request_t *r = data;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    return NGX_OK;
+}
+
+
+static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes) {
+    ngx_http_request_t *r = data;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "bytes = %i", bytes);
+    return NGX_OK;
+}
+
+
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "subrequest_in_memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; } // TODO: add support for subrequest in memory by emitting output into u->buffer instead
@@ -108,6 +122,9 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     if (!(u->pipe = ngx_pcalloc(r->pool, sizeof(ngx_event_pipe_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     u->pipe->input_filter = ngx_event_pipe_copy_input_filter;
     u->pipe->input_ctx = r;
+    u->input_filter_init = ngx_postgres_input_filter_init;
+    u->input_filter = ngx_postgres_input_filter;
+    u->input_filter_ctx = r;
     if (!location->upstream.request_buffering && location->upstream.pass_request_body && !r->headers_in.chunked) r->request_body_no_buffering = 1;
     if ((rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init)) >= NGX_HTTP_SPECIAL_RESPONSE) return rc;
     return NGX_DONE;
