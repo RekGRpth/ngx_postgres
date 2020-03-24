@@ -129,7 +129,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 //    (void)ngx_cpystrn(value, addr.data + (pc->sockaddr->sa_family == AF_UNIX ? 5 : 0), addr.len + 1 + (pc->sockaddr->sa_family == AF_UNIX ? -5 : 0));
     const char *host = connect->values[0];
     connect->values[0] = (const char *)addr.data + (pc->sockaddr->sa_family == AF_UNIX ? 5 : 0);
-    const char *options = connect->values[1];
+/*    const char *options = connect->values[1];
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location->append) {
         size_t len = options ? ngx_strlen(options) : 0;
@@ -143,14 +143,14 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         p = ngx_copy(p, "-c config.append_type_to_column_name=true", sizeof("-c config.append_type_to_column_name=true") - 1);
         *p = '\0';
         connect->values[1] = (const char *)buf;
-    }
+    }*/
     int arg = 0;
     for (const char **keywords = connect->keywords, **values = connect->values; *keywords; keywords++, values++, arg++) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%i: %s = %s", arg, *keywords, *values ? *values : "(null)");
     }
     pdc->conn = PQconnectStartParams(connect->keywords, connect->values, 0);
     connect->values[0] = host;
-    connect->values[1] = options;
+//    connect->values[1] = options;
     if (PQstatus(pdc->conn) == CONNECTION_BAD || PQsetnonblocking(pdc->conn, 1) == -1) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(pdc->conn), pc->host);
         PQfinish(pdc->conn);
