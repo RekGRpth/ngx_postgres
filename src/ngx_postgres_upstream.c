@@ -148,8 +148,10 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     } else goto bad_add;
     pdc->state = state_db_connect;
     pc->connection = c;
-    pd->data = pc->data;
-    pc->data = pd;
+    if (pc->data != pd) {
+        pd->data = pc->data;
+        pc->data = pd;
+    }
     server->ps.size++;
     return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
 bad_add:
