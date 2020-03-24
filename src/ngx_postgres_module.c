@@ -406,10 +406,13 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     connect->values[arg] = "nginx";
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
         if (!opt->val) continue;
+        if (usc->host.len == sizeof("atol2_ngx") - 1 && !ngx_strncasecmp(usc->host.data, (u_char *)"atol2_ngx", sizeof("atol2_ngx") - 1)) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "%s = %s", opt->keyword, opt->val);
+        }
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"connect_timeout")) continue;
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"fallback_application_name")) continue;
         if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"hostaddr")) continue;
-        if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"host")) continue;
+        if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"host") && url.family == AF_UNIX) continue;
 //        if (!ngx_strcasecmp((u_char *)opt->keyword, (u_char *)"options")) continue;
         arg++;
         size_t keyword_len = ngx_strlen(opt->keyword);
@@ -419,7 +422,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         if (!(connect->values[arg] = ngx_pnalloc(cf->pool, val_len + 1))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
         (void)ngx_cpystrn((u_char *)connect->values[arg], (u_char *)opt->val, val_len + 1);
     }
-    if (host && url.family != AF_UNIX) {
+/*    if (host && url.family != AF_UNIX) {
         arg++; // 4 - host
         connect->keywords[arg] = "host";
         if (!(connect->values[arg] = ngx_pnalloc(cf->pool, url.host.len + 1))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
@@ -427,12 +430,10 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
 //        if (usc->host.len == sizeof("atol2_ngx") - 1 && !ngx_strncasecmp(usc->host.data, (u_char *)"atol2_ngx", sizeof("atol2_ngx") - 1)) {
 //            ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "%i: %s = %s", arg, connect->keywords[arg], connect->values[arg] ? connect->values[arg] : "(null)");
 //        }
-    }
+    }*/
     arg++; // last
     connect->keywords[arg] = NULL;
     connect->values[arg] = NULL;
-//    PQconninfoFree(opts);
-//    ngx_pfree(cf->pool, conninfo.data);
     if (usc->host.len == sizeof("atol2_ngx") - 1 && !ngx_strncasecmp(usc->host.data, (u_char *)"atol2_ngx", sizeof("atol2_ngx") - 1)) {
         int arg = 0;
         for (const char **keywords = connect->keywords, **values = connect->values; *keywords; keywords++, values++, arg++) {
@@ -442,6 +443,8 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     }
 //    usc->flags = NGX_HTTP_UPSTREAM_CREATE|NGX_HTTP_UPSTREAM_WEIGHT|NGX_HTTP_UPSTREAM_MAX_CONNS|NGX_HTTP_UPSTREAM_MAX_FAILS|NGX_HTTP_UPSTREAM_FAIL_TIMEOUT|NGX_HTTP_UPSTREAM_DOWN|NGX_HTTP_UPSTREAM_BACKUP;
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "line = %i", usc->line);
+    PQconninfoFree(opts);
+    ngx_pfree(cf->pool, conninfo.data);
     return NGX_CONF_OK;
 }
 
