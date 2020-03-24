@@ -135,8 +135,10 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_conf_init_msec_value(server->ps.timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(server->ps.requests, 1000);
     if (server->original_init_upstream(cf, usc) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "original_init_upstream != NGX_OK in upstream \"%V\" in %s:%ui", &usc->host, usc->file_name, usc->line); return NGX_ERROR; }
-    server->original_init_peer = usc->peer.init;
-    usc->peer.init = ngx_postgres_peer_init;
+    if (usc->peer.init != ngx_postgres_peer_init) {
+        server->original_init_peer = usc->peer.init;
+        usc->peer.init = ngx_postgres_peer_init;
+    }
     if (!server->ps.max) return NGX_OK;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
