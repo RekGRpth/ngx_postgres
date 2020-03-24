@@ -24,13 +24,6 @@ typedef struct {
     ngx_msec_t timeout;
 } ngx_postgres_connect_t;
 
-/*typedef struct {
-    ngx_http_upstream_rr_peer_t rr; // !!! always first !!!
-    ngx_postgres_connect_t connect;
-    ngx_queue_t queue;
-    u_char *value;
-} ngx_postgres_peer_t;*/
-
 typedef struct {
     struct {
         ngx_flag_t reject;
@@ -58,13 +51,8 @@ typedef struct {
     struct {
         ngx_log_t *log;
     } trace;
-/*    struct {
-        ngx_queue_t queue;
-    } peer;*/
-//    ngx_array_t *servers;
     ngx_http_upstream_init_peer_pt original_init_peer;
     ngx_http_upstream_init_pt original_init_upstream;
-//    ngx_http_upstream_rr_peers_t *peers;
 } ngx_postgres_server_t;
 
 typedef struct {
