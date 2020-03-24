@@ -362,7 +362,10 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         arg++;
     }
     arg++; // last
-    if (!connect_timeout) connect->timeout = 60000; else {
+    if (!connect_timeout) {
+        connect->timeout = 60000;
+        connect_timeout = (u_char *)"60";
+    } else {
         ngx_int_t n = ngx_parse_time(&(ngx_str_t){ngx_strlen(connect_timeout), connect_timeout}, 0);
         if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_parse_time == NGX_ERROR", &cmd->name); return NGX_CONF_ERROR; }
         connect->timeout = (ngx_msec_t)n;
@@ -396,7 +399,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     connect->values[arg] = (const char *)options;
     arg++; // 2 - connect_timeout
     connect->keywords[arg] = "connect_timeout";
-    connect->values[arg] = connect_timeout ? (const char *)connect_timeout : "60";
+    connect->values[arg] = (const char *)connect_timeout;
     arg++; // 3 - fallback_application_name
     connect->keywords[arg] = "fallback_application_name";
     connect->values[arg] = "nginx";
