@@ -428,10 +428,13 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     connect->keywords[arg] = NULL;
     connect->values[arg] = NULL;
     PQconninfoFree(opts);
-    ngx_pfree(cf->pool, conninfo.data);
-    arg = 0;
-    for (const char **keywords = connect->keywords, **values = connect->values; *keywords; keywords++, values++, arg++) {
-        ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "%i: %s = %s in upstream \"%V\" in %s:%ui", arg, *keywords, *values ? *values : "(null)", &usc->host, usc->file_name, usc->line);
+//    ngx_pfree(cf->pool, conninfo.data);
+    if (usc->host.len == sizeof("atol2_ngx") - 1 && !ngx_strncasecmp(usc->host.data, (u_char *)"atol2_ngx", sizeof("atol2_ngx") - 1)) {
+        int arg = 0;
+        for (const char **keywords = connect->keywords, **values = connect->values; *keywords; keywords++, values++, arg++) {
+//            ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "%i: %s = %s in upstream \"%V\" in %s:%ui", arg, *keywords, *values ? *values : "(null)", &usc->host, usc->file_name, usc->line);
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "%i: %s = %s", arg, *keywords, *values ? *values : "(null)");
+        }
     }
 //    usc->flags = NGX_HTTP_UPSTREAM_CREATE|NGX_HTTP_UPSTREAM_WEIGHT|NGX_HTTP_UPSTREAM_MAX_CONNS|NGX_HTTP_UPSTREAM_MAX_FAILS|NGX_HTTP_UPSTREAM_FAIL_TIMEOUT|NGX_HTTP_UPSTREAM_DOWN|NGX_HTTP_UPSTREAM_BACKUP;
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "line = %i", usc->line);
