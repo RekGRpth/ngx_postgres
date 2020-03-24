@@ -394,6 +394,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     if (!(connect->values = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
     arg = 0; // 0 - hostaddr or host
     connect->keywords[arg] = url.family == AF_UNIX ? "host" : "hostaddr";
+    connect->values[arg] = (const char *)(url.family == AF_UNIX ? host : hostaddr);
 //    arg++; // 1 - options
 //    connect->keywords[arg] = "options";
 //    connect->values[arg] = (const char *)options;
