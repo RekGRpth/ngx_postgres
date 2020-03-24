@@ -248,6 +248,12 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
 }
 
 
+static void ngx_postgres_opts_cleanup(void *data) {
+    PQconninfoOption *opts = data;
+    PQconninfoFree(opts);
+}
+
+
 static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
     ngx_http_upstream_srv_conf_t *usc = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
     ngx_postgres_server_t *server = conf;
@@ -342,6 +348,11 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !PQconninfoParse", &cmd->name);
         return NGX_CONF_ERROR;
     }
+    ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (!cln) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "!ngx_pool_cleanup_add"); PQconninfoFree(opts); return NGX_CONF_ERROR; }
+    cln->handler = ngx_postgres_opts_cleanup;
+    cln->data = opts;
+
     u_char *connect_timeout = NULL;
     u_char *hostaddr = NULL;
     u_char *host = NULL;
@@ -447,7 +458,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     }
 //    usc->flags = NGX_HTTP_UPSTREAM_CREATE|NGX_HTTP_UPSTREAM_WEIGHT|NGX_HTTP_UPSTREAM_MAX_CONNS|NGX_HTTP_UPSTREAM_MAX_FAILS|NGX_HTTP_UPSTREAM_FAIL_TIMEOUT|NGX_HTTP_UPSTREAM_DOWN|NGX_HTTP_UPSTREAM_BACKUP;
 //    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "line = %i", usc->line);
-    PQconninfoFree(opts);
+//    PQconninfoFree(opts);
     ngx_pfree(cf->pool, conninfo.data);
     return NGX_CONF_OK;
 }
