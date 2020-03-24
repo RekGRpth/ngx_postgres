@@ -45,7 +45,7 @@ static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
         u->resolved->host = host;
         u->resolved->no_port = 1;
     }
-//    u->request_sent = 1;
+    u->request_sent = 1;
     return NGX_OK;
 }
 
@@ -130,7 +130,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     u->input_filter_ctx = r;
     if (!location->upstream.request_buffering && location->upstream.pass_request_body && !r->headers_in.chunked) r->request_body_no_buffering = 1;
     if ((rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init)) >= NGX_HTTP_SPECIAL_RESPONSE) return rc;
-    u->read_event_handler = ngx_postgres_read_event_handler;
-    u->write_event_handler = ngx_postgres_write_event_handler;
+//    u->read_event_handler = ngx_postgres_read_event_handler;
+//    u->write_event_handler = ngx_postgres_write_event_handler;
     return NGX_DONE;
 }
