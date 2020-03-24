@@ -376,7 +376,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     url.url = hostaddr ? (ngx_str_t){ngx_strlen(hostaddr), hostaddr} : (ngx_str_t){ngx_strlen(host), host};
     if (!port) url.default_port = DEF_PGPORT; else {
         ngx_int_t n = ngx_atoi(port, ngx_strlen(port));
-        if (n == NGX_ERROR) { PQconninfoFree(opts); ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_atoi == NGX_ERROR", &cmd->name); return NGX_CONF_ERROR; }
+        if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: ngx_atoi == NGX_ERROR", &cmd->name); return NGX_CONF_ERROR; }
         url.default_port = (in_port_t)n;
     }
     if (ngx_parse_url(cf->pool, &url) != NGX_OK) {
@@ -408,6 +408,9 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         connect->keywords[arg] = "host";
         if (!(connect->values[arg] = ngx_pnalloc(cf->pool, url.host.len + 1))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
         (void)ngx_cpystrn((u_char *)connect->values[arg], url.host.data, url.host.len + 1);
+        if (usc->host.len == sizeof("atol2_ngx") - 1 && !ngx_strncasecmp(usc->host.data, (u_char *)"atol2_ngx", sizeof("atol2_ngx") - 1)) {
+            ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "%i: %s = %s", arg, connect->keywords[arg], connect->values[arg] ? connect->values[arg] : "(null)");
+        }
     }
     for (PQconninfoOption *opt = opts; opt->keyword; opt++) {
         if (!opt->val) continue;
@@ -427,7 +430,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     arg++; // last
     connect->keywords[arg] = NULL;
     connect->values[arg] = NULL;
-    PQconninfoFree(opts);
+//    PQconninfoFree(opts);
 //    ngx_pfree(cf->pool, conninfo.data);
     if (usc->host.len == sizeof("atol2_ngx") - 1 && !ngx_strncasecmp(usc->host.data, (u_char *)"atol2_ngx", sizeof("atol2_ngx") - 1)) {
         int arg = 0;
