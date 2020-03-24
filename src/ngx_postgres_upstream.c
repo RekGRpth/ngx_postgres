@@ -144,8 +144,9 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         *p = '\0';
         connect->values[1] = (const char *)buf;
     }
-    for (const char **keywords = connect->keywords, **values = connect->values; keywords && values; keywords++, values++) {
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s = %s", *keywords, *values ? *values : "(null)");
+    int arg = 0;
+    for (const char **keywords = connect->keywords, **values = connect->values; keywords && values; keywords++, values++, arg++) {
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%i: %s = %s", arg, *keywords ? *keywords : "(null)", *values ? *values : "(null)");
     }
     pdc->conn = PQconnectStartParams(connect->keywords, connect->values, 0);
     connect->values[0] = host;
