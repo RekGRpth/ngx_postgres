@@ -390,6 +390,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     if (!(us->host.data = ngx_pstrdup(cf->pool, &url.host))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pstrdup", &cmd->name); return NGX_CONF_ERROR; }
     us->host.len = url.host.len;
     if (host && url.family != AF_UNIX) arg++; // host
+    arg++;
     if (!(connect->keywords = ngx_pcalloc(cf->pool, arg * sizeof(const char *)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
     if (!(connect->values = ngx_pcalloc(cf->pool, arg * sizeof(const char *)))) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
     arg = 0; // 0 - hostaddr or host
