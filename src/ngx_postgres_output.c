@@ -12,21 +12,18 @@ ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
     if (result->ntuples != 1 || result->nfields != 1) {
         ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_output value\" received %i value(s) instead of expected single value in location \"%V\"", result->ntuples * result->nfields, &core->name);
-        pd->result.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-        return NGX_DONE;
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     if (PQgetisnull(res, 0, 0)) {
         ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_output value\" received NULL value in location \"%V\"", &core->name);
-        pd->result.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-        return NGX_DONE;
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     size_t size = PQgetlength(res, 0, 0);
     if (!size) {
         ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_output value\" received empty value in location \"%V\"", &core->name);
-        pd->result.status = NGX_HTTP_INTERNAL_SERVER_ERROR;
-        return NGX_DONE;
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
     if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_create_temp_buf"); return NGX_ERROR; }
@@ -502,7 +499,7 @@ void ngx_postgres_output_chain(ngx_http_request_t *r) {
     if (!r->header_sent) {
         ngx_http_clear_content_length(r);
         ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-        r->headers_out.status = pd->result.status ? ngx_abs(pd->result.status) : NGX_HTTP_OK;
+        r->headers_out.status = NGX_HTTP_OK;
         ngx_postgres_common_t *pdc = &pd->common;
         if (pdc->charset.len) r->headers_out.charset = pdc->charset;
         ngx_postgres_query_t *elts = location->queries.elts;

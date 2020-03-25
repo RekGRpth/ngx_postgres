@@ -112,7 +112,6 @@ typedef struct {
 
 typedef struct {
     ngx_chain_t *response;
-    ngx_int_t status;
     ngx_str_t cmdStatus;
     ngx_str_t cmdTuples;
     ngx_str_t error;
