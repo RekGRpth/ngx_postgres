@@ -51,8 +51,8 @@ typedef struct {
     struct {
         ngx_log_t *log;
     } trace;
-    ngx_http_upstream_init_peer_pt original_init_peer;
-    ngx_http_upstream_init_pt original_init_upstream;
+    ngx_http_upstream_init_peer_pt peer_init;
+    ngx_http_upstream_init_pt init_upstream;
 } ngx_postgres_server_t;
 
 typedef struct {
@@ -97,18 +97,18 @@ typedef struct {
         u_char **paramValues;
     } query;
     ngx_array_t variables;
-    ngx_event_free_peer_pt original_free_peer;
-    ngx_event_get_peer_pt original_get_peer;
+    ngx_event_free_peer_pt peer_free;
+    ngx_event_get_peer_pt peer_get;
 #if (NGX_HTTP_SSL)
-    ngx_event_save_peer_session_pt original_save_session;
-    ngx_event_set_peer_session_pt original_set_session;
+    ngx_event_save_peer_session_pt save_session;
+    ngx_event_set_peer_session_pt set_session;
 #endif
     ngx_http_request_t *request;
     ngx_http_upstream_t *upstream;
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
     ngx_queue_t queue;
-    void *data;
+    void *peer_data;
 } ngx_postgres_data_t;
 
 typedef struct {
