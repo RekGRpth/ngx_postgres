@@ -32,7 +32,7 @@ static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
         u->resolved->host = host;
         u->resolved->no_port = 1;
     }
-    u->request_sent = 1;
+    u->request_sent = 1; // force to reinit_request
     return NGX_OK;
 }
 
