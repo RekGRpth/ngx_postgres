@@ -41,12 +41,6 @@ static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
 }
 
 
-static ngx_int_t ngx_postgres_process_header(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    return NGX_OK;
-}
-
-
 static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
@@ -60,34 +54,14 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
     c->data = pd;
     c->read->handler = ngx_postgres_event_handler;
     c->write->handler = ngx_postgres_event_handler;
-    u->process_header = ngx_postgres_process_header;
     r->state = 0;
     return NGX_OK;
-}
-
-
-static void ngx_postgres_abort_request(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
 }
 
 
 static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
     if (rc == NGX_OK) ngx_postgres_output_chain(r);
-}
-
-
-static ngx_int_t ngx_postgres_input_filter_init(void *data) {
-    ngx_http_request_t *r = data;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    return NGX_OK;
-}
-
-
-static ngx_int_t ngx_postgres_input_filter(void *data, ssize_t bytes) {
-    ngx_http_request_t *r = data;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "bytes = %i", bytes);
-    return NGX_OK;
 }
 
 
@@ -109,17 +83,9 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     u->conf = &location->upstream;
     u->create_request = ngx_postgres_create_request;
     u->reinit_request = ngx_postgres_reinit_request;
-    u->process_header = ngx_postgres_process_header;
-    u->abort_request = ngx_postgres_abort_request;
     u->finalize_request = ngx_postgres_finalize_request;
     r->state = 0;
     u->buffering = location->upstream.buffering;
-    if (!(u->pipe = ngx_pcalloc(r->pool, sizeof(ngx_event_pipe_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
-    u->pipe->input_filter = ngx_event_pipe_copy_input_filter;
-    u->pipe->input_ctx = r;
-    u->input_filter_init = ngx_postgres_input_filter_init;
-    u->input_filter = ngx_postgres_input_filter;
-    u->input_filter_ctx = r;
     if (!location->upstream.request_buffering && location->upstream.pass_request_body && !r->headers_in.chunked) r->request_body_no_buffering = 1;
     if ((rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init)) >= NGX_HTTP_SPECIAL_RESPONSE) return rc;
     return NGX_DONE;
