@@ -404,7 +404,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     ngx_postgres_server_t *server = pdc->server = ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module);
     if (server->peer_init(r, usc) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer_init != NGX_OK"); return NGX_ERROR; }
     pd->request = r;
-    ngx_http_upstream_t *u = pd->upstream = r->upstream;
+    ngx_http_upstream_t *u = r->upstream;
     pd->peer_data = u->peer.data;
     u->peer.data = pd;
     pd->peer_get = u->peer.get;

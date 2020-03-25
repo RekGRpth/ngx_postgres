@@ -143,7 +143,6 @@ typedef struct {
     ngx_event_set_peer_session_pt set_session;
 #endif
     ngx_http_request_t *request;
-    ngx_http_upstream_t *upstream;
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
     ngx_queue_t queue;
