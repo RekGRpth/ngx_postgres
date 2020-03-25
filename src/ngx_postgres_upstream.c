@@ -49,7 +49,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_http_request_t *r) {
 
 
 static void ngx_postgres_data_timeout(ngx_event_t *ev) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write = %s", ev->write ? "true" : "false");
     ngx_connection_t *c = ev->data;
     ngx_http_request_t *r = c->data;
     ngx_http_upstream_t *u = r->upstream;
