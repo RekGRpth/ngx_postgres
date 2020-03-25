@@ -163,7 +163,7 @@ static void ngx_postgres_opts_cleanup(void *data) {
 }
 
 
-static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) { /* Based on: ngx_http_upstream.c/ngx_http_upstream_server Copyright (C) Igor Sysoev */
+static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_http_upstream_srv_conf_t *usc = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
     ngx_postgres_server_t *server = conf;
     if (usc->peer.init_upstream != ngx_postgres_peer_init_upstream) {
