@@ -1,7 +1,4 @@
-#include "ngx_postgres_module.h"
-#include "ngx_postgres_output.h"
-#include "ngx_postgres_upstream.h"
-#include "ngx_postgres_variable.h"
+#include "ngx_postgres_include.h"
 
 
 static ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {

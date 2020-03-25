@@ -1,8 +1,5 @@
 #include <postgresql/server/catalog/pg_type_d.h>
-
-#include "ngx_postgres_module.h"
-#include "ngx_postgres_processor.h"
-#include "ngx_postgres_upstream.h"
+#include "ngx_postgres_include.h"
 
 
 static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {

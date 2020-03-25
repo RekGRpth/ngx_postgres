@@ -1,10 +1,5 @@
 #include <pg_config.h>
-
-#include "ngx_postgres_handler.h"
-#include "ngx_postgres_module.h"
-#include "ngx_postgres_output.h"
-#include "ngx_postgres_upstream.h"
-#include "ngx_postgres_variable.h"
+#include "ngx_postgres_include.h"
 
 
 static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
