@@ -1,7 +1,7 @@
 #include "ngx_postgres_include.h"
 
 
-static void ngx_postgres_event_handler(ngx_event_t *ev) {
+static void ngx_postgres_data_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write = %s", ev->write ? "true" : "false");
     ngx_connection_t *c = ev->data;
     ngx_postgres_data_t *pd = c->data;
@@ -49,8 +49,8 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
         if (c->write->timer_set) ngx_del_timer(c->write);
     }
     c->data = pd;
-    c->read->handler = ngx_postgres_event_handler;
-    c->write->handler = ngx_postgres_event_handler;
+    c->read->handler = ngx_postgres_data_handler;
+    c->write->handler = ngx_postgres_data_handler;
     r->state = 0;
     return NGX_OK;
 }

@@ -48,7 +48,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_http_request_t *r) {
 }
 
 
-static void ngx_postgres_data_timeout(ngx_event_t *ev) {
+static void ngx_postgres_request_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write = %s", ev->write ? "true" : "false");
     ngx_connection_t *c = ev->data;
     ngx_http_request_t *r = c->data;
@@ -162,7 +162,7 @@ destroy:
 }
 
 
-static void ngx_postgres_event_handler(ngx_event_t *ev) {
+static void ngx_postgres_save_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write = %s", ev->write ? "true" : "false");
     ngx_connection_t *c = ev->data;
     ngx_postgres_save_t *ps = c->data;
@@ -205,12 +205,12 @@ static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     c->log = server->ps.log ? server->ps.log : ngx_cycle->log;
     if (c->pool) c->pool->log = c->log;
 //    c->read->delayed = 0;
-    c->read->handler = ngx_postgres_event_handler;
+    c->read->handler = ngx_postgres_save_handler;
     c->read->log = c->log;
     ngx_add_timer(c->read, server->ps.timeout);
     c->read->timedout = 0;
 //    c->write->delayed = 0;
-    c->write->handler = ngx_postgres_event_handler;
+    c->write->handler = ngx_postgres_save_handler;
     c->write->log = c->log;
     ngx_add_timer(c->write, server->ps.timeout);
     c->write->timedout = 0;
@@ -312,7 +312,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd.size = %i", server->pd.size);
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
                 ngx_queue_insert_tail(&server->pd.queue, &pd->queue);
-                pd->query.timeout.handler = ngx_postgres_data_timeout;
+                pd->query.timeout.handler = ngx_postgres_request_handler;
                 pd->query.timeout.log = r->connection->log;
                 pd->query.timeout.data = r->connection;
                 ngx_add_timer(&pd->query.timeout, server->pd.timeout);
