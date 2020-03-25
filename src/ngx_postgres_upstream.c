@@ -452,6 +452,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 
 
 ngx_flag_t ngx_postgres_is_my_peer(const ngx_peer_connection_t *pc) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     return (pc->get == ngx_postgres_peer_get);
 }
 
