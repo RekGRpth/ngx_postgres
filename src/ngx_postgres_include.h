@@ -165,6 +165,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
+ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
 ngx_int_t ngx_postgres_variable_error(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_variable_output(ngx_http_request_t *r);
@@ -172,6 +173,5 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r);
 void ngx_postgres_free_connection(ngx_postgres_common_t *common);
 void ngx_postgres_output_chain(ngx_http_request_t *r);
 void ngx_postgres_process_events(ngx_http_request_t *r);
-void ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
 
 #endif /* _NGX_POSTGRES_INCLUDE_H_ */

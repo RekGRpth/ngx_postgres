@@ -108,12 +108,14 @@ cont:
 }
 
 
-void ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send) {
+ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send) {
     ngx_connection_t *c = common->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    ngx_int_t count = 0;
     ngx_array_t *array = NULL;
     size_t len = 0;
-    for (PGnotify *notify; (notify = PQnotifies(common->conn)); PQfreemem(notify)) {
+    for (PGnotify *notify; (notify = PQnotifies(common->conn)); count++, PQfreemem(notify)) {
+        if (!PQconsumeInput(common->conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(common->conn)); goto destroy; }
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "relname=%s, extra=%s, be_pid=%i", notify->relname, notify->extra, notify->be_pid);
         if (!ngx_http_push_stream_add_msg_to_channel_my) continue;
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
@@ -158,6 +160,7 @@ void ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send)
     }
 destroy:
     if (array) ngx_array_destroy(array);
+    return count;
 }
 
 
@@ -169,16 +172,18 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
     if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
-    if (c->write) return;
+    if (ev->write) return;
+//    if (ev->write) { ngx_postgres_process_notify(psc, 1); return; }
     if (!PQconsumeInput(psc->conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(psc->conn)); goto close; }
-    if (PQisBusy(psc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQisBusy"); return; }
+    if (PQisBusy(psc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQisBusy"); /*ngx_postgres_process_notify(psc, 1); */return; }
     for (PGresult *res; (res = PQgetResult(psc->conn)); PQclear(res)) switch(PQresultStatus(res)) {
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
         default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
     }
-    ngx_postgres_process_notify(psc, 1);
-    if (!PQsendQuery(psc->conn, (const char *)"SELECT 1")) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQsendQuery(\"SELECT 1\") and %s", PQerrorMessageMy(psc->conn)); }
-    else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQsendQuery(\"SELECT 1\")"); }
+    if (ngx_postgres_process_notify(psc, 1)) {
+//        if (!PQsendQuery(psc->conn, (const char *)"SELECT 1")) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQsendQuery(\"SELECT 1\") and %s", PQerrorMessageMy(psc->conn)); }
+//        else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQsendQuery(\"SELECT 1\")"); }
+    }
     return;
 close:
     ngx_postgres_free_connection(psc);
