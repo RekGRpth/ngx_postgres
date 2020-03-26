@@ -170,9 +170,9 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
     if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
     if (ev->write) switch (PQflush(psc->conn)) {
-        case 0: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQflush == 0"); return;
-        case 1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQflush == 1"); return;
-        default: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQflush == default"); return;
+        case 0: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQflush == 0"); goto notify;
+        case 1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQflush == 1"); goto notify;
+        default: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQflush == default"); goto notify;
     }
     if (!PQconsumeInput(psc->conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(psc->conn)); goto close; }
     if (PQisBusy(psc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQisBusy"); return; }
@@ -180,6 +180,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
         default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
     }
+notify:
     ngx_postgres_process_notify(psc, 1);
     return;
 close:
