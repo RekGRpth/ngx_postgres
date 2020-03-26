@@ -177,6 +177,8 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
         default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
     }
     ngx_postgres_process_notify(psc, 1);
+    if (!PQsendQuery(psc->conn, (const char *)"SELECT 1")) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQsendQuery(\"SELECT 1\") and %s", PQerrorMessageMy(psc->conn)); }
+    else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQsendQuery(\"SELECT 1\")"); }
     return;
 close:
     ngx_postgres_free_connection(psc);
