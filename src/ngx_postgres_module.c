@@ -450,24 +450,22 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     core->handler = ngx_postgres_handler;
     if (core->name.data[core->name.len - 1] == '/') core->auto_redirect = 1;
     ngx_str_t *elts = cf->args->elts;
+    ngx_url_t url;
+    ngx_memzero(&url, sizeof(url));
+    url.no_resolve = 1;
+    url.url = elts[1];
     if (cf->args->nelts == 2) {
-        if (!elts[1].len) return "error: empty upstream name";
-        if (ngx_http_script_variables_count(&elts[1])) {
-            ngx_http_compile_complex_value_t ccv = {cf, &elts[1], &location->complex, 0, 0, 0};
+        if (!url.url.len) return "error: empty upstream name";
+        if (ngx_http_script_variables_count(&url.url)) {
+            ngx_http_compile_complex_value_t ccv = {cf, &url.url, &location->complex, 0, 0, 0};
             if (ngx_http_compile_complex_value(&ccv) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_http_compile_complex_value != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
             return NGX_CONF_OK;
         }
-        ngx_url_t url;
-        ngx_memzero(&url, sizeof(url));
-        url.url = elts[1];
-        url.no_resolve = 1;
         if (!(location->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_upstream_add", &cmd->name); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
     }
     ngx_postgres_connect_t *connect = ngx_pcalloc(cf->pool, sizeof(*connect));
     if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_url_t url;
-    ngx_memzero(&url, sizeof(url));
     if (ngx_postgres_connect(cf, cmd, &url, connect, NULL) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_postgres_connect != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     ngx_http_upstream_srv_conf_t *usc;
     if (!(usc = location->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_upstream_add", &cmd->name); return NGX_CONF_ERROR; }
