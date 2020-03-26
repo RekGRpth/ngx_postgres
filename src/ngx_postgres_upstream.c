@@ -108,7 +108,7 @@ cont:
 }
 
 
-static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
+void ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send) {
     ngx_connection_t *c = common->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_array_t *array = NULL;
@@ -124,7 +124,7 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
             case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_ERROR"); break;
             case NGX_DECLINED:
                 ngx_log_error(NGX_LOG_WARN, c->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_DECLINED");
-                if (common->listen.queue) for (ngx_queue_t *queue = ngx_queue_head(common->listen.queue); queue != ngx_queue_sentinel(common->listen.queue); queue = ngx_queue_next(queue)) {
+                if (send && common->listen.queue) for (ngx_queue_t *queue = ngx_queue_head(common->listen.queue); queue != ngx_queue_sentinel(common->listen.queue); queue = ngx_queue_next(queue)) {
                     ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
                     if (id.len == listen->channel.len && !ngx_strncmp(id.data, listen->channel.data, id.len)) {
                         if (!array && !(array = ngx_array_create(c->pool, 1, sizeof(ngx_str_t)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_create"); break; }
@@ -142,7 +142,7 @@ static void ngx_postgres_process_notify(ngx_postgres_common_t *common) {
         }
         ngx_destroy_pool(temp_pool);
     }
-    if (len && array && array->nelts) {
+    if (send && len && array && array->nelts) {
         u_char *unlisten = ngx_pnalloc(c->pool, len + 2 * array->nelts - 1);
         if (!unlisten) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); goto destroy; }
         ngx_str_t *elts = array->elts;
@@ -180,7 +180,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
         default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
     }
-    ngx_postgres_process_notify(psc);
+    ngx_postgres_process_notify(psc, 1);
     return;
 close:
     ngx_postgres_free_connection(psc);

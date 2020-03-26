@@ -128,6 +128,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
             return ngx_postgres_done(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
     }
+    ngx_postgres_process_notify(pdc, 0);
     ngx_uint_t hash = 0;
     if (!prepare) {
         if (pd->query.nParams) {
@@ -286,6 +287,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
         case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(r); // fall through
         default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
     }
+    ngx_postgres_process_notify(pdc, 0);
     if (rc == NGX_DONE && pd->query.index < location->queries.nelts - 1) {
         pdc->state = state_db_idle;
         pd->query.index++;
