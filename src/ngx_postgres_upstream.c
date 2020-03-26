@@ -170,7 +170,11 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
     if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
-    if (ev->write) return;
+    if (ev->write) switch (PQflush(psc->conn)) {
+        case 0: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQflush == 0"); return;
+        case 1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQflush == 1"); return;
+        default: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQflush == default"); return;
+    }
     if (!PQconsumeInput(psc->conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(psc->conn)); goto close; }
     if (PQisBusy(psc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQisBusy"); return; }
     for (PGresult *res; (res = PQgetResult(psc->conn)); PQclear(res)) switch(PQresultStatus(res)) {
