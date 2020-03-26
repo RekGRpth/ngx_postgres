@@ -190,11 +190,6 @@ static ngx_int_t ngx_postgres_send_query(ngx_http_request_t *r) {
         ngx_add_timer(c->write, query->timeout);
     }
     pdc->state = state_db_result;
-/*    switch (PQflush(pdc->conn)) {
-        case 0: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == 0"); break;
-        case 1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == 1"); break;
-        default: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == default"); break;
-    }*/
     return NGX_DONE;
 }
 
