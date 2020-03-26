@@ -408,12 +408,12 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         };
         ngx_uint_t i;
         for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[2].len && !ngx_strncasecmp(e[i].name.data, elts[2].data, elts[2].len)) { variable->type = e[i].type; variable->handler = e[i].handler; break; }
-        if (!e[i].name.len) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: type \"%V\" must be \"nfields\", \"ntuples\", \"cmdTuples\", \"cmdStatus\", \"value\" or \"json\"", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
+        if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: type \"%V\" must be \"nfields\", \"ntuples\", \"cmdTuples\", \"cmdStatus\", \"value\" or \"json\"", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
     }
     if (!elts[3].len) return "error: empty col";
     ngx_int_t n = ngx_atoi(elts[2].data, elts[2].len);
-    if (n == NGX_ERROR) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: row \"%V\" must be number", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
+    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: row \"%V\" must be number", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
     variable->row = (ngx_uint_t)n;
     if ((n = ngx_atoi(elts[3].data, elts[3].len)) != NGX_ERROR) variable->col = (ngx_uint_t)n; else { /* get col by name */
         if (!(variable->field = ngx_pnalloc(cf->pool, elts[3].len + 1))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
@@ -427,7 +427,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         };
         ngx_uint_t i;
         for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[4].len && !ngx_strncasecmp(e[i].name.data, elts[4].data, elts[4].len)) { variable->required = e[i].value; break; }
-        if (!e[i].name.len) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: requirment \"%V\" must be \"optional\" or \"required\"", &cmd->name, &elts[4]); return NGX_CONF_ERROR; }
+        if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: requirment \"%V\" must be \"optional\" or \"required\"", &cmd->name, &elts[4]); return NGX_CONF_ERROR; }
     }
     return NGX_CONF_OK;
 }
