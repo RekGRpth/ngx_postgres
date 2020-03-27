@@ -197,6 +197,11 @@ static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_ur
             us->down = 1;
             continue;
         }
+        if (us && elts[i].len > sizeof("id=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"id=", sizeof("id=") - 1)) {
+            us->id.len = elts[i].len - 3;
+            us->id.data = &elts[i].data[3];
+            continue;
+        }
         if ((us || resolve) && elts[i].len == sizeof("resolve") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"resolve", sizeof("resolve") - 1)) {
             if (us) us->resolve = 1;
             if (resolve) *resolve = 1;
@@ -214,6 +219,7 @@ static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_ur
         if (us && elts[i].len > sizeof("fail_timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"fail_timeout=", sizeof("fail_timeout=") - 1)) continue;
         if (us && elts[i].len == sizeof("backup") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"backup", sizeof("backup") - 1)) continue;
         if (us && elts[i].len == sizeof("down") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"down", sizeof("down") - 1)) continue;
+        if (us && elts[i].len > sizeof("id=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"id=", sizeof("id=") - 1)) continue;
         if ((us || resolve) && elts[i].len == sizeof("resolve") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"resolve", sizeof("resolve") - 1)) continue;
         if (i > 1) *p++ = ' ';
         p = ngx_cpymem(p, elts[i].data, elts[i].len);
