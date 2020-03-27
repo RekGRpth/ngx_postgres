@@ -205,6 +205,7 @@ static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_ur
         if ((us || resolve) && elts[i].len == sizeof("resolve") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"resolve", sizeof("resolve") - 1)) {
             if (us) us->resolve = 1;
             if (resolve) *resolve = 1;
+            url->no_resolve = 1;
             continue;
         }
         if (i > 1) conninfo.len++;
