@@ -284,6 +284,10 @@ static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_ur
         PQconninfoFree(opts);
         return NGX_ERROR;
     }
+    if (url->family == AF_UNIX) {
+        if (us) us->resolve = 0;
+        if (resolve) *resolve = 0;
+    }
     if (host && url->family != AF_UNIX) arg++; // host
     arg++;
     if (!(connect->keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); PQconninfoFree(opts); return NGX_ERROR; }
