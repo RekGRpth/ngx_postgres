@@ -197,11 +197,13 @@ static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_ur
             us->down = 1;
             continue;
         }
+#if (T_NGX_HTTP_UPSTREAM_ID)
         if (us && elts[i].len > sizeof("id=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"id=", sizeof("id=") - 1)) {
             us->id.len = elts[i].len - 3;
             us->id.data = &elts[i].data[3];
             continue;
         }
+#endif
         if (i > 1) conninfo.len++;
         conninfo.len += elts[i].len;
     }
