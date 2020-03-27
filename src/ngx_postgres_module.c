@@ -152,7 +152,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
 }
 
 
-static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_url_t *url, ngx_postgres_connect_t *connect, ngx_http_upstream_server_t *us, ngx_uint_t *resolve) {
+static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_url_t *url, ngx_postgres_connect_t *connect, ngx_http_upstream_server_t *us) {
     ngx_str_t *elts = cf->args->elts;
     ngx_str_t conninfo = ngx_null_string;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
@@ -202,12 +202,6 @@ static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_ur
             us->id.data = &elts[i].data[3];
             continue;
         }
-        if ((us || resolve) && elts[i].len == sizeof("resolve") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"resolve", sizeof("resolve") - 1)) {
-            if (us) us->resolve = 1;
-            if (resolve) *resolve = 1;
-            url->no_resolve = 1;
-            continue;
-        }
         if (i > 1) conninfo.len++;
         conninfo.len += elts[i].len;
     }
@@ -221,7 +215,6 @@ static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_ur
         if (us && elts[i].len == sizeof("backup") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"backup", sizeof("backup") - 1)) continue;
         if (us && elts[i].len == sizeof("down") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"down", sizeof("down") - 1)) continue;
         if (us && elts[i].len > sizeof("id=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"id=", sizeof("id=") - 1)) continue;
-        if ((us || resolve) && elts[i].len == sizeof("resolve") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"resolve", sizeof("resolve") - 1)) continue;
         if (i > 1) *p++ = ' ';
         p = ngx_cpymem(p, elts[i].data, elts[i].len);
     }
@@ -284,10 +277,6 @@ static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_ur
         PQconninfoFree(opts);
         return NGX_ERROR;
     }
-    if (url->family == AF_UNIX) {
-        if (us) us->resolve = 0;
-        if (resolve) *resolve = 0;
-    }
     if (host && url->family != AF_UNIX) arg++; // host
     arg++;
     if (!(connect->keywords = ngx_pnalloc(cf->pool, arg * sizeof(const char *)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); PQconninfoFree(opts); return NGX_ERROR; }
@@ -347,7 +336,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     us->weight = 1;
     ngx_url_t url;
     ngx_memzero(&url, sizeof(url));
-    if (ngx_postgres_connect(cf, cmd, &url, connect, us, NULL) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_postgres_connect != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
+    if (ngx_postgres_connect(cf, cmd, &url, connect, us) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_postgres_connect != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     us->addrs = url.addrs;
     us->naddrs = url.naddrs;
     us->host = url.host;
@@ -480,12 +469,10 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     }
     ngx_postgres_connect_t *connect = ngx_pcalloc(cf->pool, sizeof(*connect));
     if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_uint_t resolve = 0;
-    if (ngx_postgres_connect(cf, cmd, &url, connect, NULL, &resolve) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_postgres_connect != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
+    if (ngx_postgres_connect(cf, cmd, &url, connect, NULL) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_postgres_connect != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     ngx_http_upstream_srv_conf_t *usc;
     if (!(usc = location->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_upstream_add", &cmd->name); return NGX_CONF_ERROR; }
     usc->data = connect;
-    usc->resolve = resolve;
     if (!usc->srv_conf && !(usc->srv_conf = ngx_pcalloc(cf->pool, sizeof(void *) * ngx_http_max_module))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
     if (!usc->srv_conf[ngx_postgres_module.ctx_index] && !(usc->srv_conf[ngx_postgres_module.ctx_index] = ngx_postgres_create_srv_conf(cf))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_postgres_create_srv_conf", &cmd->name); return NGX_CONF_ERROR; }
     ngx_postgres_server_t *server = ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module);
