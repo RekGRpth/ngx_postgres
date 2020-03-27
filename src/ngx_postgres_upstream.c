@@ -290,7 +290,7 @@ static ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_int_t rc = pd->peer_get(pc, pd->peer_data);
-    if (rc != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer_get != NGX_OK"); return rc; }
+    if (rc != NGX_OK) return rc;
     ngx_postgres_connect_t *connect = pc->data2;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_server_t *server = pdc->server;
