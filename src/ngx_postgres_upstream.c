@@ -33,7 +33,7 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
 
 static ngx_int_t ngx_postgres_peer_multi(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
-    if (!ngx_postgres_is_my_peer(&u->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_is_my_peer"); return NGX_ERROR; }
+    if (!ngx_postgres_is_my_peer(&u->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_is_my_peer"); return NGX_DECLINED; }
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
