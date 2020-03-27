@@ -4,8 +4,9 @@
 static ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_data_t *pd = u->peer.data;
     v->not_found = 1;
+    if (!ngx_postgres_is_my_peer(&u->peer)) return NGX_OK;
+    ngx_postgres_data_t *pd = u->peer.data;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
     if (!result->sfields.data) return NGX_OK;
@@ -21,8 +22,9 @@ static ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *r, ngx_http_v
 static ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_data_t *pd = u->peer.data;
     v->not_found = 1;
+    if (!ngx_postgres_is_my_peer(&u->peer)) return NGX_OK;
+    ngx_postgres_data_t *pd = u->peer.data;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
     if (!result->stuples.data) return NGX_OK;
@@ -38,8 +40,9 @@ static ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *r, ngx_http_v
 static ngx_int_t ngx_postgres_variable_cmdtuples(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_data_t *pd = u->peer.data;
     v->not_found = 1;
+    if (!ngx_postgres_is_my_peer(&u->peer)) return NGX_OK;
+    ngx_postgres_data_t *pd = u->peer.data;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
     if (!result->cmdTuples.data) return NGX_OK;
@@ -55,8 +58,9 @@ static ngx_int_t ngx_postgres_variable_cmdtuples(ngx_http_request_t *r, ngx_http
 static ngx_int_t ngx_postgres_variable_cmdstatus(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_data_t *pd = u->peer.data;
     v->not_found = 1;
+    if (!ngx_postgres_is_my_peer(&u->peer)) return NGX_OK;
+    ngx_postgres_data_t *pd = u->peer.data;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
     if (!result->cmdStatus.data) return NGX_OK;
@@ -72,8 +76,9 @@ static ngx_int_t ngx_postgres_variable_cmdstatus(ngx_http_request_t *r, ngx_http
 static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_data_t *pd = u->peer.data;
     v->not_found = 1;
+    if (!ngx_postgres_is_my_peer(&u->peer)) return NGX_OK;
+    ngx_postgres_data_t *pd = u->peer.data;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
     if (!result->sql.data) return NGX_OK;
@@ -89,8 +94,9 @@ static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_var
 static ngx_int_t ngx_postgres_variable_error_(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_data_t *pd = u->peer.data;
     v->not_found = 1;
+    if (!ngx_postgres_is_my_peer(&u->peer)) return NGX_OK;
+    ngx_postgres_data_t *pd = u->peer.data;
     if (!pd) return NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
     if (!result->error.data) return NGX_OK;
@@ -106,8 +112,9 @@ static ngx_int_t ngx_postgres_variable_error_(ngx_http_request_t *r, ngx_http_va
 static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_data_t *pd = u->peer.data;
     v->not_found = 1;
+    if (!ngx_postgres_is_my_peer(&u->peer)) return NGX_OK;
+    ngx_postgres_data_t *pd = u->peer.data;
     if (!pd || !pd->variables.elts) return NGX_OK;
     ngx_str_t *elts = pd->variables.elts;
     ngx_uint_t index = (ngx_uint_t)data;
@@ -144,6 +151,7 @@ typedef struct {
 ngx_int_t ngx_postgres_variable_error(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
+    if (!ngx_postgres_is_my_peer(&u->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_is_my_peer"); return NGX_ERROR; }
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
@@ -173,6 +181,7 @@ ngx_int_t ngx_postgres_variable_error(ngx_http_request_t *r) {
 ngx_int_t ngx_postgres_variable_output(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
+    if (!ngx_postgres_is_my_peer(&u->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_is_my_peer"); return NGX_ERROR; }
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
@@ -209,6 +218,7 @@ ngx_int_t ngx_postgres_variable_output(ngx_http_request_t *r) {
 ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
+    if (!ngx_postgres_is_my_peer(&u->peer)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_is_my_peer"); return NGX_ERROR; }
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *elts_ = location->queries.elts;
