@@ -6,7 +6,9 @@ static void ngx_postgres_data_handler(ngx_event_t *ev) {
     ngx_connection_t *c = ev->data;
     ngx_postgres_data_t *pd = c->data;
     ngx_http_request_t *r = pd->request;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_http_upstream_t *u = r->upstream;
+#endif
     ngx_postgres_common_t *pdc = &pd->common;
     if (c->read->timedout) return pdc->state != state_db_connect ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
     if (c->write->timedout) return pdc->state != state_db_connect ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);

@@ -174,4 +174,10 @@ void ngx_postgres_output_chain(ngx_http_request_t *r);
 void ngx_postgres_process_events(ngx_http_request_t *r);
 void ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
 
+#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
+#define ngx_http_upstream_finalize_request(r, u, rc) ngx_http_finalize_request(r, rc)
+#define ngx_http_upstream_next(r, u, ft_type) ngx_http_finalize_request(r, ft_type)
+#define ngx_http_upstream_test_connect(c) NGX_OK
+#endif
+
 #endif /* _NGX_POSTGRES_INCLUDE_H_ */
