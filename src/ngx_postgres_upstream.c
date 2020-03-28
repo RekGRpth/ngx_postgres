@@ -299,18 +299,30 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (pc->get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; } // ngx_http_upstream_finalize_request(r, u, NGX_HTTP_INTERNAL_SERVER_ERROR) and return
     ngx_int_t rc = pd->peer_get(pc, pd->peer_data);
     if (rc != NGX_OK) return rc;
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_postgres_connect_t *connect = pc->data2;
-#else
-    ngx_postgres_connect_t *connect = NULL;
-#endif
     ngx_postgres_common_t *pdc = &pd->common;
-    ngx_postgres_server_t *server = pdc->server;
-    ngx_http_upstream_t *u = r->upstream;
-    u->conf->connect_timeout = connect->timeout;
     pdc->addr.name = *pc->name;
     pdc->addr.sockaddr = pc->sockaddr;
     pdc->addr.socklen = pc->socklen;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    ngx_postgres_connect_t *connect = pc->data2;
+#else
+    ngx_http_upstream_srv_conf_t *usc = ngx_http_get_module_srv_conf(r, ngx_http_upstream_module);
+    ngx_array_t *array = usc->peer.data;
+    ngx_postgres_connect_t *connect = array->elts;
+    ngx_uint_t i;
+    for (i = 0; i < array->nelts; i++) {
+        for (ngx_uint_t j = 0; j < connect[i].naddrs; j++) {
+            if (ngx_memn2cmp((u_char *)pdc->addr.sockaddr, (u_char *)connect[i].addrs[j].sockaddr, pdc->addr.socklen, connect[i].addrs[j].socklen)) continue;
+            connect = &connect[i];
+            goto exit;
+        }
+    }
+exit:
+    if (i == array->nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "connect not found"); return NGX_BUSY; } // and ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_NOLIVE) and return
+#endif
+    ngx_http_upstream_t *u = r->upstream;
+    u->conf->connect_timeout = connect->timeout;
+    ngx_postgres_server_t *server = pdc->server;
     if (server->ps.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) {
