@@ -64,6 +64,7 @@ typedef struct {
 } ngx_postgres_connect_t;
 
 typedef struct {
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     struct {
         ngx_flag_t reject;
         ngx_msec_t timeout;
@@ -71,6 +72,7 @@ typedef struct {
         ngx_uint_t max;
         ngx_uint_t size;
     } pd;
+#endif
     struct {
         ngx_flag_t reject;
         ngx_log_t *log;
@@ -144,7 +146,9 @@ typedef struct {
     ngx_http_request_t *request;
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_queue_t queue;
+#endif
     void *peer_data;
 } ngx_postgres_data_t;
 
@@ -175,9 +179,9 @@ void ngx_postgres_process_events(ngx_http_request_t *r);
 void ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
 
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
-#define ngx_http_upstream_finalize_request(r, u, rc) ngx_http_finalize_request(r, rc)
-#define ngx_http_upstream_next(r, u, ft_type) ngx_http_finalize_request(r, ft_type)
-#define ngx_http_upstream_test_connect(c) NGX_OK
+ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);
+void ngx_http_upstream_finalize_request(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t rc);
+void ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_uint_t ft_type);
 #endif
 
 #endif /* _NGX_POSTGRES_INCLUDE_H_ */

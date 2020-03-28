@@ -24,7 +24,9 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     if (!server) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
     server->ps.timeout = NGX_CONF_UNSET_MSEC;
     server->ps.requests = NGX_CONF_UNSET_UINT;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     server->pd.timeout = NGX_CONF_UNSET_MSEC;
+#endif
     return server;
 }
 
@@ -140,8 +142,10 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     cln->handler = ngx_postgres_server_cleanup;
     cln->data = server;
     ngx_queue_init(&server->free.queue);
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_conf_init_msec_value(server->pd.timeout, 60 * 1000);
     ngx_queue_init(&server->pd.queue);
+#endif
     ngx_queue_init(&server->ps.queue);
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(*ps) * server->ps.max);
     if (!ps) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
@@ -418,6 +422,7 @@ static char *ngx_postgres_prepare_conf(ngx_conf_t *cf, ngx_command_t *cmd, void 
 }
 
 
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_server_t *server = conf;
     if (!server->ps.max) return "works only with \"postgres_keepalive\"";
@@ -450,6 +455,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     }
     return NGX_CONF_OK;
 }
+#endif
 
 
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
@@ -603,12 +609,14 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
   { .name = ngx_string("postgres_queue"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12|NGX_CONF_TAKE3,
     .set = ngx_postgres_queue_conf,
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
+#endif
   { .name = ngx_string("postgres_server"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
     .set = ngx_postgres_server_conf,
