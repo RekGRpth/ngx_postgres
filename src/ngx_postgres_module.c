@@ -157,7 +157,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
 
 
 static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_url_t *url, ngx_postgres_connect_t *connect, ngx_postgres_upstream_server_t *pus) {
-    ngx_http_upstream_server_t *us = pus;
+    ngx_http_upstream_server_t *us = (ngx_http_upstream_server_t *)pus;
     ngx_str_t *elts = cf->args->elts;
     ngx_str_t conninfo = ngx_null_string;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
@@ -339,7 +339,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_memzero(pus, sizeof(*pus));
     ngx_postgres_connect_t *connect = ngx_pcalloc(cf->pool, sizeof(*connect));
     if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_http_upstream_server_t *us = pus;
+    ngx_http_upstream_server_t *us = (ngx_http_upstream_server_t *)pus;
     pus->data = connect;
     us->fail_timeout = 10;
     us->max_fails = 1;
