@@ -309,6 +309,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 #else
     ngx_array_t *array = pd->connect;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "array = %p", array);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", array->nelts);
     ngx_postgres_connect_t *connect = array->elts;
     ngx_uint_t i;
     for (i = 0; i < array->nelts; i++) {

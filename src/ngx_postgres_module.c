@@ -345,6 +345,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_array_t *array = usc->peer.data;
     ngx_postgres_connect_t *connect = ngx_array_push(array);
     if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_memzero(connect, sizeof(*connect));
 #endif
     us->fail_timeout = 10;
     us->max_fails = 1;
