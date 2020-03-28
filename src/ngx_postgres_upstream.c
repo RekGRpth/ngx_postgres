@@ -309,8 +309,6 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_connect_t *connect = pc->data2;
 #else
     ngx_array_t *array = server->connect;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "array = %p", array);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", array->nelts);
     ngx_postgres_connect_t *connect = array->elts;
     ngx_uint_t i;
     for (i = 0; i < array->nelts; i++) {
@@ -322,7 +320,6 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     }
 exit:
     if (i == array->nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "connect not found"); return NGX_BUSY; } // and ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_NOLIVE) and return
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "i = %i", i);
 #endif
     ngx_http_upstream_t *u = r->upstream;
     u->conf->connect_timeout = connect->timeout;
