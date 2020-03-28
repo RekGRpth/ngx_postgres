@@ -304,10 +304,11 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pdc->addr.name = *pc->name;
     pdc->addr.sockaddr = pc->sockaddr;
     pdc->addr.socklen = pc->socklen;
+    ngx_postgres_server_t *server = pdc->server;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_postgres_connect_t *connect = pc->data2;
 #else
-    ngx_array_t *array = pd->connect;
+    ngx_array_t *array = server->connect;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "array = %p", array);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", array->nelts);
     ngx_postgres_connect_t *connect = array->elts;
@@ -325,7 +326,6 @@ exit:
 #endif
     ngx_http_upstream_t *u = r->upstream;
     u->conf->connect_timeout = connect->timeout;
-    ngx_postgres_server_t *server = pdc->server;
     if (server->ps.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
         if (ngx_postgres_peer_multi(r) != NGX_DECLINED) {

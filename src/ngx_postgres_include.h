@@ -77,6 +77,8 @@ typedef struct {
         ngx_uint_t max;
         ngx_uint_t size;
     } pd;
+#else
+    void *connect;
 #endif
     struct {
         ngx_flag_t reject;
@@ -153,8 +155,6 @@ typedef struct {
     ngx_postgres_result_t result;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_queue_t queue;
-#else
-    void *connect;
 #endif
     void *peer_data;
 } ngx_postgres_data_t;
