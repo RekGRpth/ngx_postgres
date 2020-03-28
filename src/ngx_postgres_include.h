@@ -178,14 +178,7 @@ void ngx_postgres_output_chain(ngx_http_request_t *r);
 void ngx_postgres_process_events(ngx_http_request_t *r);
 void ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
 
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-typedef ngx_http_upstream_server_t ngx_postgres_upstream_server_t;
-#else
-typedef struct {
-    ngx_http_upstream_server_t us; // !!! always first !!!
-    void *data;
-} ngx_postgres_upstream_server_t;
-
+#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
 ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);
 void ngx_http_upstream_finalize_request(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t rc);
 void ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_uint_t ft_type);

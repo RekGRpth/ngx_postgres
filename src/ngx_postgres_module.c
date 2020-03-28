@@ -156,8 +156,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
 }
 
 
-static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_url_t *url, ngx_postgres_connect_t *connect, ngx_postgres_upstream_server_t *pus) {
-    ngx_http_upstream_server_t *us = (ngx_http_upstream_server_t *)pus;
+static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_url_t *url, ngx_postgres_connect_t *connect, ngx_http_upstream_server_t *us) {
     ngx_str_t *elts = cf->args->elts;
     ngx_str_t conninfo = ngx_null_string;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
@@ -333,20 +332,21 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         server->init_upstream = usc->peer.init_upstream ? usc->peer.init_upstream : ngx_http_upstream_init_round_robin;
         usc->peer.init_upstream = ngx_postgres_peer_init_upstream;
     }
-    if (!usc->servers && !(usc->servers = ngx_array_create(cf->pool, 1, sizeof(ngx_postgres_upstream_server_t)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_create", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_postgres_upstream_server_t *pus = ngx_array_push(usc->servers);
-    if (!pus) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_memzero(pus, sizeof(*pus));
+    if (!usc->servers && !(usc->servers = ngx_array_create(cf->pool, 1, sizeof(ngx_http_upstream_server_t)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_create", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_http_upstream_server_t *us = ngx_array_push(usc->servers);
+    if (!us) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_memzero(us, sizeof(*us));
     ngx_postgres_connect_t *connect = ngx_pcalloc(cf->pool, sizeof(*connect));
     if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_http_upstream_server_t *us = (ngx_http_upstream_server_t *)pus;
-    pus->data = connect;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    us->data = connect;
+#endif
     us->fail_timeout = 10;
     us->max_fails = 1;
     us->weight = 1;
     ngx_url_t url;
     ngx_memzero(&url, sizeof(url));
-    if (ngx_postgres_connect(cf, cmd, &url, connect, pus) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_postgres_connect != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
+    if (ngx_postgres_connect(cf, cmd, &url, connect, us) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_postgres_connect != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     us->addrs = url.addrs;
     us->naddrs = url.naddrs;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
