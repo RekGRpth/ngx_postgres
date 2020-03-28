@@ -153,6 +153,8 @@ typedef struct {
     ngx_postgres_result_t result;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_queue_t queue;
+#else
+    void *connect;
 #endif
     void *peer_data;
 } ngx_postgres_data_t;
