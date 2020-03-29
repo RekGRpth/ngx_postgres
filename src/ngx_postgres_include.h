@@ -101,7 +101,7 @@ typedef struct {
     } trace;
     ngx_http_upstream_init_peer_pt peer_init;
     ngx_http_upstream_init_pt init_upstream;
-} ngx_postgres_server_t;
+} ngx_postgres_upstream_srv_conf_t;
 
 typedef struct {
     struct {
@@ -113,7 +113,7 @@ typedef struct {
     } listen;
     ngx_addr_t addr;
     ngx_connection_t *connection;
-    ngx_postgres_server_t *server;
+    ngx_postgres_upstream_srv_conf_t *pusc;
     ngx_postgres_state_t state;
     ngx_str_t charset;
     PGconn *conn;
