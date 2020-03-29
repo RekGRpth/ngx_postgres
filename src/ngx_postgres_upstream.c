@@ -32,8 +32,7 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
 
 
 static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pd->request->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     for (ngx_queue_t *queue = ngx_queue_head(&pusc->ps.queue); queue != ngx_queue_sentinel(&pusc->ps.queue); queue = ngx_queue_next(queue)) {
