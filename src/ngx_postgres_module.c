@@ -7,7 +7,7 @@ static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
 }
 
 
-static void ngx_postgres_server_cleanup(void *data) {
+static void ngx_postgres_srv_conf_cleanup(void *data) {
     ngx_postgres_upstream_srv_conf_t *pusc = data;
     while (!ngx_queue_empty(&pusc->ps.queue)) {
         ngx_queue_t *queue = ngx_queue_head(&pusc->ps.queue);
@@ -139,7 +139,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_conf_init_uint_value(pusc->ps.requests, 1000);
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
-    cln->handler = ngx_postgres_server_cleanup;
+    cln->handler = ngx_postgres_srv_conf_cleanup;
     cln->data = pusc;
     ngx_queue_init(&pusc->free.queue);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
