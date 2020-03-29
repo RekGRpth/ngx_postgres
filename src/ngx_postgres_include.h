@@ -181,7 +181,7 @@ ngx_int_t ngx_postgres_variable_error(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_variable_output(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r);
 void ngx_postgres_free_connection(ngx_postgres_common_t *common);
-void ngx_postgres_output_chain(ngx_http_request_t *r);
+void ngx_postgres_output_chain(ngx_postgres_data_t *pd);
 void ngx_postgres_process_events(ngx_postgres_data_t *pd);
 void ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
 
