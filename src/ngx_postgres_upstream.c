@@ -31,10 +31,8 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
 }
 
 
-static ngx_int_t ngx_postgres_peer_multi(ngx_http_request_t *r) {
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_DECLINED; }
-    ngx_postgres_data_t *pd = u->peer.data;
+static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
@@ -325,7 +323,7 @@ exit:
     u->conf->connect_timeout = connect->timeout;
     if (pusc->ps.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
-        if (ngx_postgres_peer_multi(r) != NGX_DECLINED) {
+        if (ngx_postgres_peer_multi(pd) != NGX_DECLINED) {
             ngx_postgres_process_events(pd);
             return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
         }
