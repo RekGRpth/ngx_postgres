@@ -5,7 +5,7 @@
 ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    if (ngx_postgres_variable_output(r) != NGX_OK) return NGX_ERROR;
+    if (ngx_postgres_variable_output(pd) != NGX_OK) return NGX_ERROR;
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
@@ -223,7 +223,7 @@ static const char *PQftypeMy(Oid oid) {
 static ngx_int_t ngx_postgres_output_text_csv(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    if (ngx_postgres_variable_output(r) != NGX_OK) return NGX_ERROR;
+    if (ngx_postgres_variable_output(pd) != NGX_OK) return NGX_ERROR;
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
@@ -377,7 +377,7 @@ static ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *pd) {
 ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    if (ngx_postgres_variable_output(r) != NGX_OK) return NGX_ERROR;
+    if (ngx_postgres_variable_output(pd) != NGX_OK) return NGX_ERROR;
     ngx_http_upstream_t *u = r->upstream;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
