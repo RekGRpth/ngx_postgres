@@ -312,11 +312,10 @@ static ngx_int_t ngx_postgres_get_result(ngx_http_request_t *r) {
 }
 
 
-void ngx_postgres_process_events(ngx_http_request_t *r) {
+void ngx_postgres_process_events(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_int_t rc = NGX_OK;
     switch (pdc->state) {
