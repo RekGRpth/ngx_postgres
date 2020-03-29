@@ -243,11 +243,9 @@ again:
 }
 
 
-static ngx_int_t ngx_postgres_process_response(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_process_response(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (ngx_postgres_variable_set(r) == NGX_ERROR) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_set == NGX_ERROR");
@@ -282,7 +280,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_postgres_data_t *pd) {
             ngx_postgres_variable_error(r);
             rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
             break;
-        case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(r); // fall through
+        case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(pd); // fall through
         default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
     }
     ngx_postgres_process_notify(pdc, 0);
