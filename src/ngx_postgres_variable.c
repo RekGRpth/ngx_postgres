@@ -270,7 +270,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
         }
     } else if (variable[i].handler) {
         ngx_chain_t *chain = pd->result.response;
-        if (variable[i].handler(r) != NGX_DONE) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
+        if (variable[i].handler(pd) != NGX_DONE) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
         elts[variable[i].index].len = pd->result.response->buf->end - pd->result.response->buf->start;
         elts[variable[i].index].data = pd->result.response->buf->start;
         pd->result.response = chain;

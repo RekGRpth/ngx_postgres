@@ -254,7 +254,7 @@ static ngx_int_t ngx_postgres_process_response(ngx_postgres_data_t *pd) {
     ngx_postgres_query_t *elts = location->queries.elts;
     ngx_postgres_query_t *query = &elts[pd->query.index];
     ngx_postgres_output_t *output = &query->output;
-    if (output->handler) return output->handler(r);
+    if (output->handler) return output->handler(pd);
     return NGX_DONE;
 }
 

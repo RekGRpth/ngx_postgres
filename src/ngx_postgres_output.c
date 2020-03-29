@@ -2,12 +2,11 @@
 #include "ngx_postgres_include.h"
 
 
-ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r) {
+ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (ngx_postgres_variable_output(r) != NGX_OK) return NGX_ERROR;
     ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
     if (result->ntuples != 1 || result->nfields != 1) {
@@ -221,12 +220,11 @@ static const char *PQftypeMy(Oid oid) {
 }
 
 
-static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_output_text_csv(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (ngx_postgres_variable_output(r) != NGX_OK) return NGX_ERROR;
     ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
     if (!result->ntuples || !result->nfields) return NGX_DONE;
@@ -366,24 +364,21 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_http_request_t *r) {
 }
 
 
-static ngx_int_t ngx_postgres_output_text(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    return ngx_postgres_output_text_csv(r);
+static ngx_int_t ngx_postgres_output_text(ngx_postgres_data_t *pd) {
+    return ngx_postgres_output_text_csv(pd);
 }
 
 
-static ngx_int_t ngx_postgres_output_csv(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    return ngx_postgres_output_text_csv(r);
+static ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *pd) {
+    return ngx_postgres_output_text_csv(pd);
 }
 
 
-ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
+ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (ngx_postgres_variable_output(r) != NGX_OK) return NGX_ERROR;
     ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_result_t *result = &pd->result;
