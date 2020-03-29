@@ -116,7 +116,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *pd) {
     for (; (pd->result.res = PQgetResult(pdc->conn)); PQclear(pd->result.res)) switch(PQresultStatus(pd->result.res)) {
         case PGRES_FATAL_ERROR:
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
-            ngx_postgres_variable_error(r);
+            ngx_postgres_variable_error(pd);
             PQclear(pd->result.res);
             if (prepare && pdc->prepare.queue) {
                 for (ngx_queue_t *queue = ngx_queue_head(pdc->prepare.queue); queue != ngx_queue_sentinel(pdc->prepare.queue); queue = ngx_queue_next(queue)) {
@@ -277,7 +277,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_postgres_data_t *pd) {
     for (; (pd->result.res = PQgetResult(pdc->conn)); PQclear(pd->result.res)) switch(PQresultStatus(pd->result.res)) {
         case PGRES_FATAL_ERROR:
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
-            ngx_postgres_variable_error(r);
+            ngx_postgres_variable_error(pd);
             rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
             break;
         case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(pd); // fall through
