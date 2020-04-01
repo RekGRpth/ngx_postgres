@@ -527,6 +527,7 @@ void ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
     ngx_int_t rc = ngx_http_output_filter(r, pd->result.response);
     u->header_sent = r->header_sent;
     if (rc == NGX_ERROR || rc > NGX_OK) return;
+    u->header_sent = 1;
     ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &pd->result.response, u->output.tag);
 }
 
