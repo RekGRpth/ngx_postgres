@@ -523,7 +523,6 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
         u->header_sent = r->header_sent;
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return rc;
     }
-    if (!pd->result.response) return NGX_OK;
     ngx_int_t rc = ngx_http_output_filter(r, pd->result.response);
     u->header_sent = r->header_sent;
     if (rc == NGX_ERROR || rc > NGX_OK) return rc;
