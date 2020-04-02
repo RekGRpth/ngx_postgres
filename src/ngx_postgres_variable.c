@@ -3,6 +3,7 @@
 
 static ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    if (!r->upstream) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "there is not upstream"); return NGX_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
@@ -21,6 +22,7 @@ static ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *r, ngx_http_v
 
 static ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    if (!r->upstream) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "there is not upstream"); return NGX_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
@@ -39,6 +41,7 @@ static ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *r, ngx_http_v
 
 static ngx_int_t ngx_postgres_variable_cmdtuples(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    if (!r->upstream) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "there is not upstream"); return NGX_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
@@ -57,6 +60,7 @@ static ngx_int_t ngx_postgres_variable_cmdtuples(ngx_http_request_t *r, ngx_http
 
 static ngx_int_t ngx_postgres_variable_cmdstatus(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    if (!r->upstream) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "there is not upstream"); return NGX_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
@@ -75,6 +79,7 @@ static ngx_int_t ngx_postgres_variable_cmdstatus(ngx_http_request_t *r, ngx_http
 
 static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    if (!r->upstream) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "there is not upstream"); return NGX_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
@@ -93,6 +98,7 @@ static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_var
 
 static ngx_int_t ngx_postgres_variable_error_(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    if (!r->upstream) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "there is not upstream"); return NGX_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
@@ -111,6 +117,7 @@ static ngx_int_t ngx_postgres_variable_error_(ngx_http_request_t *r, ngx_http_va
 
 static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    if (!r->upstream) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "there is not upstream"); return NGX_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
