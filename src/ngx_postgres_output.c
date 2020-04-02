@@ -490,7 +490,7 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
 }
 
 
-void ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
+ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
@@ -521,14 +521,15 @@ void ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
         if (pd->result.response) r->headers_out.content_length_n = pd->result.response->buf->end - pd->result.response->buf->start;
         ngx_int_t rc = ngx_http_send_header(r);
         u->header_sent = r->header_sent;
-        if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return;
+        if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return rc;
     }
-    if (!pd->result.response) return;
+    if (!pd->result.response) return NGX_OK;
     ngx_int_t rc = ngx_http_output_filter(r, pd->result.response);
     u->header_sent = r->header_sent;
-    if (rc == NGX_ERROR || rc > NGX_OK) return;
+    if (rc == NGX_ERROR || rc > NGX_OK) return rc;
     u->header_sent = 1;
     ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &pd->result.response, u->output.tag);
+    return NGX_OK;
 }
 
 

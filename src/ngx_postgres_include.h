@@ -172,6 +172,7 @@ char *PQresultErrorMessageMy(const PGresult *res);
 extern ngx_int_t ngx_http_push_stream_add_msg_to_channel_my(ngx_log_t *log, ngx_str_t *id, ngx_str_t *text, ngx_str_t *event_id, ngx_str_t *event_type, ngx_flag_t store_messages, ngx_pool_t *temp_pool) __attribute__((weak));
 extern ngx_int_t ngx_http_push_stream_delete_channel_my(ngx_log_t *log, ngx_str_t *id, u_char *text, size_t len, ngx_pool_t *temp_pool) __attribute__((weak));
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r);
+ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
@@ -181,7 +182,6 @@ ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd);
 void ngx_postgres_free_connection(ngx_postgres_common_t *common);
-void ngx_postgres_output_chain(ngx_postgres_data_t *pd);
 void ngx_postgres_process_events(ngx_postgres_data_t *pd);
 void ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
 

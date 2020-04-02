@@ -15,6 +15,7 @@ static ngx_int_t ngx_postgres_done(ngx_postgres_data_t *pd, ngx_int_t rc) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
     }
+    if (rc == NGX_OK) rc = ngx_postgres_output_chain(pd);
     ngx_http_upstream_finalize_request(r, u, rc);
     return NGX_DONE;
 }
