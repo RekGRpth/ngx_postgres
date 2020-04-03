@@ -278,12 +278,10 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
     } else if (variable[i].handler) {
         ngx_http_upstream_t *u = r->upstream;
         ngx_chain_t *chain = u->out_bufs;
-        ngx_buf_t b = u->buffer;
         if (variable[i].handler(pd) != NGX_DONE) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
-        elts[variable[i].index].len = u->buffer.end - u->buffer.start;
-        elts[variable[i].index].data = u->buffer.start;
+        elts[variable[i].index].len = u->out_bufs->buf->end - u->out_bufs->buf->start;
+        elts[variable[i].index].data = u->out_bufs->buf->start;
         u->out_bufs = chain;
-        u->buffer = b;
     } else {
 //        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
         if (variable[i].field) {
