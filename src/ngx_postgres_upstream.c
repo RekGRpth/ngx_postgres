@@ -142,8 +142,8 @@ void ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send)
             default: ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == unknown"); break;
         }
         ngx_destroy_pool(temp_pool);
-        if (!PQconsumeInput(common->conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(common->conn)); goto destroy; }
-        if (PQisBusy(common->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQisBusy"); goto destroy; }
+        if (!PQconsumeInput(common->conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(common->conn)); PQfreemem(notify); goto destroy; }
+        if (PQisBusy(common->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQisBusy"); PQfreemem(notify); goto destroy; }
     }
     if (send && len && array && array->nelts) {
         u_char *unlisten = ngx_pnalloc(c->pool, len + 2 * array->nelts - 1);
