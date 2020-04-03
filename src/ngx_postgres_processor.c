@@ -318,9 +318,9 @@ void ngx_postgres_process_events(ngx_postgres_data_t *pd, unsigned write) {
     ngx_int_t rc = NGX_OK;
     switch (pdc->state) {
         case state_db_connect: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_connect"); rc = ngx_postgres_connect(pd); break;
-        case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_idle"); rc = ngx_postgres_send_query(pd); break;
-        case state_db_prepare: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_prepare"); rc = ngx_postgres_send_query(pd); break;
-        case state_db_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_query"); rc = ngx_postgres_send_query(pd); break;
+        case state_db_idle: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_idle"); if (!write) rc = ngx_postgres_send_query(pd); break;
+        case state_db_prepare: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_prepare"); if (!write) rc = ngx_postgres_send_query(pd); break;
+        case state_db_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_query"); if (!write) rc = ngx_postgres_send_query(pd); break;
         case state_db_result: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_result"); if (!write) rc = ngx_postgres_get_result(pd); break;
     }
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) return ngx_http_upstream_finalize_request(r, u, rc);
