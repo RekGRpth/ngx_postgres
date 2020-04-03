@@ -312,7 +312,7 @@ static ngx_int_t ngx_postgres_get_result(ngx_postgres_data_t *pd) {
 
 void ngx_postgres_process_events(ngx_postgres_data_t *pd, unsigned write) {
     ngx_http_request_t *r = pd->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "write = %i", write);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "write = %s", write ? "true" : "false");
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_handler_pt handler;
