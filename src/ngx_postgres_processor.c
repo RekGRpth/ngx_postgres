@@ -188,7 +188,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *pd) {
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pdc->state == %i", pdc->state); return NGX_ERROR;
     }
     ngx_postgres_output_t *output = &query->output;
-    if (output->handler == ngx_postgres_output_text || output->handler == ngx_postgres_output_csv) if (!PQsetSingleRowMode(pdc->conn)) ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(pdc->conn));
+    if (output->handler == ngx_postgres_output_text || output->handler == ngx_postgres_output_csv) if (output->single && !PQsetSingleRowMode(pdc->conn)) ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(pdc->conn));
     if (location->timeout) {
         if (!c->read->timer_set) ngx_add_timer(c->read, location->timeout);
         if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);

@@ -131,6 +131,7 @@ typedef ngx_int_t (*ngx_postgres_handler_pt) (ngx_postgres_data_t *pd);
 typedef struct {
     ngx_flag_t binary;
     ngx_flag_t header;
+    ngx_flag_t single;
     ngx_flag_t string;
     ngx_postgres_handler_pt handler;
     ngx_str_t null;
