@@ -293,7 +293,6 @@ static ngx_int_t ngx_postgres_get_result(ngx_postgres_data_t *pd) {
         if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); PQclear(pd->result.res); return NGX_ERROR; }
         if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); PQclear(pd->result.res); return NGX_AGAIN; }
     }
-    ngx_postgres_process_notify(pdc, 0);
     ngx_int_t rc2 = ngx_postgres_process_notify(pdc, 0);
     if (rc2 != NGX_OK) return rc2;
     if (rc == NGX_DONE && pd->query.index < location->queries.nelts - 1) {
