@@ -185,7 +185,7 @@ ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd);
 void ngx_postgres_free_connection(ngx_postgres_common_t *common);
-void ngx_postgres_process_events(ngx_postgres_data_t *pd, unsigned write);
+void ngx_postgres_process_events(ngx_postgres_data_t *pd);
 
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
 ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);

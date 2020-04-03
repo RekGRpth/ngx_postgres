@@ -314,9 +314,9 @@ static ngx_int_t ngx_postgres_get_result(ngx_postgres_data_t *pd) {
 }
 
 
-void ngx_postgres_process_events(ngx_postgres_data_t *pd, unsigned write) {
+void ngx_postgres_process_events(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "write = %s", write ? "true" : "false");
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_handler_pt handler;
@@ -327,8 +327,7 @@ void ngx_postgres_process_events(ngx_postgres_data_t *pd, unsigned write) {
         case state_db_query: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_query"); handler = ngx_postgres_send_query; break;
         case state_db_result: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state == state_db_result"); handler = ngx_postgres_get_result; break;
     }
-    ngx_int_t rc = NGX_OK;
-    if (!write || handler == ngx_postgres_connect) rc = handler(pd);
+    ngx_int_t rc = handler(pd);
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) return ngx_http_upstream_finalize_request(r, u, rc);
     if (rc == NGX_ERROR) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
     return;

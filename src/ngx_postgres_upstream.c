@@ -328,7 +328,7 @@ exit:
     if (pusc->ps.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
         if (ngx_postgres_peer_multi(pd) != NGX_DECLINED) {
-            ngx_postgres_process_events(pd, 0);
+            ngx_postgres_process_events(pd);
             return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
         }
         if (pusc->ps.size < pusc->ps.max) {
