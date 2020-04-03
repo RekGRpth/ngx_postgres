@@ -2,6 +2,37 @@
 #include "ngx_postgres_include.h"
 
 
+static ngx_int_t ngx_postgres_buffer(ngx_http_request_t *r, size_t size) {
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_chain_t *chain = u->out_bufs = ngx_alloc_chain_link(r->pool);
+    if (!chain) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_alloc_chain_link"); return NGX_ERROR; }
+    chain->next = NULL;
+    chain->buf = &u->buffer;
+    ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
+    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_create_temp_buf"); return NGX_ERROR; }
+    b->memory = 1;
+    b->tag = u->output.tag;
+    u->buffer = *b;
+    return NGX_OK;
+/*    ngx_http_upstream_t *u = r->upstream;
+    ngx_chain_t *cl, **ll;
+    for (cl = u->out_bufs, ll = &u->out_bufs; cl; cl = cl->next) ll = &cl->next;
+    if (!(cl = ngx_chain_get_free_buf(r->pool, &u->free_bufs))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_chain_get_free_buf"); return NGX_ERROR; }
+    *ll = cl;
+    cl->buf->flush = 1;
+    cl->buf->memory = 1;
+    ngx_buf_t *b = cl->buf;
+    if (!(b->start = ngx_palloc(r->pool, size))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_palloc"); return NGX_ERROR; }
+    b->pos = b->start;
+    b->last = b->start;
+    b->end = b->last + size;
+    b->temporary = 1;
+    b->tag = u->output.tag;
+    u->buffer = *b;
+    return NGX_OK;*/
+}
+
+
 ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
@@ -25,17 +56,10 @@ ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_output value\" received empty value in location \"%V\"", &core->name);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-    ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
-    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_create_temp_buf"); return NGX_ERROR; }
-    ngx_chain_t *chain = ngx_alloc_chain_link(r->pool);
-    if (!chain) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_alloc_chain_link"); return NGX_ERROR; }
-    chain->buf = b;
-    b->memory = 1;
-    b->tag = u->output.tag;
+    if (ngx_postgres_buffer(r, size) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_buffer != NGX_OK"); return NGX_ERROR; }
+    ngx_buf_t *b = &u->buffer;
     b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0), size);
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
-    chain->next = NULL;
-    pd->result.response = chain;
     return NGX_DONE;
 }
 
@@ -291,13 +315,8 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_postgres_data_t *pd) {
         }
     }
     if (!size) return NGX_DONE;
-    ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
-    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_create_temp_buf"); return NGX_ERROR; }
-    ngx_chain_t *chain = ngx_alloc_chain_link(r->pool);
-    if (!chain) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_alloc_chain_link"); return NGX_ERROR; }
-    chain->buf = b;
-    b->memory = 1;
-    b->tag = u->output.tag;
+    if (ngx_postgres_buffer(r, size) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_buffer != NGX_OK"); return NGX_ERROR; }
+    ngx_buf_t *b = &u->buffer;
     if (output->header) {
         for (ngx_uint_t col = 0; col < result->nfields; col++) {
             int len = ngx_strlen(PQfname(res, col));
@@ -358,8 +377,6 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_postgres_data_t *pd) {
         }
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
-    chain->next = NULL;
-    pd->result.response = chain;
     return NGX_DONE;
 }
 
@@ -425,13 +442,8 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
         size += result->ntuples - 1;                      /* row delimiters */
     }
     if (!result->ntuples || !size) return NGX_DONE;
-    ngx_buf_t *b = ngx_create_temp_buf(r->pool, size);
-    if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_create_temp_buf"); return NGX_ERROR; }
-    ngx_chain_t *chain = ngx_alloc_chain_link(r->pool);
-    if (!chain) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_alloc_chain_link"); return NGX_ERROR; }
-    chain->buf = b;
-    b->memory = 1;
-    b->tag = u->output.tag;
+    if (ngx_postgres_buffer(r, size) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_buffer != NGX_OK"); return NGX_ERROR; }
+    ngx_buf_t *b = &u->buffer;
     if (result->ntuples == 1 && result->nfields == 1 && (PQftype(res, 0) == JSONOID || PQftype(res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0), PQgetlength(res, 0, 0)); else { /* fill data */
         if (result->ntuples > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
         for (ngx_uint_t row = 0; row < result->ntuples; row++) {
@@ -484,8 +496,6 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
         if (result->ntuples > 1) b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
-    chain->next = NULL;
-    pd->result.response = chain;
     return NGX_DONE;
 }
 
@@ -518,16 +528,16 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
             r->headers_out.content_type_len = core->default_type.len;
         }
         r->headers_out.content_type_lowcase = NULL;
-        if (pd->result.response) r->headers_out.content_length_n = pd->result.response->buf->end - pd->result.response->buf->start;
+        if (u->out_bufs) r->headers_out.content_length_n = u->out_bufs->buf->end - u->out_bufs->buf->start;
         ngx_int_t rc = ngx_http_send_header(r);
         u->header_sent = r->header_sent;
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return rc;
     }
-    ngx_int_t rc = ngx_http_output_filter(r, pd->result.response);
+    ngx_int_t rc = ngx_http_output_filter(r, u->out_bufs);
     u->header_sent = r->header_sent;
     if (rc == NGX_ERROR || rc > NGX_OK) return rc;
     u->header_sent = 1;
-    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &pd->result.response, u->output.tag);
+//    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &u->out_bufs, u->output.tag);
     return NGX_OK;
 }
 

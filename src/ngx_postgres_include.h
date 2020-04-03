@@ -83,7 +83,6 @@ typedef struct {
 } ngx_postgres_common_t;
 
 typedef struct {
-    ngx_chain_t *response;
     ngx_str_t cmdStatus;
     ngx_str_t cmdTuples;
     ngx_str_t error;
