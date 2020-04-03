@@ -512,7 +512,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
             r->headers_out.content_type_len = core->default_type.len;
         }
         r->headers_out.content_type_lowcase = NULL;
-        if (u->out_bufs) r->headers_out.content_length_n = u->out_bufs->buf->end - u->out_bufs->buf->start;
+        if (u->out_bufs) r->headers_out.content_length_n = u->buffer.end - u->buffer.start;
         ngx_int_t rc = ngx_http_send_header(r);
         u->header_sent = r->header_sent;
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return rc;
