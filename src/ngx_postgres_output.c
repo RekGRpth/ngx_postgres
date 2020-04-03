@@ -14,22 +14,6 @@ static ngx_int_t ngx_postgres_buffer(ngx_http_request_t *r, size_t size) {
     b->tag = u->output.tag;
     u->buffer = *b;
     return NGX_OK;
-/*    ngx_http_upstream_t *u = r->upstream;
-    ngx_chain_t *cl, **ll;
-    for (cl = u->out_bufs, ll = &u->out_bufs; cl; cl = cl->next) ll = &cl->next;
-    if (!(cl = ngx_chain_get_free_buf(r->pool, &u->free_bufs))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_chain_get_free_buf"); return NGX_ERROR; }
-    *ll = cl;
-    cl->buf->flush = 1;
-    cl->buf->memory = 1;
-    ngx_buf_t *b = cl->buf;
-    if (!(b->start = ngx_palloc(r->pool, size))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_palloc"); return NGX_ERROR; }
-    b->pos = b->start;
-    b->last = b->start;
-    b->end = b->last + size;
-    b->temporary = 1;
-    b->tag = u->output.tag;
-    u->buffer = *b;
-    return NGX_OK;*/
 }
 
 
@@ -537,7 +521,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
     u->header_sent = r->header_sent;
     if (rc == NGX_ERROR || rc > NGX_OK) return rc;
     u->header_sent = 1;
-//    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &u->out_bufs, u->output.tag);
+    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &u->out_bufs, u->output.tag);
     return NGX_OK;
 }
 
