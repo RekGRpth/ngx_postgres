@@ -212,7 +212,10 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd) {
                 if (!(result->cmdStatus.data = ngx_pnalloc(r->pool, result->cmdStatus.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
                 ngx_memcpy(result->cmdStatus.data, value, result->cmdStatus.len);
             } // fall through
-        default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res)); break;
+        default:
+            if ((value = PQcmdStatus(res)) && ngx_strlen(value)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(res)), value); }
+            else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, PQresStatus(PQresultStatus(res))); }
+            break;
     }
     return NGX_OK;
 }
@@ -267,7 +270,10 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
                         break;
                     default: break;
                 } // fall through
-            default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res)); break;
+            default:
+                if ((value = PQcmdStatus(res)) && ngx_strlen(value)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(res)), value); }
+                else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, PQresStatus(PQresultStatus(res))); }
+                break;
         }
     } else if (variable[i].handler) {
         ngx_http_upstream_t *u = r->upstream;

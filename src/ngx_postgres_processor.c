@@ -187,6 +187,8 @@ static ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *pd) {
             break;
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pdc->state == %i", pdc->state); return NGX_ERROR;
     }
+    ngx_postgres_output_t *output = &query->output;
+    if (output->handler == ngx_postgres_output_text || output->handler == ngx_postgres_output_csv) if (!PQsetSingleRowMode(pdc->conn)) ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(pdc->conn));
     if (location->timeout) {
         if (!c->read->timer_set) ngx_add_timer(c->read, location->timeout);
         if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);
@@ -249,22 +251,6 @@ again:
 }
 
 
-static ngx_int_t ngx_postgres_process_response(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (ngx_postgres_variable_set(pd) == NGX_ERROR) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_set == NGX_ERROR");
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-    ngx_postgres_query_t *elts = location->queries.elts;
-    ngx_postgres_query_t *query = &elts[pd->query.index];
-    ngx_postgres_output_t *output = &query->output;
-    if (output->handler) return output->handler(pd);
-    return NGX_DONE;
-}
-
-
 static ngx_int_t ngx_postgres_get_result(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
@@ -280,6 +266,8 @@ static ngx_int_t ngx_postgres_get_result(ngx_postgres_data_t *pd) {
         if (c->write->timer_set) ngx_del_timer(c->write);
     }
     ngx_int_t rc = NGX_DONE;
+    const char *value;
+    ngx_postgres_output_t *output = &query->output;
     for (; (pd->result.res = PQgetResult(pdc->conn)); PQclear(pd->result.res)) {
         switch(PQresultStatus(pd->result.res)) {
             case PGRES_FATAL_ERROR:
@@ -287,8 +275,20 @@ static ngx_int_t ngx_postgres_get_result(ngx_postgres_data_t *pd) {
                 ngx_postgres_variable_error(pd);
                 rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
                 break;
-            case PGRES_COMMAND_OK: case PGRES_TUPLES_OK: rc = ngx_postgres_process_response(pd); // fall through
-            default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
+            case PGRES_COMMAND_OK:
+            case PGRES_TUPLES_OK:
+                if (ngx_postgres_variable_set(pd) != NGX_OK) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_set != NGX_OK");
+                    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+                } else if (output->handler && ngx_postgres_variable_output(pd) != NGX_OK) {
+                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_output != NGX_OK");
+                    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+                } // fall through
+            case PGRES_SINGLE_TUPLE: if (rc == NGX_DONE && output->handler) rc = output->handler(pd); // fall through
+            default:
+                if ((value = PQcmdStatus(pd->result.res)) && ngx_strlen(value)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), value); }
+                else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, PQresStatus(PQresultStatus(pd->result.res))); }
+                break;
         }
         if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); PQclear(pd->result.res); return NGX_ERROR; }
         if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); PQclear(pd->result.res); return NGX_AGAIN; }
