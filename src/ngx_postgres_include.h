@@ -176,13 +176,13 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
+ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
 ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd);
 void ngx_postgres_free_connection(ngx_postgres_common_t *common);
 void ngx_postgres_process_events(ngx_postgres_data_t *pd, unsigned write);
-void ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
 
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
 ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);

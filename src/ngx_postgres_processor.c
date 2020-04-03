@@ -132,7 +132,8 @@ static ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *pd) {
         if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); PQclear(pd->result.res); return NGX_ERROR; }
         if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); PQclear(pd->result.res); return NGX_AGAIN; }
     }
-    ngx_postgres_process_notify(pdc, 0);
+    ngx_int_t rc = ngx_postgres_process_notify(pdc, 0);
+    if (rc != NGX_OK) return rc;
     ngx_uint_t hash = 0;
     if (!prepare) {
         if (pd->query.nParams) {
@@ -293,6 +294,8 @@ static ngx_int_t ngx_postgres_get_result(ngx_postgres_data_t *pd) {
         if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); PQclear(pd->result.res); return NGX_AGAIN; }
     }
     ngx_postgres_process_notify(pdc, 0);
+    ngx_int_t rc2 = ngx_postgres_process_notify(pdc, 0);
+    if (rc2 != NGX_OK) return rc2;
     if (rc == NGX_DONE && pd->query.index < location->queries.nelts - 1) {
         pdc->state = state_db_idle;
         pd->query.index++;
