@@ -474,13 +474,13 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
             ngx_postgres_query_t *elts = location->queries.elts;
             ngx_postgres_query_t *query = &elts[pd->query.index];
             ngx_postgres_output_t *output = &query->output;
-            if (output->handler == &ngx_postgres_output_json) {
+            if (output->handler == ngx_postgres_output_json) {
                 ngx_str_set(&r->headers_out.content_type, "application/json");
                 r->headers_out.content_type_len = r->headers_out.content_type.len;
-            } else if (output->handler == &ngx_postgres_output_text) {
+            } else if (output->handler == ngx_postgres_output_text) {
                 ngx_str_set(&r->headers_out.content_type, "text/plain");
                 r->headers_out.content_type_len = r->headers_out.content_type.len;
-            } else if (output->handler == &ngx_postgres_output_csv) {
+            } else if (output->handler == ngx_postgres_output_csv) {
                 ngx_str_set(&r->headers_out.content_type, "text/csv");
                 r->headers_out.content_type_len = r->headers_out.content_type.len;
             } else if (output->handler) {
