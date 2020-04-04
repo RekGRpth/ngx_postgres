@@ -91,6 +91,7 @@ typedef struct {
     ngx_str_t stuples;
     ngx_uint_t nfields;
     ngx_uint_t ntuples;
+    ngx_uint_t nsingle;
     PGresult *res;
 } ngx_postgres_result_t;
 

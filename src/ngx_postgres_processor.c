@@ -269,7 +269,7 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
     const char *value;
     ngx_postgres_output_t *output = &query->output;
     for (; (pd->result.res = PQgetResult(pdc->conn)); PQclear(pd->result.res)) {
-        switch(PQresultStatus(pd->result.res)) {
+        switch (PQresultStatus(pd->result.res)) {
             case PGRES_FATAL_ERROR:
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
                 ngx_postgres_variable_error(pd);
@@ -284,7 +284,9 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
                     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_output != NGX_OK");
                     rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
                 } // fall through
-            case PGRES_SINGLE_TUPLE: if (rc == NGX_DONE && output->handler) rc = output->handler(pd); // fall through
+            case PGRES_SINGLE_TUPLE:
+                if (PQresultStatus(pd->result.res) == PGRES_SINGLE_TUPLE) pd->result.nsingle++;
+                if (rc == NGX_DONE && output->handler) rc = output->handler(pd); // fall through
             default:
                 if ((value = PQcmdStatus(pd->result.res)) && ngx_strlen(value)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), value); }
                 else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, PQresStatus(PQresultStatus(pd->result.res))); }

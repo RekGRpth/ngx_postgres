@@ -193,7 +193,7 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd) {
     result->sql = query->sql;
     PGresult *res = result->res;
     const char *value;
-    result->ntuples = PQntuples(res);
+    result->ntuples = result->nsingle ? result->nsingle : PQntuples(res);
     result->nfields = PQnfields(res);
     switch (PQresultStatus(res)) {
         case PGRES_TUPLES_OK:
