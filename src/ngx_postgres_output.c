@@ -367,11 +367,19 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_postgres_data_t *pd) {
 
 
 ngx_int_t ngx_postgres_output_text(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_str_set(&r->headers_out.content_type, "text/plain");
+    r->headers_out.content_type_len = r->headers_out.content_type.len;
     return ngx_postgres_output_text_csv(pd);
 }
 
 
 ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_str_set(&r->headers_out.content_type, "text/csv");
+    r->headers_out.content_type_len = r->headers_out.content_type.len;
     return ngx_postgres_output_text_csv(pd);
 }
 
@@ -379,6 +387,8 @@ ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *pd) {
 ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_str_set(&r->headers_out.content_type, "application/json");
+    r->headers_out.content_type_len = r->headers_out.content_type.len;
     ngx_http_upstream_t *u = r->upstream;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
@@ -466,30 +476,17 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
     ngx_http_upstream_t *u = r->upstream;
     if (!r->header_sent) {
         r->headers_out.status = NGX_HTTP_OK;
+        if (!r->headers_out.content_type.data) {
+            ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+            r->headers_out.content_type = core->default_type;
+            r->headers_out.content_type_len = core->default_type.len;
+        }
+        r->headers_out.content_type_lowcase = NULL;
+        ngx_postgres_common_t *pdc = &pd->common;
+        if (pdc->charset.len) r->headers_out.charset = pdc->charset;
         if (u->out_bufs) {
-            ngx_http_clear_content_length(r);
-            ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-            ngx_postgres_common_t *pdc = &pd->common;
-            if (pdc->charset.len) r->headers_out.charset = pdc->charset;
-            ngx_postgres_query_t *elts = location->queries.elts;
-            ngx_postgres_query_t *query = &elts[pd->query.index];
-            ngx_postgres_output_t *output = &query->output;
-            if (output->handler == ngx_postgres_output_json) {
-                ngx_str_set(&r->headers_out.content_type, "application/json");
-                r->headers_out.content_type_len = r->headers_out.content_type.len;
-            } else if (output->handler == ngx_postgres_output_text) {
-                ngx_str_set(&r->headers_out.content_type, "text/plain");
-                r->headers_out.content_type_len = r->headers_out.content_type.len;
-            } else if (output->handler == ngx_postgres_output_csv) {
-                ngx_str_set(&r->headers_out.content_type, "text/csv");
-                r->headers_out.content_type_len = r->headers_out.content_type.len;
-            } else if (output->handler) {
-                ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-                r->headers_out.content_type = core->default_type;
-                r->headers_out.content_type_len = core->default_type.len;
-            }
-            r->headers_out.content_type_lowcase = NULL;
-            r->headers_out.content_length_n = 0;
+//            ngx_http_clear_content_length(r);
+//            r->headers_out.content_length_n = 0;
             for (ngx_chain_t *chain = u->out_bufs; chain; chain = chain->next) r->headers_out.content_length_n += chain->buf->end - chain->buf->start;
         }
         ngx_int_t rc = ngx_http_send_header(r);
