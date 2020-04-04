@@ -580,63 +580,65 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     };
     ngx_uint_t j;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (elts[i].len > sizeof("delimiter=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"delimiter=", sizeof("delimiter=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("delimiter=") - 1);
-            if (!elts[i].len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty \"delimiter\" value", &cmd->name); return NGX_CONF_ERROR; }
-            if (elts[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"delimiter\" value \"%V\" must be one character", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            elts[i].data = &elts[i].data[sizeof("delimiter=") - 1];
-            output->delimiter = *elts[i].data;
-            continue;
-        }
-        if (elts[i].len > sizeof("null=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"null=", sizeof("null=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("null=") - 1);
-            if (!(output->null.len = elts[i].len)) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty \"null\" value", &cmd->name); return NGX_CONF_ERROR; }
-            elts[i].data = &elts[i].data[sizeof("null=") - 1];
-            output->null.data = elts[i].data;
-            continue;
+        if (output->handler == ngx_postgres_output_text || output->handler == ngx_postgres_output_csv) {
+            if (elts[i].len > sizeof("delimiter=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"delimiter=", sizeof("delimiter=") - 1)) {
+                elts[i].len = elts[i].len - (sizeof("delimiter=") - 1);
+                if (!elts[i].len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty \"delimiter\" value", &cmd->name); return NGX_CONF_ERROR; }
+                if (elts[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"delimiter\" value \"%V\" must be one character", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+                elts[i].data = &elts[i].data[sizeof("delimiter=") - 1];
+                output->delimiter = *elts[i].data;
+                continue;
+            }
+            if (elts[i].len > sizeof("null=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"null=", sizeof("null=") - 1)) {
+                elts[i].len = elts[i].len - (sizeof("null=") - 1);
+                if (!(output->null.len = elts[i].len)) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty \"null\" value", &cmd->name); return NGX_CONF_ERROR; }
+                elts[i].data = &elts[i].data[sizeof("null=") - 1];
+                output->null.data = elts[i].data;
+                continue;
+            }
+            if (elts[i].len > sizeof("header=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"header=", sizeof("header=") - 1)) {
+                elts[i].len = elts[i].len - (sizeof("header=") - 1);
+                elts[i].data = &elts[i].data[sizeof("header=") - 1];
+                for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { output->header = e[j].value; break; }
+                if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"header\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+                continue;
+            }
+            if (elts[i].len > sizeof("string=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"string=", sizeof("string=") - 1)) {
+                elts[i].len = elts[i].len - (sizeof("string=") - 1);
+                elts[i].data = &elts[i].data[sizeof("string=") - 1];
+                for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { output->string = e[j].value; break; }
+                if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"string\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+                continue;
+            }
+            if (elts[i].len > sizeof("single=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"single=", sizeof("single=") - 1)) {
+                elts[i].len = elts[i].len - (sizeof("single=") - 1);
+                elts[i].data = &elts[i].data[sizeof("single=") - 1];
+                for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { output->single = e[j].value; break; }
+                if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"single\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+                continue;
+            }
+            if (elts[i].len >= sizeof("quote=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"quote=", sizeof("quote=") - 1)) {
+                elts[i].len = elts[i].len - (sizeof("quote=") - 1);
+                if (!elts[i].len) { output->quote = '\0'; continue; }
+                else if (elts[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"quote\" value \"%V\" must be one character", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+                elts[i].data = &elts[i].data[sizeof("quote=") - 1];
+                output->quote = *elts[i].data;
+                continue;
+            }
+            if (elts[i].len >= sizeof("escape=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"escape=", sizeof("escape=") - 1)) {
+                elts[i].len = elts[i].len - (sizeof("escape=") - 1);
+                if (!elts[i].len) { output->escape = '\0'; continue; }
+                else if (elts[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"escape\" value \"%V\" must be one character", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+                elts[i].data = &elts[i].data[sizeof("escape=") - 1];
+                output->escape = *elts[i].data;
+                continue;
+            }
         }
         if (elts[i].len > sizeof("append=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"append=", sizeof("append=") - 1)) {
             elts[i].len = elts[i].len - (sizeof("append=") - 1);
             elts[i].data = &elts[i].data[sizeof("append=") - 1];
             for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { location->append = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"append\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            continue;
-        }
-        if (elts[i].len > sizeof("header=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"header=", sizeof("header=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("header=") - 1);
-            elts[i].data = &elts[i].data[sizeof("header=") - 1];
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { output->header = e[j].value; break; }
-            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"header\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            continue;
-        }
-        if (elts[i].len > sizeof("string=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"string=", sizeof("string=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("string=") - 1);
-            elts[i].data = &elts[i].data[sizeof("string=") - 1];
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { output->string = e[j].value; break; }
-            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"string\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            continue;
-        }
-        if (elts[i].len > sizeof("single=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"single=", sizeof("single=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("single=") - 1);
-            elts[i].data = &elts[i].data[sizeof("single=") - 1];
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { output->single = e[j].value; break; }
-            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"single\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            continue;
-        }
-        if (elts[i].len >= sizeof("quote=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"quote=", sizeof("quote=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("quote=") - 1);
-            if (!elts[i].len) { output->quote = '\0'; continue; }
-            else if (elts[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"quote\" value \"%V\" must be one character", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            elts[i].data = &elts[i].data[sizeof("quote=") - 1];
-            output->quote = *elts[i].data;
-            continue;
-        }
-        if (elts[i].len >= sizeof("escape=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"escape=", sizeof("escape=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("escape=") - 1);
-            if (!elts[i].len) { output->escape = '\0'; continue; }
-            else if (elts[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"escape\" value \"%V\" must be one character", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            elts[i].data = &elts[i].data[sizeof("escape=") - 1];
-            output->escape = *elts[i].data;
             continue;
         }
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]);
