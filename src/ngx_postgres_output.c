@@ -385,6 +385,7 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
+    if (!result->ntuples || !result->nfields) return NGX_DONE;
     if (result->ntuples == 1 && result->nfields == 1 && (PQftype(res, 0) == JSONOID || PQftype(res, 0) == JSONBOID)) size = PQgetlength(res, 0, 0); else {
         if (result->ntuples > 1) size += 2; // [] + \0
         for (ngx_uint_t row = 0; row < result->ntuples; row++) {
@@ -413,7 +414,7 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
         size += result->ntuples * (result->nfields - 1); /* col delimiters */
         size += result->ntuples - 1;                      /* row delimiters */
     }
-    if (!result->ntuples || !size) return NGX_DONE;
+    if (!size) return NGX_DONE;
     ngx_buf_t *b = ngx_postgres_buffer(r, size);
     if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_postgres_buffer"); return NGX_ERROR; }
     if (result->ntuples == 1 && result->nfields == 1 && (PQftype(res, 0) == JSONOID || PQftype(res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(res, 0, 0), PQgetlength(res, 0, 0)); else { /* fill data */
