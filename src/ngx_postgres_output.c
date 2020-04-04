@@ -391,25 +391,12 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
             size += sizeof("{}") - 1;
             for (ngx_uint_t col = 0; col < result->nfields; col++) {
                 int len = PQgetlength(res, row, col);
-                if (PQgetisnull(res, row, col)) size += sizeof("null") - 1; else switch (PQftype(res, col)) {
-                    case BITOID:
-                    case CIDOID:
-                    case FLOAT4OID:
-                    case FLOAT8OID:
-                    case INT2OID:
-                    case INT4OID:
-                    case INT8OID:
-                    case JSONBOID:
-                    case JSONOID:
-                    case NUMERICOID:
-                    case OIDOID:
-                    case TIDOID:
-                    case XIDOID: size += len; break;
-                    case BOOLOID: switch (PQgetvalue(res, row, col)[0]) {
+                if (PQgetisnull(res, row, col)) size += sizeof("null") - 1; else {
+                    if (PQftype(res, col) == BOOLOID) switch (PQgetvalue(res, row, col)[0]) {
                         case 't': case 'T': size += sizeof("true") - 1; break;
                         case 'f': case 'F': size += sizeof("false") - 1; break;
-                    } break;
-                    default: size += sizeof("\"\"") - 1 + len + ngx_escape_json(NULL, (u_char *)PQgetvalue(res, row, col), len); break;
+                    } else if (!ngx_postgres_oid_is_string(PQftype(res, col))) size += len;
+                    else size += sizeof("\"\"") - 1 + len + ngx_escape_json(NULL, (u_char *)PQgetvalue(res, row, col), len);
                 }
             }
         }
@@ -451,29 +438,15 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
                     }
                 }
                 b->last = ngx_copy(b->last, "\":", sizeof("\":") - 1);
-                if (PQgetisnull(res, row, col)) b->last = ngx_copy(b->last, "null", sizeof("null") - 1); else switch (PQftype(res, col)) {
-                    case BITOID:
-                    case CIDOID:
-                    case FLOAT4OID:
-                    case FLOAT8OID:
-                    case INT2OID:
-                    case INT4OID:
-                    case INT8OID:
-                    case JSONBOID:
-                    case JSONOID:
-                    case NUMERICOID:
-                    case OIDOID:
-                    case TIDOID:
-                    case XIDOID: b->last = ngx_copy(b->last, PQgetvalue(res, row, col), len); break;
-                    case BOOLOID: switch (PQgetvalue(res, row, col)[0]) {
+                if (PQgetisnull(res, row, col)) b->last = ngx_copy(b->last, "null", sizeof("null") - 1); else {
+                    if (PQftype(res, col) == BOOLOID) switch (PQgetvalue(res, row, col)[0]) {
                         case 't': case 'T': b->last = ngx_copy(b->last, "true", sizeof("true") - 1); break;
                         case 'f': case 'F': b->last = ngx_copy(b->last, "false", sizeof("false") - 1); break;
-                    } break;
-                    default: {
+                    } else if (!ngx_postgres_oid_is_string(PQftype(res, col))) b->last = ngx_copy(b->last, PQgetvalue(res, row, col), len); else {
                         b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
                         if (len > 0) b->last = (u_char *)ngx_escape_json(b->last, (u_char *)PQgetvalue(res, row, col), len);
                         b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
-                    } break;
+                    }
                 }
             }
             b->last = ngx_copy(b->last, "}", sizeof("}") - 1);
