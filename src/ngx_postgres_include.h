@@ -13,11 +13,11 @@ typedef struct {
 } ngx_postgres_listen_t;
 
 typedef enum {
-    state_db_connect = 1,
-    state_db_prepare,
-    state_db_query,
-    state_db_result,
-    state_db_idle
+    state_connect = 1,
+    state_prepare,
+    state_query,
+    state_result,
+    state_idle
 } ngx_postgres_state_t;
 
 typedef struct {
