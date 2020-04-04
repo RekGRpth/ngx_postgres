@@ -484,11 +484,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
         r->headers_out.content_type_lowcase = NULL;
         ngx_postgres_common_t *pdc = &pd->common;
         if (pdc->charset.len) r->headers_out.charset = pdc->charset;
-        if (u->out_bufs) {
-//            ngx_http_clear_content_length(r);
-//            r->headers_out.content_length_n = 0;
-            for (ngx_chain_t *chain = u->out_bufs; chain; chain = chain->next) r->headers_out.content_length_n += chain->buf->end - chain->buf->start;
-        }
+        if (u->out_bufs) for (ngx_chain_t *chain = u->out_bufs; chain; chain = chain->next) r->headers_out.content_length_n += chain->buf->end - chain->buf->start;
         ngx_int_t rc = ngx_http_send_header(r);
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return rc;
     }
