@@ -11,6 +11,7 @@ static ngx_buf_t *ngx_postgres_buffer(ngx_http_request_t *r, size_t size) {
     cl->buf->flush = 1;
     cl->buf->memory = 1;
     ngx_buf_t *b = cl->buf;
+    if (b->start) ngx_pfree(r->pool, b->start);
     if (!(b->start = ngx_palloc(r->pool, size))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_palloc"); return NULL; }
     b->pos = b->start;
     b->last = b->start;
