@@ -15,7 +15,7 @@ static ngx_int_t ngx_postgres_done(ngx_postgres_data_t *pd, ngx_int_t rc) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
     }
-    if (rc == NGX_OK) rc = ngx_postgres_output_chain(pd);
+    if (rc == NGX_DONE) rc = ngx_postgres_output_chain(pd);
     ngx_http_upstream_finalize_request(r, u, rc);
     return NGX_DONE;
 }
@@ -37,6 +37,12 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *elts = location->queries.elts;
     ngx_postgres_query_t *query = &elts[pd->query.index];
+    if (!(query->methods & r->method)) {
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!(query->methods & r->method)");
+        pd->query.index++;
+        if (pd->query.index == location->queries.nelts) return NGX_HTTP_NOT_ALLOWED;
+        return NGX_AGAIN;
+    }
     if (query->timeout) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
@@ -133,7 +139,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
         if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); PQclear(pd->result.res); return NGX_AGAIN; }
     }
     ngx_int_t rc = ngx_postgres_process_notify(pdc, 0);
-    if (rc != NGX_OK) return rc;
+    if (rc != NGX_DONE) return rc;
     ngx_uint_t hash = 0;
     if (!prepare) {
         if (pd->query.nParams) {
@@ -295,8 +301,7 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
         if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); PQclear(pd->result.res); return NGX_ERROR; }
         if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); PQclear(pd->result.res); return NGX_AGAIN; }
     }
-    ngx_int_t rc2 = ngx_postgres_process_notify(pdc, 0);
-    if (rc2 != NGX_OK) return rc2;
+    if (rc == NGX_DONE) rc = ngx_postgres_process_notify(pdc, 0);
     if (rc == NGX_DONE && pd->query.index < location->queries.nelts - 1) {
         pdc->state = state_idle;
         pd->query.index++;
@@ -312,7 +317,7 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
         pd->query.index++;
         return NGX_AGAIN;
     }
-    return rc == NGX_DONE ? ngx_postgres_done(pd, NGX_OK) : rc;
+    return ngx_postgres_done(pd, rc);
 }
 
 

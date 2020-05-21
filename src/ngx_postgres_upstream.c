@@ -160,7 +160,7 @@ ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t 
         ngx_pfree(c->pool, unlisten);
     }
     if (array) ngx_array_destroy(array);
-    return NGX_OK;
+    return NGX_DONE;
 }
 
 
@@ -179,7 +179,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
         default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
     }
-    if (ngx_postgres_process_notify(psc, 1) != NGX_ERROR) return;
+    if (ngx_postgres_process_notify(psc, 1) == NGX_DONE) return;
 close:
     ngx_postgres_free_connection(psc);
     ngx_queue_remove(&ps->queue);
@@ -705,16 +705,41 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_query_t *query = location->query = ngx_array_push(&location->queries);
     if (!query) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(query, sizeof(*query));
+    static ngx_conf_bitmask_t b[] = {
+        { ngx_string("HTTP_UNKNOWN"), NGX_HTTP_UNKNOWN },
+        { ngx_string("HTTP_GET"), NGX_HTTP_GET },
+        { ngx_string("HTTP_HEAD"), NGX_HTTP_HEAD },
+        { ngx_string("HTTP_POST"), NGX_HTTP_POST },
+        { ngx_string("HTTP_PUT"), NGX_HTTP_PUT },
+        { ngx_string("HTTP_DELETE"), NGX_HTTP_DELETE },
+        { ngx_string("HTTP_MKCOL"), NGX_HTTP_MKCOL },
+        { ngx_string("HTTP_COPY"), NGX_HTTP_COPY },
+        { ngx_string("HTTP_MOVE"), NGX_HTTP_MOVE },
+        { ngx_string("HTTP_OPTIONS"), NGX_HTTP_OPTIONS },
+        { ngx_string("HTTP_PROPFIND"), NGX_HTTP_PROPFIND },
+        { ngx_string("HTTP_PROPPATCH"), NGX_HTTP_PROPPATCH },
+        { ngx_string("HTTP_LOCK"), NGX_HTTP_LOCK },
+        { ngx_string("HTTP_UNLOCK"), NGX_HTTP_UNLOCK },
+        { ngx_string("HTTP_PATCH"), NGX_HTTP_PATCH },
+        { ngx_string("HTTP_TRACE"), NGX_HTTP_TRACE },
+        { ngx_null_string, 0 }
+    };
+    ngx_uint_t i, j;
+    for (j = 1; j < cf->args->nelts; j++) {
+        for (i = 0; b[i].name.len; i++) if (b[i].name.len == elts[j].len && !ngx_strncasecmp(b[i].name.data, elts[j].data, b[i].name.len)) query->methods |= b[i].mask;
+        if (i == sizeof(b)/sizeof(b[0]) - 1) break;
+    }
+    if (query->methods) j++; else query->methods = 0xFFFF;
     ngx_str_t sql = ngx_null_string;
-    for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
-        if (i > 1) sql.len++;
+    for (ngx_uint_t i = j; i < cf->args->nelts; i++) {
+        if (i > j) sql.len++;
         sql.len += elts[i].len;
     }
     if (!sql.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty query", &cmd->name); return NGX_CONF_ERROR; }
     if (!(sql.data = ngx_pnalloc(cf->pool, sql.len))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
     u_char *q = sql.data;
-    for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
-        if (i > 1) *q++ = ' ';
+    for (ngx_uint_t i = j; i < cf->args->nelts; i++) {
+        if (i > j) *q++ = ' ';
         q = ngx_cpymem(q, elts[i].data, elts[i].len);
     }
     if (!(query->sql.data = ngx_pnalloc(cf->pool, sql.len))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
