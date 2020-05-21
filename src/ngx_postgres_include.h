@@ -106,7 +106,7 @@ typedef struct {
         Oid *paramTypes;
         u_char **paramValues;
     } query;
-    ngx_array_t variables;
+    ngx_array_t variable;
     ngx_event_free_peer_pt peer_free;
     ngx_event_get_peer_pt peer_get;
 #if (NGX_HTTP_SSL)
@@ -144,7 +144,7 @@ typedef struct {
 typedef struct {
     ngx_array_t ids;
     ngx_array_t params;
-    ngx_array_t variables;
+    ngx_array_t variable;
     ngx_flag_t listen;
     ngx_flag_t prepare;
     ngx_msec_t timeout;

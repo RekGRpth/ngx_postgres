@@ -122,8 +122,8 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
     ngx_postgres_data_t *pd = u->peer.data;
-    if (!pd || !pd->variables.elts) return NGX_OK;
-    ngx_str_t *elts = pd->variables.elts;
+    if (!pd || !pd->variable.elts) return NGX_OK;
+    ngx_str_t *elts = pd->variable.elts;
     ngx_uint_t index = (ngx_uint_t)data;
     if (!elts[index].data) return NGX_OK;
     v->valid = 1;
@@ -228,17 +228,17 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
     ngx_postgres_query_t *elts_ = location->query.elts;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->query.index);
     ngx_postgres_query_t *query = &elts_[pd->query.index];
-    ngx_array_t *variables = &query->variables;
-    if (!variables->elts) return NGX_OK;
-    ngx_postgres_variable_t *variable = variables->elts;
-    ngx_str_t *elts = pd->variables.elts;
-//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", pd->variables.nelts);
+    ngx_array_t *array = &query->variable;
+    if (!array->elts) return NGX_OK;
+    ngx_postgres_variable_t *variable = array->elts;
+    ngx_str_t *elts = pd->variable.elts;
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", pd->variable.nelts);
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
     const char *value;
-    for (ngx_uint_t i = 0; i < variables->nelts; i++) if (variable[i].type) {
+    for (ngx_uint_t i = 0; i < array->nelts; i++) if (variable[i].type) {
         switch (PQresultStatus(res)) {
             case PGRES_TUPLES_OK:
                 switch (variable[i].type) {
@@ -336,7 +336,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
 }
 
 
-static ngx_http_variable_t ngx_postgres_module_variables[] = {
+static ngx_http_variable_t ngx_postgres_module_variable[] = {
   { .name = ngx_string("postgres_nfields"),
     .set_handler = NULL,
     .get_handler = ngx_postgres_variable_nfields,
@@ -378,7 +378,7 @@ static ngx_http_variable_t ngx_postgres_module_variables[] = {
 
 
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf) {
-    for (ngx_http_variable_t *v = ngx_postgres_module_variables; v->name.len; v++) {
+    for (ngx_http_variable_t *v = ngx_postgres_module_variable; v->name.len; v++) {
         ngx_http_variable_t *variable = ngx_http_add_variable(cf, &v->name, v->flags);
         if (!variable) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_http_add_variable"); return NGX_ERROR; }
         variable->get_handler = v->get_handler;
@@ -397,9 +397,9 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (elts[1].data[0] != '$') return "error: invalid variable name";
     elts[1].len--;
     elts[1].data++;
-    ngx_array_t *variables = &query->variables;
-    if (!variables->elts && ngx_array_init(variables, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_postgres_variable_t *variable = ngx_array_push(variables);
+    ngx_array_t *array = &query->variable;
+    if (!array->elts && ngx_array_init(array, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_postgres_variable_t *variable = ngx_array_push(array);
     if (!variable) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(variable, sizeof(*variable));
     variable->index = location->variable++;

@@ -464,13 +464,13 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
                 }
             }
         }
-        ngx_array_t *variables = &query->variables;
-        nelts += variables->nelts;
+        ngx_array_t *variable = &query->variable;
+        nelts += variable->nelts;
     }
     if (nelts) {
-        if (ngx_array_init(&pd->variables, r->pool, pd->variables.nelts, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
-        ngx_memzero(&pd->variables.elts, pd->variables.nelts * pd->variables.size);
-        pd->variables.nelts = nelts;
+        if (ngx_array_init(&pd->variable, r->pool, pd->variable.nelts, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
+        ngx_memzero(&pd->variable.elts, pd->variable.nelts * pd->variable.size);
+        pd->variable.nelts = nelts;
     }
     return NGX_OK;
 }
