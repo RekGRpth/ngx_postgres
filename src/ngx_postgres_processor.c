@@ -310,7 +310,7 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
     }
     if (PQtransactionStatus(pdc->conn) != PQTRANS_IDLE) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
-        ngx_postgres_query_t *query = location->query = ngx_array_push(&location->queries);
+        ngx_postgres_query_t *query = ngx_array_push(&location->queries);
         if (!query) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_push"); return NGX_ERROR; }
         ngx_memzero(query, sizeof(*query));
         ngx_str_set(&query->sql, "COMMIT");

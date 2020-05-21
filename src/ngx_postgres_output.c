@@ -500,11 +500,9 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
 
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    ngx_postgres_query_t *query = location->query;
-    if (!query) return "must defined after \"postgres_query\" directive";
-//    if (query->methods) return "can not defined with methods query";
-//    if (location->output) return "duplicate";
-    ngx_postgres_output_t *output = /*location->output = */&query->output;
+    if (!location->queries.elts || !location->queries.nelts) return "must defined after \"postgres_query\" directive";
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->queries.elts)[location->queries.nelts - 1];
+    ngx_postgres_output_t *output = &query->output;
     if (output->handler) return "duplicate";
     ngx_str_t *elts = cf->args->elts;
     static const struct {

@@ -552,7 +552,7 @@ static char *ngx_postgres_trace_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 
 char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    ngx_postgres_query_t *query = location->query;
+    ngx_postgres_query_t *query = location->queries.elts && location->queries.nelts ? &((ngx_postgres_query_t *)location->queries.elts)[location->queries.nelts - 1] : NULL;
     ngx_str_t *elts = cf->args->elts;
     ngx_int_t n = ngx_parse_time(&elts[1], 0);
     if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be time", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
@@ -567,7 +567,7 @@ char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
 
 char *ngx_postgres_prepare_conf_(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    ngx_postgres_query_t *query = location->query;
+    ngx_postgres_query_t *query = location->queries.elts && location->queries.nelts ? &((ngx_postgres_query_t *)location->queries.elts)[location->queries.nelts - 1] : NULL;
     ngx_str_t *elts = cf->args->elts;
     static const ngx_conf_enum_t e[] = {
         { ngx_string("off"), 0 },

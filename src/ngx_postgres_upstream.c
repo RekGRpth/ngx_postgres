@@ -702,7 +702,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_str_t *elts = cf->args->elts;
     ngx_postgres_location_t *location = conf;
     if (!location->queries.elts && ngx_array_init(&location->queries, cf->pool, 1, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_postgres_query_t *query = location->query = ngx_array_push(&location->queries);
+    ngx_postgres_query_t *query = ngx_array_push(&location->queries);
     if (!query) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(query, sizeof(*query));
     static ngx_conf_bitmask_t b[] = {

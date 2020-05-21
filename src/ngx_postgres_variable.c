@@ -390,8 +390,8 @@ ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf) {
 
 char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    ngx_postgres_query_t *query = location->query;
-    if (!query) return "must defined after \"postgres_query\" directive";
+    if (!location->queries.elts || !location->queries.nelts) return "must defined after \"postgres_query\" directive";
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->queries.elts)[location->queries.nelts - 1];
     ngx_str_t *elts = cf->args->elts;
     if (elts[1].len < 2) return "error: empty variable name";
     if (elts[1].data[0] != '$') return "error: invalid variable name";
