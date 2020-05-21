@@ -265,8 +265,7 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_data_t *pd) {
     if (!result->ntuples || !result->nfields) return NGX_DONE;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *elts = location->query.elts;
-    ngx_postgres_query_t *query = &elts[pd->query.index];
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->query.index];
     ngx_postgres_output_t *output = &query->output;
     if (output->header && !u->out_bufs) {
         size += result->nfields - 1; // header delimiters

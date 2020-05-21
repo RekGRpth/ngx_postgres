@@ -160,8 +160,7 @@ ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_result_t *result = &pd->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *elts = location->query.elts;
-    ngx_postgres_query_t *query = &elts[pd->query.index];
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->query.index];
     result->sql = query->sql;
     PGresult *res = result->res;
     result->ntuples = 0;
@@ -188,8 +187,7 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_result_t *result = &pd->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *elts = location->query.elts;
-    ngx_postgres_query_t *query = &elts[pd->query.index];
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->query.index];
     result->sql = query->sql;
     PGresult *res = result->res;
     const char *value;
@@ -225,9 +223,8 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *elts_ = location->query.elts;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->query.index);
-    ngx_postgres_query_t *query = &elts_[pd->query.index];
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->query.index];
     ngx_array_t *array = &query->variable;
     if (!array->elts) return NGX_OK;
     ngx_postgres_variable_t *variable = array->elts;
