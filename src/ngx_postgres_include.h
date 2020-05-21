@@ -155,7 +155,7 @@ typedef struct {
 } ngx_postgres_query_t;
 
 typedef struct {
-    ngx_array_t queries;
+    ngx_array_t query;
     ngx_flag_t append;
     ngx_flag_t prepare;
     ngx_http_complex_value_t complex;

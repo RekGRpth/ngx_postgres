@@ -66,15 +66,15 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "subrequest_in_memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; } // TODO: add support for subrequest in memory by emitting output into u->buffer instead
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (!location->queries.elts) {
+    if (!location->query.elts) {
         ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "missing \"postgres_query\" in location \"%V\"", &core->name);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-    ngx_postgres_query_t *elts = location->queries.elts;
+    ngx_postgres_query_t *elts = location->query.elts;
     ngx_uint_t i;
-    for (i = 0; i < location->queries.nelts; i++) if (!elts[i].methods || elts[i].methods & r->method) break;
-    if (i == location->queries.nelts) return NGX_HTTP_NOT_ALLOWED;
+    for (i = 0; i < location->query.nelts; i++) if (!elts[i].methods || elts[i].methods & r->method) break;
+    if (i == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     ngx_int_t rc = ngx_http_discard_request_body(r);
     if (rc != NGX_OK) return rc;
     if (ngx_http_upstream_create(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_upstream_create != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }

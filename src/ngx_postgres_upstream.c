@@ -446,9 +446,9 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     u->peer.save_session = ngx_postgres_save_session;
 #endif
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *elts = location->queries.elts;
+    ngx_postgres_query_t *elts = location->query.elts;
     ngx_uint_t nelts = 0;
-    for (ngx_uint_t i = 0; i < location->queries.nelts; i++) {
+    for (ngx_uint_t i = 0; i < location->query.nelts; i++) {
         ngx_postgres_query_t *query = &elts[i];
         if (query->params.nelts) {
             ngx_postgres_param_t *param = query->params.elts;
@@ -701,8 +701,8 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_str_t *elts = cf->args->elts;
     ngx_postgres_location_t *location = conf;
-    if (!location->queries.elts && ngx_array_init(&location->queries, cf->pool, 1, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_postgres_query_t *query = ngx_array_push(&location->queries);
+    if (!location->query.elts && ngx_array_init(&location->query, cf->pool, 1, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_postgres_query_t *query = ngx_array_push(&location->query);
     if (!query) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(query, sizeof(*query));
     static ngx_conf_bitmask_t b[] = {

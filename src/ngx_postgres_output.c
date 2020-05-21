@@ -265,7 +265,7 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_data_t *pd) {
     if (!result->ntuples || !result->nfields) return NGX_DONE;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *elts = location->queries.elts;
+    ngx_postgres_query_t *elts = location->query.elts;
     ngx_postgres_query_t *query = &elts[pd->query.index];
     ngx_postgres_output_t *output = &query->output;
     if (output->header && !u->out_bufs) {
@@ -500,8 +500,8 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
 
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    if (!location->queries.elts || !location->queries.nelts) return "must defined after \"postgres_query\" directive";
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->queries.elts)[location->queries.nelts - 1];
+    if (!location->query.elts || !location->query.nelts) return "must defined after \"postgres_query\" directive";
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1];
     ngx_postgres_output_t *output = &query->output;
     if (output->handler) return "duplicate";
     ngx_str_t *elts = cf->args->elts;
