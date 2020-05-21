@@ -254,7 +254,7 @@ static ngx_flag_t ngx_postgres_oid_is_string(Oid oid) {
 }
 
 
-static ngx_int_t ngx_postgres_output_text_csv(ngx_postgres_data_t *pd) {
+static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
@@ -366,12 +366,12 @@ static ngx_int_t ngx_postgres_output_text_csv(ngx_postgres_data_t *pd) {
 }
 
 
-ngx_int_t ngx_postgres_output_text(ngx_postgres_data_t *pd) {
+ngx_int_t ngx_postgres_output_plain(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_str_set(&r->headers_out.content_type, "text/plain");
     r->headers_out.content_type_len = r->headers_out.content_type.len;
-    return ngx_postgres_output_text_csv(pd);
+    return ngx_postgres_output_plain_csv(pd);
 }
 
 
@@ -380,7 +380,7 @@ ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_str_set(&r->headers_out.content_type, "text/csv");
     r->headers_out.content_type_len = r->headers_out.content_type.len;
-    return ngx_postgres_output_text_csv(pd);
+    return ngx_postgres_output_plain_csv(pd);
 }
 
 
@@ -512,7 +512,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         unsigned binary:1;
         ngx_postgres_handler_pt handler;
     } h[] = {
-        { ngx_string("text"), 0, ngx_postgres_output_text },
+        { ngx_string("plain"), 0, ngx_postgres_output_plain },
         { ngx_string("csv"), 0, ngx_postgres_output_csv },
         { ngx_string("value"), 0, ngx_postgres_output_value },
         { ngx_string("binary"), 1, ngx_postgres_output_value },
@@ -521,11 +521,11 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     };
     ngx_uint_t i;
     for (i = 0; h[i].name.len; i++) if (h[i].name.len == elts[1].len && !ngx_strncasecmp(h[i].name.data, elts[1].data, elts[1].len)) { output->handler = h[i].handler; break; }
-    if (!h[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: format \"%V\" must be \"text\", \"csv\", \"value\", \"binary\" or \"json\"", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    if (!h[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: format \"%V\" must be \"plain\", \"csv\", \"value\", \"binary\" or \"json\"", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
     output->binary = h[i].binary;
     output->header = 1;
     output->string = 1;
-    if (output->handler == ngx_postgres_output_text) {
+    if (output->handler == ngx_postgres_output_plain) {
         output->delimiter = '\t';
         ngx_str_set(&output->null, "\\N");
     } else if (output->handler == ngx_postgres_output_csv) {
@@ -545,7 +545,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     };
     ngx_uint_t j;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (output->handler == ngx_postgres_output_text || output->handler == ngx_postgres_output_csv) {
+        if (output->handler == ngx_postgres_output_plain || output->handler == ngx_postgres_output_csv) {
             if (elts[i].len > sizeof("delimiter=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"delimiter=", sizeof("delimiter=") - 1)) {
                 elts[i].len = elts[i].len - (sizeof("delimiter=") - 1);
                 if (!elts[i].len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty \"delimiter\" value", &cmd->name); return NGX_CONF_ERROR; }

@@ -177,7 +177,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd);
-ngx_int_t ngx_postgres_output_text(ngx_postgres_data_t *pd);
+ngx_int_t ngx_postgres_output_plain(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
