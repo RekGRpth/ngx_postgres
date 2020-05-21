@@ -161,7 +161,7 @@ typedef struct {
     ngx_http_complex_value_t complex;
     ngx_http_upstream_conf_t upstream;
     ngx_msec_t timeout;
-    ngx_uint_t index;
+    ngx_uint_t variable;
 } ngx_postgres_location_t;
 
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);

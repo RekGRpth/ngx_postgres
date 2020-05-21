@@ -402,7 +402,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_variable_t *variable = ngx_array_push(variables);
     if (!variable) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(variable, sizeof(*variable));
-    variable->index = location->index++;
+    variable->index = location->variable++;
     variable->name = elts[1];
     ngx_http_variable_t *var = ngx_http_add_variable(cf, &variable->name, NGX_HTTP_VAR_CHANGEABLE);
     if (!var) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_add_variable", &cmd->name); return NGX_CONF_ERROR; }
