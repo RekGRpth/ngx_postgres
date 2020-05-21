@@ -73,7 +73,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     }
     ngx_postgres_query_t *elts = location->query.elts;
     ngx_uint_t i;
-    for (i = 0; i < location->query.nelts; i++) if (!elts[i].methods || elts[i].methods & r->method) break;
+    for (i = 0; i < location->query.nelts; i++) if (!elts[i].method || elts[i].method & r->method) break;
     if (i == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     ngx_int_t rc = ngx_http_discard_request_body(r);
     if (rc != NGX_OK) return rc;

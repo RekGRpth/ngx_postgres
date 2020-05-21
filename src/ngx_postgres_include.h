@@ -150,7 +150,7 @@ typedef struct {
     ngx_msec_t timeout;
     ngx_postgres_output_t output;
     ngx_str_t sql;
-    ngx_uint_t methods;
+    ngx_uint_t method;
     ngx_uint_t percent;
 } ngx_postgres_query_t;
 

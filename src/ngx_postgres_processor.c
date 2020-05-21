@@ -36,7 +36,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *elts = location->query.elts;
     ngx_uint_t i;
-    for (i = pd->query.index; i < location->query.nelts; i++) if (!elts[i].methods || elts[i].methods & r->method) break;
+    for (i = pd->query.index; i < location->query.nelts; i++) if (!elts[i].method || elts[i].method & r->method) break;
     if (i == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     pd->query.index = i;
     ngx_postgres_query_t *query = &elts[pd->query.index];
@@ -302,7 +302,7 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
     if (rc == NGX_DONE) rc = ngx_postgres_process_notify(pdc, 0);
     if (rc == NGX_DONE && pd->query.index < location->query.nelts - 1) {
         ngx_uint_t i;
-        for (i = pd->query.index + 1; i < location->query.nelts; i++) if (!elts[i].methods || elts[i].methods & r->method) break;
+        for (i = pd->query.index + 1; i < location->query.nelts; i++) if (!elts[i].method || elts[i].method & r->method) break;
         if (i < location->query.nelts) {
             pd->query.index = i;
             return NGX_AGAIN;
