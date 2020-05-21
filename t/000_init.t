@@ -7,13 +7,13 @@ repeat_each(1);
 
 plan tests => repeat_each() * 2 * blocks();
 
-$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= '127.0.0.1';
+$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= 'postgres';
 $ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
 
 our $http_config = <<'_EOC_';
     upstream database {
-        postgres_server  $TEST_NGINX_POSTGRESQL_HOST:$TEST_NGINX_POSTGRESQL_PORT
-                         dbname=ngx_test user=ngx_test password=ngx_test;
+        postgres_server  host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
+                         dbname=test user=test password=test;
     }
 _EOC_
 
@@ -23,6 +23,9 @@ run_tests();
 __DATA__
 
 === TEST 1: cats - drop table
+--- main_config
+    load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /init {
@@ -42,6 +45,8 @@ GET /init
 
 
 === TEST 2: cats - create table
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /init {
@@ -58,6 +63,8 @@ GET /init
 
 
 === TEST 3: cats - insert value
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /init {
@@ -74,6 +81,8 @@ GET /init
 
 
 === TEST 4: cats - insert value
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /init {
@@ -90,6 +99,9 @@ GET /init
 
 
 === TEST 5: numbers - drop table
+--- main_config
+    load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /init {
@@ -109,6 +121,8 @@ GET /init
 
 
 === TEST 6: numbers - create table
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /init {
@@ -125,6 +139,9 @@ GET /init
 
 
 === TEST 7: users - drop table
+--- main_config
+    load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /init {
@@ -144,6 +161,8 @@ GET /init
 
 
 === TEST 8: users - create table
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /init {
@@ -160,6 +179,8 @@ GET /init
 
 
 === TEST 9: users - insert value
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /init {

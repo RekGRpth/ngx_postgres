@@ -7,13 +7,13 @@ repeat_each(2);
 
 plan tests => repeat_each() * (blocks() * 3 - 2 * 1);
 
-$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= '127.0.0.1';
+$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= 'postgres';
 $ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
 
 our $http_config = <<'_EOC_';
     upstream database {
-        postgres_server  $TEST_NGINX_POSTGRESQL_HOST:$TEST_NGINX_POSTGRESQL_PORT
-                         dbname=ngx_test user=ngx_test password=ngx_test;
+        postgres_server  host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
+                         dbname=test user=test password=test;
     }
 _EOC_
 
@@ -22,17 +22,20 @@ run_tests();
 __DATA__
 
 === TEST 1: authorized (auth basic)
+--- main_config
+    load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /auth {
         internal;
-        postgres_escape     $user $remote_user;
-        postgres_escape     $pass $remote_passwd;
+#        postgres_escape     $user $remote_user;
+#        postgres_escape     $pass $remote_passwd;
         postgres_pass       database;
-        postgres_query      "select login from users where login=$user and pass=$pass";
-        postgres_rewrite    no_rows 403;
+        postgres_query      "select login from users where login=$remote_user::text and pass=$remote_passwd::text";
+#        postgres_rewrite    no_rows 403;
         postgres_set        $login 0 0 required;
-        postgres_output     none;
+#        postgres_output     none;
     }
 
     location /test {
@@ -54,17 +57,20 @@ hi, ngx_test!
 
 
 === TEST 2: unauthorized (auth basic)
+--- main_config
+    load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /auth {
         internal;
-        postgres_escape     $user $remote_user;
-        postgres_escape     $pass $remote_passwd;
+#        postgres_escape     $user $remote_user;
+#        postgres_escape     $pass $remote_passwd;
         postgres_pass       database;
-        postgres_query      "select login from users where login=$user and pass=$pass";
-        postgres_rewrite    no_rows 403;
+        postgres_query      "select login from users where login=$remote_user::text and pass=$remote_passwd::text";
+#        postgres_rewrite    no_rows 403;
         postgres_set        $login 0 0 required;
-        postgres_output     none;
+#        postgres_output     none;
     }
 
     location /test {
@@ -84,17 +90,20 @@ Content-Type: text/html
 
 
 === TEST 3: unauthorized (no authorization header)
+--- main_config
+    load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location = /auth {
         internal;
-        postgres_escape     $user $remote_user;
-        postgres_escape     $pass $remote_passwd;
+#        postgres_escape     $user $remote_user;
+#        postgres_escape     $pass $remote_passwd;
         postgres_pass       database;
-        postgres_query      "select login from users where login=$user and pass=$pass";
-        postgres_rewrite    no_rows 403;
+        postgres_query      "select login from users where login=$remote_user and pass=$remote_passwd";
+#        postgres_rewrite    no_rows 403;
         postgres_set        $login 0 0 required;
-        postgres_output     none;
+#        postgres_output     none;
     }
 
     location /test {
