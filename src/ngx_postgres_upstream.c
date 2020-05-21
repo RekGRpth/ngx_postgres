@@ -729,7 +729,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         for (i = 0; b[i].name.len; i++) if (b[i].name.len == elts[j].len && !ngx_strncasecmp(b[i].name.data, elts[j].data, b[i].name.len)) query->methods |= b[i].mask;
         if (i == sizeof(b)/sizeof(b[0]) - 1) break;
     }
-    if (query->methods) j++; else query->methods = 0xFFFF;
+    if (query->methods) j++;
     ngx_str_t sql = ngx_null_string;
     for (ngx_uint_t i = j; i < cf->args->nelts; i++) {
         if (i > j) sql.len++;

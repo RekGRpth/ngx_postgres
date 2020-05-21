@@ -37,11 +37,9 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *elts = location->queries.elts;
     ngx_postgres_query_t *query = &elts[pd->query.index];
-    if (!(query->methods & r->method)) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "!(query->methods & r->method)");
+    while (query->methods && !(query->methods & r->method) && pd->query.index < location->queries.nelts) {
         pd->query.index++;
-        if (pd->query.index == location->queries.nelts) return NGX_HTTP_NOT_ALLOWED;
-        return NGX_AGAIN;
+        query = &elts[pd->query.index];
     }
     if (query->timeout) {
         if (c->read->timer_set) ngx_del_timer(c->read);
