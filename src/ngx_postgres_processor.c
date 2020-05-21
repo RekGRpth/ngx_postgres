@@ -8,7 +8,6 @@ static ngx_int_t ngx_postgres_done(ngx_postgres_data_t *pd, ngx_int_t rc) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_common_t *pdc = &pd->common;
-    pdc->state = state_idle;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location->timeout) {
         ngx_connection_t *c = pdc->connection;
@@ -36,11 +35,11 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
     if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *elts = location->queries.elts;
+    ngx_uint_t i;
+    for (i = pd->query.index; i < location->queries.nelts; i++) if (!elts[i].methods || elts[i].methods & r->method) break;
+    if (i == location->queries.nelts) return NGX_HTTP_NOT_ALLOWED;
+    pd->query.index = i;
     ngx_postgres_query_t *query = &elts[pd->query.index];
-    while (query->methods && !(query->methods & r->method) && pd->query.index < location->queries.nelts) {
-        pd->query.index++;
-        query = &elts[pd->query.index];
-    }
     if (query->timeout) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
@@ -299,11 +298,15 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
         if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); PQclear(pd->result.res); return NGX_ERROR; }
         if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); PQclear(pd->result.res); return NGX_AGAIN; }
     }
+    pdc->state = state_idle;
     if (rc == NGX_DONE) rc = ngx_postgres_process_notify(pdc, 0);
     if (rc == NGX_DONE && pd->query.index < location->queries.nelts - 1) {
-        pdc->state = state_idle;
-        pd->query.index++;
-        return NGX_AGAIN;
+        ngx_uint_t i;
+        for (i = pd->query.index + 1; i < location->queries.nelts; i++) if (!elts[i].methods || elts[i].methods & r->method) break;
+        if (i < location->queries.nelts) {
+            pd->query.index = i;
+            return NGX_AGAIN;
+        }
     }
     if (PQtransactionStatus(pdc->conn) != PQTRANS_IDLE) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
@@ -311,7 +314,6 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
         if (!query) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_push"); return NGX_ERROR; }
         ngx_memzero(query, sizeof(*query));
         ngx_str_set(&query->sql, "COMMIT");
-        pdc->state = state_idle;
         pd->query.index++;
         return NGX_AGAIN;
     }
