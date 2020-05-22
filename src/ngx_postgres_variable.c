@@ -201,7 +201,7 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd) {
             result->stuples.len = snprintf(NULL, 0, "%li", result->ntuples);
             if (!(result->stuples.data = ngx_pnalloc(r->pool, result->stuples.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             result->stuples.len = ngx_snprintf(result->stuples.data, result->stuples.len, "%li", result->ntuples) - result->stuples.data;
-            if ((value = PQcmdTuples(res)) && (result->cmdTuples.len = ngx_strlen(value))) {
+            if (ngx_strncasecmp((u_char *)PQcmdStatus(res), (u_char *)"SELECT", sizeof("SELECT") - 1) && (value = PQcmdTuples(res)) && (result->cmdTuples.len = ngx_strlen(value))) {
                 if (!(result->cmdTuples.data = ngx_pnalloc(r->pool, result->cmdTuples.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
                 ngx_memcpy(result->cmdTuples.data, value, result->cmdTuples.len);
             } // fall through

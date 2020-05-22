@@ -26,9 +26,11 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd) {
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
-    const char *value = PQcmdTuples(res);
-    size_t value_len = ngx_strlen(value);
-    if (value_len) result->ncmdTuples = ngx_atoi((u_char *)value, value_len);
+    if (ngx_strncasecmp((u_char *)PQcmdStatus(res), (u_char *)"SELECT", sizeof("SELECT") - 1)) {
+        char *affected = PQcmdTuples(res);
+        size_t affected_len = ngx_strlen(affected);
+        if (affected_len) result->ncmdTuples = ngx_atoi((u_char *)affected, affected_len);
+    }
     for (ngx_uint_t i = 0; i < array->nelts; i++) if ((rc = rewrite[i].handler(pd, rewrite[i].key, rewrite[i].status)) != NGX_DONE) { result->status = rc; break; }
     return rc;
 }
