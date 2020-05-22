@@ -7,13 +7,13 @@ repeat_each(2);
 
 plan tests => repeat_each() * (blocks() * 3);
 
-$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= '127.0.0.1';
+$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= 'postgres';
 $ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
 
 our $http_config = <<'_EOC_';
     upstream database {
-        postgres_server  $TEST_NGINX_POSTGRESQL_HOST:$TEST_NGINX_POSTGRESQL_PORT
-                         dbname=ngx_test user=ngx_test password=ngx_test;
+        postgres_server  host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
+                         dbname=test user=test password=test;
     }
 _EOC_
 
@@ -22,6 +22,10 @@ run_tests();
 __DATA__
 
 === TEST 1: sanity
+--- main_config
+    load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_http_eval_module.so;
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /eval {
@@ -29,7 +33,7 @@ __DATA__
 
         eval $backend {
             postgres_pass    database;
-            postgres_query   "select '$scheme://127.0.0.1:$server_port/echo'";
+            postgres_query   "select $scheme::text||'://127.0.0.1:'||$server_port::text||'/echo'";
             postgres_output  value;
         }
 
@@ -52,6 +56,10 @@ it works!
 
 
 === TEST 2: sanity (simple case)
+--- main_config
+    load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_http_eval_module.so;
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /eval {
