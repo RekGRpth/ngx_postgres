@@ -705,7 +705,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_query_t *query = ngx_array_push(&location->query);
     if (!query) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(query, sizeof(*query));
-    static ngx_conf_bitmask_t b[] = {
+    static const ngx_conf_bitmask_t b[] = {
         { ngx_string("HTTP_UNKNOWN"), NGX_HTTP_UNKNOWN },
         { ngx_string("HTTP_GET"), NGX_HTTP_GET },
         { ngx_string("HTTP_HEAD"), NGX_HTTP_HEAD },

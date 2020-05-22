@@ -89,9 +89,11 @@ typedef struct {
     ngx_str_t sfields;
     ngx_str_t sql;
     ngx_str_t stuples;
+    ngx_uint_t ncmdTuples;
     ngx_uint_t nfields;
-    ngx_uint_t ntuples;
     ngx_uint_t nsingle;
+    ngx_uint_t ntuples;
+    ngx_uint_t status;
     PGresult *res;
 } ngx_postgres_result_t;
 
@@ -144,6 +146,7 @@ typedef struct {
 typedef struct {
     ngx_array_t ids;
     ngx_array_t params;
+    ngx_array_t rewrite;
     ngx_array_t variable;
     ngx_flag_t listen;
     ngx_flag_t prepare;
@@ -166,6 +169,7 @@ typedef struct {
 
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *PQerrorMessageMy(const PGconn *conn);
 char *PQresultErrorMessageMy(const PGresult *res);
@@ -180,6 +184,7 @@ ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
 ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
+ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
 ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd);

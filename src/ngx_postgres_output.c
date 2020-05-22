@@ -474,7 +474,8 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
     if (!r->header_sent) {
-        r->headers_out.status = NGX_HTTP_OK;
+        ngx_postgres_result_t *result = &pd->result;
+        r->headers_out.status = result->status ? result->status : NGX_HTTP_OK;
         if (!r->headers_out.content_type.data) {
             ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
             r->headers_out.content_type = core->default_type;

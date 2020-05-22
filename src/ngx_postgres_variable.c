@@ -178,7 +178,7 @@ ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd) {
         if (!(result->error.data = ngx_pnalloc(r->pool, result->error.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
         ngx_memcpy(result->error.data, value, result->error.len);
     }
-    return NGX_OK;
+    return NGX_DONE;
 }
 
 
@@ -215,7 +215,7 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd) {
             else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, PQresStatus(PQresultStatus(res))); }
             break;
     }
-    return NGX_OK;
+    return NGX_DONE;
 }
 
 
@@ -226,7 +226,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->query.index);
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->query.index];
     ngx_array_t *array = &query->variable;
-    if (!array->elts) return NGX_OK;
+    if (!array->elts) return NGX_DONE;
     ngx_postgres_variable_t *variable = array->elts;
     ngx_str_t *elts = pd->variable.elts;
 //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", pd->variable.nelts);
@@ -234,7 +234,9 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
-    const char *value;
+    const char *value = PQcmdTuples(res);
+    size_t value_len = ngx_strlen(value);
+    if (value_len) result->ncmdTuples = ngx_atoi((u_char *)value, value_len);
     for (ngx_uint_t i = 0; i < array->nelts; i++) if (variable[i].type) {
         switch (PQresultStatus(res)) {
             case PGRES_TUPLES_OK:
@@ -329,7 +331,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
         ngx_memcpy(elts[variable[i].index].data, PQgetvalue(res, variable[i].row, variable[i].col), elts[variable[i].index].len);
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%V = %V", &variable[i].name, &elts[variable[i].index]);
     }
-    return NGX_OK;
+    return NGX_DONE;
 }
 
 

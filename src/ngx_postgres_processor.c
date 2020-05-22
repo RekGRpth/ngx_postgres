@@ -276,17 +276,15 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
             case PGRES_FATAL_ERROR:
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
                 ngx_postgres_variable_error(pd);
+                ngx_postgres_rewrite_set(pd);
                 rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
                 break;
             case PGRES_COMMAND_OK:
             case PGRES_TUPLES_OK:
-                if (ngx_postgres_variable_set(pd) != NGX_OK) {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_set != NGX_OK");
-                    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-                } else if (output->handler && ngx_postgres_variable_output(pd) != NGX_OK) {
-                    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_variable_output != NGX_OK");
-                    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-                } // fall through
+                if (rc == NGX_DONE) rc = ngx_postgres_variable_set(pd);
+                if (rc == NGX_DONE) rc = ngx_postgres_rewrite_set(pd);
+                if (rc == NGX_DONE && output->handler) rc = ngx_postgres_variable_output(pd);
+                // fall through
             case PGRES_SINGLE_TUPLE:
                 if (PQresultStatus(pd->result.res) == PGRES_SINGLE_TUPLE) pd->result.nsingle++;
                 if (rc == NGX_DONE && output->handler) rc = output->handler(pd); // fall through
