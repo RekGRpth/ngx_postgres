@@ -5,7 +5,7 @@ typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_postgres_data_t *pd, n
 
 
 typedef struct  {
-    ngx_flag_t keep;
+//    ngx_flag_t keep;
     ngx_postgres_rewrite_handler_pt handler;
     ngx_uint_t key;
     ngx_uint_t status;
@@ -80,11 +80,11 @@ char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
     ngx_memzero(rewrite, sizeof(*rewrite));
     rewrite->handler = e[i].handler;
     rewrite->key = e[i].key;
-    if (to.data[0] == '=') {
+/*    if (to.data[0] == '=') {
         rewrite->keep = 1;
         to.len--;
         to.data++;
-    }
+    }*/
     ngx_int_t n = ngx_atoi(to.data, to.len);
     if (n == NGX_ERROR || n < NGX_HTTP_OK || n > NGX_HTTP_INSUFFICIENT_STORAGE || (n >= NGX_HTTP_SPECIAL_RESPONSE && n < NGX_HTTP_BAD_REQUEST)) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid status value \"%V\" for condition \"%V\"", &cmd->name, &to, &what); return NGX_CONF_ERROR; }
     else rewrite->status = (ngx_uint_t)n;
