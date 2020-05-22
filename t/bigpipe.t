@@ -7,13 +7,13 @@ repeat_each(2);
 
 plan tests => repeat_each() * (blocks() * 2);
 
-$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= '127.0.0.1';
+$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= 'postgres';
 $ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
 
 our $http_config = <<'_EOC_';
     upstream database {
-        postgres_server  $TEST_NGINX_POSTGRESQL_HOST:$TEST_NGINX_POSTGRESQL_PORT
-                         dbname=ngx_test user=ngx_test password=ngx_test;
+        postgres_server  host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
+                         dbname=test user=test password=test;
     }
 _EOC_
 
@@ -22,6 +22,9 @@ run_tests();
 __DATA__
 
 === TEST 1: synchronous
+--- main_config
+    load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
         location /bigpipe {
@@ -39,14 +42,16 @@ __DATA__
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id ASC";
-            rds_json             on;
+            postgres_output json;
+#            rds_json             on;
         }
 
         location /_query2 {
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id DESC";
-            rds_json             on;
+            postgres_output json;
+#            rds_json             on;
         }
 --- request
 GET /bigpipe
@@ -62,6 +67,9 @@ GET /bigpipe
 
 
 === TEST 2: asynchronous (without echo filter)
+--- main_config
+    load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
         location /bigpipe {
@@ -79,14 +87,16 @@ GET /bigpipe
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id ASC";
-            rds_json             on;
+            postgres_output json;
+#            rds_json             on;
         }
 
         location /_query2 {
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id DESC";
-            rds_json             on;
+            postgres_output json;
+#            rds_json             on;
         }
 --- request
 GET /bigpipe
@@ -102,6 +112,9 @@ GET /bigpipe
 
 
 === TEST 3: asynchronous (with echo filter)
+--- main_config
+    load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
         location /bigpipe {
@@ -120,14 +133,16 @@ GET /bigpipe
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id ASC";
-            rds_json             on;
+            postgres_output json;
+#            rds_json             on;
         }
 
         location /_query2 {
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id DESC";
-            rds_json             on;
+            postgres_output json;
+#            rds_json             on;
         }
 --- request
 GET /bigpipe
