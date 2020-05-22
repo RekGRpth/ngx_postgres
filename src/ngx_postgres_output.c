@@ -510,6 +510,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         unsigned binary:1;
         ngx_postgres_handler_pt handler;
     } h[] = {
+        { ngx_string("none"), 0, NULL },
         { ngx_string("plain"), 0, ngx_postgres_output_plain },
         { ngx_string("csv"), 0, ngx_postgres_output_csv },
         { ngx_string("value"), 0, ngx_postgres_output_value },
@@ -519,7 +520,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     };
     ngx_uint_t i;
     for (i = 0; h[i].name.len; i++) if (h[i].name.len == elts[1].len && !ngx_strncasecmp(h[i].name.data, elts[1].data, elts[1].len)) { output->handler = h[i].handler; break; }
-    if (!h[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: format \"%V\" must be \"plain\", \"csv\", \"value\", \"binary\" or \"json\"", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    if (!h[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: format \"%V\" must be \"none\", \"plain\", \"csv\", \"value\", \"binary\" or \"json\"", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
     output->binary = h[i].binary;
     output->header = 1;
     output->string = 1;
