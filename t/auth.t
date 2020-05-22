@@ -35,7 +35,7 @@ __DATA__
         postgres_query      "select login from users where login=$remote_user::text and pass=$remote_passwd::text";
         postgres_rewrite    no_rows 403;
         postgres_set        $login 0 0 required;
-#        postgres_output     none;
+        postgres_output     none;
     }
 
     location /test {
@@ -70,7 +70,7 @@ hi, ngx_test!
         postgres_query      "select login from users where login=$remote_user::text and pass=$remote_passwd::text";
         postgres_rewrite    no_rows 403;
         postgres_set        $login 0 0 required;
-#        postgres_output     none;
+        postgres_output     none;
     }
 
     location /test {
@@ -103,7 +103,7 @@ Content-Type: text/html
         postgres_query      "select login from users where login=$remote_user::text and pass=$remote_passwd::text";
         postgres_rewrite    no_rows 403;
         postgres_set        $login 0 0 required;
-#        postgres_output     none;
+        postgres_output     none;
     }
 
     location /test {
