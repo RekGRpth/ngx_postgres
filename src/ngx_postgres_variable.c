@@ -234,9 +234,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
-    const char *value = PQcmdTuples(res);
-    size_t value_len = ngx_strlen(value);
-    if (value_len) result->ncmdTuples = ngx_atoi((u_char *)value, value_len);
+    const char *value;
     for (ngx_uint_t i = 0; i < array->nelts; i++) if (variable[i].type) {
         switch (PQresultStatus(res)) {
             case PGRES_TUPLES_OK:

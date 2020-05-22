@@ -281,8 +281,8 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
                 break;
             case PGRES_COMMAND_OK:
             case PGRES_TUPLES_OK:
-                if (rc == NGX_DONE) rc = ngx_postgres_variable_set(pd);
                 if (rc == NGX_DONE) rc = ngx_postgres_rewrite_set(pd);
+                if (rc == NGX_DONE) rc = ngx_postgres_variable_set(pd);
                 if (rc == NGX_DONE && output->handler) rc = ngx_postgres_variable_output(pd);
                 // fall through
             case PGRES_SINGLE_TUPLE:

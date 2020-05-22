@@ -21,10 +21,16 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd) {
     ngx_array_t *array = &query->rewrite;
     if (!array->elts) return NGX_DONE;
     ngx_postgres_rewrite_t *rewrite = array->elts;
-    ngx_int_t rc = NGX_DECLINED;
+    ngx_int_t rc = NGX_DONE;
     ngx_postgres_result_t *result = &pd->result;
-    for (ngx_uint_t i = 0; i < array->nelts; i++) if ((rc = rewrite[i].handler(pd, rewrite[i].key, rewrite[i].status)) != NGX_DECLINED) { result->status = rc; break; }
-    return NGX_DONE;
+    PGresult *res = result->res;
+    result->ntuples = PQntuples(res);
+    result->nfields = PQnfields(res);
+    const char *value = PQcmdTuples(res);
+    size_t value_len = ngx_strlen(value);
+    if (value_len) result->ncmdTuples = ngx_atoi((u_char *)value, value_len);
+    for (ngx_uint_t i = 0; i < array->nelts; i++) if ((rc = rewrite[i].handler(pd, rewrite[i].key, rewrite[i].status)) != NGX_DONE) { result->status = rc; break; }
+    return rc;
 }
 
 
@@ -35,7 +41,7 @@ static ngx_int_t ngx_postgres_rewrite_changes(ngx_postgres_data_t *pd, ngx_uint_
     PGresult *res = result->res;
     if (key % 2 == 0 && !result->ncmdTuples) return status;
     if (key % 2 == 1 && result->ncmdTuples > 0) return status;
-    return NGX_DECLINED;
+    return NGX_DONE;
 }
 
 
@@ -46,7 +52,7 @@ static ngx_int_t ngx_postgres_rewrite_rows(ngx_postgres_data_t *pd, ngx_uint_t k
     PGresult *res = result->res;
     if (key % 2 == 0 && !result->ntuples) return status;
     if (key % 2 == 1 && result->ntuples > 0) return status;
-    return NGX_DECLINED;
+    return NGX_DONE;
 }
 
 
