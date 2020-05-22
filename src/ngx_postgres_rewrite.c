@@ -33,7 +33,7 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd) {
         if (affected_len) result->ncmdTuples = ngx_atoi((u_char *)affected, affected_len);
     }
     for (ngx_uint_t i = 0; i < rewrite->nelts; i++) if ((!elts[i].method || elts[i].method & r->method) && (rc = elts[i].handler(pd, elts[i].key, elts[i].status)) != NGX_DONE) { result->status = rc; break; }
-    return rc;
+    return NGX_DONE;
 }
 
 
