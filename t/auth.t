@@ -100,7 +100,7 @@ Content-Type: text/html
 #        postgres_escape     $user $remote_user;
 #        postgres_escape     $pass $remote_passwd;
         postgres_pass       database;
-        postgres_query      "select login from users where login=$remote_user and pass=$remote_passwd";
+        postgres_query      "select login from users where login=$remote_user::text and pass=$remote_passwd::text";
         postgres_rewrite    no_rows 403;
         postgres_set        $login 0 0 required;
 #        postgres_output     none;
