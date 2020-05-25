@@ -450,7 +450,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     ngx_uint_t nelts = 0;
     for (ngx_uint_t i = 0; i < location->query.nelts; i++) {
         ngx_postgres_query_t *query = &elts[i];
-        if (query->params.nelts) {
+        if (query->params.nelts && (!query->method || query->method & r->method)) {
             ngx_postgres_param_t *param = query->params.elts;
             pd->query.nParams = query->params.nelts;
             if (!(pd->query.paramTypes = ngx_pnalloc(r->pool, query->params.nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
