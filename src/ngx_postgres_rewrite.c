@@ -24,14 +24,6 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd) {
     ngx_postgres_rewrite_t *elts = rewrite->elts;
     ngx_int_t rc = NGX_DONE;
     ngx_postgres_result_t *result = &pd->result;
-    PGresult *res = result->res;
-    result->ntuples = PQntuples(res);
-    result->nfields = PQnfields(res);
-    if (ngx_strncasecmp((u_char *)PQcmdStatus(res), (u_char *)"SELECT", sizeof("SELECT") - 1)) {
-        char *affected = PQcmdTuples(res);
-        size_t affected_len = ngx_strlen(affected);
-        if (affected_len) result->ncmdTuples = ngx_atoi((u_char *)affected, affected_len);
-    }
     for (ngx_uint_t i = 0; i < rewrite->nelts; i++) if ((!elts[i].method || elts[i].method & r->method) && (rc = elts[i].handler(pd, elts[i].key, elts[i].status)) != NGX_DONE) { result->status = rc; break; }
     return NGX_DONE;
 }
@@ -42,8 +34,14 @@ static ngx_int_t ngx_postgres_rewrite_changes(ngx_postgres_data_t *pd, ngx_uint_
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
-    if (key % 2 == 0 && !result->ncmdTuples) return status;
-    if (key % 2 == 1 && result->ncmdTuples > 0) return status;
+    if (ngx_strncasecmp((u_char *)PQcmdStatus(res), (u_char *)"SELECT", sizeof("SELECT") - 1)) {
+        char *affected = PQcmdTuples(res);
+        size_t affected_len = ngx_strlen(affected);
+        ngx_int_t ncmdTuples = NGX_ERROR;
+        if (affected_len) ncmdTuples = ngx_atoi((u_char *)affected, affected_len);
+        if (key % 2 == 0 && !ncmdTuples) return status;
+        if (key % 2 == 1 && ncmdTuples > 0) return status;
+    }
     return NGX_DONE;
 }
 
@@ -53,6 +51,7 @@ static ngx_int_t ngx_postgres_rewrite_rows(ngx_postgres_data_t *pd, ngx_uint_t k
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
+    result->ntuples = PQntuples(res);
     if (key % 2 == 0 && !result->ntuples) return status;
     if (key % 2 == 1 && result->ntuples > 0) return status;
     return NGX_DONE;

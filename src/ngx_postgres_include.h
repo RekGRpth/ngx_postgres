@@ -89,7 +89,6 @@ typedef struct {
     ngx_str_t sfields;
     ngx_str_t sql;
     ngx_str_t stuples;
-    ngx_uint_t ncmdTuples;
     ngx_uint_t nfields;
     ngx_uint_t nsingle;
     ngx_uint_t ntuples;
