@@ -120,7 +120,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 410
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/html
 --- timeout: 10
 
 
@@ -285,7 +285,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 409
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/html
 --- timeout: 10
 
 
@@ -298,7 +298,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "update cats set id=3 where name='noone'";
-        postgres_rewrite    no_changes 409;
+        postgres_rewrite    no_changes =409;
         postgres_rewrite    changes 500;
     }
 --- request
@@ -319,7 +319,7 @@ Content-Type: text/plain; charset=utf-8
         postgres_pass       database;
         postgres_query      "select * from cats";
         postgres_rewrite    no_rows 500;
-        postgres_rewrite    rows 409;
+        postgres_rewrite    rows =409;
     }
 --- request
 GET /postgres
