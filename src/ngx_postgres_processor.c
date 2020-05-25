@@ -50,7 +50,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
     if (pdc->state == state_connect || pdc->state == state_idle) {
         ngx_str_t sql;
         sql.len = query->sql.len - 2 * query->ids.nelts - query->percent;
-    //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &query->sql);
+//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &query->sql);
         ngx_str_t *ids = NULL;
         ngx_str_t channel = ngx_null_string;
         ngx_str_t command = ngx_null_string;
@@ -90,8 +90,8 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
         if (av_call(alist)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "av_call"); return NGX_ERROR; }
         if (last != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_snprintf"); return NGX_ERROR; }
         *last = '\0';
-    //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
-        pd->query.sql = sql; /* set $postgres_query */
+//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
+        pd->query.sql = sql;
         if (pusc->ps.max) {
             if (query->listen && channel.data && command.data) {
                 if (!pdc->listen.queue) {
