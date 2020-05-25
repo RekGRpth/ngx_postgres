@@ -17,7 +17,6 @@ our $http_config = <<'_EOC_';
     }
 _EOC_
 
-no_shuffle();
 run_tests();
 
 __DATA__
