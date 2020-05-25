@@ -99,22 +99,22 @@ char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
     for (i = 1; i < cf->args->nelts - 2; i++) {
     }
     static const ngx_conf_bitmask_t b[] = {
-        { ngx_string("HTTP_UNKNOWN"), NGX_HTTP_UNKNOWN },
-        { ngx_string("HTTP_GET"), NGX_HTTP_GET },
-        { ngx_string("HTTP_HEAD"), NGX_HTTP_HEAD },
-        { ngx_string("HTTP_POST"), NGX_HTTP_POST },
-        { ngx_string("HTTP_PUT"), NGX_HTTP_PUT },
-        { ngx_string("HTTP_DELETE"), NGX_HTTP_DELETE },
-        { ngx_string("HTTP_MKCOL"), NGX_HTTP_MKCOL },
-        { ngx_string("HTTP_COPY"), NGX_HTTP_COPY },
-        { ngx_string("HTTP_MOVE"), NGX_HTTP_MOVE },
-        { ngx_string("HTTP_OPTIONS"), NGX_HTTP_OPTIONS },
-        { ngx_string("HTTP_PROPFIND"), NGX_HTTP_PROPFIND },
-        { ngx_string("HTTP_PROPPATCH"), NGX_HTTP_PROPPATCH },
-        { ngx_string("HTTP_LOCK"), NGX_HTTP_LOCK },
-        { ngx_string("HTTP_UNLOCK"), NGX_HTTP_UNLOCK },
-        { ngx_string("HTTP_PATCH"), NGX_HTTP_PATCH },
-        { ngx_string("HTTP_TRACE"), NGX_HTTP_TRACE },
+        { ngx_string("UNKNOWN"), NGX_HTTP_UNKNOWN },
+        { ngx_string("GET"), NGX_HTTP_GET },
+        { ngx_string("HEAD"), NGX_HTTP_HEAD },
+        { ngx_string("POST"), NGX_HTTP_POST },
+        { ngx_string("PUT"), NGX_HTTP_PUT },
+        { ngx_string("DELETE"), NGX_HTTP_DELETE },
+        { ngx_string("MKCOL"), NGX_HTTP_MKCOL },
+        { ngx_string("COPY"), NGX_HTTP_COPY },
+        { ngx_string("MOVE"), NGX_HTTP_MOVE },
+        { ngx_string("OPTIONS"), NGX_HTTP_OPTIONS },
+        { ngx_string("PROPFIND"), NGX_HTTP_PROPFIND },
+        { ngx_string("PROPPATCH"), NGX_HTTP_PROPPATCH },
+        { ngx_string("LOCK"), NGX_HTTP_LOCK },
+        { ngx_string("UNLOCK"), NGX_HTTP_UNLOCK },
+        { ngx_string("PATCH"), NGX_HTTP_PATCH },
+        { ngx_string("TRACE"), NGX_HTTP_TRACE },
         { ngx_null_string, 0 }
     };
     for (ngx_uint_t j = 1; j < cf->args->nelts - 2; j++) for (ngx_uint_t i = 0; b[i].name.len; i++) if (b[i].name.len == elts[j].len && !ngx_strncasecmp(b[i].name.data, elts[j].data, b[i].name.len)) rewrite->method |= b[i].mask;
