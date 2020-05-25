@@ -5,7 +5,7 @@ use Test::Nginx::Socket;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 2) * 2 - 4;
+plan tests => repeat_each() * (blocks() * 2 + 1);
 
 $ENV{TEST_NGINX_POSTGRESQL_HOST} ||= 'postgres';
 $ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
@@ -29,6 +29,7 @@ __DATA__
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
+        postgres_output     plain;
         postgres_rewrite    no_changes 200;
         postgres_rewrite    changes 500;
     }
@@ -49,6 +50,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "update cats set id=3 where name='noone'";
+        postgres_output     plain;
         postgres_rewrite    no_changes 206;
         postgres_rewrite    changes 500;
     }
@@ -69,6 +71,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "update cats set id=3 where name='bob'";
+        postgres_output     plain;
         postgres_rewrite    no_changes 500;
         postgres_rewrite    changes 206;
     }
@@ -89,6 +92,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
+        postgres_output     plain;
         postgres_rewrite    no_changes 500;
         postgres_rewrite    changes 500;
         postgres_rewrite    no_rows 410;
@@ -111,6 +115,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats where name='noone'";
+        postgres_output     plain;
         postgres_rewrite    no_changes 500;
         postgres_rewrite    changes 500;
         postgres_rewrite    no_rows 410;
@@ -138,6 +143,7 @@ Content-Type: text/html
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
+        postgres_output     plain;
     postgres_rewrite  no_changes 500;
     postgres_rewrite  changes 500;
     postgres_rewrite  no_rows 410;
@@ -165,6 +171,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
+        postgres_output     plain;
     postgres_rewrite  no_changes 500;
     postgres_rewrite  changes 500;
     postgres_rewrite  no_rows 410;
@@ -188,6 +195,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
+        postgres_output     plain;
         postgres_rewrite    no_changes 500;
         postgres_rewrite    changes 500;
         postgres_rewrite    no_rows 410;
@@ -212,6 +220,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
+        postgres_output     plain;
         postgres_rewrite    no_changes 500;
         postgres_rewrite    changes 500;
         postgres_rewrite    no_rows 410;
@@ -235,6 +244,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
+        postgres_output     plain;
         postgres_rewrite    no_changes 500;
         postgres_rewrite    changes 500;
         postgres_rewrite    no_rows 410;
@@ -257,6 +267,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "update cats set id=3 where name='noone'";
+        postgres_output     plain;
         postgres_rewrite    no_changes 202;
         postgres_rewrite    changes 500;
     }
@@ -278,6 +289,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "update cats set id=3 where name='noone'";
+        postgres_output     plain;
         postgres_rewrite    no_changes 409;
         postgres_rewrite    changes 500;
     }
@@ -298,6 +310,7 @@ Content-Type: text/html
     location /postgres {
         postgres_pass       database;
         postgres_query      "update cats set id=3 where name='noone'";
+        postgres_output     plain;
         postgres_rewrite    no_changes =409;
         postgres_rewrite    changes 500;
     }
@@ -318,6 +331,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
+        postgres_output     plain;
         postgres_rewrite    no_rows 500;
         postgres_rewrite    rows =409;
     }
@@ -326,7 +340,18 @@ GET /postgres
 --- error_code: 409
 --- response_headers
 Content-Type: text/plain; charset=utf-8
-#--- response_body eval
+--- response_body eval
+"id".
+"\x{09}".
+"name".
+"\x{0a}".
+"2".
+"\x{09}".
+"\\N".
+"\x{0a}".
+"3".
+"\x{09}".
+"bob"
 #"\x{00}".        # endian
 #"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
 #"\x{00}".        # result type
@@ -369,6 +394,7 @@ Content-Type: text/plain; charset=utf-8
         if ($arg_foo) {
             postgres_pass       database;
             postgres_query      "select * from cats";
+            postgres_output     plain;
             postgres_rewrite    no_changes 500;
             postgres_rewrite    changes 500;
             postgres_rewrite    no_rows 410;
