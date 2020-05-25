@@ -7,13 +7,13 @@ repeat_each(1);
 
 plan tests => repeat_each() * (blocks() * 3);
 
-$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= '127.0.0.1';
+$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= 'postgres';
 $ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
 
 our $http_config = <<'_EOC_';
     upstream database {
-        postgres_server  $TEST_NGINX_POSTGRESQL_HOST:$TEST_NGINX_POSTGRESQL_PORT
-                         dbname=ngx_test user=ngx_test password=ngx_test;
+        postgres_server  host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
+                         dbname=test user=test password=test;
     }
 _EOC_
 
@@ -23,11 +23,11 @@ our $config = <<'_EOC_';
     location = /auth {
         internal;
 
-        postgres_escape     $user $remote_user;
-        postgres_escape     $pass $remote_passwd;
+#        postgres_escape     $user $remote_user;
+#        postgres_escape     $pass $remote_passwd;
 
         postgres_pass       database;
-        postgres_query      "SELECT login FROM users WHERE login=$user AND pass=$pass";
+        postgres_query      "SELECT login FROM users WHERE login=$remote_user::text AND pass=$remote_passwd::text";
         postgres_rewrite    no_rows 403;
         postgres_output     none;
     }
@@ -35,30 +35,36 @@ our $config = <<'_EOC_';
     location = /numbers/ {
         auth_request        /auth;
         postgres_pass       database;
-        rds_json            on;
+#        rds_json            on;
 
         postgres_query      HEAD GET  "SELECT * FROM numbers";
+        postgres_output json;
 
-        postgres_query      POST      "INSERT INTO numbers VALUES('$random') RETURNING *";
+        postgres_query      POST      "INSERT INTO numbers VALUES($random::int8) RETURNING *";
+        postgres_output json;
         postgres_rewrite    POST      changes 201;
 
         postgres_query      DELETE    "DELETE FROM numbers";
+        postgres_output json;
         postgres_rewrite    DELETE    no_changes 204;
         postgres_rewrite    DELETE    changes 204;
     }
 
-    location ~ /numbers/(\d+) {
+    location ~ /numbers/(?<number>\d+) {
         auth_request        /auth;
         postgres_pass       database;
-        rds_json            on;
+#        rds_json            on;
 
-        postgres_query      HEAD GET  "SELECT * FROM numbers WHERE number='$1'";
+        postgres_query      HEAD GET  "SELECT * FROM numbers WHERE number=$number::int8";
+        postgres_output json;
         postgres_rewrite    HEAD GET  no_rows 410;
 
-        postgres_query      PUT       "UPDATE numbers SET number='$1' WHERE number='$1' RETURNING *";
+        postgres_query      PUT       "UPDATE numbers SET number=$number::int8 WHERE number=$number::int8 RETURNING *";
+        postgres_output json;
         postgres_rewrite    PUT       no_changes 410;
 
-        postgres_query      DELETE    "DELETE FROM numbers WHERE number='$1'";
+        postgres_query      DELETE    "DELETE FROM numbers WHERE number=$number::int8";
+        postgres_output json;
         postgres_rewrite    DELETE    no_changes 410;
         postgres_rewrite    DELETE    changes 204;
     }
@@ -74,6 +80,8 @@ run_tests();
 __DATA__
 
 === TEST 1: clean collection
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
 --- more_headers eval: $::request_headers
@@ -89,6 +97,8 @@ DELETE /numbers/
 
 
 === TEST 2: list empty collection
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
 --- more_headers eval: $::request_headers
@@ -96,14 +106,16 @@ DELETE /numbers/
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: application/json
+Content-Type: application/json; charset=utf-8
 --- response_body chomp
-[]
+
 --- timeout: 10
 
 
 
 === TEST 3: insert resource into collection
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
 --- more_headers eval: $::request_headers
@@ -111,15 +123,17 @@ Content-Type: application/json
 POST /numbers/
 --- error_code: 201
 --- response_headers
-Content-Type: application/json
+Content-Type: application/json; charset=utf-8
 --- response_body chomp
-[{"number":123}]
+{"number":123}
 --- timeout: 10
 --- skip_slave: 3: CentOS
 
 
 
 === TEST 4: list collection
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
 --- more_headers eval: $::request_headers
@@ -127,15 +141,17 @@ Content-Type: application/json
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: application/json
+Content-Type: application/json; charset=utf-8
 --- response_body chomp
-[{"number":123}]
+{"number":123}
 --- timeout: 10
 --- skip_slave: 3: CentOS
 
 
 
 === TEST 5: get resource
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
 --- more_headers eval: $::request_headers
@@ -143,15 +159,17 @@ Content-Type: application/json
 GET /numbers/123
 --- error_code: 200
 --- response_headers
-Content-Type: application/json
+Content-Type: application/json; charset=utf-8
 --- response_body chomp
-[{"number":123}]
+{"number":123}
 --- timeout: 10
 --- skip_slave: 3: CentOS
 
 
 
 === TEST 6: update resource
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
 --- more_headers
@@ -161,15 +179,17 @@ Content-Length: 0
 PUT /numbers/123
 --- error_code: 200
 --- response_headers
-Content-Type: application/json
+Content-Type: application/json; charset=utf-8
 --- response_body chomp
-[{"number":123}]
+{"number":123}
 --- timeout: 10
 --- skip_slave: 3: CentOS
 
 
 
 === TEST 7: remove resource
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
 --- more_headers eval: $::request_headers
@@ -186,6 +206,8 @@ DELETE /numbers/123
 
 
 === TEST 8: update non-existing resource
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
 --- more_headers
@@ -203,6 +225,8 @@ Content-Type: text/html
 
 
 === TEST 9: get non-existing resource
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
 --- more_headers eval: $::request_headers
@@ -217,6 +241,8 @@ Content-Type: text/html
 
 
 === TEST 10: remove non-existing resource
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
 --- more_headers eval: $::request_headers
@@ -231,6 +257,8 @@ Content-Type: text/html
 
 
 === TEST 11: list empty collection (done)
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
 --- more_headers eval: $::request_headers
@@ -238,7 +266,7 @@ Content-Type: text/html
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: application/json
+Content-Type: application/json; charset=utf-8
 --- response_body chomp
-[]
+
 --- timeout: 10
