@@ -5,15 +5,15 @@ use Test::Nginx::Socket;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 2 + 1 * 1);
+plan tests => repeat_each() * (blocks() * 2) * 2 - 4;
 
-$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= '127.0.0.1';
+$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= 'postgres';
 $ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
 
 our $http_config = <<'_EOC_';
     upstream database {
-        postgres_server  $TEST_NGINX_POSTGRESQL_HOST:$TEST_NGINX_POSTGRESQL_PORT
-                         dbname=ngx_test user=ngx_test password=ngx_test;
+        postgres_server  host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
+                         dbname=test user=test password=test;
     }
 _EOC_
 
@@ -22,24 +22,28 @@ run_tests();
 __DATA__
 
 === TEST 1: no changes (SELECT)
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
-        postgres_rewrite    no_changes 500;
+        postgres_rewrite    no_changes 200;
         postgres_rewrite    changes 500;
     }
 --- request
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 2: no changes (UPDATE)
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
@@ -52,12 +56,14 @@ Content-Type: application/x-resty-dbd-stream
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 3: one change
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
@@ -70,12 +76,14 @@ Content-Type: application/x-resty-dbd-stream
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 4: rows
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
@@ -90,12 +98,14 @@ Content-Type: application/x-resty-dbd-stream
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 5: no rows
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
@@ -110,55 +120,69 @@ Content-Type: application/x-resty-dbd-stream
 GET /postgres
 --- error_code: 410
 --- response_headers
-Content-Type: text/html
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 6: inheritance
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
-    postgres_rewrite  no_changes 500;
-    postgres_rewrite  changes 500;
-    postgres_rewrite  no_rows 410;
-    postgres_rewrite  rows 206;
+#    postgres_rewrite  no_changes 500;
+#    postgres_rewrite  changes 500;
+#    postgres_rewrite  no_rows 410;
+#    postgres_rewrite  rows 206;
 
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
+    postgres_rewrite  no_changes 500;
+    postgres_rewrite  changes 500;
+    postgres_rewrite  no_rows 410;
+    postgres_rewrite  rows 206;
     }
 --- request
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 7: inheritance (mixed, don't inherit)
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
-    postgres_rewrite  no_changes 500;
-    postgres_rewrite  changes 500;
-    postgres_rewrite  no_rows 410;
-    postgres_rewrite  rows 206;
+#    postgres_rewrite  no_changes 500;
+#    postgres_rewrite  changes 500;
+#    postgres_rewrite  no_rows 410;
+#    postgres_rewrite  rows 206;
 
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
-        postgres_rewrite    rows 206;
+    postgres_rewrite  no_changes 500;
+    postgres_rewrite  changes 500;
+    postgres_rewrite  no_rows 410;
+    postgres_rewrite  rows 206;
+#        postgres_rewrite    rows 206;
     }
 --- request
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 8: rows (method-specific)
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
@@ -175,12 +199,14 @@ Content-Type: application/x-resty-dbd-stream
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 9: rows (default)
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
@@ -196,12 +222,14 @@ Content-Type: application/x-resty-dbd-stream
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 10: rows (none)
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
@@ -216,12 +244,14 @@ Content-Type: application/x-resty-dbd-stream
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 11: no changes (UPDATE) with 202 response
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
@@ -234,13 +264,15 @@ Content-Type: application/x-resty-dbd-stream
 GET /postgres
 --- error_code: 202
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 --- skip_nginx: 2: < 0.8.41
 
 
 
 === TEST 12: no changes (UPDATE) with 409 response
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
@@ -253,78 +285,84 @@ Content-Type: application/x-resty-dbd-stream
 GET /postgres
 --- error_code: 409
 --- response_headers
-Content-Type: text/html
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 13: no changes (UPDATE) with 409 status and our body
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
         postgres_pass       database;
         postgres_query      "update cats set id=3 where name='noone'";
-        postgres_rewrite    no_changes =409;
+        postgres_rewrite    no_changes 409;
         postgres_rewrite    changes 500;
     }
 --- request
 GET /postgres
 --- error_code: 409
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
 
 
 
 === TEST 14: rows with 409 status and our body (with integrity check)
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
         postgres_rewrite    no_rows 500;
-        postgres_rewrite    rows =409;
+        postgres_rewrite    rows 409;
     }
 --- request
 GET /postgres
 --- error_code: 409
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
---- response_body eval
-"\x{00}".        # endian
-"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
-"\x{00}".        # result type
-"\x{00}\x{00}".  # std errcode
-"\x{02}\x{00}".  # driver errcode
-"\x{00}\x{00}".  # driver errstr len
-"".              # driver errstr data
-"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
-"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
-"\x{02}\x{00}".  # col count
-"\x{09}\x{00}".  # std col type (integer/int)
-"\x{17}\x{00}".  # driver col type
-"\x{02}\x{00}".  # col name len
-"id".            # col name data
-"\x{06}\x{80}".  # std col type (varchar/str)
-"\x{19}\x{00}".  # driver col type
-"\x{04}\x{00}".  # col name len
-"name".          # col name data
-"\x{01}".        # valid row flag
-"\x{01}\x{00}\x{00}\x{00}".  # field len
-"2".             # field data
-"\x{ff}\x{ff}\x{ff}\x{ff}".  # field len
-"".              # field data
-"\x{01}".        # valid row flag
-"\x{01}\x{00}\x{00}\x{00}".  # field len
-"3".             # field data
-"\x{03}\x{00}\x{00}\x{00}".  # field len
-"bob".           # field data
-"\x{00}"         # row list terminator
+Content-Type: text/plain; charset=utf-8
+#--- response_body eval
+#"\x{00}".        # endian
+#"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
+#"\x{00}".        # result type
+#"\x{00}\x{00}".  # std errcode
+#"\x{02}\x{00}".  # driver errcode
+#"\x{00}\x{00}".  # driver errstr len
+#"".              # driver errstr data
+#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
+#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
+#"\x{02}\x{00}".  # col count
+#"\x{09}\x{00}".  # std col type (integer/int)
+#"\x{17}\x{00}".  # driver col type
+#"\x{02}\x{00}".  # col name len
+#"id".            # col name data
+#"\x{06}\x{80}".  # std col type (varchar/str)
+#"\x{19}\x{00}".  # driver col type
+#"\x{04}\x{00}".  # col name len
+#"name".          # col name data
+#"\x{01}".        # valid row flag
+#"\x{01}\x{00}\x{00}\x{00}".  # field len
+#"2".             # field data
+#"\x{ff}\x{ff}\x{ff}\x{ff}".  # field len
+#"".              # field data
+#"\x{01}".        # valid row flag
+#"\x{01}\x{00}\x{00}\x{00}".  # field len
+#"3".             # field data
+#"\x{03}\x{00}\x{00}\x{00}".  # field len
+#"bob".           # field data
+#"\x{00}"         # row list terminator
 --- timeout: 10
 
 
 
 === TEST 15: rows - "if" pseudo-location
+--- main_config
+    load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
     location /postgres {
@@ -344,5 +382,5 @@ Content-Type: application/x-resty-dbd-stream
 GET /postgres?foo=1
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream
+Content-Type: text/plain; charset=utf-8
 --- timeout: 10
