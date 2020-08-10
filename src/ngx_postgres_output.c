@@ -494,7 +494,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
     if (rc == NGX_ERROR || rc > NGX_OK) return rc;
     u->header_sent = 1;
     ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &u->out_bufs, u->output.tag);
-    return NGX_OK;
+    return NGX_DONE;
 }
 
 
