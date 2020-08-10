@@ -489,10 +489,8 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
         if (u->out_bufs) for (ngx_chain_t *chain = u->out_bufs; chain; chain = chain->next) {
             r->headers_out.content_length_n += chain->buf->end - chain->buf->start;
             if (!chain->next) {
-                if (r == r->main && !r->post_action) chain->buf->last_buf = 1; else {
-                    chain->buf->sync = 1;
-                    chain->buf->last_in_chain = 1;
-                }
+                chain->buf->last_buf = (r == r->main) ? 1 : 0;
+                chain->buf->last_in_chain = 1;
             }
         }
         ngx_int_t rc = ngx_http_send_header(r);
