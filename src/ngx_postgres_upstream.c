@@ -204,6 +204,7 @@ static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     c->data = ps;
     c->idle = 1;
     c->log = pusc->ps.log ? pusc->ps.log : ngx_cycle->log;
+    c->log->connection = c->number;
     if (c->pool) c->pool->log = c->log;
 //    c->read->delayed = 0;
     c->read->handler = ngx_postgres_save_handler;
@@ -255,6 +256,10 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
         if (!PQcancel(cancel, err, 256)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err); PQfreeCancel(cancel); }
         PQfreeCancel(cancel);
     }
+    if (psc->state != state_idle) {
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "psc->state == %i", psc->state);
+        psc->state = state_idle;
+    }
     if (listen) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
         if (!PQsendQuery(pdc->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(\"%s\") and %s", listen, PQerrorMessageMy(pdc->conn)); }
@@ -264,6 +269,7 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     if (!ngx_queue_empty(&pusc->pd.queue)) {
         ngx_queue_t *queue = ngx_queue_head(&pusc->pd.queue);
         ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         ngx_http_request_t *r = pd->request;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         ngx_queue_remove(&pd->queue);
@@ -372,6 +378,7 @@ exit:
         pdc->conn = NULL;
         return NGX_DECLINED; // and ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR) and return
     }
+    pusc->ps.size++;
     if (pusc->trace.log) PQtrace(pdc->conn, fdopen(pusc->trace.log->file->fd, "a+"));
     int fd;
     if ((fd = PQsocket(pdc->conn)) == -1) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == -1"); goto invalid; }
@@ -394,7 +401,6 @@ exit:
     } else goto bad_add;
     pdc->state = state_connect;
     pc->connection = c;
-    pusc->ps.size++;
     return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
 bad_add:
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_event_flags not NGX_USE_RTSIG_EVENT or NGX_USE_CLEAR_EVENT or NGX_USE_LEVEL_EVENT");
@@ -479,18 +485,11 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 
 void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
     ngx_connection_t *c = common->connection;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    if (c) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__); }
     ngx_postgres_upstream_srv_conf_t *pusc = common->pusc;
     pusc->ps.size--;
-    if (!c) {
-        if (common->conn) {
-            PQfinish(common->conn);
-            common->conn = NULL;
-        }
-        return;
-    }
     if (common->conn) {
-        if (!c->close && common->listen.queue && ngx_http_push_stream_delete_channel_my) {
+        if (c && !c->close && common->listen.queue && ngx_http_push_stream_delete_channel_my) {
             while (!ngx_queue_empty(common->listen.queue)) {
                 ngx_queue_t *queue = ngx_queue_head(common->listen.queue);
                 ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
@@ -502,6 +501,7 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
         PQfinish(common->conn);
         common->conn = NULL;
     }
+    if (!c) return;
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
     if (ngx_del_conn) ngx_del_conn(c, NGX_CLOSE_EVENT); else {
@@ -518,6 +518,7 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
     }
     ngx_free_connection(c);
     c->fd = (ngx_socket_t) -1;
+    common->connection = NULL;
 }
 
 
