@@ -251,10 +251,11 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     if (PQtransactionStatus(psc->conn) != PQTRANS_IDLE) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
         PGcancel *cancel = PQgetCancel(psc->conn);
-        if (!cancel) ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetCancel");
-        char err[256];
-        if (!PQcancel(cancel, err, 256)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err); PQfreeCancel(cancel); }
-        PQfreeCancel(cancel);
+        if (!cancel) ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetCancel"); else {
+            char err[256];
+            if (!PQcancel(cancel, err, 256)) ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err);
+            PQfreeCancel(cancel);
+        }
     }
     if (psc->state != state_idle) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "psc->state == %i", psc->state);
