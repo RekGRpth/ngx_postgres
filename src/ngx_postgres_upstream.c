@@ -262,16 +262,18 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
         else { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQuery(\"%s\")", listen); }
     }
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    if (!ngx_queue_empty(&pusc->pd.queue)) {
+    while (!ngx_queue_empty(&pusc->pd.queue)) {
         ngx_queue_t *queue = ngx_queue_head(&pusc->pd.queue);
         ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
-        ngx_http_request_t *r = pd->request;
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         ngx_queue_remove(&pd->queue);
         pusc->pd.size--;
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
+        if (!pd->request->connection || pd->request->connection->error) continue;
+        ngx_http_request_t *r = pd->request;
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         if (pd->query.timeout.timer_set) ngx_del_timer(&pd->query.timeout);
         ngx_http_upstream_connect(r, r->upstream);
+        break;
     }
 #endif
 }
