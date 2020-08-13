@@ -191,6 +191,7 @@ close:
 static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
     ngx_http_request_t *r = pd->request;
     ngx_postgres_common_t *pdc = &pd->common;
+    pdc->state = state_idle;
     ngx_queue_remove(&ps->queue);
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     ngx_queue_insert_tail(&pusc->ps.queue, &ps->queue);
@@ -233,6 +234,14 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     if (c->requests >= pusc->ps.requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests = %i", c->requests); return; }
     if (ngx_terminate) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_terminate"); return; }
     if (ngx_exiting) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_exiting"); return; }
+    if (PQtransactionStatus(pdc->conn) != PQTRANS_IDLE) {
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
+        PGcancel *cancel = PQgetCancel(pdc->conn);
+        if (!cancel) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetCancel"); return; }
+        char err[256];
+        if (!PQcancel(cancel, err, sizeof(err))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err); PQfreeCancel(cancel); return; }
+        PQfreeCancel(cancel);
+    }
     u_char *listen = NULL;
     ngx_postgres_save_t *ps;
     if (ngx_queue_empty(&pusc->free.queue)) {
@@ -247,25 +256,6 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
         ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
     }
     ngx_postgres_free_to_save(pd, ps);
-    ngx_postgres_common_t *psc = &ps->common;
-    if (PQtransactionStatus(psc->conn) != PQTRANS_IDLE) {
-        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
-        PGcancel *cancel = PQgetCancel(psc->conn);
-        if (!cancel) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetCancel"); } else {
-            char err[256];
-            if (!PQcancel(cancel, err, sizeof(err))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err); } else switch (PQflush(psc->conn)) {
-                case 0: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == 0"); break;
-                case 1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == 1"); break;
-                case -1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == -1"); break;
-                default: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == default"); break;
-            }
-            PQfreeCancel(cancel);
-        }
-    }
-    if (psc->state != state_idle) {
-        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "psc->state == %i", psc->state);
-        psc->state = state_idle;
-    }
     if (listen) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
         if (!PQsendQuery(pdc->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(\"%s\") and %s", listen, PQerrorMessageMy(pdc->conn)); }
