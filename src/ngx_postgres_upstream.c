@@ -251,9 +251,14 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     if (PQtransactionStatus(psc->conn) != PQTRANS_IDLE) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
         PGcancel *cancel = PQgetCancel(psc->conn);
-        if (!cancel) ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetCancel"); else {
+        if (!cancel) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetCancel"); } else {
             char err[256];
-            if (!PQcancel(cancel, err, sizeof(err))) ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err);
+            if (!PQcancel(cancel, err, sizeof(err))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err); } else switch (PQflush(psc->conn)) {
+                case 0: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == 0"); break;
+                case 1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == 1"); break;
+                case -1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == -1"); break;
+                default: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == default"); break;
+            }
             PQfreeCancel(cancel);
         }
     }
