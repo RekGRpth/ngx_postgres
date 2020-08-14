@@ -230,6 +230,7 @@ again:
         case PGRES_POLLING_READING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_READING"); return NGX_AGAIN;
         case PGRES_POLLING_WRITING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQconnectPoll == PGRES_POLLING_WRITING"); if (PQstatus(pdc->conn) == CONNECTION_MADE) goto again; return NGX_AGAIN;
     }
+ret:
     ngx_connection_t *c = pdc->connection;
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
@@ -247,7 +248,6 @@ again:
             ngx_memcpy(pdc->charset.data, charset, pdc->charset.len);
         }
     }
-ret:
     switch (PQtransactionStatus(pdc->conn)) {
         case PQTRANS_ACTIVE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus == PQTRANS_ACTIVE"); break;
         case PQTRANS_IDLE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus == PQTRANS_IDLE"); break;
