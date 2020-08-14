@@ -25,6 +25,11 @@ static ngx_buf_t *ngx_postgres_buffer(ngx_http_request_t *r, size_t size) {
 ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    if (!r->headers_out.content_type.data) {
+        ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
+        r->headers_out.content_type = core->default_type;
+        r->headers_out.content_type_len = core->default_type.len;
+    }
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
@@ -476,11 +481,6 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
     if (!r->header_sent) {
         ngx_postgres_result_t *result = &pd->result;
         r->headers_out.status = result->status ? result->status : NGX_HTTP_OK;
-        if (!r->headers_out.content_type.data) {
-            ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            r->headers_out.content_type = core->default_type;
-            r->headers_out.content_type_len = core->default_type.len;
-        }
         r->headers_out.content_type_lowcase = NULL;
         ngx_postgres_common_t *pdc = &pd->common;
         if (pdc->charset.len) r->headers_out.charset = pdc->charset;
