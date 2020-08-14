@@ -273,7 +273,7 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
         ngx_queue_remove(&pd->queue);
         ngx_queue_init(&pd->queue);
         pusc->pd.size--;
-        if (!pd->request || !pd->request->connection || pd->request->connection->error) continue;
+        if (!pd->request || !pd->request->connection || pd->request->connection->error || !pd->request->upstream->peer.connection) continue;
         ngx_http_request_t *r = pd->request;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         if (pd->query.timeout.timer_set) ngx_del_timer(&pd->query.timeout);
