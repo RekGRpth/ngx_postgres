@@ -228,6 +228,7 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_connection_t *c = pdc->connection;
     if (!c) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!connection"); return; }
+    if (c->error) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "c->error"); return; }
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
@@ -265,10 +266,10 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     while (!ngx_queue_empty(&pusc->pd.queue)) {
         ngx_queue_t *queue = ngx_queue_head(&pusc->pd.queue);
         ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         ngx_queue_remove(&pd->queue);
         pusc->pd.size--;
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
-        if (!pd->request->connection || pd->request->connection->error) continue;
+        if (!pd->request || !pd->request->connection || pd->request->connection->error) continue;
         ngx_http_request_t *r = pd->request;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         if (pd->query.timeout.timer_set) ngx_del_timer(&pd->query.timeout);
