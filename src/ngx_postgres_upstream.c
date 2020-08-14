@@ -54,7 +54,8 @@ static void ngx_postgres_request_handler(ngx_event_t *ev) {
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return; }
     ngx_postgres_data_t *pd = u->peer.data;
-    if (!ngx_queue_empty(&pd->queue) && pd->queue.prev && pd->queue.next) { ngx_queue_remove(&pd->queue); }
+    ngx_queue_remove(&pd->queue);
+    ngx_queue_init(&pd->queue);
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     pusc->pd.size--;
@@ -268,6 +269,7 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
         ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         ngx_queue_remove(&pd->queue);
+        ngx_queue_init(&pd->queue);
         pusc->pd.size--;
         if (!pd->request || !pd->request->connection || pd->request->connection->error) continue;
         ngx_http_request_t *r = pd->request;
@@ -436,7 +438,8 @@ static void ngx_postgres_request_cleanup(void *data) {
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return; }
     ngx_postgres_data_t *pd = u->peer.data;
-    if (!ngx_queue_empty(&pd->queue) && pd->queue.prev && pd->queue.next) { ngx_queue_remove(&pd->queue); }
+    ngx_queue_remove(&pd->queue);
+    ngx_queue_init(&pd->queue);
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     pusc->pd.size--;
