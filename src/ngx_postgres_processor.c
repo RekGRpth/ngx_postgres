@@ -92,7 +92,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
         *last = '\0';
 //        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
         pd->query.sql = sql;
-        if (pusc->ps.max) {
+        if (pusc->save.max) {
             if (query->listen && channel.data && command.data) {
                 if (!pdc->listen.queue) {
                     if (!(pdc->listen.queue = ngx_pcalloc(c->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }

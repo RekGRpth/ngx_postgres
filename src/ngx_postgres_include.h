@@ -51,7 +51,7 @@ typedef struct {
         ngx_uint_t max;
         ngx_uint_t requests;
         ngx_uint_t size;
-    } ps;
+    } save;
     struct {
         ngx_flag_t deallocate;
         ngx_uint_t max;
