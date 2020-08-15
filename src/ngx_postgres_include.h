@@ -98,9 +98,6 @@ typedef struct {
 
 typedef struct {
     struct {
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-        ngx_event_t timeout;
-#endif
         ngx_str_t sql;
         ngx_str_t stmtName;
         ngx_uint_t hash;
@@ -120,6 +117,7 @@ typedef struct {
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    ngx_event_t timeout;
     ngx_queue_t queue;
 #endif
     void *peer_data;
