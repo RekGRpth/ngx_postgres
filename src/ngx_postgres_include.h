@@ -34,11 +34,16 @@ typedef struct {
 typedef struct {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     struct {
-        ngx_flag_t reject;
-        ngx_msec_t timeout;
-        ngx_queue_t queue;
-        ngx_uint_t max;
-        ngx_uint_t size;
+        struct {
+            ngx_flag_t reject;
+            ngx_msec_t timeout;
+            ngx_queue_t queue;
+            ngx_uint_t max;
+            ngx_uint_t size;
+        } save;
+        struct {
+            ngx_queue_t queue;
+        } free;
     } pd;
 #else
     void *connect;

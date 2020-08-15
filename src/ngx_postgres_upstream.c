@@ -59,7 +59,7 @@ static void ngx_postgres_request_handler(ngx_event_t *ev) {
         ngx_queue_init(&pd->queue);
         ngx_postgres_common_t *pdc = &pd->common;
         ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
-        pusc->pd.size--;
+        pusc->pd.save.size--;
     }
     ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
 }
@@ -266,13 +266,13 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
         else { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQuery(\"%s\")", listen); }
     }
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    while (!ngx_queue_empty(&pusc->pd.queue)) {
-        ngx_queue_t *queue = ngx_queue_head(&pusc->pd.queue);
+    while (!ngx_queue_empty(&pusc->pd.save.queue)) {
+        ngx_queue_t *queue = ngx_queue_head(&pusc->pd.save.queue);
         ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, queue);
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         ngx_queue_remove(&pd->queue);
         ngx_queue_init(&pd->queue);
-        pusc->pd.size--;
+        pusc->pd.save.size--;
         if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
         if (!pd->request || !pd->request->connection || pd->request->connection->error || !pd->request->upstream->peer.connection) continue;
         ngx_http_request_t *r = pd->request;
@@ -343,19 +343,19 @@ exit:
         if (pusc->ps.save.size < pusc->ps.save.max) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.size = %i", pusc->ps.save.size);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-        } else if (pusc->pd.max) {
-            if (pusc->pd.size < pusc->pd.max) {
+        } else if (pusc->pd.save.max) {
+            if (pusc->pd.save.size < pusc->pd.save.max) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
-                ngx_queue_insert_tail(&pusc->pd.queue, &pd->queue);
+                ngx_queue_insert_tail(&pusc->pd.save.queue, &pd->queue);
                 pd->timeout.handler = ngx_postgres_request_handler;
                 pd->timeout.log = r->connection->log;
                 pd->timeout.data = r->connection;
-                ngx_add_timer(&pd->timeout, pusc->pd.timeout);
-                pusc->pd.size++;
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd.size = %i", pusc->pd.size);
+                ngx_add_timer(&pd->timeout, pusc->pd.save.timeout);
+                pusc->pd.save.size++;
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd.save.size = %i", pusc->pd.save.size);
                 return NGX_YIELD; // and return
-            } else if (pusc->pd.reject) {
-                ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "pd.size = %i", pusc->pd.size);
+            } else if (pusc->pd.save.reject) {
+                ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "pd.save.size = %i", pusc->pd.save.size);
                 return NGX_BUSY; // and ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_NOLIVE) and return
             }
 #endif
@@ -445,7 +445,7 @@ static void ngx_postgres_request_cleanup(void *data) {
         ngx_queue_init(&pd->queue);
         ngx_postgres_common_t *pdc = &pd->common;
         ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
-        pusc->pd.size--;
+        pusc->pd.save.size--;
     }
     if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
 }
