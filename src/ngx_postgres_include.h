@@ -44,7 +44,7 @@ typedef struct {
         struct {
             ngx_queue_t queue;
         } free;
-    } pd;
+    } pr;
 #else
     void *connect;
 #endif
@@ -129,6 +129,14 @@ typedef struct {
 #endif
     void *peer_data;
 } ngx_postgres_data_t;
+
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+typedef struct {
+    ngx_event_t timeout;
+    ngx_http_request_t *request;
+    ngx_queue_t queue;
+} ngx_postgres_request_t;
+#endif
 
 typedef struct {
     ngx_postgres_common_t common;
