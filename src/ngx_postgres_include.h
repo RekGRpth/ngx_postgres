@@ -44,21 +44,23 @@ typedef struct {
     void *connect;
 #endif
     struct {
-        ngx_flag_t reject;
-        ngx_log_t *log;
-        ngx_msec_t timeout;
-        ngx_queue_t queue;
-        ngx_uint_t max;
-        ngx_uint_t requests;
-        ngx_uint_t size;
-    } save;
+        struct {
+            ngx_flag_t reject;
+            ngx_log_t *log;
+            ngx_msec_t timeout;
+            ngx_queue_t queue;
+            ngx_uint_t max;
+            ngx_uint_t requests;
+            ngx_uint_t size;
+        } save;
+        struct {
+            ngx_queue_t queue;
+        } free;
+    } ps;
     struct {
         ngx_flag_t deallocate;
         ngx_uint_t max;
     } prepare;
-    struct {
-        ngx_queue_t queue;
-    } free;
     struct {
         ngx_log_t *log;
     } trace;
