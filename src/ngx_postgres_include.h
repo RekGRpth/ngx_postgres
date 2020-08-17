@@ -34,16 +34,11 @@ typedef struct {
 typedef struct {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     struct {
-        struct {
-            ngx_flag_t reject;
-            ngx_msec_t timeout;
-            ngx_queue_t queue;
-            ngx_uint_t max;
-            ngx_uint_t size;
-        } save;
-/*        struct {
-            ngx_queue_t queue;
-        } free;*/
+        ngx_flag_t reject;
+        ngx_msec_t timeout;
+        ngx_queue_t queue;
+        ngx_uint_t max;
+        ngx_uint_t size;
     } pd;
 #else
     void *connect;
@@ -129,14 +124,6 @@ typedef struct {
 #endif
     void *peer_data;
 } ngx_postgres_data_t;
-
-/*#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-typedef struct {
-    ngx_event_t timeout;
-    ngx_postgres_data_t *pd;
-    ngx_queue_t queue;
-} ngx_postgres_request_t;
-#endif*/
 
 typedef struct {
     ngx_postgres_common_t common;
