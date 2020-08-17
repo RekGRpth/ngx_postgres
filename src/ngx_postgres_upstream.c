@@ -236,13 +236,17 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
     if (c->requests >= pusc->ps.save.requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests = %i", c->requests); return; }
     if (ngx_terminate) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_terminate"); return; }
     if (ngx_exiting) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_exiting"); return; }
-    if (PQtransactionStatus(pdc->conn) != PQTRANS_IDLE) {
-        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
-        PGcancel *cancel = PQgetCancel(pdc->conn);
-        if (!cancel) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetCancel"); return; }
-        char err[256];
-        if (!PQcancel(cancel, err, sizeof(err))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err); PQfreeCancel(cancel); return; }
-        PQfreeCancel(cancel);
+    switch (PQtransactionStatus(pdc->conn)) {
+        case PQTRANS_UNKNOWN: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus == PQTRANS_UNKNOWN"); return;
+        case PQTRANS_IDLE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus == PQTRANS_IDLE"); break;
+        default: {
+            ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
+            PGcancel *cancel = PQgetCancel(pdc->conn);
+            if (!cancel) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQgetCancel"); return; }
+            char err[256];
+            if (!PQcancel(cancel, err, sizeof(err))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err); PQfreeCancel(cancel); return; }
+            PQfreeCancel(cancel);
+        } break;
     }
     u_char *listen = NULL;
     ngx_postgres_save_t *ps;
