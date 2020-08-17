@@ -12,17 +12,17 @@ static void ngx_postgres_srv_conf_cleanup(void *data) {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     while (!ngx_queue_empty(&pusc->pr.save.queue)) {
         ngx_queue_t *queue = ngx_queue_head(&pusc->pr.save.queue);
+        ngx_queue_remove(queue);
         ngx_postgres_request_t *pr = ngx_queue_data(queue, ngx_postgres_request_t, queue);
         if (pr->timeout.timer_set) ngx_del_timer(&pr->timeout);
-        ngx_queue_remove(&pr->queue);
     }
 #endif
     while (!ngx_queue_empty(&pusc->ps.save.queue)) {
         ngx_queue_t *queue = ngx_queue_head(&pusc->ps.save.queue);
+        ngx_queue_remove(queue);
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         ngx_postgres_common_t *psc = &ps->common;
         ngx_postgres_free_connection(psc);
-        ngx_queue_remove(&ps->queue);
     }
 }
 
@@ -142,6 +142,10 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
         pusc->peer_init = usc->peer.init;
         usc->peer.init = ngx_postgres_peer_init;
     }
+    ngx_queue_init(&pusc->ps.free.queue);
+    ngx_queue_init(&pusc->ps.save.queue);
+    ngx_queue_init(&pusc->pr.free.queue);
+    ngx_queue_init(&pusc->pr.save.queue);
     if (!pusc->ps.save.max) return NGX_OK;
     ngx_conf_init_msec_value(pusc->ps.save.timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(pusc->ps.save.requests, 1000);
@@ -149,16 +153,12 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     if (!cln) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
     cln->handler = ngx_postgres_srv_conf_cleanup;
     cln->data = pusc;
-    ngx_queue_init(&pusc->ps.free.queue);
-    ngx_queue_init(&pusc->ps.save.queue);
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(*ps) * pusc->ps.save.max);
     if (!ps) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0; i < pusc->ps.save.max; i++) { ngx_queue_insert_tail(&pusc->ps.free.queue, &ps[i].queue); }
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     if (!pusc->pr.save.max) return NGX_OK;
     ngx_conf_init_msec_value(pusc->pr.save.timeout, 60 * 1000);
-    ngx_queue_init(&pusc->pr.free.queue);
-    ngx_queue_init(&pusc->pr.save.queue);
     ngx_postgres_request_t *pr = ngx_pcalloc(cf->pool, sizeof(*pr) * pusc->pr.save.max);
     if (!pr) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0; i < pusc->pr.save.max; i++) { ngx_queue_insert_tail(&pusc->pr.free.queue, &pr[i].queue); }
