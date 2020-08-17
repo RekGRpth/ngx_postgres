@@ -49,7 +49,6 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 static void ngx_postgres_request_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write = %s", ev->write ? "true" : "false");
-//    ngx_postgres_request_t *pr = ev->data;
     ngx_postgres_data_t *pd = ev->data;
     ngx_http_request_t *r = pd->request;
     ngx_queue_remove(&pd->queue);
@@ -57,7 +56,6 @@ static void ngx_postgres_request_handler(ngx_event_t *ev) {
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     pusc->pd.size--;
-//    ngx_queue_insert_tail(&pusc->pr.free.queue, &pr->queue);
     if (!r || !r->connection || r->connection->error || !r->upstream->peer.connection) return;
     ngx_http_upstream_next(r, r->upstream, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
 }
