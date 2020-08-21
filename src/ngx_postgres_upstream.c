@@ -41,7 +41,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         ngx_postgres_common_t *psc = &ps->common;
         if (ngx_memn2cmp((u_char *)pdc->addr.sockaddr, (u_char *)psc->addr.sockaddr, pdc->addr.socklen, psc->addr.socklen)) continue;
         ngx_postgres_save_to_free(pd, ps);
-        return NGX_DONE;
+        return NGX_OK;
     }
     return NGX_DECLINED;
 }
@@ -160,7 +160,7 @@ ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t 
         ngx_pfree(c->pool, unlisten);
     }
     if (array) ngx_array_destroy(array);
-    return NGX_DONE;
+    return NGX_OK;
 }
 
 
@@ -179,7 +179,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
         default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
     }
-    if (ngx_postgres_process_notify(psc, 1) == NGX_DONE) return;
+    if (ngx_postgres_process_notify(psc, 1) == NGX_OK) return;
 close:
     ngx_postgres_free_connection(psc);
     if (!ngx_queue_empty(&ps->queue)) ngx_queue_remove(&ps->queue);

@@ -178,7 +178,7 @@ ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd) {
         if (!(result->error.data = ngx_pnalloc(r->pool, result->error.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
         ngx_memcpy(result->error.data, value, result->error.len);
     }
-    return NGX_DONE;
+    return NGX_OK;
 }
 
 
@@ -216,7 +216,7 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd) {
             else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, PQresStatus(PQresultStatus(res))); }
             break;
     }
-    return NGX_DONE;
+    return NGX_OK;
 }
 
 
@@ -227,7 +227,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->query.index);
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->query.index];
     ngx_array_t *array = &query->variable;
-    if (!array->elts) return NGX_DONE;
+    if (!array->elts) return NGX_OK;
     ngx_postgres_variable_t *variable = array->elts;
     ngx_str_t *elts = pd->variable.elts;
 //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", pd->variable.nelts);
@@ -277,7 +277,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
         ngx_http_upstream_t *u = r->upstream;
         ngx_chain_t *chain = u->out_bufs;
         u->out_bufs = NULL;
-        if (variable[i].handler(pd) != NGX_DONE) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
+        if (variable[i].handler(pd) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
         elts[variable[i].index].len = u->out_bufs->buf->end - u->out_bufs->buf->start;
         elts[variable[i].index].data = u->out_bufs->buf->start;
         u->out_bufs = chain;
@@ -330,7 +330,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
         ngx_memcpy(elts[variable[i].index].data, PQgetvalue(res, variable[i].row, variable[i].col), elts[variable[i].index].len);
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%V = %V", &variable[i].name, &elts[variable[i].index]);
     }
-    return NGX_DONE;
+    return NGX_OK;
 }
 
 

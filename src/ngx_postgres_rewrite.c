@@ -20,13 +20,13 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->query.index);
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->query.index];
     ngx_array_t *rewrite = &query->rewrite;
-    if (!rewrite->elts) return NGX_DONE;
+    if (!rewrite->elts) return NGX_OK;
     ngx_postgres_rewrite_t *elts = rewrite->elts;
-    ngx_int_t rc = NGX_DONE;
+    ngx_int_t rc = NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
-    for (ngx_uint_t i = 0; i < rewrite->nelts; i++) if ((!elts[i].method || elts[i].method & r->method) && (rc = elts[i].handler(pd, elts[i].key, elts[i].status)) != NGX_DONE) {
+    for (ngx_uint_t i = 0; i < rewrite->nelts; i++) if ((!elts[i].method || elts[i].method & r->method) && (rc = elts[i].handler(pd, elts[i].key, elts[i].status)) != NGX_OK) {
         result->status = rc;
-        if (elts[i].keep) rc = NGX_DONE;
+        if (elts[i].keep) rc = NGX_OK;
         break;
     }
     return rc;
@@ -46,7 +46,7 @@ static ngx_int_t ngx_postgres_rewrite_changes(ngx_postgres_data_t *pd, ngx_uint_
         if (key % 2 == 0 && !ncmdTuples) return status;
         if (key % 2 == 1 && ncmdTuples > 0) return status;
     }
-    return NGX_DONE;
+    return NGX_OK;
 }
 
 
@@ -58,7 +58,7 @@ static ngx_int_t ngx_postgres_rewrite_rows(ngx_postgres_data_t *pd, ngx_uint_t k
     result->ntuples = PQntuples(res);
     if (key % 2 == 0 && !result->ntuples) return status;
     if (key % 2 == 1 && result->ntuples > 0) return status;
-    return NGX_DONE;
+    return NGX_OK;
 }
 
 

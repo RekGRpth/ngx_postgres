@@ -14,9 +14,9 @@ static ngx_int_t ngx_postgres_done(ngx_postgres_data_t *pd, ngx_int_t rc) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
     }
-    if (rc == NGX_DONE) rc = ngx_postgres_output_chain(pd);
+    if (rc == NGX_OK) rc = ngx_postgres_output_chain(pd);
     ngx_http_upstream_finalize_request(r, u, rc);
-    return NGX_DONE;
+    return NGX_OK;
 }
 
 
@@ -136,7 +136,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
         if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); PQclear(pd->result.res); return NGX_AGAIN; }
     }
     ngx_int_t rc = ngx_postgres_process_notify(pdc, 0);
-    if (rc != NGX_DONE) return rc;
+    if (rc != NGX_OK) return rc;
     ngx_uint_t hash = 0;
     if (!prepare) {
         if (pd->query.nParams || query->output.binary) {
@@ -182,7 +182,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
                 ngx_queue_insert_tail(pdc->prepare.queue, &prepare->queue);
                 pdc->prepare.size++;
                 pdc->state = state_query;
-                return NGX_DONE;
+                return NGX_OK;
             } // fall through
         case state_query:
             if (!PQsendQueryPrepared(pdc->conn, (const char *)pd->query.stmtName.data, pd->query.nParams, (const char *const *)pd->query.paramValues, NULL, NULL, query->output.binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryPrepared(\"%V\", \"%V\", %i) and %s", &pd->query.stmtName, &pd->query.sql, pd->query.nParams, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
@@ -200,7 +200,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
         ngx_add_timer(c->write, query->timeout);
     }
     pdc->state = state_result;
-    return NGX_DONE;
+    return NGX_OK;
 }
 
 
@@ -274,7 +274,7 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
     }
-    ngx_int_t rc = NGX_DONE;
+    ngx_int_t rc = NGX_OK;
     const char *value;
     ngx_postgres_output_t *output = &query->output;
     for (; (pd->result.res = PQgetResult(pdc->conn)); PQclear(pd->result.res)) {
@@ -287,16 +287,16 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
                 break;
             case PGRES_COMMAND_OK:
             case PGRES_TUPLES_OK:
-                if (rc == NGX_DONE) {
+                if (rc == NGX_OK) {
                     rc = ngx_postgres_rewrite_set(pd);
-                    if (rc < NGX_HTTP_SPECIAL_RESPONSE) rc = NGX_DONE;
+                    if (rc < NGX_HTTP_SPECIAL_RESPONSE) rc = NGX_OK;
                 }
-                if (rc == NGX_DONE) rc = ngx_postgres_variable_set(pd);
-                if (rc == NGX_DONE) rc = ngx_postgres_variable_output(pd);
+                if (rc == NGX_OK) rc = ngx_postgres_variable_set(pd);
+                if (rc == NGX_OK) rc = ngx_postgres_variable_output(pd);
                 // fall through
             case PGRES_SINGLE_TUPLE:
                 if (PQresultStatus(pd->result.res) == PGRES_SINGLE_TUPLE) pd->result.nsingle++;
-                if (rc == NGX_DONE && output->handler) rc = output->handler(pd); // fall through
+                if (rc == NGX_OK && output->handler) rc = output->handler(pd); // fall through
             default:
                 if ((value = PQcmdStatus(pd->result.res)) && ngx_strlen(value)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), value); }
                 else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, PQresStatus(PQresultStatus(pd->result.res))); }
@@ -306,8 +306,8 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
         if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); PQclear(pd->result.res); return NGX_AGAIN; }
     }
     pdc->state = state_idle;
-    if (rc == NGX_DONE) rc = ngx_postgres_process_notify(pdc, 0);
-    if (rc == NGX_DONE && pd->query.index < location->query.nelts - 1) {
+    if (rc == NGX_OK) rc = ngx_postgres_process_notify(pdc, 0);
+    if (rc == NGX_OK && pd->query.index < location->query.nelts - 1) {
         ngx_uint_t i;
         for (i = pd->query.index + 1; i < location->query.nelts; i++) if (!elts[i].method || elts[i].method & r->method) break;
         if (i < location->query.nelts) {
