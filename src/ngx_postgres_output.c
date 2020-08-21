@@ -486,20 +486,13 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
         if (pdc->charset.len) r->headers_out.charset = pdc->charset;
         ngx_http_clear_content_length(r);
         r->headers_out.content_length_n = 0;
-        for (ngx_chain_t *chain = u->out_bufs; chain; chain = chain->next) {
-            r->headers_out.content_length_n += chain->buf->end - chain->buf->start;
-            if (!chain->next) {
-                chain->buf->last_buf = (r == r->main) ? 1 : 0;
-                chain->buf->last_in_chain = 1;
-            }
-        }
+        for (ngx_chain_t *chain = u->out_bufs; chain; chain = chain->next) r->headers_out.content_length_n += chain->buf->end - chain->buf->start;
         ngx_int_t rc = ngx_http_send_header(r);
         if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return rc;
     }
     u->header_sent = 1;
-    if (!u->out_bufs) return NGX_OK;
     ngx_int_t rc = ngx_http_output_filter(r, u->out_bufs);
-    if (rc == NGX_ERROR || rc > NGX_OK) return rc;
+    if (rc != NGX_OK) return rc;
     ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &u->out_bufs, u->output.tag);
     return NGX_OK;
 }
