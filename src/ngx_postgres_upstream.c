@@ -57,7 +57,7 @@ static void ngx_postgres_data_timeout_handler(ngx_event_t *ev) {
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     if (pusc->pd.size) pusc->pd.size--;
-    if (!r || !r->connection || r->connection->error || !r->upstream->peer.connection) return;
+    if (!r->connection || r->connection->error) return;
     ngx_http_upstream_next(r, r->upstream, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
 }
 #endif
@@ -276,7 +276,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         if (pusc->pd.size) pusc->pd.size--;
         if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
         ngx_http_request_t *r = pd->request;
-        if (!r || !r->connection || r->connection->error || !r->upstream->peer.connection) continue;
+        if (!r->connection || r->connection->error) continue;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         ngx_http_upstream_connect(r, r->upstream);
         break;
