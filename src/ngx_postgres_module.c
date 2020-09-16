@@ -157,78 +157,78 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
 
 
 static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_url_t *url, ngx_postgres_connect_t *connect, ngx_http_upstream_server_t *us) {
-    ngx_str_t *elts = cf->args->elts;
+    ngx_str_t *args = cf->args->elts;
     ngx_str_t conninfo = ngx_null_string;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
         if (us) {
-            if (elts[i].len > sizeof("weight=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"weight=", sizeof("weight=") - 1)) {
-                elts[i].len = elts[i].len - (sizeof("weight=") - 1);
-                elts[i].data = &elts[i].data[sizeof("weight=") - 1];
-                ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
-                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be number", &cmd->name, &elts[i]); return NGX_ERROR; }
-                if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_ERROR; }
+            if (args[i].len > sizeof("weight=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"weight=", sizeof("weight=") - 1)) {
+                args[i].len = args[i].len - (sizeof("weight=") - 1);
+                args[i].data = &args[i].data[sizeof("weight=") - 1];
+                ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
+                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be number", &cmd->name, &args[i]); return NGX_ERROR; }
+                if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be positive", &cmd->name, &args[i]); return NGX_ERROR; }
                 us->weight = (ngx_uint_t)n;
                 continue;
             }
-            if (elts[i].len > sizeof("max_conns=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"max_conns=", sizeof("max_conns=") - 1)) {
-                elts[i].len = elts[i].len - (sizeof("max_conns=") - 1);
-                elts[i].data = &elts[i].data[sizeof("max_conns=") - 1];
-                ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
-                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"max_conns\" value \"%V\" must be number", &cmd->name, &elts[i]); return NGX_ERROR; }
+            if (args[i].len > sizeof("max_conns=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"max_conns=", sizeof("max_conns=") - 1)) {
+                args[i].len = args[i].len - (sizeof("max_conns=") - 1);
+                args[i].data = &args[i].data[sizeof("max_conns=") - 1];
+                ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
+                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"max_conns\" value \"%V\" must be number", &cmd->name, &args[i]); return NGX_ERROR; }
                 us->max_conns = (ngx_uint_t)n;
                 continue;
             }
-            if (elts[i].len > sizeof("max_fails=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"max_fails=", sizeof("max_fails=") - 1)) {
-                elts[i].len = elts[i].len - (sizeof("max_fails=") - 1);
-                elts[i].data = &elts[i].data[sizeof("max_fails=") - 1];
-                ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
-                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"max_fails\" value \"%V\" must be number", &cmd->name, &elts[i]); return NGX_ERROR; }
+            if (args[i].len > sizeof("max_fails=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"max_fails=", sizeof("max_fails=") - 1)) {
+                args[i].len = args[i].len - (sizeof("max_fails=") - 1);
+                args[i].data = &args[i].data[sizeof("max_fails=") - 1];
+                ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
+                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"max_fails\" value \"%V\" must be number", &cmd->name, &args[i]); return NGX_ERROR; }
                 us->max_fails = (ngx_uint_t)n;
                 continue;
             }
-            if (elts[i].len > sizeof("fail_timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"fail_timeout=", sizeof("fail_timeout=") - 1)) {
-                elts[i].len = elts[i].len - (sizeof("fail_timeout=") - 1);
-                elts[i].data = &elts[i].data[sizeof("fail_timeout=") - 1];
-                ngx_int_t n = ngx_parse_time(&elts[i], 1);
-                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"fail_timeout\" value \"%V\" must be time", &cmd->name, &elts[i]); return NGX_ERROR; }
+            if (args[i].len > sizeof("fail_timeout=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"fail_timeout=", sizeof("fail_timeout=") - 1)) {
+                args[i].len = args[i].len - (sizeof("fail_timeout=") - 1);
+                args[i].data = &args[i].data[sizeof("fail_timeout=") - 1];
+                ngx_int_t n = ngx_parse_time(&args[i], 1);
+                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"fail_timeout\" value \"%V\" must be time", &cmd->name, &args[i]); return NGX_ERROR; }
                 us->fail_timeout = (time_t)n;
                 continue;
             }
-            if (elts[i].len == sizeof("backup") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"backup", sizeof("backup") - 1)) {
+            if (args[i].len == sizeof("backup") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"backup", sizeof("backup") - 1)) {
                 us->backup = 1;
                 continue;
             }
-            if (elts[i].len == sizeof("down") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"down", sizeof("down") - 1)) {
+            if (args[i].len == sizeof("down") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"down", sizeof("down") - 1)) {
                 us->down = 1;
                 continue;
             }
 #if (T_NGX_HTTP_UPSTREAM_ID)
-            if (elts[i].len > sizeof("id=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"id=", sizeof("id=") - 1)) {
-                us->id.len = elts[i].len - 3;
-                us->id.data = &elts[i].data[3];
+            if (args[i].len > sizeof("id=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"id=", sizeof("id=") - 1)) {
+                us->id.len = args[i].len - 3;
+                us->id.data = &args[i].data[3];
                 continue;
             }
 #endif
         }
         if (i > 1) conninfo.len++;
-        conninfo.len += elts[i].len;
+        conninfo.len += args[i].len;
     }
     if (!(conninfo.data = ngx_pnalloc(cf->pool, conninfo.len + 1))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_ERROR; }
     u_char *p = conninfo.data;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
         if (us) {
-            if (elts[i].len > sizeof("weight=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"weight=", sizeof("weight=") - 1)) continue;
-            if (elts[i].len > sizeof("max_conns=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"max_conns=", sizeof("max_conns=") - 1)) continue;
-            if (elts[i].len > sizeof("max_fails=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"max_fails=", sizeof("max_fails=") - 1)) continue;
-            if (elts[i].len > sizeof("fail_timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"fail_timeout=", sizeof("fail_timeout=") - 1)) continue;
-            if (elts[i].len == sizeof("backup") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"backup", sizeof("backup") - 1)) continue;
-            if (elts[i].len == sizeof("down") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"down", sizeof("down") - 1)) continue;
+            if (args[i].len > sizeof("weight=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"weight=", sizeof("weight=") - 1)) continue;
+            if (args[i].len > sizeof("max_conns=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"max_conns=", sizeof("max_conns=") - 1)) continue;
+            if (args[i].len > sizeof("max_fails=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"max_fails=", sizeof("max_fails=") - 1)) continue;
+            if (args[i].len > sizeof("fail_timeout=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"fail_timeout=", sizeof("fail_timeout=") - 1)) continue;
+            if (args[i].len == sizeof("backup") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"backup", sizeof("backup") - 1)) continue;
+            if (args[i].len == sizeof("down") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"down", sizeof("down") - 1)) continue;
 #if (T_NGX_HTTP_UPSTREAM_ID)
-            if (elts[i].len > sizeof("id=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"id=", sizeof("id=") - 1)) continue;
+            if (args[i].len > sizeof("id=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"id=", sizeof("id=") - 1)) continue;
 #endif
         }
         if (i > 1) *p++ = ' ';
-        p = ngx_cpymem(p, elts[i].data, elts[i].len);
+        p = ngx_cpymem(p, args[i].data, args[i].len);
     }
     *p = '\0';
     char *err;
@@ -373,45 +373,45 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
 static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_upstream_srv_conf_t *pusc = conf;
     if (pusc->ps.save.max) return "duplicate";
-    ngx_str_t *elts = cf->args->elts;
-    ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
-    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be number", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
-    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    ngx_str_t *args = cf->args->elts;
+    ngx_int_t n = ngx_atoi(args[1].data, args[1].len);
+    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be number", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
+    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     ngx_http_upstream_srv_conf_t *usc = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
-    if ((pusc->ps.save.max = (ngx_uint_t)n) < usc->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be greater or equal than servers count (%i)", &cmd->name, &elts[1], usc->servers->nelts); return NGX_CONF_ERROR; }
+    if ((pusc->ps.save.max = (ngx_uint_t)n) < usc->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be greater or equal than servers count (%i)", &cmd->name, &args[1], usc->servers->nelts); return NGX_CONF_ERROR; }
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("overflow=") - 1);
-            elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
+        if (args[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
+            args[i].len = args[i].len - (sizeof("overflow=") - 1);
+            args[i].data = &args[i].data[sizeof("overflow=") - 1];
             static const ngx_conf_enum_t e[] = {
                 { ngx_string("ignore"), 0 },
                 { ngx_string("reject"), 1 },
                 { ngx_null_string, 0 }
             };
             ngx_uint_t j;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { pusc->ps.save.reject = e[j].value; break; }
-            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncasecmp(e[j].name.data, args[i].data, args[i].len)) { pusc->ps.save.reject = e[j].value; break; }
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             continue;
         }
-        if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
-            elts[i].data = &elts[i].data[sizeof("timeout=") - 1];
-            ngx_int_t n = ngx_parse_time(&elts[i], 0);
-            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+        if (args[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
+            args[i].len = args[i].len - (sizeof("timeout=") - 1);
+            args[i].data = &args[i].data[sizeof("timeout=") - 1];
+            ngx_int_t n = ngx_parse_time(&args[i], 0);
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
+            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             pusc->ps.save.timeout = (ngx_msec_t)n;
             continue;
         }
-        if (elts[i].len > sizeof("requests=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"requests=", sizeof("requests=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("requests=") - 1);
-            elts[i].data = &elts[i].data[sizeof("requests=") - 1];
-            ngx_int_t n = ngx_atoi(elts[i].data, elts[i].len);
-            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be number", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+        if (args[i].len > sizeof("requests=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"requests=", sizeof("requests=") - 1)) {
+            args[i].len = args[i].len - (sizeof("requests=") - 1);
+            args[i].data = &args[i].data[sizeof("requests=") - 1];
+            ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be number", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
+            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be positive", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             pusc->ps.save.requests = (ngx_uint_t)n;
             continue;
         }
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &args[i]);
         return NGX_CONF_ERROR;
     }
     return NGX_CONF_OK;
@@ -422,26 +422,26 @@ static char *ngx_postgres_prepare_conf(ngx_conf_t *cf, ngx_command_t *cmd, void 
     ngx_postgres_upstream_srv_conf_t *pusc = conf;
     if (!pusc->ps.save.max) return "works only with \"postgres_keepalive\"";
     if (pusc->prepare.max) return "duplicate";
-    ngx_str_t *elts = cf->args->elts;
-    ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
-    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be number", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
-    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    ngx_str_t *args = cf->args->elts;
+    ngx_int_t n = ngx_atoi(args[1].data, args[1].len);
+    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be number", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
+    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     pusc->prepare.max = (ngx_uint_t)n;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("overflow=") - 1);
-            elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
+        if (args[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
+            args[i].len = args[i].len - (sizeof("overflow=") - 1);
+            args[i].data = &args[i].data[sizeof("overflow=") - 1];
             static const ngx_conf_enum_t e[] = {
                 { ngx_string("ignore"), 0 },
                 { ngx_string("deallocate"), 1 },
                 { ngx_null_string, 0 }
             };
             ngx_uint_t j;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { pusc->prepare.deallocate = e[j].value; break; }
-            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"deallocate\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncasecmp(e[j].name.data, args[i].data, args[i].len)) { pusc->prepare.deallocate = e[j].value; break; }
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"deallocate\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             continue;
         }
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &args[i]);
         return NGX_CONF_ERROR;
     }
     return NGX_CONF_OK;
@@ -453,35 +453,35 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     ngx_postgres_upstream_srv_conf_t *pusc = conf;
     if (!pusc->ps.save.max) return "works only with \"postgres_keepalive\"";
     if (pusc->pd.max) return "duplicate";
-    ngx_str_t *elts = cf->args->elts;
-    ngx_int_t n = ngx_atoi(elts[1].data, elts[1].len);
-    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be number", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
-    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    ngx_str_t *args = cf->args->elts;
+    ngx_int_t n = ngx_atoi(args[1].data, args[1].len);
+    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be number", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
+    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     pusc->pd.max = (ngx_uint_t)n;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (elts[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("overflow=") - 1);
-            elts[i].data = &elts[i].data[sizeof("overflow=") - 1];
+        if (args[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
+            args[i].len = args[i].len - (sizeof("overflow=") - 1);
+            args[i].data = &args[i].data[sizeof("overflow=") - 1];
             static const ngx_conf_enum_t e[] = {
                 { ngx_string("ignore"), 0 },
                 { ngx_string("reject"), 1 },
                 { ngx_null_string, 0 }
             };
             ngx_uint_t j;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[i].len && !ngx_strncasecmp(e[j].name.data, elts[i].data, elts[i].len)) { pusc->pd.reject = e[j].value; break; }
-            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncasecmp(e[j].name.data, args[i].data, args[i].len)) { pusc->pd.reject = e[j].value; break; }
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             continue;
         }
-        if (elts[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(elts[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
-            elts[i].len = elts[i].len - (sizeof("timeout=") - 1);
-            elts[i].data = &elts[i].data[sizeof("timeout=") - 1];
-            ngx_int_t n = ngx_parse_time(&elts[i], 0);
-            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
-            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &elts[i]); return NGX_CONF_ERROR; }
+        if (args[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
+            args[i].len = args[i].len - (sizeof("timeout=") - 1);
+            args[i].data = &args[i].data[sizeof("timeout=") - 1];
+            ngx_int_t n = ngx_parse_time(&args[i], 0);
+            if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
+            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             pusc->pd.timeout = (ngx_msec_t)n;
             continue;
         }
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &elts[i]);
+        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &args[i]);
         return NGX_CONF_ERROR;
     }
     return NGX_CONF_OK;
@@ -495,11 +495,11 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     ngx_http_core_loc_conf_t *core = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     core->handler = ngx_postgres_handler;
     if (core->name.data[core->name.len - 1] == '/') core->auto_redirect = 1;
-    ngx_str_t *elts = cf->args->elts;
+    ngx_str_t *args = cf->args->elts;
     ngx_url_t url;
     ngx_memzero(&url, sizeof(url));
     url.no_resolve = 1;
-    url.url = elts[1];
+    url.url = args[1];
     if (cf->args->nelts == 2) {
         if (!url.url.len) return "error: empty upstream name";
         if (ngx_http_script_variables_count(&url.url)) {
@@ -553,10 +553,10 @@ static char *ngx_postgres_trace_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     ngx_postgres_query_t *query = location->query.elts && location->query.nelts ? &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1] : NULL;
-    ngx_str_t *elts = cf->args->elts;
-    ngx_int_t n = ngx_parse_time(&elts[1], 0);
-    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be time", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
-    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    ngx_str_t *args = cf->args->elts;
+    ngx_int_t n = ngx_parse_time(&args[1], 0);
+    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be time", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
+    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     if (!query) location->timeout = (ngx_msec_t)n;
     else if (location->timeout) return "duplicate";
     else if (query->timeout) return "duplicate";
@@ -568,7 +568,7 @@ char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
 char *ngx_postgres_prepare_conf_(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     ngx_postgres_query_t *query = location->query.elts && location->query.nelts ? &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1] : NULL;
-    ngx_str_t *elts = cf->args->elts;
+    ngx_str_t *args = cf->args->elts;
     static const ngx_conf_enum_t e[] = {
         { ngx_string("off"), 0 },
         { ngx_string("no"), 0 },
@@ -580,8 +580,8 @@ char *ngx_postgres_prepare_conf_(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     };
     ngx_flag_t prepare;
     ngx_uint_t j;
-    for (j = 0; e[j].name.len; j++) if (e[j].name.len == elts[1].len && !ngx_strncasecmp(e[j].name.data, elts[1].data, elts[1].len)) { prepare = e[j].value; break; }
-    if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"append\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &elts[1]); return NGX_CONF_ERROR; }
+    for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[1].len && !ngx_strncasecmp(e[j].name.data, args[1].data, args[1].len)) { prepare = e[j].value; break; }
+    if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"append\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     if (!query) location->prepare = prepare;
     else if (location->prepare) return "duplicate";
     else if (query->prepare) return "duplicate";
@@ -611,18 +611,18 @@ static ngx_conf_bitmask_t ngx_postgres_next_upstream_masks[] = {
 static char *ngx_postgres_store_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     if (location->upstream.store != NGX_CONF_UNSET) return "is duplicate";
-    ngx_str_t *elts = cf->args->elts;
-    if (elts[1].len == sizeof("off") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"off", sizeof("off") - 1)) { location->upstream.store = 0; return NGX_CONF_OK; }
+    ngx_str_t *args = cf->args->elts;
+    if (args[1].len == sizeof("off") - 1 && !ngx_strncasecmp(args[1].data, (u_char *)"off", sizeof("off") - 1)) { location->upstream.store = 0; return NGX_CONF_OK; }
     location->upstream.store = 1;
-    if (elts[1].len == sizeof("on") - 1 && !ngx_strncasecmp(elts[1].data, (u_char *)"on", sizeof("on") - 1)) return NGX_CONF_OK;
-    elts[1].len++;
+    if (args[1].len == sizeof("on") - 1 && !ngx_strncasecmp(args[1].data, (u_char *)"on", sizeof("on") - 1)) return NGX_CONF_OK;
+    args[1].len++;
     ngx_http_script_compile_t sc;
     ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
     sc.cf = cf;
-    sc.source = &elts[1];
+    sc.source = &args[1];
     sc.lengths = &location->upstream.store_lengths;
     sc.values = &location->upstream.store_values;
-    sc.variables = ngx_http_script_variables_count(&elts[1]);
+    sc.variables = ngx_http_script_variables_count(&args[1]);
     sc.complete_lengths = 1;
     sc.complete_values = 1;
     if (ngx_http_script_compile(&sc) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_http_script_compile != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }

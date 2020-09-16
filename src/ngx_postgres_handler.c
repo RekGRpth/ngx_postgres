@@ -78,9 +78,9 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "missing \"postgres_query\" in location \"%V\"", &core->name);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-    ngx_postgres_query_t *elts = location->query.elts;
+    ngx_postgres_query_t *lq = location->query.elts;
     ngx_uint_t i;
-    for (i = 0; i < location->query.nelts; i++) if (!elts[i].method || elts[i].method & r->method) break;
+    for (i = 0; i < location->query.nelts; i++) if (!lq[i].method || lq[i].method & r->method) break;
     if (i == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     ngx_int_t rc = ngx_http_discard_request_body(r);
     if (rc != NGX_OK) return rc;

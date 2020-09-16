@@ -160,7 +160,7 @@ ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_result_t *result = &pd->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->query.index];
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
     result->sql = query->sql;
     PGresult *res = result->res;
     result->ntuples = 0;
@@ -187,7 +187,7 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_result_t *result = &pd->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->query.index];
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
     result->sql = query->sql;
     PGresult *res = result->res;
     const char *value;
@@ -224,8 +224,8 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->query.index);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->query.index];
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->index);
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
     ngx_array_t *array = &query->variable;
     if (!array->elts) return NGX_OK;
     ngx_postgres_variable_t *variable = array->elts;
@@ -390,18 +390,18 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     if (!location->query.elts || !location->query.nelts) return "must defined after \"postgres_query\" directive";
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1];
-    ngx_str_t *elts = cf->args->elts;
-    if (elts[1].len < 2) return "error: empty variable name";
-    if (elts[1].data[0] != '$') return "error: invalid variable name";
-    elts[1].len--;
-    elts[1].data++;
+    ngx_str_t *args = cf->args->elts;
+    if (args[1].len < 2) return "error: empty variable name";
+    if (args[1].data[0] != '$') return "error: invalid variable name";
+    args[1].len--;
+    args[1].data++;
     ngx_array_t *array = &query->variable;
     if (!array->elts && ngx_array_init(array, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     ngx_postgres_variable_t *variable = ngx_array_push(array);
     if (!variable) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(variable, sizeof(*variable));
     variable->index = location->variable++;
-    variable->name = elts[1];
+    variable->name = args[1];
     ngx_http_variable_t *var = ngx_http_add_variable(cf, &variable->name, NGX_HTTP_VAR_CHANGEABLE);
     if (!var) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_add_variable", &cmd->name); return NGX_CONF_ERROR; }
     ngx_int_t index = ngx_http_get_variable_index(cf, &variable->name);
@@ -424,17 +424,17 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             { ngx_null_string, 0, NULL }
         };
         ngx_uint_t i;
-        for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[2].len && !ngx_strncasecmp(e[i].name.data, elts[2].data, elts[2].len)) { variable->type = e[i].type; variable->handler = e[i].handler; break; }
-        if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: type \"%V\" must be \"nfields\", \"ntuples\", \"cmdTuples\", \"cmdStatus\", \"value\" or \"json\"", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
+        for (i = 0; e[i].name.len; i++) if (e[i].name.len == args[2].len && !ngx_strncasecmp(e[i].name.data, args[2].data, args[2].len)) { variable->type = e[i].type; variable->handler = e[i].handler; break; }
+        if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: type \"%V\" must be \"nfields\", \"ntuples\", \"cmdTuples\", \"cmdStatus\", \"value\" or \"json\"", &cmd->name, &args[2]); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
     }
-    if (!elts[3].len) return "error: empty col";
-    ngx_int_t n = ngx_atoi(elts[2].data, elts[2].len);
-    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: row \"%V\" must be number", &cmd->name, &elts[2]); return NGX_CONF_ERROR; }
+    if (!args[3].len) return "error: empty col";
+    ngx_int_t n = ngx_atoi(args[2].data, args[2].len);
+    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: row \"%V\" must be number", &cmd->name, &args[2]); return NGX_CONF_ERROR; }
     variable->row = (ngx_uint_t)n;
-    if ((n = ngx_atoi(elts[3].data, elts[3].len)) != NGX_ERROR) variable->col = (ngx_uint_t)n; else { /* get col by name */
-        if (!(variable->field = ngx_pnalloc(cf->pool, elts[3].len + 1))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
-        (void)ngx_cpystrn(variable->field, elts[3].data, elts[3].len + 1);
+    if ((n = ngx_atoi(args[3].data, args[3].len)) != NGX_ERROR) variable->col = (ngx_uint_t)n; else { /* get col by name */
+        if (!(variable->field = ngx_pnalloc(cf->pool, args[3].len + 1))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
+        (void)ngx_cpystrn(variable->field, args[3].data, args[3].len + 1);
     }
     if (cf->args->nelts == 4) variable->required = 0; else { /* user-specified value */
         static const ngx_conf_enum_t e[] = {
@@ -443,8 +443,8 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             { ngx_null_string, 0 }
         };
         ngx_uint_t i;
-        for (i = 0; e[i].name.len; i++) if (e[i].name.len == elts[4].len && !ngx_strncasecmp(e[i].name.data, elts[4].data, elts[4].len)) { variable->required = e[i].value; break; }
-        if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: requirment \"%V\" must be \"optional\" or \"required\"", &cmd->name, &elts[4]); return NGX_CONF_ERROR; }
+        for (i = 0; e[i].name.len; i++) if (e[i].name.len == args[4].len && !ngx_strncasecmp(e[i].name.data, args[4].data, args[4].len)) { variable->required = e[i].value; break; }
+        if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: requirment \"%V\" must be \"optional\" or \"required\"", &cmd->name, &args[4]); return NGX_CONF_ERROR; }
     }
     return NGX_CONF_OK;
 }

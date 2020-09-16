@@ -17,8 +17,8 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->query.index);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->query.index];
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->index);
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
     ngx_array_t *rewrite = &query->rewrite;
     if (!rewrite->elts) return NGX_OK;
     ngx_postgres_rewrite_t *elts = rewrite->elts;
@@ -66,9 +66,9 @@ char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
     ngx_postgres_location_t *location = conf;
     if (!location->query.elts || !location->query.nelts) return "must defined after \"postgres_query\" directive";
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1];
-    ngx_str_t *elts = cf->args->elts;
-    ngx_str_t what = elts[cf->args->nelts - 2];
-    ngx_str_t to = elts[cf->args->nelts - 1];
+    ngx_str_t *args = cf->args->elts;
+    ngx_str_t what = args[cf->args->nelts - 2];
+    ngx_str_t to = args[cf->args->nelts - 1];
     static const struct {
         ngx_str_t name;
         ngx_uint_t key;
@@ -121,6 +121,6 @@ char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
         { ngx_string("TRACE"), NGX_HTTP_TRACE },
         { ngx_null_string, 0 }
     };
-    for (ngx_uint_t j = 1; j < cf->args->nelts - 2; j++) for (ngx_uint_t i = 0; b[i].name.len; i++) if (b[i].name.len == elts[j].len && !ngx_strncasecmp(b[i].name.data, elts[j].data, b[i].name.len)) rewrite->method |= b[i].mask;
+    for (ngx_uint_t j = 1; j < cf->args->nelts - 2; j++) for (ngx_uint_t i = 0; b[i].name.len; i++) if (b[i].name.len == args[j].len && !ngx_strncasecmp(b[i].name.data, args[j].data, b[i].name.len)) rewrite->method |= b[i].mask;
     return NGX_CONF_OK;
 }
