@@ -57,10 +57,10 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
         ngx_str_t channel = ngx_null_string;
         ngx_str_t command = ngx_null_string;
         if (query->ids.nelts) {
-            ngx_uint_t *elts = query->ids.elts;
+            ngx_uint_t *idselts = query->ids.elts;
             if (!(ids = ngx_pnalloc(r->pool, query->ids.nelts * sizeof(*ids)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             for (ngx_uint_t i = 0; i < query->ids.nelts; i++) {
-                ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, elts[i]);
+                ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, idselts[i]);
                 if (!value || !value->data || !value->len) { ngx_str_set(&ids[i], "NULL"); } else {
                     char *str = PQescapeIdentifier(pdc->conn, (const char *)value->data, value->len);
                     if (!str) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQescapeIdentifier(%*.*s) and %s", value->len, value->len, value->data, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
@@ -269,8 +269,8 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
     if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
     if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *elts = location->query.elts;
-    ngx_postgres_query_t *query = &elts[pd->index];
+    ngx_postgres_query_t *queryelts = location->query.elts;
+    ngx_postgres_query_t *query = &queryelts[pd->index];
     if (query->timeout) {
         ngx_connection_t *c = pdc->connection;
         if (c->read->timer_set) ngx_del_timer(c->read);
@@ -311,7 +311,7 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
     if (rc == NGX_OK) rc = ngx_postgres_process_notify(pdc, 0);
     if (rc == NGX_OK && pd->index < location->query.nelts - 1) {
         ngx_uint_t i;
-        for (i = pd->index + 1; i < location->query.nelts; i++) if (!elts[i].method || elts[i].method & r->method) break;
+        for (i = pd->index + 1; i < location->query.nelts; i++) if (!queryelts[i].method || queryelts[i].method & r->method) break;
         if (i < location->query.nelts) {
             pd->index = i;
             return NGX_AGAIN;
