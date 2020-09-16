@@ -105,10 +105,10 @@ typedef struct {
     ngx_uint_t nParams;
     Oid *paramTypes;
     u_char **paramValues;
-} ngx_postgres_data_query_t;
+} ngx_postgres_send_t;
 
 typedef struct {
-    ngx_array_t query;
+    ngx_array_t send;
     ngx_array_t variable;
     ngx_event_free_peer_pt peer_free;
     ngx_event_get_peer_pt peer_get;

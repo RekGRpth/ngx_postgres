@@ -34,14 +34,14 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
     if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
     if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *elts = location->query.elts;
-    ngx_postgres_data_query_t *pdqe = pd->query.elts;
+    ngx_postgres_query_t *queryelts = location->query.elts;
+    ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_uint_t i;
-    for (i = pd->index; i < location->query.nelts; i++) if (!elts[i].method || elts[i].method & r->method) break;
+    for (i = pd->index; i < location->query.nelts; i++) if (!queryelts[i].method || queryelts[i].method & r->method) break;
     if (i == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     pd->index = i;
-    ngx_postgres_query_t *query = &elts[i];
-    ngx_postgres_data_query_t *pdq = &pdqe[i];
+    ngx_postgres_query_t *query = &queryelts[i];
+    ngx_postgres_send_t *send = &sendelts[i];
     if (query->timeout) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
@@ -93,7 +93,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
         if (last != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_snprintf"); return NGX_ERROR; }
         *last = '\0';
 //        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
-        pdq->sql = sql;
+        send->sql = sql;
         if (pusc->ps.save.max) {
             if (query->listen && channel.data && command.data) {
                 if (!pdc->listen.queue) {
@@ -111,10 +111,10 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
                 ngx_queue_insert_tail(pdc->listen.queue, &listen->queue);
                 cont:;
             } else if (prepare) {
-                if (!(pdq->stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
-                u_char *last = ngx_snprintf(pdq->stmtName.data, 31, "ngx_%ul", (unsigned long)(pdq->hash = ngx_hash_key(sql.data, sql.len)));
+                if (!(send->stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
+                u_char *last = ngx_snprintf(send->stmtName.data, 31, "ngx_%ul", (unsigned long)(send->hash = ngx_hash_key(sql.data, sql.len)));
                 *last = '\0';
-                pdq->stmtName.len = last - pdq->stmtName.data;
+                send->stmtName.len = last - send->stmtName.data;
             }
         }
         pdc->state = prepare ? state_prepare : state_query;
@@ -128,7 +128,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
                 if (prepare && pdc->prepare.queue) {
                     for (ngx_queue_t *queue = ngx_queue_head(pdc->prepare.queue); queue != ngx_queue_sentinel(pdc->prepare.queue); queue = ngx_queue_next(queue)) {
                         ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
-                        if (prepare->hash == pdq->hash) { ngx_queue_remove(queue); pdc->prepare.size--; break; }
+                        if (prepare->hash == send->hash) { ngx_queue_remove(queue); pdc->prepare.size--; break; }
                     }
                 }
                 return ngx_postgres_done(pd, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -141,22 +141,22 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
     if (rc != NGX_OK) return rc;
     ngx_uint_t hash = 0;
     if (!prepare) {
-        if (pdq->nParams || query->output.binary) {
-            if (!PQsendQueryParams(pdc->conn, (const char *)pdq->sql.data, pdq->nParams, pdq->paramTypes, (const char *const *)pdq->paramValues, NULL, NULL, query->output.binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryParams(\"%V\", %i) and %s", &pdq->sql, pdq->nParams, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQueryParams(\"%V\", %i)", &pdq->sql, pdq->nParams);
+        if (send->nParams || query->output.binary) {
+            if (!PQsendQueryParams(pdc->conn, (const char *)send->sql.data, send->nParams, send->paramTypes, (const char *const *)send->paramValues, NULL, NULL, query->output.binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryParams(\"%V\", %i) and %s", &send->sql, send->nParams, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQueryParams(\"%V\", %i)", &send->sql, send->nParams);
         } else {
-            if (!PQsendQuery(pdc->conn, (const char *)pdq->sql.data)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(\"%V\") and %s", &pdq->sql, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
-            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQuery(\"%V\")", &pdq->sql);
+            if (!PQsendQuery(pdc->conn, (const char *)send->sql.data)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(\"%V\") and %s", &send->sql, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQuery(\"%V\")", &send->sql);
         }
     } else switch (pdc->state) {
         case state_prepare:
             if (pdc->prepare.queue) for (ngx_queue_t *queue = ngx_queue_head(pdc->prepare.queue); queue != ngx_queue_sentinel(pdc->prepare.queue); queue = ngx_queue_next(queue)) {
                 ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
-                if (prepare->hash == pdq->hash) { hash = prepare->hash; break; }
+                if (prepare->hash == send->hash) { hash = prepare->hash; break; }
             }
             if (hash) pdc->state = state_query; else if (pdc->prepare.size >= pusc->prepare.max && pusc->prepare.deallocate) {
-                char *str = PQescapeIdentifier(pdc->conn, (const char *)pdq->stmtName.data, pdq->stmtName.len);
-                if (!str) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQescapeIdentifier(\"%V\") and %s", &pdq->stmtName, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
+                char *str = PQescapeIdentifier(pdc->conn, (const char *)send->stmtName.data, send->stmtName.len);
+                if (!str) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQescapeIdentifier(\"%V\") and %s", &send->stmtName, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
                 ngx_str_t id = {ngx_strlen(str), NULL};
                 if (!(id.data = ngx_pnalloc(r->pool, id.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
                 ngx_memcpy(id.data, str, id.len);
@@ -172,23 +172,23 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
                 pdc->prepare.size--;
                 return NGX_AGAIN;
             } else {
-                if (!PQsendPrepare(pdc->conn, (const char *)pdq->stmtName.data, (const char *)pdq->sql.data, pdq->nParams, pdq->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(\"%V\", \"%V\") and %s", &pdq->stmtName, &pdq->sql, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
-                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendPrepare(\"%V\", \"%V\")", &pdq->stmtName, &pdq->sql);
+                if (!PQsendPrepare(pdc->conn, (const char *)send->stmtName.data, (const char *)send->sql.data, send->nParams, send->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(\"%V\", \"%V\") and %s", &send->stmtName, &send->sql, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
+                ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendPrepare(\"%V\", \"%V\")", &send->stmtName, &send->sql);
                 if (!pdc->prepare.queue) {
                     if (!(pdc->prepare.queue = ngx_pcalloc(c->pool, sizeof(*pdc->prepare.queue)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                     ngx_queue_init(pdc->prepare.queue);
                 }
                 ngx_postgres_prepare_t *prepare = ngx_pcalloc(c->pool, sizeof(*prepare));
                 if (!prepare) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-                prepare->hash = pdq->hash;
+                prepare->hash = send->hash;
                 ngx_queue_insert_tail(pdc->prepare.queue, &prepare->queue);
                 pdc->prepare.size++;
                 pdc->state = state_query;
                 return NGX_OK;
             } // fall through
         case state_query:
-            if (!PQsendQueryPrepared(pdc->conn, (const char *)pdq->stmtName.data, pdq->nParams, (const char *const *)pdq->paramValues, NULL, NULL, query->output.binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryPrepared(\"%V\", \"%V\", %i) and %s", &pdq->stmtName, &pdq->sql, pdq->nParams, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
-            ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQueryPrepared(\"%V\", \"%V\", %i)", &pdq->stmtName, &pdq->sql, pdq->nParams);
+            if (!PQsendQueryPrepared(pdc->conn, (const char *)send->stmtName.data, send->nParams, (const char *const *)send->paramValues, NULL, NULL, query->output.binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryPrepared(\"%V\", \"%V\", %i) and %s", &send->stmtName, &send->sql, send->nParams, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
+            ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQueryPrepared(\"%V\", \"%V\", %i)", &send->stmtName, &send->sql, send->nParams);
             break;
         default: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pdc->state == %i", pdc->state); return NGX_ERROR;
     }
