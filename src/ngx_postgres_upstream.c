@@ -97,11 +97,11 @@ cont:
     if (len && array && array->nelts) {
         listen = ngx_pnalloc(r->pool, len + 2 * array->nelts - 1);
         if (!listen) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NULL; }
-        ngx_postgres_listen_t *elts = array->elts;
+        ngx_postgres_listen_t *arrayelts = array->elts;
         u_char *p = listen;
         for (ngx_uint_t i = 0; i < array->nelts; i++) {
             if (i) { *p++ = ';'; *p++ = '\n'; }
-            p = ngx_cpymem(p, elts[i].command.data + 2, elts[i].command.len - 2);
+            p = ngx_cpymem(p, arrayelts[i].command.data + 2, arrayelts[i].command.len - 2);
         }
         *p = '\0';
     }
@@ -148,11 +148,11 @@ ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t 
     if (send && len && array && array->nelts) {
         u_char *unlisten = ngx_pnalloc(c->pool, len + 2 * array->nelts - 1);
         if (!unlisten) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); if (array) ngx_array_destroy(array); return NGX_ERROR; }
-        ngx_str_t *elts = array->elts;
+        ngx_str_t *arrayelts = array->elts;
         u_char *p = unlisten;
         for (ngx_uint_t i = 0; i < array->nelts; i++) {
             if (i) { *p++ = ';'; *p++ = '\n'; }
-            p = ngx_cpymem(p, elts[i].data, elts[i].len);
+            p = ngx_cpymem(p, arrayelts[i].data, arrayelts[i].len);
         }
         *p = '\0';
         if (!PQsendQuery(common->conn, (const char *)unlisten)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery(\"%s\") and %s", unlisten, PQerrorMessageMy(common->conn)); if (array) ngx_array_destroy(array); ngx_pfree(c->pool, unlisten); return NGX_ERROR; }

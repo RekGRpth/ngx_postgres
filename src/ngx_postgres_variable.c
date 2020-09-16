@@ -123,14 +123,14 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
     v->not_found = 1;
     ngx_postgres_data_t *pd = u->peer.data;
     if (!pd || !pd->variable.elts) return NGX_OK;
-    ngx_str_t *elts = pd->variable.elts;
+    ngx_str_t *variableelts = pd->variable.elts;
     ngx_uint_t index = (ngx_uint_t)data;
-    if (!elts[index].data) return NGX_OK;
+    if (!variableelts[index].data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    v->len = elts[index].len;
-    v->data = elts[index].data;
+    v->len = variableelts[index].len;
+    v->data = variableelts[index].data;
     return NGX_OK;
 }
 
@@ -229,7 +229,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
     ngx_array_t *array = &query->variable;
     if (!array->elts) return NGX_OK;
     ngx_postgres_variable_t *variable = array->elts;
-    ngx_str_t *elts = pd->variable.elts;
+    ngx_str_t *variableelts = pd->variable.elts;
 //    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", pd->variable.nelts);
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
@@ -241,19 +241,19 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
             case PGRES_TUPLES_OK:
                 switch (variable[i].type) {
                     case type_nfields:
-                        elts[variable[i].index].len = snprintf(NULL, 0, "%li", result->nfields);
-                        if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-                        elts[variable[i].index].len = ngx_snprintf(elts[variable[i].index].data, elts[variable[i].index].len, "%li", result->nfields) - elts[variable[i].index].data;
+                        variableelts[variable[i].index].len = snprintf(NULL, 0, "%li", result->nfields);
+                        if (!(variableelts[variable[i].index].data = ngx_pnalloc(r->pool, variableelts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                        variableelts[variable[i].index].len = ngx_snprintf(variableelts[variable[i].index].data, variableelts[variable[i].index].len, "%li", result->nfields) - variableelts[variable[i].index].data;
                         break;
                     case type_ntuples:
-                        elts[variable[i].index].len = snprintf(NULL, 0, "%li", result->ntuples);
-                        if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-                        elts[variable[i].index].len = ngx_snprintf(elts[variable[i].index].data, elts[variable[i].index].len, "%li", result->ntuples) - elts[variable[i].index].data;
+                        variableelts[variable[i].index].len = snprintf(NULL, 0, "%li", result->ntuples);
+                        if (!(variableelts[variable[i].index].data = ngx_pnalloc(r->pool, variableelts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                        variableelts[variable[i].index].len = ngx_snprintf(variableelts[variable[i].index].data, variableelts[variable[i].index].len, "%li", result->ntuples) - variableelts[variable[i].index].data;
                         break;
                     case type_cmdTuples:
-                        if ((value = PQcmdTuples(res)) && (elts[variable[i].index].len = ngx_strlen(value))) {
-                            if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-                            ngx_memcpy(elts[variable[i].index].data, value, elts[variable[i].index].len);
+                        if ((value = PQcmdTuples(res)) && (variableelts[variable[i].index].len = ngx_strlen(value))) {
+                            if (!(variableelts[variable[i].index].data = ngx_pnalloc(r->pool, variableelts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                            ngx_memcpy(variableelts[variable[i].index].data, value, variableelts[variable[i].index].len);
                         }
                         break;
                     default: break;
@@ -261,9 +261,9 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
             case PGRES_COMMAND_OK:
                 switch (variable[i].type) {
                     case type_cmdStatus:
-                        if ((value = PQcmdStatus(res)) && (elts[variable[i].index].len = ngx_strlen(value))) {
-                            if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-                            ngx_memcpy(elts[variable[i].index].data, value, elts[variable[i].index].len);
+                        if ((value = PQcmdStatus(res)) && (variableelts[variable[i].index].len = ngx_strlen(value))) {
+                            if (!(variableelts[variable[i].index].data = ngx_pnalloc(r->pool, variableelts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+                            ngx_memcpy(variableelts[variable[i].index].data, value, variableelts[variable[i].index].len);
                         }
                         break;
                     default: break;
@@ -278,8 +278,8 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
         ngx_chain_t *chain = u->out_bufs;
         u->out_bufs = NULL;
         if (variable[i].handler(pd) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
-        elts[variable[i].index].len = u->out_bufs->buf->end - u->out_bufs->buf->start;
-        elts[variable[i].index].data = u->out_bufs->buf->start;
+        variableelts[variable[i].index].len = u->out_bufs->buf->end - u->out_bufs->buf->start;
+        variableelts[variable[i].index].data = u->out_bufs->buf->start;
         u->out_bufs = chain;
     } else {
 //        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
@@ -313,7 +313,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
             continue;
         }
 //        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
-        if (!(elts[variable[i].index].len = PQgetlength(res, variable[i].row, variable[i].col))) {
+        if (!(variableelts[variable[i].index].len = PQgetlength(res, variable[i].row, variable[i].col))) {
             if (variable[i].required) {
                 ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "\"postgres_set\" for variable \"$%V\" requires non-zero length value in location \"%V\"", &variable[i].name, &core->name);
@@ -322,13 +322,13 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
             continue;
         }
 //        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
-        if (!(elts[variable[i].index].data = ngx_pnalloc(r->pool, elts[variable[i].index].len))) {
+        if (!(variableelts[variable[i].index].data = ngx_pnalloc(r->pool, variableelts[variable[i].index].len))) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc");
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 //        ngx_log_debug5(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "row = %i, col = %i, field = %s, required = %s, index = %i", variable[i].row, variable[i].col, variable[i].field ? variable[i].field : (u_char *)"(null)", variable[i].required ? "true" : "false", variable[i].index);
-        ngx_memcpy(elts[variable[i].index].data, PQgetvalue(res, variable[i].row, variable[i].col), elts[variable[i].index].len);
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%V = %V", &variable[i].name, &elts[variable[i].index]);
+        ngx_memcpy(variableelts[variable[i].index].data, PQgetvalue(res, variable[i].row, variable[i].col), variableelts[variable[i].index].len);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%V = %V", &variable[i].name, &variableelts[variable[i].index]);
     }
     return NGX_OK;
 }
