@@ -35,7 +35,7 @@ static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location->complex.value, &core->name);
             return NGX_ERROR;
         }
-        if (!(u->resolved = ngx_pcalloc(r->pool, sizeof(ngx_http_upstream_resolved_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+        if (!(u->resolved = ngx_pcalloc(r->pool, sizeof(*u->resolved)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
         u->resolved->host = host;
         u->resolved->no_port = 1;
     }

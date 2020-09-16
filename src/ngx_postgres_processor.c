@@ -97,7 +97,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
         if (pusc->ps.save.max) {
             if (query->listen && channel.data && command.data) {
                 if (!pdc->listen.queue) {
-                    if (!(pdc->listen.queue = ngx_pcalloc(c->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+                    if (!(pdc->listen.queue = ngx_pcalloc(c->pool, sizeof(*pdc->listen.queue)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                     ngx_queue_init(pdc->listen.queue);
                 }
                 for (ngx_queue_t *queue = ngx_queue_head(pdc->listen.queue); queue != ngx_queue_sentinel(pdc->listen.queue); queue = ngx_queue_next(queue)) {
@@ -175,7 +175,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
                 if (!PQsendPrepare(pdc->conn, (const char *)pdq->stmtName.data, (const char *)pdq->sql.data, pdq->nParams, pdq->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(\"%V\", \"%V\") and %s", &pdq->stmtName, &pdq->sql, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
                 ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendPrepare(\"%V\", \"%V\")", &pdq->stmtName, &pdq->sql);
                 if (!pdc->prepare.queue) {
-                    if (!(pdc->prepare.queue = ngx_pcalloc(c->pool, sizeof(ngx_queue_t)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
+                    if (!(pdc->prepare.queue = ngx_pcalloc(c->pool, sizeof(*pdc->prepare.queue)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
                     ngx_queue_init(pdc->prepare.queue);
                 }
                 ngx_postgres_prepare_t *prepare = ngx_pcalloc(c->pool, sizeof(*prepare));
