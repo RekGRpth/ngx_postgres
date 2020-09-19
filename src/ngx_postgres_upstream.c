@@ -101,7 +101,7 @@ cont:
         u_char *p = listen;
         for (ngx_uint_t i = 0; i < array->nelts; i++) {
             if (i) { *p++ = ';'; *p++ = '\n'; }
-            p = ngx_cpymem(p, arrayelts[i].command.data + 2, arrayelts[i].command.len - 2);
+            p = ngx_copy(p, arrayelts[i].command.data + 2, arrayelts[i].command.len - 2);
         }
         *p = '\0';
     }
@@ -152,7 +152,7 @@ ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t 
         u_char *p = unlisten;
         for (ngx_uint_t i = 0; i < array->nelts; i++) {
             if (i) { *p++ = ';'; *p++ = '\n'; }
-            p = ngx_cpymem(p, arrayelts[i].data, arrayelts[i].len);
+            p = ngx_copy(p, arrayelts[i].data, arrayelts[i].len);
         }
         *p = '\0';
         if (!PQsendQuery(common->conn, (const char *)unlisten)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery(\"%s\") and %s", unlisten, PQerrorMessageMy(common->conn)); if (array) ngx_array_destroy(array); ngx_pfree(c->pool, unlisten); return NGX_ERROR; }
@@ -776,7 +776,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     u_char *q = sql.data;
     for (ngx_uint_t i = j; i < cf->args->nelts; i++) {
         if (i > j) *q++ = ' ';
-        q = ngx_cpymem(q, args[i].data, args[i].len);
+        q = ngx_copy(q, args[i].data, args[i].len);
     }
     if (!(query->sql.data = ngx_pnalloc(cf->pool, sql.len))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
     if (ngx_array_init(&query->params, cf->pool, 1, sizeof(ngx_postgres_param_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }

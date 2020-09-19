@@ -228,7 +228,7 @@ static ngx_int_t ngx_postgres_connect(ngx_conf_t *cf, ngx_command_t *cmd, ngx_ur
 #endif
         }
         if (i > 1) *p++ = ' ';
-        p = ngx_cpymem(p, args[i].data, args[i].len);
+        p = ngx_copy(p, args[i].data, args[i].len);
     }
     *p = '\0';
     char *err;
