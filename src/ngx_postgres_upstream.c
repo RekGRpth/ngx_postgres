@@ -650,7 +650,10 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("EVTTRIGGEROID"), EVTTRIGGEROID },
         { ngx_string("LANGUAGE_HANDLEROID"), LANGUAGE_HANDLEROID },
         { ngx_string("INTERNALOID"), INTERNALOID },
+#if (PG_VERSION_NUM >= 130000)
+#else
         { ngx_string("OPAQUEOID"), OPAQUEOID },
+#endif
         { ngx_string("ANYELEMENTOID"), ANYELEMENTOID },
         { ngx_string("ANYNONARRAYOID"), ANYNONARRAYOID },
         { ngx_string("ANYENUMOID"), ANYENUMOID },
