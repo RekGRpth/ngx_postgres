@@ -137,7 +137,9 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     }
     ngx_queue_init(&pusc->ps.free.queue);
     ngx_queue_init(&pusc->ps.save.queue);
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_queue_init(&pusc->pd.queue);
+#endif
     if (!pusc->ps.save.max) return NGX_OK;
     ngx_conf_init_msec_value(pusc->ps.save.timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(pusc->ps.save.requests, 1000);
