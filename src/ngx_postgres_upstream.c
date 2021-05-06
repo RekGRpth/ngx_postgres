@@ -188,7 +188,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     if (ev->write) return;
     for (PGresult *res; (res = PQgetResult(psc->conn)); PQclear(res)) {
         switch(PQresultStatus(res)) {
-            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
+            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %.*s", (int)strlen(PQresultErrorMessage(res)) - 1, PQresultErrorMessage(res)); break;
             default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
         }
         if (!PQconsumeInput(psc->conn)) { ngx_log_error(NGX_LOG_ERR, ev->log, 0, "!PQconsumeInput and %.*s", (int)strlen(PQerrorMessage(psc->conn)) - 1, PQerrorMessage(psc->conn)); PQclear(res); goto close; }
@@ -843,14 +843,4 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (query->listen && !ngx_http_push_stream_add_msg_to_channel_my && !ngx_http_push_stream_delete_channel_my) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: LISTEN requires ngx_http_push_stream_module!", &cmd->name); return NGX_CONF_ERROR; }
 //    ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "sql = `%V`", &query->sql);
     return NGX_CONF_OK;
-}
-
-
-char *PQresultErrorMessageMy(const PGresult *res) {
-    char *err = PQresultErrorMessage(res);
-    if (!err) return err;
-    int len = strlen(err);
-    if (!len) return err;
-    err[len - 1] = '\0';
-    return err;
 }
