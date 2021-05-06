@@ -135,6 +135,11 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
             default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
         }
         if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(pdc->conn)); PQclear(pd->result.res); return NGX_ERROR; }
+        switch (PQflush(pdc->conn)) {
+            case 0: break;
+            case 1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQflush == 1"); PQclear(pd->result.res); return NGX_AGAIN;
+            case -1: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQflush == -1 and %.*s", (int)strlen(PQerrorMessage(pdc->conn)) - 1, PQerrorMessage(pdc->conn)); PQclear(pd->result.res); return NGX_ERROR;
+        }
         if (PQisBusy(pdc->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQisBusy"); PQclear(pd->result.res); return NGX_AGAIN; }
     }
     ngx_int_t rc = ngx_postgres_process_notify(pdc, 0);

@@ -144,6 +144,11 @@ ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t 
         }
         ngx_destroy_pool(temp_pool);
         if (!PQconsumeInput(common->conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(common->conn)); if (array) ngx_array_destroy(array); PQfreemem(notify); return NGX_ERROR; }
+        switch (PQflush(common->conn)) {
+            case 0: break;
+            case 1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQflush == 1"); if (array) ngx_array_destroy(array); PQfreemem(notify); return NGX_AGAIN;
+            case -1: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQflush == -1 and %.*s", (int)strlen(PQerrorMessage(common->conn)) - 1, PQerrorMessage(common->conn)); if (array) ngx_array_destroy(array); PQfreemem(notify); return NGX_ERROR;
+        }
         if (PQisBusy(common->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQisBusy"); if (array) ngx_array_destroy(array); PQfreemem(notify); return NGX_AGAIN; }
     }
     if (send && len && array && array->nelts) {
