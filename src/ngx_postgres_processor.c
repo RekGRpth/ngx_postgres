@@ -247,7 +247,10 @@ again:
         case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PGRES_POLLING_FAILED and %s and %.*s", ngx_postgres_status(pdc), (int)strlen(PQerrorMessage(pdc->conn)) - 1, PQerrorMessage(pdc->conn)); ngx_postgres_free_connection(pdc); return NGX_ERROR;
         case PGRES_POLLING_OK: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_OK and %s", ngx_postgres_status(pdc)); goto connected;
         case PGRES_POLLING_READING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_READING and %s", ngx_postgres_status(pdc)); return NGX_AGAIN;
-        case PGRES_POLLING_WRITING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(pdc)); if (PQstatus(pdc->conn) == CONNECTION_MADE) goto again; return NGX_AGAIN;
+        case PGRES_POLLING_WRITING:
+            ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(pdc));
+            if (PQstatus(pdc->conn) == CONNECTION_MADE) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQstatus == CONNECTION_MADE"); goto again; }
+            return NGX_AGAIN;
     }
 connected:;
     ngx_connection_t *c = pdc->connection;
