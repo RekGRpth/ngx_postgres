@@ -32,7 +32,6 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
     ngx_postgres_common_t *pdc = &pd->common;
     if (ngx_postgres_busy(pdc) == NGX_AGAIN) return NGX_AGAIN;
     ngx_connection_t *c = pdc->connection;
-//    if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %.*s", (int)strlen(PQerrorMessage(pdc->conn)) - 1, PQerrorMessage(pdc->conn)); return NGX_ERROR; }
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_send_t *sendelts = pd->send.elts;
@@ -272,7 +271,6 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
     if (ngx_postgres_busy(pdc) == NGX_AGAIN) return NGX_AGAIN;
-//    if (!PQconsumeInput(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQconsumeInput and %.*s", (int)strlen(PQerrorMessage(pdc->conn)) - 1, PQerrorMessage(pdc->conn)); return NGX_ERROR; }
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[pd->index];
