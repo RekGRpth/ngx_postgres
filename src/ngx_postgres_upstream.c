@@ -59,7 +59,8 @@ static void ngx_postgres_data_timeout_handler(ngx_event_t *ev) {
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     if (pusc->pd.size) pusc->pd.size--;
     if (!r->connection || r->connection->error) return;
-    ngx_http_upstream_next(r, r->upstream, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
 }
 #endif
 
@@ -213,7 +214,6 @@ static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
-    pdc->state = state_idle;
     if (!ngx_queue_empty(&ps->queue)) ngx_queue_remove(&ps->queue);
     ngx_queue_init(&ps->queue);
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
@@ -356,10 +356,7 @@ exit:
 #endif
     if (pusc->ps.save.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
-        if (ngx_postgres_peer_multi(pd) != NGX_DECLINED) {
-            ngx_postgres_process_events(pd);
-            return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
-        }
+        if (ngx_postgres_peer_multi(pd) != NGX_DECLINED) return ngx_postgres_prepare_or_query(pd);
         if (pusc->ps.save.size < pusc->ps.save.max) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.size = %i", pusc->ps.save.size);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
@@ -422,7 +419,7 @@ exit:
         if (ngx_add_event(c->read, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
         if (ngx_add_event(c->write, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
     } else goto bad_add;
-    pdc->state = state_connect;
+    pd->handler = ngx_postgres_connect;
     pc->connection = c;
     return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
 bad_add:
@@ -512,6 +509,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
         if (query->params.nelts) {
             ngx_postgres_param_t *param = query->params.elts;
             send->nParams = query->params.nelts;
+            send->binary = query->output.binary;
             if (!(send->paramTypes = ngx_pnalloc(r->pool, query->params.nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             if (!(send->paramValues = ngx_pnalloc(r->pool, query->params.nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             for (ngx_uint_t i = 0; i < query->params.nelts; i++) {

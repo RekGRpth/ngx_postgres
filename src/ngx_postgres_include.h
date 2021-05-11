@@ -12,14 +12,6 @@ typedef struct {
     ngx_str_t command;
 } ngx_postgres_listen_t;
 
-typedef enum {
-    state_connect = 1,
-    state_prepare,
-    state_query,
-    state_result,
-    state_idle
-} ngx_postgres_state_t;
-
 typedef struct {
     const char **keywords;
     const char **values;
@@ -79,7 +71,6 @@ typedef struct {
     ngx_addr_t addr;
     ngx_connection_t *connection;
     ngx_postgres_upstream_srv_conf_t *pusc;
-    ngx_postgres_state_t state;
     ngx_str_t charset;
     PGconn *conn;
 } ngx_postgres_common_t;
@@ -99,6 +90,7 @@ typedef struct {
 } ngx_postgres_result_t;
 
 typedef struct {
+    ngx_flag_t binary;
     ngx_str_t sql;
     ngx_str_t stmtName;
     ngx_uint_t hash;
@@ -107,7 +99,7 @@ typedef struct {
     u_char **paramValues;
 } ngx_postgres_send_t;
 
-typedef struct {
+typedef struct ngx_postgres_data_t {
     ngx_array_t send;
     ngx_array_t variable;
     ngx_event_free_peer_pt peer_free;
@@ -117,6 +109,7 @@ typedef struct {
     ngx_event_set_peer_session_pt set_session;
 #endif
     ngx_http_request_t *request;
+    ngx_int_t (*handler) (struct ngx_postgres_data_t *common);
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
@@ -177,6 +170,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 extern ngx_int_t ngx_http_push_stream_add_msg_to_channel_my(ngx_log_t *log, ngx_str_t *id, ngx_str_t *text, ngx_str_t *event_id, ngx_str_t *event_type, ngx_flag_t store_messages, ngx_pool_t *temp_pool) __attribute__((weak));
 extern ngx_int_t ngx_http_push_stream_delete_channel_my(ngx_log_t *log, ngx_str_t *id, u_char *text, size_t len, ngx_pool_t *temp_pool) __attribute__((weak));
 ngx_int_t ngx_postgres_busy(ngx_postgres_common_t *common);
+ngx_int_t ngx_postgres_connect(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_consume_flush_busy(ngx_postgres_common_t *common);
 ngx_int_t ngx_postgres_consume(ngx_postgres_common_t *common);
 ngx_int_t ngx_postgres_flush(ngx_postgres_common_t *common);
@@ -188,6 +182,7 @@ ngx_int_t ngx_postgres_output_plain(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
+ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
 ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
@@ -195,7 +190,6 @@ ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd);
 void ngx_postgres_free_connection(ngx_postgres_common_t *common);
-void ngx_postgres_process_events(ngx_postgres_data_t *pd);
 
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
 ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);
