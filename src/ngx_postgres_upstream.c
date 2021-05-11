@@ -505,11 +505,11 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     for (ngx_uint_t i = 0; i < location->query.nelts; i++) {
         ngx_postgres_query_t *query = &queryelts[i];
         ngx_postgres_send_t *send = &sendelts[i];
+        send->binary = query->output.binary;
         if (!query->method || query->method & r->method); else continue;
         if (query->params.nelts) {
             ngx_postgres_param_t *param = query->params.elts;
             send->nParams = query->params.nelts;
-            send->binary = query->output.binary;
             if (!(send->paramTypes = ngx_pnalloc(r->pool, query->params.nelts * sizeof(Oid)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             if (!(send->paramValues = ngx_pnalloc(r->pool, query->params.nelts * sizeof(char *)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
             for (ngx_uint_t i = 0; i < query->params.nelts; i++) {
