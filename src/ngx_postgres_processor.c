@@ -34,7 +34,6 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
-    if (ngx_postgres_busy(pdc) == NGX_AGAIN) return NGX_AGAIN;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_send_t *sendelts = pd->send.elts;
@@ -125,7 +124,6 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
-    if (ngx_postgres_busy(pdc) == NGX_AGAIN) return NGX_AGAIN;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[pd->index];
@@ -215,7 +213,7 @@ static ngx_int_t ngx_postgres_query_prepared(ngx_postgres_data_t *pd) {
         ngx_add_timer(c->write, query->timeout);
     }
     pd->handler = ngx_postgres_query_result;
-    return NGX_OK;
+    return NGX_AGAIN;
 }
 
 
@@ -277,7 +275,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
         ngx_add_timer(c->write, query->timeout);
     }
     pd->handler = ngx_postgres_query_result;
-    return NGX_OK;
+    return NGX_AGAIN;
 }
 
 
@@ -325,7 +323,7 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd) {
     ngx_queue_insert_tail(pdc->prepare.queue, &prepare->queue);
     pdc->prepare.size++;
     pd->handler = ngx_postgres_prepare_result;
-    return NGX_OK;
+    return NGX_AGAIN;
 }
 
 
