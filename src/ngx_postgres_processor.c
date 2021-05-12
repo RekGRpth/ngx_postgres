@@ -38,12 +38,8 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_data_t *pd) {
     while (PQstatus(pdc->conn) == CONNECTION_OK) {
         if (!(pd->result.res = PQgetResult(pdc->conn))) break;
         switch (PQresultStatus(pd->result.res)) {
-            case PGRES_FATAL_ERROR:
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res), PQresultErrorMessageMy(pd->result.res));
-                ngx_postgres_variable_error(pd);
-                PQclear(pd->result.res);
-                return ngx_postgres_done(pd, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            default: ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res), PQresultErrorMessageMy(pd->result.res)); break;
+            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res), PQresultErrorMessageMy(pd->result.res)); PQclear(pd->result.res); return NGX_ERROR;
+            default: ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
         }
         PQclear(pd->result.res);
         switch (ngx_postgres_consume_flush_busy(pdc)) {
