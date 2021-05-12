@@ -139,7 +139,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_data_t *pd) {
         if (!(pd->result.res = PQgetResult(pdc->conn))) break;
         switch (PQresultStatus(pd->result.res)) {
             case PGRES_FATAL_ERROR:
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %.*s", (int)strlen(PQresultErrorMessage(pd->result.res)) - 1, PQresultErrorMessage(pd->result.res));
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
                 ngx_postgres_variable_error(pd);
                 ngx_postgres_rewrite_set(pd);
                 rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
@@ -228,7 +228,7 @@ static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_data_t *pd) {
         switch (PQresultStatus(pd->result.res)) {
             case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); break;
             default:
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == %s and %s and %.*s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res), (int)strlen(PQresultErrorMessage(pd->result.res)) - 1, PQresultErrorMessage(pd->result.res));
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res), PQresultErrorMessageMy(pd->result.res));
                 ngx_postgres_variable_error(pd);
                 PQclear(pd->result.res);
                 if (pdc->prepare.queue) for (ngx_queue_t *queue = ngx_queue_head(pdc->prepare.queue); queue != ngx_queue_sentinel(pdc->prepare.queue); queue = ngx_queue_next(queue)) {
@@ -385,4 +385,14 @@ connected:
         }
     }
     return ngx_postgres_prepare_or_query(pd);
+}
+
+
+char *PQresultErrorMessageMy(const PGresult *res) {
+    char *err = PQresultErrorMessage(res);
+    if (!err) return err;
+    int len = strlen(err);
+    if (!len) return err;
+    if (err[len - 1] == '\n') err[len - 1] = '\0';
+    return err;
 }
