@@ -374,7 +374,7 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd) {
         ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
         if (prepare->hash == send->hash) { hash = prepare->hash; break; }
     }
-    if (hash) return ngx_postgres_query(pd);
+    if (hash) return ngx_postgres_query_prepared(pd);
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     if (pdc->prepare.size >= pusc->prepare.max && pusc->prepare.deallocate) return ngx_postgres_deallocate(pd);
     if (!PQsendPrepare(pdc->conn, (const char *)send->stmtName.data, (const char *)send->sql.data, send->nParams, send->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(\"%V\", \"%V\") and %s", &send->stmtName, &send->sql, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
