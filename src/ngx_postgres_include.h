@@ -4,6 +4,14 @@
 #include <libpq-fe.h>
 #include <ngx_http.h>
 
+#ifndef WIN32
+typedef int pgsocket;
+#define PGINVALID_SOCKET (-1)
+#else
+typedef SOCKET pgsocket;
+#define PGINVALID_SOCKET INVALID_SOCKET
+#endif
+
 extern ngx_module_t ngx_postgres_module;
 
 typedef struct {
