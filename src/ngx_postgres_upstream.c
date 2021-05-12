@@ -394,7 +394,7 @@ exit:
     pusc->ps.save.size++;
     if (pusc->trace.log) PQtrace(pdc->conn, fdopen(pusc->trace.log->file->fd, "a+"));
     int fd;
-    if ((fd = PQsocket(pdc->conn)) == -1) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == -1"); goto invalid; }
+    if ((fd = PQsocket(pdc->conn)) == PGINVALID_SOCKET) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == PGINVALID_SOCKET"); goto invalid; }
     ngx_connection_t *c = ngx_get_connection(fd, pc->log);
     if (!(pdc->connection = c)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto invalid; }
 //    c->log_error = pc->log_error;
