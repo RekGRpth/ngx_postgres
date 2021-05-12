@@ -265,6 +265,11 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
             char err[256];
             if (!PQcancel(cancel, err, sizeof(err))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQcancel and %s", err); PQfreeCancel(cancel); return; }
             PQfreeCancel(cancel);
+            switch (ngx_postgres_consume_flush_busy(pdc)) {
+                case NGX_AGAIN: ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_postgres_consume_flush_busy = NGX_AGAIN"); break;
+                case NGX_ERROR: ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_postgres_consume_flush_busy = NGX_ERROR"); break;
+                default: break;
+            }
         } break;
     }
     u_char *listen = NULL;
