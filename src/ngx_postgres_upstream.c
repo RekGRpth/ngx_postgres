@@ -180,7 +180,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
     if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
-    switch (ev->write ? ngx_postgres_flush(psc) : ngx_postgres_consume_flush_busy(psc)) {
+    switch (ngx_postgres_consume_flush_busy(psc)) {
         case NGX_AGAIN: return;
         case NGX_ERROR: goto close;
         default: break;
