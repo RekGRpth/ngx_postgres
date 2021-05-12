@@ -124,6 +124,12 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
+    pd->handler = ngx_postgres_query_result;
+    switch (ngx_postgres_consume_flush_busy(pdc)) {
+        case NGX_AGAIN: return NGX_AGAIN;
+        case NGX_ERROR: return NGX_ERROR;
+        default: break;
+    }
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[pd->index];
@@ -135,7 +141,6 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_data_t *pd) {
     ngx_int_t rc = NGX_OK;
     const char *value;
     ngx_postgres_output_t *output = &query->output;
-    pd->handler = ngx_postgres_query_result;
     while (PQstatus(pdc->conn) == CONNECTION_OK) {
         if (!(pd->result.res = PQgetResult(pdc->conn))) break;
         switch (PQresultStatus(pd->result.res)) {
