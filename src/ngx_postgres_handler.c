@@ -12,7 +12,7 @@ ngx_int_t ngx_postgres_busy(ngx_postgres_common_t *common) {
 ngx_int_t ngx_postgres_consume(ngx_postgres_common_t *common) {
     ngx_connection_t *c = common->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    if (!PQconsumeInput(common->conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQconsumeInput and %.*s", (int)strlen(PQerrorMessage(common->conn)) - 1, PQerrorMessage(common->conn)); return NGX_ERROR; }
+    if (!PQconsumeInput(common->conn)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(common->conn)); return NGX_ERROR; }
     return NGX_OK;
 }
 
@@ -23,7 +23,7 @@ ngx_int_t ngx_postgres_flush(ngx_postgres_common_t *common) {
     switch (PQflush(common->conn)) {
         case 0: break;
         case 1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQflush == 1"); return NGX_AGAIN;
-        case -1: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQflush == -1 and %.*s", (int)strlen(PQerrorMessage(common->conn)) - 1, PQerrorMessage(common->conn)); return NGX_ERROR;
+        case -1: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQflush == -1 and %s", PQerrorMessageMy(common->conn)); return NGX_ERROR;
     }
     return NGX_OK;
 }

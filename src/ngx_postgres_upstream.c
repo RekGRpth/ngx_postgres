@@ -163,7 +163,7 @@ ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t 
             p = ngx_copy(p, arrayelts[i].data, arrayelts[i].len);
         }
         *p = '\0';
-        if (!PQsendQuery(common->conn, (const char *)unlisten)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery(\"%s\") and %.*s", unlisten, (int)strlen(PQerrorMessage(common->conn)) - 1, PQerrorMessage(common->conn)); if (array) ngx_array_destroy(array); ngx_pfree(c->pool, unlisten); return NGX_ERROR; }
+        if (!PQsendQuery(common->conn, (const char *)unlisten)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery(\"%s\") and %s", unlisten, PQerrorMessageMy(common->conn)); if (array) ngx_array_destroy(array); ngx_pfree(c->pool, unlisten); return NGX_ERROR; }
         else { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQsendQuery(\"%s\")", unlisten); }
         ngx_pfree(c->pool, unlisten);
     }
@@ -190,7 +190,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     while (PQstatus(psc->conn) == CONNECTION_OK) {
         if (!(res = PQgetResult(psc->conn))) break;
         switch(PQresultStatus(res)) {
-            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %.*s", (int)strlen(PQresultErrorMessage(res)) - 1, PQresultErrorMessage(res)); break;
+            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
             default: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "PQresultStatus == %s", PQresStatus(PQresultStatus(res))); break;
         }
         PQclear(res);
@@ -283,7 +283,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_postgres_free_to_save(pd, ps);
     if (listen) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "listen = %s", listen);
-        if (!PQsendQuery(pdc->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(\"%s\") and %.*s", listen, (int)strlen(PQerrorMessage(pdc->conn)) - 1, PQerrorMessage(pdc->conn)); }
+        if (!PQsendQuery(pdc->conn, (const char *)listen)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(\"%s\") and %s", listen, PQerrorMessageMy(pdc->conn)); }
         else { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQuery(\"%s\")", listen); }
     }
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
@@ -393,7 +393,7 @@ exit:
     pdc->conn = PQconnectStartParams(connect->keywords, connect->values, 0);
     connect->values[0] = host;
     if (PQstatus(pdc->conn) == CONNECTION_BAD || PQsetnonblocking(pdc->conn, 1) == -1) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %.*s in upstream \"%V\"", (int)strlen(PQerrorMessage(pdc->conn)) - 1, PQerrorMessage(pdc->conn), pc->name);
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD or PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(pdc->conn), pc->name);
         PQfinish(pdc->conn);
         pdc->conn = NULL;
         return NGX_DECLINED; // and ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR) and return
