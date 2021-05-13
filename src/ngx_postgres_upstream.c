@@ -397,23 +397,24 @@ exit:
     if ((fd = PQsocket(pdc->conn)) == PGINVALID_SOCKET) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == PGINVALID_SOCKET"); goto invalid; }
     ngx_connection_t *c = ngx_get_connection(fd, pc->log);
     if (!(pdc->connection = c)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto invalid; }
-//    c->log_error = pc->log_error;
+    c->log_error = pc->log_error;
     c->log = pc->log;
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
-//    if (c->pool) c->pool->log = pc->log;
     c->read->log = pc->log;
+    c->start_time = ngx_current_msec;
+    c->type = pc->type ? pc->type : SOCK_STREAM;
     c->write->log = pc->log;
+//    if (c->pool) c->pool->log = pc->log;
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         if (ngx_add_conn(c) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_conn != NGX_OK"); goto invalid; }
-    } else if (ngx_event_flags & NGX_USE_CLEAR_EVENT) {
-        if (ngx_add_event(c->read, NGX_READ_EVENT, NGX_CLEAR_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
-        if (ngx_add_event(c->write, NGX_WRITE_EVENT, NGX_CLEAR_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
-    } else if (ngx_event_flags & NGX_USE_LEVEL_EVENT) {
-        if (ngx_add_event(c->read, NGX_READ_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
-        if (ngx_add_event(c->write, NGX_WRITE_EVENT, NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
-    } else goto bad_add;
-    pd->handler = ngx_postgres_connect;
+    } else {
+        if (ngx_add_event(c->read, NGX_READ_EVENT, ngx_event_flags & NGX_USE_CLEAR_EVENT ? NGX_CLEAR_EVENT : NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
+        if (ngx_add_event(c->write, NGX_WRITE_EVENT, ngx_event_flags & NGX_USE_CLEAR_EVENT ? NGX_CLEAR_EVENT : NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_event != NGX_OK"); goto invalid; }
+    }
+    c->read->ready = 1;
+    c->write->ready = 1;
     pc->connection = c;
+    pd->handler = ngx_postgres_connect;
     return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
 bad_add:
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_event_flags not NGX_USE_RTSIG_EVENT or NGX_USE_CLEAR_EVENT or NGX_USE_LEVEL_EVENT");
