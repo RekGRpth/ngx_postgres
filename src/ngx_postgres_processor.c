@@ -22,12 +22,15 @@ static void ngx_postgres_add_timer(ngx_http_request_t *r) {
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[pd->index];
-    if (location->timeout || query->timeout) {
-        ngx_connection_t *c = pdc->connection;
+    ngx_connection_t *c = pdc->connection;
+    if (location->timeout) {
+        if (!c->read->timer_set) ngx_add_timer(c->read, location->timeout);
+        if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);
+    } else if (query->timeout) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
-        ngx_add_timer(c->read, location->timeout ? location->timeout : query->timeout);
-        ngx_add_timer(c->write, location->timeout ? location->timeout : query->timeout);
+        ngx_add_timer(c->read, query->timeout);
+        ngx_add_timer(c->write, query->timeout);
     }
 }
 
@@ -61,6 +64,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     pd->handler = ngx_postgres_prepare_or_query;
+    ngx_postgres_add_timer(r);
     switch (ngx_postgres_consume_flush_busy(pdc)) {
         case NGX_AGAIN: return NGX_AGAIN;
         case NGX_ERROR: return NGX_ERROR;
@@ -74,7 +78,6 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_http_request_t *r) {
     ngx_postgres_query_t *query = &queryelts[pd->index];
     ngx_postgres_send_t *send = &sendelts[pd->index];
     ngx_connection_t *c = pdc->connection;
-    ngx_postgres_del_timer(r);
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     ngx_flag_t prepare = pusc->prepare.max && (location->prepare || query->prepare);
     if (!pusc->prepare.max && (location->prepare || query->prepare)) ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ignoring prepare");
@@ -159,7 +162,6 @@ static ngx_int_t ngx_postgres_query_result(ngx_http_request_t *r) {
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[pd->index];
-    ngx_postgres_del_timer(r);
     ngx_int_t rc = NGX_OK;
     const char *value;
     ngx_postgres_output_t *output = &query->output;
@@ -226,7 +228,6 @@ static ngx_int_t ngx_postgres_result(ngx_http_request_t *r) {
     ngx_postgres_query_t *query = &queryelts[pd->index];
     ngx_postgres_output_t *output = &query->output;
     if (output->handler == ngx_postgres_output_plain || output->handler == ngx_postgres_output_csv) if (output->single && !PQsetSingleRowMode(pdc->conn)) ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(pdc->conn));
-    ngx_postgres_add_timer(r);
     pd->handler = ngx_postgres_query_result;
     return NGX_AGAIN;
 }
