@@ -155,9 +155,11 @@ typedef struct {
 } ngx_postgres_variable_t;
 
 
-ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_variable_error(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_http_upstream_t *u = r->upstream;
+    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
+    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
@@ -182,9 +184,11 @@ ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd) {
 }
 
 
-ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_variable_output(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_http_upstream_t *u = r->upstream;
+    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
+    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
@@ -220,9 +224,11 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd) {
 }
 
 
-ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_http_upstream_t *u = r->upstream;
+    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
+    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->index);
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
@@ -277,7 +283,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
         ngx_http_upstream_t *u = r->upstream;
         ngx_chain_t *chain = u->out_bufs;
         u->out_bufs = NULL;
-        if (variable[i].handler(pd) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
+        if (variable[i].handler(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
         variableelts[variable[i].index].len = u->out_bufs->buf->end - u->out_bufs->buf->start;
         variableelts[variable[i].index].data = u->out_bufs->buf->start;
         u->out_bufs = chain;
