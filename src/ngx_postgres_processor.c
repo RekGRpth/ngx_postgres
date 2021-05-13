@@ -238,11 +238,11 @@ static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_data_t *pd) {
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
     pd->handler = ngx_postgres_prepare_result;
-    switch (ngx_postgres_consume_flush_busy(pdc)) {
+    /*switch (ngx_postgres_consume_flush_busy(pdc)) {
         case NGX_AGAIN: return NGX_AGAIN;
         case NGX_ERROR: return NGX_ERROR;
         default: break;
-    }
+    }*/
     while (PQstatus(pdc->conn) == CONNECTION_OK) {
         if (!(pd->result.res = PQgetResult(pdc->conn))) break;
         switch (PQresultStatus(pd->result.res)) {
