@@ -71,14 +71,14 @@ static void ngx_postgres_data_timeout_handler(ngx_event_t *ev) {
 static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
     ngx_http_request_t *r = pd->request;
     ngx_postgres_common_t *pdc = &pd->common;
-    ngx_connection_t *c = pdc->connection;
+    ngx_postgres_common_t *psc = &ps->common;
+    ngx_connection_t *c = pdc->connection; // may be psc->connection; ???
     u_char *listen = NULL;
     ngx_array_t *array = NULL;
     size_t len = 0;
     if (pdc->listen.queue) while (!ngx_queue_empty(pdc->listen.queue)) {
         ngx_queue_t *queue = ngx_queue_head(pdc->listen.queue);
         ngx_postgres_listen_t *pdl = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
-        ngx_postgres_common_t *psc = &ps->common;
         if (!psc->listen.queue) {
             if (!(psc->listen.queue = ngx_pcalloc(c->pool, sizeof(*psc->listen.queue)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NULL; }
             ngx_queue_init(psc->listen.queue);
