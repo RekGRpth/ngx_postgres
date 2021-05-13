@@ -547,19 +547,7 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
             ngx_destroy_pool(c->pool);
             c->pool = NULL;
         }
-        if (c->read->timer_set) ngx_del_timer(c->read);
-        if (c->write->timer_set) ngx_del_timer(c->write);
-        if (ngx_del_conn) ngx_del_conn(c, NGX_CLOSE_EVENT); else {
-            if (c->read->active || c->read->disabled) ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
-            if (c->write->active || c->write->disabled) ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT);
-        }
-        if (c->read->posted) { ngx_delete_posted_event(c->read); }
-        if (c->write->posted) { ngx_delete_posted_event(c->write); }
-        c->read->closed = 1;
-        c->write->closed = 1;
-        ngx_reusable_connection(c, 0);
-        ngx_free_connection(c);
-        c->fd = (ngx_socket_t) -1;
+        ngx_close_connection(c);
     }
     common->connection = NULL;
 }
