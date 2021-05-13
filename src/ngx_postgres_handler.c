@@ -102,6 +102,12 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
     ngx_http_upstream_t *u = r->upstream;
     u->out_bufs = NULL;
+    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return; }
+    ngx_postgres_data_t *pd = u->peer.data;
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_connection_t *c = pdc->connection;
+    if (c->read->timer_set) ngx_del_timer(c->read);
+    if (c->write->timer_set) ngx_del_timer(c->write);
 }
 
 
