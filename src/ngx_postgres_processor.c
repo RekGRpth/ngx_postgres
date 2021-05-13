@@ -425,7 +425,6 @@ ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_connection_t *c = pdc->connection;
-    const char *charset;
     pd->handler = ngx_postgres_connect;
     switch (PQstatus(pdc->conn)) {
         case CONNECTION_BAD: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD and %s", PQerrorMessageMy(pdc->conn)); ngx_postgres_free_connection(pdc); return NGX_ERROR;
@@ -443,19 +442,6 @@ again:
 connected:
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    if ((charset = PQparameterStatus(pdc->conn, "client_encoding"))) {
-        if (!ngx_strcasecmp((u_char *)charset, (u_char *)"utf8")) {
-            ngx_str_set(&pdc->charset, "utf-8");
-        } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"windows1251")) {
-            ngx_str_set(&pdc->charset, "windows-1251");
-        } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"koi8r")) {
-            ngx_str_set(&pdc->charset, "koi8-r");
-        } else {
-            pdc->charset.len = ngx_strlen(charset);
-            if (!(pdc->charset.data = ngx_pnalloc(c->pool, pdc->charset.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-            ngx_memcpy(pdc->charset.data, charset, pdc->charset.len);
-        }
-    }
     return ngx_postgres_prepare_or_query(r);
 }
 

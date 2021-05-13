@@ -485,6 +485,29 @@ ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r) {
 }
 
 
+static ngx_int_t ngx_postgres_charset(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_http_upstream_t *u = r->upstream;
+    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
+    ngx_postgres_data_t *pd = u->peer.data;
+    ngx_postgres_common_t *pdc = &pd->common;
+    const char *charset = PQparameterStatus(pdc->conn, "client_encoding");
+    if (!charset) return NGX_OK;
+    if (!ngx_strcasecmp((u_char *)charset, (u_char *)"utf8")) {
+        ngx_str_set(&r->headers_out.charset, "utf-8");
+    } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"windows1251")) {
+        ngx_str_set(&r->headers_out.charset, "windows-1251");
+    } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"koi8r")) {
+        ngx_str_set(&r->headers_out.charset, "koi8-r");
+    } else {
+        r->headers_out.charset.len = ngx_strlen(charset);
+        if (!(r->headers_out.charset.data = ngx_pnalloc(r->pool, r->headers_out.charset.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+        ngx_memcpy(r->headers_out.charset.data, charset, r->headers_out.charset.len);
+    }
+    return NGX_OK;
+}
+
+
 ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
@@ -494,8 +517,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
         ngx_postgres_result_t *result = &pd->result;
         r->headers_out.status = result->status ? result->status : NGX_HTTP_OK;
         r->headers_out.content_type_lowcase = NULL;
-        ngx_postgres_common_t *pdc = &pd->common;
-        if (pdc->charset.len) r->headers_out.charset = pdc->charset;
+        if (ngx_postgres_charset(r) != NGX_OK) return NGX_ERROR;
         ngx_http_clear_content_length(r);
         r->headers_out.content_length_n = 0;
         for (ngx_chain_t *chain = u->out_bufs; chain; chain = chain->next) {

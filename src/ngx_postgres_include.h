@@ -79,7 +79,6 @@ typedef struct {
     ngx_addr_t addr;
     ngx_connection_t *connection;
     ngx_postgres_upstream_srv_conf_t *pusc;
-    ngx_str_t charset;
     PGconn *conn;
 } ngx_postgres_common_t;
 
