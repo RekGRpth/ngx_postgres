@@ -54,15 +54,16 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_http_request_t *r) {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 static void ngx_postgres_data_timeout_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write = %s", ev->write ? "true" : "false");
-    ngx_postgres_data_t *pd = ev->data;
-    ngx_http_request_t *r = pd->request;
+    ngx_http_request_t *r = ev->data;
+    ngx_http_upstream_t *u = r->upstream;
+    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return; }
+    ngx_postgres_data_t *pd = u->peer.data;
     if (!ngx_queue_empty(&pd->queue)) ngx_queue_remove(&pd->queue);
     ngx_queue_init(&pd->queue);
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     if (pusc->pd.size) pusc->pd.size--;
     if (!r->connection || r->connection->error) return;
-    ngx_http_upstream_t *u = r->upstream;
     ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
 }
 #endif
@@ -363,7 +364,7 @@ exit:
                 pusc->pd.size++;
                 pd->timeout.handler = ngx_postgres_data_timeout_handler;
                 pd->timeout.log = r->connection->log;
-                pd->timeout.data = pd;
+                pd->timeout.data = r;
                 ngx_add_timer(&pd->timeout, pusc->pd.timeout);
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd.size = %i", pusc->pd.size);
                 return NGX_YIELD; // and return
