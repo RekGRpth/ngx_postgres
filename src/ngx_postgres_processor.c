@@ -24,8 +24,10 @@ static void ngx_postgres_add_timer(ngx_http_request_t *r) {
     ngx_postgres_query_t *query = &queryelts[pd->index];
     if (location->timeout || query->timeout) {
         ngx_connection_t *c = pdc->connection;
-        if (!c->read->timer_set) ngx_add_timer(c->read, location->timeout ? location->timeout : query->timeout);
-        if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout ? location->timeout : query->timeout);
+        if (c->read->timer_set) ngx_del_timer(c->read);
+        if (c->write->timer_set) ngx_del_timer(c->write);
+        ngx_add_timer(c->read, location->timeout ? location->timeout : query->timeout);
+        ngx_add_timer(c->write, location->timeout ? location->timeout : query->timeout);
     }
 }
 
@@ -36,22 +38,17 @@ static void ngx_postgres_del_timer(ngx_http_request_t *r) {
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return; }
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *queryelts = location->query.elts;
-    ngx_postgres_query_t *query = &queryelts[pd->index];
-    if (location->timeout || query->timeout) {
-        ngx_connection_t *c = pdc->connection;
-        if (c->read->timer_set) ngx_del_timer(c->read);
-        if (c->write->timer_set) ngx_del_timer(c->write);
-    }
+    ngx_connection_t *c = pdc->connection;
+    if (c->read->timer_set) ngx_del_timer(c->read);
+    if (c->write->timer_set) ngx_del_timer(c->write);
 }
 
 
 static ngx_int_t ngx_postgres_done(ngx_http_request_t *r, ngx_int_t rc) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_del_timer(r);
     if (rc == NGX_OK) rc = ngx_postgres_output_chain(r);
+    ngx_http_upstream_t *u = r->upstream;
     ngx_http_upstream_finalize_request(r, u, rc);
     return NGX_OK;
 }
