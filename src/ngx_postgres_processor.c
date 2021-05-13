@@ -202,7 +202,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_http_request_t *r) {
         for (pd->index++; pd->index < location->query.nelts; pd->index++) if (!queryelts[pd->index].method || queryelts[pd->index].method & r->method) break;
         if (pd->index < location->query.nelts) return NGX_AGAIN;
     }
-    if (PQtransactionStatus(pdc->conn) != PQTRANS_IDLE) {
+    if (rc == NGX_OK && PQtransactionStatus(pdc->conn) != PQTRANS_IDLE) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
         ngx_postgres_query_t *query = ngx_array_push(&location->query);
         if (!query) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_push"); return NGX_ERROR; }
