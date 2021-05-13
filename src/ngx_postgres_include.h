@@ -55,7 +55,7 @@ typedef struct {
         } save;
         struct {
             ngx_queue_t queue;
-        } free;
+        } data;
     } ps;
     struct {
         ngx_flag_t deallocate;

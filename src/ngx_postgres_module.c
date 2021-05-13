@@ -135,7 +135,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
         pusc->peer_init = usc->peer.init;
         usc->peer.init = ngx_postgres_peer_init;
     }
-    ngx_queue_init(&pusc->ps.free.queue);
+    ngx_queue_init(&pusc->ps.data.queue);
     ngx_queue_init(&pusc->ps.save.queue);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_queue_init(&pusc->pd.queue);
@@ -149,7 +149,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     cln->data = pusc;
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(*ps) * pusc->ps.save.max);
     if (!ps) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-    for (ngx_uint_t i = 0; i < pusc->ps.save.max; i++) { ngx_queue_insert_tail(&pusc->ps.free.queue, &ps[i].queue); }
+    for (ngx_uint_t i = 0; i < pusc->ps.save.max; i++) { ngx_queue_insert_tail(&pusc->ps.data.queue, &ps[i].queue); }
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     if (!pusc->pd.max) return NGX_OK;
     ngx_conf_init_msec_value(pusc->pd.timeout, 60 * 1000);
