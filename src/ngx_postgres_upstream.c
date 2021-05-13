@@ -20,7 +20,7 @@ static void ngx_postgres_save_to_free(ngx_postgres_data_t *pd, ngx_postgres_save
     c->idle = 0;
     c->log_error = pc->log_error;
     c->log = pc->log;
-    if (c->pool) c->pool->log = pc->log;
+    c->pool->log = pc->log;
     c->read->log = pc->log;
     if (c->read->timer_set) ngx_del_timer(c->read);
     c->sent = 0;
@@ -231,7 +231,7 @@ static void ngx_postgres_free_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     c->idle = 1;
     c->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
     c->log->connection = c->number;
-    if (c->pool) c->pool->log = c->log;
+    c->pool->log = c->log;
 //    c->read->delayed = 0;
     c->read->handler = ngx_postgres_save_handler;
     c->read->log = c->log;
@@ -397,6 +397,7 @@ exit:
     if ((fd = PQsocket(pdc->conn)) == PGINVALID_SOCKET) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQsocket == PGINVALID_SOCKET"); goto invalid; }
     ngx_connection_t *c = ngx_get_connection(fd, pc->log);
     if (!(pdc->connection = c)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto invalid; }
+    if (!(c->pool = ngx_create_pool(128, pc->log))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_create_pool"); goto invalid; }
     c->log_error = pc->log_error;
     c->log = pc->log;
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
@@ -404,7 +405,6 @@ exit:
     c->start_time = ngx_current_msec;
     c->type = pc->type ? pc->type : SOCK_STREAM;
     c->write->log = pc->log;
-//    if (c->pool) c->pool->log = pc->log;
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         if (ngx_add_conn(c) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_conn != NGX_OK"); goto invalid; }
     } else {
@@ -416,8 +416,6 @@ exit:
     pc->connection = c;
     pd->handler = ngx_postgres_connect;
     return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
-bad_add:
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_event_flags not NGX_USE_RTSIG_EVENT or NGX_USE_CLEAR_EVENT or NGX_USE_LEVEL_EVENT");
 invalid:
     ngx_postgres_free_connection(pdc);
     return NGX_DECLINED; // and ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR) and return
@@ -532,22 +530,23 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
     if (c) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__); }
     ngx_postgres_upstream_srv_conf_t *pusc = common->pusc;
     if (pusc->ps.save.size) pusc->ps.save.size--;
-    if (common->conn) {
-        if (c && !c->close && common->listen.queue && ngx_http_push_stream_delete_channel_my) while (!ngx_queue_empty(common->listen.queue)) {
+    PQfinish(common->conn);
+    if (c) {
+        if (!c->close && common->listen.queue && ngx_http_push_stream_delete_channel_my) while (!ngx_queue_empty(common->listen.queue)) {
             ngx_queue_t *queue = ngx_queue_head(common->listen.queue);
             ngx_queue_remove(queue);
             ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
             ngx_log_error(NGX_LOG_INFO, c->log, 0, "delete channel = %V", &listen->channel);
             ngx_http_push_stream_delete_channel_my(c->log, &listen->channel, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, c->pool);
         }
-        PQfinish(common->conn);
-        common->conn = NULL;
-    }
-    if (c) {
-        if (c->pool/* && !c->close*/) {
-            ngx_destroy_pool(c->pool);
-            c->pool = NULL;
+        if (ngx_del_conn) {
+            ngx_del_conn(c, NGX_CLOSE_EVENT);
+        } else {
+            if (c->read->active || c->read->disabled) { ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT); }
+            if (c->write->active || c->write->disabled) { ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT); }
         }
+        c->shared = 1;
+        ngx_destroy_pool(c->pool);
         ngx_close_connection(c);
     }
     common->connection = NULL;
