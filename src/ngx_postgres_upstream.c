@@ -402,6 +402,7 @@ exit:
     c->log = pc->log;
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
     c->read->log = pc->log;
+    c->shared = 1;
     c->start_time = ngx_current_msec;
     c->type = pc->type ? pc->type : SOCK_STREAM;
     c->write->log = pc->log;
@@ -545,7 +546,6 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
             if (c->read->active || c->read->disabled) { ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT); }
             if (c->write->active || c->write->disabled) { ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT); }
         }
-        c->shared = 1;
         ngx_destroy_pool(c->pool);
         ngx_close_connection(c);
     }
