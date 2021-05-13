@@ -125,11 +125,11 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
     pd->handler = ngx_postgres_query_result;
-    switch (ngx_postgres_consume_flush_busy(pdc)) {
+    /*switch (ngx_postgres_consume_flush_busy(pdc)) {
         case NGX_AGAIN: return NGX_AGAIN;
         case NGX_ERROR: return NGX_ERROR;
         default: break;
-    }
+    }*/
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[pd->index];
@@ -394,12 +394,10 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd) {
     }
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
-    ngx_uint_t hash = 0;
     if (pdc->prepare.queue) for (ngx_queue_t *queue = ngx_queue_head(pdc->prepare.queue); queue != ngx_queue_sentinel(pdc->prepare.queue); queue = ngx_queue_next(queue)) {
         ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, queue);
-        if (prepare->hash == send->hash) { hash = prepare->hash; break; }
+        if (prepare->hash == send->hash) return ngx_postgres_query_prepared(pd);
     }
-    if (hash) return ngx_postgres_query_prepared(pd);
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     if (pdc->prepare.size >= pusc->prepare.max && pusc->prepare.deallocate) return ngx_postgres_deallocate(pd);
     if (!PQsendPrepare(pdc->conn, (const char *)send->stmtName.data, (const char *)send->sql.data, send->nParams, send->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(\"%V\", \"%V\") and %s", &send->stmtName, &send->sql, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
