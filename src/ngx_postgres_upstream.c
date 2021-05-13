@@ -532,14 +532,12 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
     ngx_postgres_upstream_srv_conf_t *pusc = common->pusc;
     if (pusc->ps.save.size) pusc->ps.save.size--;
     if (common->conn) {
-        if (c && !c->close && common->listen.queue && ngx_http_push_stream_delete_channel_my) {
-            while (!ngx_queue_empty(common->listen.queue)) {
-                ngx_queue_t *queue = ngx_queue_head(common->listen.queue);
-                ngx_queue_remove(queue);
-                ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
-                ngx_log_error(NGX_LOG_INFO, c->log, 0, "delete channel = %V", &listen->channel);
-                ngx_http_push_stream_delete_channel_my(c->log, &listen->channel, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, c->pool);
-            }
+        if (c && !c->close && common->listen.queue && ngx_http_push_stream_delete_channel_my) while (!ngx_queue_empty(common->listen.queue)) {
+            ngx_queue_t *queue = ngx_queue_head(common->listen.queue);
+            ngx_queue_remove(queue);
+            ngx_postgres_listen_t *listen = ngx_queue_data(queue, ngx_postgres_listen_t, queue);
+            ngx_log_error(NGX_LOG_INFO, c->log, 0, "delete channel = %V", &listen->channel);
+            ngx_http_push_stream_delete_channel_my(c->log, &listen->channel, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, c->pool);
         }
         PQfinish(common->conn);
         common->conn = NULL;
