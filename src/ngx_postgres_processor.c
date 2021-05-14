@@ -32,6 +32,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_http_request_t *r) {
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_connection_t *c = pdc->connection;
+    u->connect_timeout = NGX_MAX_INT_T_VALUE;
     if (location->timeout) {
         u->connect_timeout = location->timeout;
         if (!c->read->timer_set) ngx_add_timer(c->read, location->timeout);
