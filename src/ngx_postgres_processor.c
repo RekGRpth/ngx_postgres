@@ -33,6 +33,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_http_request_t *r) {
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_connection_t *c = pdc->connection;
     if (location->timeout) {
+        u->connect_timeout = location->timeout;
         if (!c->read->timer_set) ngx_add_timer(c->read, location->timeout);
         if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);
     }
@@ -46,6 +47,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_http_request_t *r) {
     if (pd->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     ngx_postgres_query_t *query = &queryelts[pd->index];
     if (query->timeout) {
+        u->connect_timeout = query->timeout;
         ngx_add_timer(c->read, query->timeout);
         ngx_add_timer(c->write, query->timeout);
     }
