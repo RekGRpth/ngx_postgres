@@ -87,10 +87,6 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_connection_t *c = pdc->connection;
-    if (PQstatus(pdc->conn) == CONNECTION_OK) {
-        if (c->read->timer_set) ngx_del_timer(c->read);
-        if (c->write->timer_set) ngx_del_timer(c->write);
-    }
     u->write_event_handler = ngx_postgres_data_handler;
     u->read_event_handler = ngx_postgres_data_handler;
     r->state = 0;
