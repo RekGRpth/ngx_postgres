@@ -40,7 +40,7 @@ ngx_int_t ngx_postgres_consume_flush_busy(ngx_postgres_common_t *common) {
 }
 
 
-static void ngx_postgres_event_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
+static void ngx_postgres_data_handler(ngx_http_request_t *r, ngx_http_upstream_t *u) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = u->peer.connection;
     ngx_postgres_data_t *pd = u->peer.data;
@@ -91,8 +91,8 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
     }
-    u->write_event_handler = ngx_postgres_event_handler;
-    u->read_event_handler = ngx_postgres_event_handler;
+    u->write_event_handler = ngx_postgres_data_handler;
+    u->read_event_handler = ngx_postgres_data_handler;
     r->state = 0;
     return NGX_OK;
 }
