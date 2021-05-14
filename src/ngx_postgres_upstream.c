@@ -3,7 +3,7 @@
 #include "ngx_postgres_include.h"
 
 
-static void ngx_postgres_save_to_data(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
+static void ngx_postgres_save_to_data(ngx_postgres_save_t *ps, ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_queue_remove(&ps->queue);
@@ -44,7 +44,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_http_request_t *r) {
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
         ngx_postgres_common_t *psc = &ps->common;
         if (ngx_memn2cmp((u_char *)pdc->addr.sockaddr, (u_char *)psc->addr.sockaddr, pdc->addr.socklen, psc->addr.socklen)) continue;
-        ngx_postgres_save_to_data(pd, ps);
+        ngx_postgres_save_to_data(ps, pd);
         return NGX_OK;
     }
     return NGX_DECLINED;
