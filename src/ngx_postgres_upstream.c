@@ -352,7 +352,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     pdc->addr.socklen = pc->socklen;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_postgres_connect_t *connect = pc->data2;
+    ngx_postgres_connect_t *connect = pc->peer_data;
 #else
     ngx_array_t *array = pusc->connect;
     ngx_postgres_connect_t *connect = array->elts;
