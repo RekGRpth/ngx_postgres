@@ -15,6 +15,7 @@ typedef SOCKET pgsocket;
 extern ngx_module_t ngx_postgres_module;
 
 typedef struct {
+    ngx_int_t rc;
     ngx_queue_t item;
     ngx_str_t channel;
     ngx_str_t command;
