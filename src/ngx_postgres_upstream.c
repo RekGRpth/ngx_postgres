@@ -366,7 +366,11 @@ exit:
     if (i == array->nelts) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "connect not found"); return NGX_BUSY; } // and ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_NOLIVE) and return
 #endif
     ngx_http_upstream_t *u = r->upstream;
+#if (HAVE_NGX_UPSTREAM_TIMEOUT_FIELDS)
     u->connect_timeout = connect->timeout;
+#else
+    u->conf->connect_timeout = connect->timeout;
+#endif
     if (pusc->ps.save.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
         if (ngx_postgres_peer_multi(r) == NGX_OK) return ngx_postgres_prepare_or_query(r);
