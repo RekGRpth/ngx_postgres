@@ -9,11 +9,11 @@ static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
 
 static void ngx_postgres_srv_conf_cleanup(void *data) {
     ngx_postgres_upstream_srv_conf_t *pusc = data;
-    while (!ngx_queue_empty(&pusc->ps.save.queue)) {
-        ngx_queue_t *queue = ngx_queue_head(&pusc->ps.save.queue);
+    while (!ngx_queue_empty(&pusc->ps.save.head)) {
+        ngx_queue_t *queue = ngx_queue_head(&pusc->ps.save.head);
         ngx_queue_remove(queue);
-        if (pusc->ps.save.size) pusc->ps.save.size--;
-        ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, queue);
+        //if (pusc->ps.save.size) pusc->ps.save.size--;
+        ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, item);
         ngx_postgres_common_t *psc = &ps->common;
         ngx_postgres_free_connection(psc);
     }
@@ -135,10 +135,10 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
         pusc->peer_init = usc->peer.init;
         usc->peer.init = ngx_postgres_peer_init;
     }
-    ngx_queue_init(&pusc->ps.data.queue);
-    ngx_queue_init(&pusc->ps.save.queue);
+    ngx_queue_init(&pusc->ps.data.head);
+    ngx_queue_init(&pusc->ps.save.head);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_queue_init(&pusc->pd.queue);
+    ngx_queue_init(&pusc->pd.head);
 #endif
     if (!pusc->ps.save.max) return NGX_OK;
     ngx_conf_init_msec_value(pusc->ps.save.timeout, 60 * 60 * 1000);
@@ -149,7 +149,7 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     cln->data = pusc;
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(*ps) * pusc->ps.save.max);
     if (!ps) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-    for (ngx_uint_t i = 0; i < pusc->ps.save.max; i++) { ngx_queue_insert_tail(&pusc->ps.data.queue, &ps[i].queue); }
+    for (ngx_uint_t i = 0; i < pusc->ps.save.max; i++) { ngx_queue_insert_tail(&pusc->ps.data.head, &ps[i].item); }
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     if (!pusc->pd.max) return NGX_OK;
     ngx_conf_init_msec_value(pusc->pd.timeout, 60 * 1000);

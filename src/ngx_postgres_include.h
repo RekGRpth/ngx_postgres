@@ -15,7 +15,7 @@ typedef SOCKET pgsocket;
 extern ngx_module_t ngx_postgres_module;
 
 typedef struct {
-    ngx_queue_t queue;
+    ngx_queue_t item;
     ngx_str_t channel;
     ngx_str_t command;
 } ngx_postgres_listen_t;
@@ -36,7 +36,7 @@ typedef struct {
     struct {
         ngx_flag_t reject;
         ngx_msec_t timeout;
-        ngx_queue_t queue;
+        ngx_queue_t head;
         ngx_uint_t max;
         ngx_uint_t size;
     } pd;
@@ -48,13 +48,13 @@ typedef struct {
             ngx_flag_t reject;
             ngx_log_t *log;
             ngx_msec_t timeout;
-            ngx_queue_t queue;
+            ngx_queue_t head;
             ngx_uint_t max;
             ngx_uint_t requests;
             ngx_uint_t size;
         } save;
         struct {
-            ngx_queue_t queue;
+            ngx_queue_t head;
         } data;
     } ps;
     struct {
@@ -70,11 +70,11 @@ typedef struct {
 
 typedef struct {
     struct {
-        ngx_queue_t *queue;
+        ngx_queue_t *head;
         ngx_uint_t size;
     } prepare;
     struct {
-        ngx_queue_t *queue;
+        ngx_queue_t *head;
     } listen;
     ngx_addr_t addr;
     ngx_connection_t *connection;
@@ -123,7 +123,7 @@ typedef struct {
     ngx_postgres_result_t result;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_event_t timeout;
-    ngx_queue_t queue;
+    ngx_queue_t item;
 #endif
     ngx_uint_t index;
     void *peer_data;
@@ -131,7 +131,7 @@ typedef struct {
 
 typedef struct {
     ngx_postgres_common_t common;
-    ngx_queue_t queue;
+    ngx_queue_t item;
 } ngx_postgres_save_t;
 
 typedef struct {
