@@ -120,9 +120,8 @@ ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t 
     ngx_queue_t head;
     ngx_queue_init(&head);
     size_t len = 0;
-    PGnotify *notify;
     ngx_int_t rc;
-    while (PQstatus(common->conn) == CONNECTION_OK && (notify = PQnotifies(common->conn))) {
+    for (PGnotify *notify; PQstatus(common->conn) == CONNECTION_OK && (notify = PQnotifies(common->conn)); ) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "relname=%s, extra=%s, be_pid=%i", notify->relname, notify->extra, notify->be_pid);
         if (!ngx_http_push_stream_add_msg_to_channel_my) { PQfreemem(notify); continue; }
         ngx_str_t id = { ngx_strlen(notify->relname), (u_char *) notify->relname };
@@ -189,8 +188,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
         default: break;
     }
     if (ev->write) return;
-    PGresult *res;
-    while (PQstatus(psc->conn) == CONNECTION_OK && (res = PQgetResult(psc->conn))) {
+    for (PGresult *res; PQstatus(psc->conn) == CONNECTION_OK && (res = PQgetResult(psc->conn)); ) {
         switch(PQresultStatus(res)) {
             case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
             default: ngx_log_error(NGX_LOG_WARN, ev->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); break;
