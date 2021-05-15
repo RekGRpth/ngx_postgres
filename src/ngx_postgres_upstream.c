@@ -190,8 +190,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     }
     if (ev->write) return;
     PGresult *res;
-    while (PQstatus(psc->conn) == CONNECTION_OK) {
-        if (!(res = PQgetResult(psc->conn))) break;
+    while (PQstatus(psc->conn) == CONNECTION_OK && (res = PQgetResult(psc->conn))) {
         switch(PQresultStatus(res)) {
             case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
             default: ngx_log_error(NGX_LOG_WARN, ev->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); break;

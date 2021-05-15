@@ -148,8 +148,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_http_request_t *r) {
     ngx_int_t rc = NGX_OK;
     const char *value;
     ngx_postgres_output_t *output = &query->output;
-    while (PQstatus(pdc->conn) == CONNECTION_OK) {
-        if (!(pd->result.res = PQgetResult(pdc->conn))) break;
+    while (PQstatus(pdc->conn) == CONNECTION_OK && (pd->result.res = PQgetResult(pdc->conn))) {
         switch (PQresultStatus(pd->result.res)) {
             case PGRES_FATAL_ERROR:
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
@@ -240,8 +239,7 @@ static ngx_int_t ngx_postgres_prepare_result(ngx_http_request_t *r) {
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
     pd->handler = ngx_postgres_prepare_result;
-    while (PQstatus(pdc->conn) == CONNECTION_OK) {
-        if (!(pd->result.res = PQgetResult(pdc->conn))) break;
+    while (PQstatus(pdc->conn) == CONNECTION_OK && (pd->result.res = PQgetResult(pdc->conn))) {
         switch (PQresultStatus(pd->result.res)) {
             case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); break;
             default:
@@ -268,8 +266,7 @@ static ngx_int_t ngx_postgres_query(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     pd->handler = ngx_postgres_query;
-    while (PQstatus(pdc->conn) == CONNECTION_OK) {
-        if (!(pd->result.res = PQgetResult(pdc->conn))) break;
+    while (PQstatus(pdc->conn) == CONNECTION_OK && (pd->result.res = PQgetResult(pdc->conn))) {
         switch (PQresultStatus(pd->result.res)) {
             case PGRES_FATAL_ERROR:
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
@@ -307,8 +304,7 @@ static ngx_int_t ngx_postgres_deallocate_result(ngx_http_request_t *r) {
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
     pd->handler = ngx_postgres_deallocate_result;
-    while (PQstatus(pdc->conn) == CONNECTION_OK) {
-        if (!(pd->result.res = PQgetResult(pdc->conn))) break;
+    while (PQstatus(pdc->conn) == CONNECTION_OK && (pd->result.res = PQgetResult(pdc->conn))) {
         switch (PQresultStatus(pd->result.res)) {
             case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); break;
             default:
@@ -363,8 +359,7 @@ static ngx_int_t ngx_postgres_prepare(ngx_http_request_t *r) {
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     pd->handler = ngx_postgres_prepare;
-    while (PQstatus(pdc->conn) == CONNECTION_OK) {
-        if (!(pd->result.res = PQgetResult(pdc->conn))) break;
+    while (PQstatus(pdc->conn) == CONNECTION_OK && (pd->result.res = PQgetResult(pdc->conn))) {
         switch (PQresultStatus(pd->result.res)) {
             case PGRES_FATAL_ERROR:
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
