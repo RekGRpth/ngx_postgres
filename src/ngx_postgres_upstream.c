@@ -66,7 +66,7 @@ static void ngx_postgres_data_timeout_handler(ngx_event_t *ev) {
 #endif
 
 
-static ngx_int_t ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
+static ngx_int_t ngx_postgres_relisten(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
@@ -260,7 +260,7 @@ static void ngx_postgres_free_peer(ngx_http_request_t *r) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty(data)");
         ngx_queue_t *queue = ngx_queue_last(&pusc->ps.save.head);
         ps = ngx_queue_data(queue, ngx_postgres_save_t, item);
-        if (ngx_http_push_stream_add_msg_to_channel_my && ngx_http_push_stream_delete_channel_my && ngx_postgres_listen(pd, ps) != NGX_OK) return;
+        if (ngx_http_push_stream_add_msg_to_channel_my && ngx_http_push_stream_delete_channel_my && ngx_postgres_relisten(pd, ps) != NGX_OK) return;
         ngx_postgres_common_t *psc = &ps->common;
         ngx_postgres_free_connection(psc);
     } else {
