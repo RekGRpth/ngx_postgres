@@ -70,12 +70,13 @@ static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t 
     ngx_http_request_t *r = pd->request;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_common_t *psc = &ps->common;
-    ngx_connection_t *c = pdc->connection; // may be psc->connection; ???
+    ngx_connection_t *c = pdc->connection;
     u_char *listen = NULL;
     ngx_array_t *array = NULL;
     size_t len = 0;
     while (!ngx_queue_empty(pdc->listen.head)) {
         ngx_queue_t *queue = ngx_queue_head(pdc->listen.head);
+        ngx_queue_remove(queue);
         ngx_postgres_listen_t *pdl = ngx_queue_data(queue, ngx_postgres_listen_t, item);
         for (ngx_queue_t *queue = ngx_queue_head(psc->listen.head); queue != ngx_queue_sentinel(psc->listen.head); queue = ngx_queue_next(queue)) {
             ngx_postgres_listen_t *psl = ngx_queue_data(queue, ngx_postgres_listen_t, item);
@@ -90,8 +91,7 @@ static u_char *ngx_postgres_listen(ngx_postgres_data_t *pd, ngx_postgres_save_t 
         psl->command.len = pdl->command.len;
         len += pdl->command.len - 2;
         ngx_queue_insert_tail(psc->listen.head, &psl->item);
-cont:
-        ngx_queue_remove(&pdl->item);
+cont:;
     }
     if (len && array && array->nelts) {
         listen = ngx_pnalloc(r->pool, len + 2 * array->nelts - 1);
