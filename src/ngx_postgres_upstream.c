@@ -167,6 +167,27 @@ ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t 
 }
 
 
+static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *ps) {
+    ngx_postgres_common_t *psc = &ps->common;
+    ngx_connection_t *c = psc->connection;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    ngx_int_t rc = NGX_OK;
+    for (PGresult *res; PQstatus(psc->conn) == CONNECTION_OK && (res = PQgetResult(psc->conn)); ) {
+        switch(PQresultStatus(res)) {
+            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); rc = NGX_ERROR; break;
+            default: ngx_log_error(NGX_LOG_WARN, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); break;
+        }
+        PQclear(res);
+        switch (ngx_postgres_consume_flush_busy(psc)) {
+            case NGX_AGAIN: return NGX_AGAIN;
+            case NGX_ERROR: return NGX_ERROR;
+            default: break;
+        }
+    }
+    return rc == NGX_OK ? ngx_postgres_process_notify(psc, 1) : rc;
+}
+
+
 static void ngx_postgres_save_handler(ngx_event_t *ev) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write = %s", ev->write ? "true" : "false");
     ngx_connection_t *c = ev->data;
@@ -180,20 +201,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
         case NGX_ERROR: goto close;
         default: break;
     }
-    if (ev->write) return;
-    for (PGresult *res; PQstatus(psc->conn) == CONNECTION_OK && (res = PQgetResult(psc->conn)); ) {
-        switch(PQresultStatus(res)) {
-            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, ev->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
-            default: ngx_log_error(NGX_LOG_WARN, ev->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); break;
-        }
-        PQclear(res);
-        switch (ngx_postgres_consume_flush_busy(psc)) {
-            case NGX_AGAIN: return;
-            case NGX_ERROR: goto close;
-            default: break;
-        }
-    }
-    if (ngx_postgres_process_notify(psc, 1) == NGX_OK) return;
+    if (ps->handler(ps) == NGX_OK) return;
 close:
     ngx_postgres_free_connection(psc);
     if (!ngx_queue_empty(&ps->item)) ngx_queue_remove(&ps->item);
@@ -225,6 +233,7 @@ static void ngx_postgres_data_to_save(ngx_log_t *log, ngx_postgres_data_t *pd, n
     c->write->handler = ngx_postgres_save_handler;
     c->write->log = log;
     c->write->timedout = 0;
+    ps->handler = ngx_postgres_idle;
 }
 
 
