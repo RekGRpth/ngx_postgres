@@ -152,7 +152,6 @@ typedef struct {
     ngx_array_t params;
     ngx_array_t rewrite;
     ngx_array_t variable;
-    ngx_flag_t listen;
     ngx_flag_t prepare;
     ngx_msec_t timeout;
     ngx_postgres_output_t output;
