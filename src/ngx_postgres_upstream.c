@@ -27,11 +27,9 @@ static void ngx_postgres_save_to_data(ngx_log_t *log, ngx_postgres_save_t *ps, n
 }
 
 
-static ngx_int_t ngx_postgres_peer_multi(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     for (ngx_queue_t *queue = ngx_queue_head(&pusc->ps.save.head); queue != ngx_queue_sentinel(&pusc->ps.save.head); queue = ngx_queue_next(queue)) {
@@ -242,11 +240,9 @@ static void ngx_postgres_data_to_save(ngx_log_t *log, ngx_postgres_data_t *pd, n
 }
 
 
-static void ngx_postgres_free_peer(ngx_http_request_t *r) {
+static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_connection_t *c = pdc->connection;
     if (!c) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!connection"); return; }
@@ -305,7 +301,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state = %i", state);
     if (!c || c->read->error || c->write->error || (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout));
-    else if (pusc->ps.save.max) ngx_postgres_free_peer(r);
+    else if (pusc->ps.save.max) ngx_postgres_free_peer(pd);
     if (pc->connection) ngx_postgres_free_connection(pdc);
     pc->connection = NULL;
     pd->peer_free(pc, pd->peer_data, state);
@@ -370,7 +366,7 @@ exit:
 #endif
     if (pusc->ps.save.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
-        if (ngx_postgres_peer_multi(r) == NGX_OK) return ngx_postgres_prepare_or_query(pd);
+        if (ngx_postgres_peer_multi(pd) == NGX_OK) return ngx_postgres_prepare_or_query(pd);
         if (pusc->ps.save.size < pusc->ps.save.max) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.size = %i", pusc->ps.save.size);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)

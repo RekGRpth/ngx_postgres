@@ -1,7 +1,7 @@
 #include "ngx_postgres_include.h"
 
 
-typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_http_request_t *r, ngx_uint_t key, ngx_uint_t status);
+typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_postgres_data_t *pd, ngx_uint_t key, ngx_uint_t status);
 
 
 typedef struct  {
@@ -24,7 +24,7 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd) {
     ngx_postgres_rewrite_t *rewriteelts = rewrite->elts;
     ngx_int_t rc = NGX_OK;
     ngx_postgres_result_t *result = &pd->result;
-    for (ngx_uint_t i = 0; i < rewrite->nelts; i++) if ((!rewriteelts[i].method || rewriteelts[i].method & r->method) && (rc = rewriteelts[i].handler(r, rewriteelts[i].key, rewriteelts[i].status)) != NGX_OK) {
+    for (ngx_uint_t i = 0; i < rewrite->nelts; i++) if ((!rewriteelts[i].method || rewriteelts[i].method & r->method) && (rc = rewriteelts[i].handler(pd, rewriteelts[i].key, rewriteelts[i].status)) != NGX_OK) {
         result->status = rc;
         if (rewriteelts[i].keep) rc = NGX_OK;
         break;
@@ -33,11 +33,9 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd) {
 }
 
 
-static ngx_int_t ngx_postgres_rewrite_changes(ngx_http_request_t *r, ngx_uint_t key, ngx_uint_t status) {
+static ngx_int_t ngx_postgres_rewrite_changes(ngx_postgres_data_t *pd, ngx_uint_t key, ngx_uint_t status) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
     if (ngx_strncasecmp((u_char *)PQcmdStatus(res), (u_char *)"SELECT", sizeof("SELECT") - 1)) {
@@ -52,11 +50,9 @@ static ngx_int_t ngx_postgres_rewrite_changes(ngx_http_request_t *r, ngx_uint_t 
 }
 
 
-static ngx_int_t ngx_postgres_rewrite_rows(ngx_http_request_t *r, ngx_uint_t key, ngx_uint_t status) {
+static ngx_int_t ngx_postgres_rewrite_rows(ngx_postgres_data_t *pd, ngx_uint_t key, ngx_uint_t status) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_result_t *result = &pd->result;
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
