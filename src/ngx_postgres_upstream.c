@@ -46,6 +46,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         ngx_postgres_save_to_data(ps, pd);
         ngx_connection_t *c = pdc->connection;
         ngx_postgres_log(c, r->connection->log);
+//        ngx_http_set_log_request(c->log, r);
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
         return NGX_OK;
@@ -256,8 +257,11 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_http_request_t *r = pd->request;
         if (!r->connection || r->connection->error) continue;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "\"%V?%V\"", &r->uri, &r->args);
+//        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "\"%V?%V\"", &r->uri, &r->args);
         pd->common = *pdc;
+        ngx_connection_t *c = pdc->connection;
+        ngx_postgres_log(c, r->connection->log);
+//        ngx_http_set_log_request(c->log, r);
         if (ngx_postgres_prepare_or_query(pd) != NGX_ERROR) {
             ngx_peer_connection_t *pc = &u->peer;
             pc->connection = NULL;
@@ -272,8 +276,6 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ps = ngx_queue_data(queue, ngx_postgres_save_t, item);
 //        if (ngx_http_push_stream_add_msg_to_channel_my && ngx_http_push_stream_delete_channel_my && ngx_postgres_relisten(pd, ps) != NGX_OK) return;
         ngx_postgres_common_t *psc = &ps->common;
-        ngx_connection_t *c = psc->connection;
-        ngx_postgres_log(c, r->connection->log);
         ngx_postgres_free_connection(psc);
     } else {
         ngx_queue_t *queue = ngx_queue_head(&pusc->ps.data.head);
