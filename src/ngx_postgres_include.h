@@ -107,7 +107,7 @@ typedef struct {
     u_char **paramValues;
 } ngx_postgres_send_t;
 
-typedef ngx_int_t (*ngx_postgres_handler_pt) (ngx_http_request_t *r);
+typedef ngx_int_t (*ngx_postgres_data_handler_pt) (ngx_http_request_t *r);
 
 typedef struct {
     ngx_array_t send;
@@ -119,7 +119,7 @@ typedef struct {
     ngx_event_set_peer_session_pt set_session;
 #endif
     ngx_http_request_t *request;
-    ngx_postgres_handler_pt handler;
+    ngx_postgres_data_handler_pt handler;
     ngx_postgres_common_t common;
     ngx_postgres_result_t result;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
@@ -140,7 +140,7 @@ typedef struct {
     ngx_flag_t header;
     ngx_flag_t single;
     ngx_flag_t string;
-    ngx_postgres_handler_pt handler;
+    ngx_postgres_data_handler_pt handler;
     ngx_str_t null;
     u_char delimiter;
     u_char escape;

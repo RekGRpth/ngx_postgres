@@ -553,7 +553,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     static const struct {
         ngx_str_t name;
         unsigned binary:1;
-        ngx_postgres_handler_pt handler;
+        ngx_postgres_data_handler_pt handler;
     } h[] = {
         { ngx_string("none"), 0, NULL },
         { ngx_string("plain"), 0, ngx_postgres_output_plain },
