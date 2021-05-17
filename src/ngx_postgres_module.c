@@ -551,7 +551,7 @@ static char *ngx_postgres_trace_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 }
 
 
-char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+static char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     ngx_postgres_query_t *query = location->query.elts && location->query.nelts ? &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1] : NULL;
     ngx_str_t *args = cf->args->elts;
@@ -566,7 +566,7 @@ char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
 }
 
 
-char *ngx_postgres_prepare_conf_(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
+static char *ngx_postgres_prepare_conf_(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     ngx_postgres_query_t *query = location->query.elts && location->query.nelts ? &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1] : NULL;
     ngx_str_t *args = cf->args->elts;
