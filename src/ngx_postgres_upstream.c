@@ -258,6 +258,25 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         case PQTRANS_IDLE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus == PQTRANS_IDLE"); break;
         default: ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE"); if (!PQrequestCancel(pdc->conn)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQrequestCancel and %s", PQerrorMessageMy(pdc->conn)); return; } break;
     }
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    ngx_http_upstream_t *u = r->upstream;
+    while (!ngx_queue_empty(&pusc->pd.head)) {
+        ngx_queue_t *queue = ngx_queue_head(&pusc->pd.head);
+        ngx_queue_remove(queue);
+        ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, item);
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
+        if (pusc->pd.size) pusc->pd.size--;
+        if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
+        ngx_http_request_t *r = pd->request;
+        if (!r->connection || r->connection->error) continue;
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
+        if (ngx_postgres_prepare_or_query(pd) != NGX_ERROR) {
+            ngx_peer_connection_t *pc = &u->peer;
+            pc->connection = NULL;
+            return;
+        }
+    }
+#endif
     ngx_postgres_save_t *ps;
     if (ngx_queue_empty(&pusc->ps.data.head)) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty(data)");
@@ -275,21 +294,6 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_postgres_data_to_save(pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log, pd, ps);
     ngx_add_timer(c->read, pusc->ps.save.timeout);
     ngx_add_timer(c->write, pusc->ps.save.timeout);
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    while (!ngx_queue_empty(&pusc->pd.head)) {
-        ngx_queue_t *queue = ngx_queue_head(&pusc->pd.head);
-        ngx_queue_remove(queue);
-        ngx_postgres_data_t *pd = ngx_queue_data(queue, ngx_postgres_data_t, item);
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
-        if (pusc->pd.size) pusc->pd.size--;
-        if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
-        ngx_http_request_t *r = pd->request;
-        if (!r->connection || r->connection->error) continue;
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
-        ngx_http_upstream_connect(r, r->upstream);
-        break;
-    }
-#endif
 }
 
 
