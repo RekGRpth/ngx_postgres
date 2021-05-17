@@ -476,11 +476,9 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
 }
 
 
-static ngx_int_t ngx_postgres_charset(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_charset(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     const char *charset = PQparameterStatus(pdc->conn, "client_encoding");
     if (!charset) return NGX_OK;
@@ -499,16 +497,15 @@ static ngx_int_t ngx_postgres_charset(ngx_http_request_t *r) {
 }
 
 
-ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
+ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     if (!r->header_sent) {
         ngx_postgres_result_t *result = &pd->result;
         r->headers_out.status = result->status ? result->status : NGX_HTTP_OK;
         r->headers_out.content_type_lowcase = NULL;
-        if (ngx_postgres_charset(r) != NGX_OK) return NGX_ERROR;
+        if (ngx_postgres_charset(pd) != NGX_OK) return NGX_ERROR;
         ngx_http_clear_content_length(r);
         r->headers_out.content_length_n = 0;
         for (ngx_chain_t *chain = u->out_bufs; chain; chain = chain->next) {
