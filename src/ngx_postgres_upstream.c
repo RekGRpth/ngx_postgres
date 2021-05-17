@@ -3,9 +3,18 @@
 #include "ngx_postgres_include.h"
 
 
-static void ngx_postgres_save_to_data(ngx_log_t *log, ngx_postgres_save_t *ps, ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+static void ngx_postgres_log(ngx_connection_t *c, ngx_log_t *log) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "%s", __func__);
+    c->log = log;
+    c->pool->log = log;
+    c->read->log = log;
+    c->write->log = log;
+}
+
+
+static void ngx_postgres_save_to_data(ngx_postgres_save_t *ps, ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
     ngx_peer_connection_t *pc = &u->peer;
     ngx_postgres_common_t *pdc = &pd->common;
@@ -15,11 +24,7 @@ static void ngx_postgres_save_to_data(ngx_log_t *log, ngx_postgres_save_t *ps, n
     c->data = r;
     c->idle = 0;
     c->log_error = pc->log_error;
-    c->log = log;
-    c->pool->log = log;
-    c->read->log = log;
     c->sent = 0;
-    c->write->log = log;
     pc->cached = 1;
     pc->name = &pdc->addr.name;
     pc->sockaddr = pdc->addr.sockaddr;
@@ -38,8 +43,9 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         if (ngx_memn2cmp((u_char *)pdc->addr.sockaddr, (u_char *)psc->addr.sockaddr, pdc->addr.socklen, psc->addr.socklen)) continue;
         ngx_queue_remove(&ps->item);
         ngx_queue_insert_tail(&pusc->ps.data.head, &ps->item);
-        ngx_postgres_save_to_data(r->connection->log, ps, pd);
+        ngx_postgres_save_to_data(ps, pd);
         ngx_connection_t *c = pdc->connection;
+        ngx_postgres_log(c, r->connection->log);
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
         return NGX_OK;
@@ -197,9 +203,9 @@ close:
 }
 
 
-static void ngx_postgres_data_to_save(ngx_log_t *log, ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
+static void ngx_postgres_data_to_save(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
     ngx_http_request_t *r = pd->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
     ngx_peer_connection_t *pc = &u->peer;
     pc->connection = NULL;
@@ -209,16 +215,12 @@ static void ngx_postgres_data_to_save(ngx_log_t *log, ngx_postgres_data_t *pd, n
     ngx_connection_t *c = psc->connection;
     c->data = ps;
     c->idle = 1;
-    c->log = log;
     c->log->connection = c->number;
-    c->pool->log = log;
 //    c->read->delayed = 0;
     c->read->handler = ngx_postgres_save_handler;
-    c->read->log = log;
     c->read->timedout = 0;
 //    c->write->delayed = 0;
     c->write->handler = ngx_postgres_save_handler;
-    c->write->log = log;
     c->write->timedout = 0;
     ps->handler = ngx_postgres_idle;
 }
@@ -254,6 +256,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_http_request_t *r = pd->request;
         if (!r->connection || r->connection->error) continue;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
+        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "\"%V?%V\"", &r->uri, &r->args);
         pd->common = *pdc;
         if (ngx_postgres_prepare_or_query(pd) != NGX_ERROR) {
             ngx_peer_connection_t *pc = &u->peer;
@@ -269,6 +272,8 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ps = ngx_queue_data(queue, ngx_postgres_save_t, item);
 //        if (ngx_http_push_stream_add_msg_to_channel_my && ngx_http_push_stream_delete_channel_my && ngx_postgres_relisten(pd, ps) != NGX_OK) return;
         ngx_postgres_common_t *psc = &ps->common;
+        ngx_connection_t *c = psc->connection;
+        ngx_postgres_log(c, r->connection->log);
         ngx_postgres_free_connection(psc);
     } else {
         ngx_queue_t *queue = ngx_queue_head(&pusc->ps.data.head);
@@ -276,7 +281,8 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     }
     ngx_queue_remove(&ps->item);
     ngx_queue_insert_tail(&pusc->ps.save.head, &ps->item);
-    ngx_postgres_data_to_save(pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log, pd, ps);
+    ngx_postgres_data_to_save(pd, ps);
+    ngx_postgres_log(c, pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log);
     ngx_add_timer(c->read, pusc->ps.save.timeout);
     ngx_add_timer(c->write, pusc->ps.save.timeout);
 }
