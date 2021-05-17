@@ -156,7 +156,6 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_data_t *pd) {
             default: break;
         }
     }
-    if (rc == NGX_OK) rc = ngx_postgres_process_notify(pdc, 0);
     pd->handler = ngx_postgres_prepare_or_query;
     if (rc == NGX_OK && pd->index < location->query.nelts - 1) {
         for (pd->index++; pd->index < location->query.nelts; pd->index++) if (!queryelts[pd->index].method || queryelts[pd->index].method & r->method) break;
