@@ -107,9 +107,10 @@ typedef struct {
     u_char **paramValues;
 } ngx_postgres_send_t;
 
-typedef ngx_int_t (*ngx_postgres_data_handler_pt) (ngx_http_request_t *r);
+typedef struct ngx_postgres_data_t ngx_postgres_data_t;
+typedef ngx_int_t (*ngx_postgres_data_handler_pt) (ngx_postgres_data_t *pd);
 
-typedef struct {
+typedef struct ngx_postgres_data_t {
     ngx_array_t send;
     ngx_array_t variable;
     ngx_event_free_peer_pt peer_free;
@@ -179,19 +180,19 @@ char *PQresultErrorMessageMy(const PGresult *res);
 extern ngx_int_t ngx_http_push_stream_add_msg_to_channel_my(ngx_log_t *log, ngx_str_t *id, ngx_str_t *text, ngx_str_t *event_id, ngx_str_t *event_type, ngx_flag_t store_messages, ngx_pool_t *temp_pool) __attribute__((weak));
 extern ngx_int_t ngx_http_push_stream_delete_channel_my(ngx_log_t *log, ngx_str_t *id, u_char *text, size_t len, ngx_pool_t *temp_pool) __attribute__((weak));
 ngx_int_t ngx_postgres_busy(ngx_postgres_common_t *common);
-ngx_int_t ngx_postgres_connect(ngx_http_request_t *r);
+ngx_int_t ngx_postgres_connect(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_consume_flush_busy(ngx_postgres_common_t *common);
 ngx_int_t ngx_postgres_consume(ngx_postgres_common_t *common);
 ngx_int_t ngx_postgres_flush(ngx_postgres_common_t *common);
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r);
-ngx_int_t ngx_postgres_output_csv(ngx_http_request_t *r);
-ngx_int_t ngx_postgres_output_json(ngx_http_request_t *r);
-ngx_int_t ngx_postgres_output_plain(ngx_http_request_t *r);
-ngx_int_t ngx_postgres_output_value(ngx_http_request_t *r);
+ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *pd);
+ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd);
+ngx_int_t ngx_postgres_output_plain(ngx_postgres_data_t *pd);
+ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
-ngx_int_t ngx_postgres_prepare_or_query(ngx_http_request_t *r);
+ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_process_notify(ngx_postgres_common_t *common, ngx_flag_t send);
 ngx_int_t ngx_postgres_rewrite_set(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);

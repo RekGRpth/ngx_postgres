@@ -283,7 +283,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_http_request_t *r) {
         ngx_http_upstream_t *u = r->upstream;
         ngx_chain_t *chain = u->out_bufs;
         u->out_bufs = NULL;
-        if (variable[i].handler(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
+        if (variable[i].handler(pd) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
         variableelts[variable[i].index].len = u->out_bufs->buf->end - u->out_bufs->buf->start;
         variableelts[variable[i].index].data = u->out_bufs->buf->start;
         u->out_bufs = chain;

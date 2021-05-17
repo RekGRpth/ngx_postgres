@@ -356,7 +356,7 @@ exit:
 #endif
     if (pusc->ps.save.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.max");
-        if (ngx_postgres_peer_multi(r) == NGX_OK) return ngx_postgres_prepare_or_query(r);
+        if (ngx_postgres_peer_multi(r) == NGX_OK) return ngx_postgres_prepare_or_query(pd);
         if (pusc->ps.save.size < pusc->ps.save.max) {
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "ps.size = %i", pusc->ps.save.size);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)

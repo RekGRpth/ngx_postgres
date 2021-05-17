@@ -9,8 +9,8 @@ typedef struct {
 } ngx_postgres_prepare_t;
 
 
-static ngx_int_t ngx_postgres_prepare(ngx_http_request_t *r);
-static ngx_int_t ngx_postgres_query(ngx_http_request_t *r);
+static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd);
+static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd);
 
 
 static ngx_int_t ngx_postgres_done(ngx_http_request_t *r, ngx_int_t rc) {
@@ -22,11 +22,10 @@ static ngx_int_t ngx_postgres_done(ngx_http_request_t *r, ngx_int_t rc) {
 }
 
 
-ngx_int_t ngx_postgres_prepare_or_query(ngx_http_request_t *r) {
+ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
@@ -110,15 +109,13 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_http_request_t *r) {
             send->stmtName.len = last - send->stmtName.data;
         }
     }
-    return prepare ? ngx_postgres_prepare(r) : ngx_postgres_query(r);
+    return prepare ? ngx_postgres_prepare(pd) : ngx_postgres_query(pd);
 }
 
 
-static ngx_int_t ngx_postgres_query_result(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_query_result(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     pd->handler = ngx_postgres_query_result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
@@ -146,7 +143,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_http_request_t *r) {
                 // fall through
             case PGRES_SINGLE_TUPLE:
                 if (PQresultStatus(pd->result.res) == PGRES_SINGLE_TUPLE) pd->result.nsingle++;
-                if (rc == NGX_OK && output->handler) rc = output->handler(r); // fall through
+                if (rc == NGX_OK && output->handler) rc = output->handler(pd); // fall through
             default:
                 if ((value = PQcmdStatus(pd->result.res)) && ngx_strlen(value)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(pd->result.res)), value); }
                 else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, PQresStatus(PQresultStatus(pd->result.res))); }
@@ -178,11 +175,9 @@ static ngx_int_t ngx_postgres_query_result(ngx_http_request_t *r) {
 }
 
 
-static ngx_int_t ngx_postgres_result(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
@@ -194,26 +189,22 @@ static ngx_int_t ngx_postgres_result(ngx_http_request_t *r) {
 }
 
 
-static ngx_int_t ngx_postgres_query_prepared(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_query_prepared(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     pd->handler = ngx_postgres_query_prepared;
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
     if (!PQsendQueryPrepared(pdc->conn, (const char *)send->stmtName.data, send->nParams, (const char *const *)send->paramValues, NULL, NULL, send->binary)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQueryPrepared(\"%V\", \"%V\", %i) and %s", &send->stmtName, &send->sql, send->nParams, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQueryPrepared(\"%V\", \"%V\", %i)", &send->stmtName, &send->sql, send->nParams);
-    return ngx_postgres_result(r);
+    return ngx_postgres_result(pd);
 }
 
 
-static ngx_int_t ngx_postgres_prepare_result(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
@@ -234,15 +225,13 @@ static ngx_int_t ngx_postgres_prepare_result(ngx_http_request_t *r) {
             default: break;
         }
     }
-    return ngx_postgres_query_prepared(r);
+    return ngx_postgres_query_prepared(pd);
 }
 
 
-static ngx_int_t ngx_postgres_query(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     pd->handler = ngx_postgres_query;
     while (PQstatus(pdc->conn) == CONNECTION_OK && (pd->result.res = PQgetResult(pdc->conn))) {
@@ -270,15 +259,13 @@ static ngx_int_t ngx_postgres_query(ngx_http_request_t *r) {
         if (!PQsendQuery(pdc->conn, (const char *)send->sql.data)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(\"%V\") and %s", &send->sql, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQuery(\"%V\")", &send->sql);
     }
-    return ngx_postgres_result(r);
+    return ngx_postgres_result(pd);
 }
 
 
-static ngx_int_t ngx_postgres_deallocate_result(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_deallocate_result(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
@@ -299,15 +286,13 @@ static ngx_int_t ngx_postgres_deallocate_result(ngx_http_request_t *r) {
             default: break;
         }
     }
-    return ngx_postgres_prepare(r);
+    return ngx_postgres_prepare(pd);
 }
 
 
-static ngx_int_t ngx_postgres_deallocate(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_deallocate(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
@@ -331,11 +316,9 @@ static ngx_int_t ngx_postgres_deallocate(ngx_http_request_t *r) {
 }
 
 
-static ngx_int_t ngx_postgres_prepare(ngx_http_request_t *r) {
+static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     pd->handler = ngx_postgres_prepare;
     while (PQstatus(pdc->conn) == CONNECTION_OK && (pd->result.res = PQgetResult(pdc->conn))) {
@@ -358,10 +341,10 @@ static ngx_int_t ngx_postgres_prepare(ngx_http_request_t *r) {
     ngx_postgres_send_t *send = &sendelts[pd->index];
     for (ngx_queue_t *queue = ngx_queue_head(pdc->prepare.head); queue != ngx_queue_sentinel(pdc->prepare.head); queue = ngx_queue_next(queue)) {
         ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, item);
-        if (prepare->hash == send->hash) return ngx_postgres_query_prepared(r);
+        if (prepare->hash == send->hash) return ngx_postgres_query_prepared(pd);
     }
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
-    if (pdc->prepare.size >= pusc->prepare.max && pusc->prepare.deallocate) return ngx_postgres_deallocate(r);
+    if (pdc->prepare.size >= pusc->prepare.max && pusc->prepare.deallocate) return ngx_postgres_deallocate(pd);
     if (!PQsendPrepare(pdc->conn, (const char *)send->stmtName.data, (const char *)send->sql.data, send->nParams, send->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(\"%V\", \"%V\") and %s", &send->stmtName, &send->sql, PQerrorMessageMy(pdc->conn)); return NGX_ERROR; }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendPrepare(\"%V\", \"%V\")", &send->stmtName, &send->sql);
     ngx_connection_t *c = pdc->connection;
@@ -397,11 +380,9 @@ static const char *ngx_postgres_status(ngx_postgres_common_t *common) {
 }
 
 
-ngx_int_t ngx_postgres_connect(ngx_http_request_t *r) {
+ngx_int_t ngx_postgres_connect(ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
-    ngx_postgres_data_t *pd = u->peer.data;
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_connection_t *c = pdc->connection;
     pd->handler = ngx_postgres_connect;
@@ -421,7 +402,7 @@ again:
 connected:
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    return ngx_postgres_prepare_or_query(r);
+    return ngx_postgres_prepare_or_query(pd);
 }
 
 

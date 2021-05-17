@@ -53,7 +53,7 @@ static void ngx_postgres_data_handler(ngx_http_request_t *r, ngx_http_upstream_t
         case NGX_ERROR: return ngx_http_upstream_finalize_request(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
         default: break;
     }
-    ngx_int_t rc = pd->handler(r);
+    ngx_int_t rc = pd->handler(pd);
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) return ngx_http_upstream_finalize_request(r, u, rc);
     if (rc == NGX_ERROR) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
 }
