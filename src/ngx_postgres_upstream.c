@@ -254,6 +254,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_http_request_t *r = pd->request;
         if (!r->connection || r->connection->error) continue;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
+        pd->common = *pdc;
         if (ngx_postgres_prepare_or_query(pd) != NGX_ERROR) {
             ngx_peer_connection_t *pc = &u->peer;
             pc->connection = NULL;
