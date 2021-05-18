@@ -3,6 +3,9 @@
 #include "ngx_postgres_include.h"
 
 
+static void ngx_postgres_save_handler(ngx_event_t *ev);
+
+
 static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
@@ -150,12 +153,28 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *ps) {
 }
 
 
-static void ngx_postgres_save_close(ngx_postgres_save_t *ps) {
-    ngx_postgres_common_t *psc = &ps->common;
-    ngx_connection_t *c = psc->connection;
+static void ngx_postgres_save_close(ngx_postgres_common_t *common) {
+    ngx_connection_t *c = common->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    ngx_postgres_save_t *ps = ngx_pcalloc(c->pool, sizeof(*ps));
+    ngx_postgres_upstream_srv_conf_t *pusc = common->pusc;
+    ps->common = *common;
+    c->data = ps;
+    c->idle = 1;
+    c->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
+    c->pool->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
+//    c->read->delayed = 0;
+    c->read->handler = ngx_postgres_save_handler;
+    c->read->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
+    c->read->timedout = 0;
+//    c->write->delayed = 0;
+    c->write->handler = ngx_postgres_save_handler;
+    c->write->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
+    c->write->timedout = 0;
+//    pc->connection = NULL;
+    c->log->connection = c->number;
     if (ngx_http_push_stream_delete_channel_my && ngx_postgres_listen(ps) != NGX_ERROR) return;
-    ngx_postgres_common_close(psc);
+    ngx_postgres_common_close(common);
 }
 
 
@@ -180,7 +199,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     }
     if (ps->handler(ps) != NGX_ERROR) return;
 close:
-    ngx_postgres_save_close(ps);
+    ngx_postgres_save_close(psc);
     ngx_queue_remove(&ps->item);
     ngx_postgres_upstream_srv_conf_t *pusc = psc->pusc;
     ngx_queue_insert_tail(&pusc->ps.data.head, &ps->item);
@@ -249,7 +268,8 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty(data)");
         item = ngx_queue_last(&pusc->ps.save.head);
         ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
-        ngx_postgres_save_close(ps);
+        ngx_postgres_common_t *psc = &ps->common;
+        ngx_postgres_save_close(psc);
     }
     ngx_queue_remove(item);
     ngx_queue_insert_tail(&pusc->ps.save.head, item);
@@ -285,7 +305,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     ngx_connection_t *c = pc->connection;
     if (ngx_terminate || ngx_exiting || !c || c->error || c->read->error || c->write->error || (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout));
     else if (pusc->ps.save.max) ngx_postgres_free_peer(pd);
-    if (pc->connection) ngx_postgres_common_close(pdc);
+    if (pc->connection) ngx_postgres_save_close(pdc);
     pc->connection = NULL;
     pd->peer_free(pc, pd->peer_data, state);
 }
