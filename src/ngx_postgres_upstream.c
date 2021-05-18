@@ -86,7 +86,7 @@ cont:;
 
 ngx_int_t ngx_postgres_notify(ngx_postgres_common_t *common) {
     ngx_connection_t *c = common->connection;
-    c->log->connection = c->number;
+//    c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
 //    size_t len = 0;
     for (PGnotify *notify; PQstatus(common->conn) == CONNECTION_OK && (notify = PQnotifies(common->conn)); ) {
