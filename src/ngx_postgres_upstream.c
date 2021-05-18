@@ -18,7 +18,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         ngx_connection_t *c = pdc->connection;
         ngx_http_upstream_t *u = r->upstream;
         ngx_peer_connection_t *pc = &u->peer;
-        c->data = r;
+//        c->data = r;
         c->idle = 0;
         c->log_error = pc->log_error;
         c->log = r->connection->log;
