@@ -135,7 +135,7 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_data_t *pd) {
         ngx_connection_t *c = pdc->connection;
         ngx_http_upstream_t *u = r->upstream;
         ngx_peer_connection_t *pc = &u->peer;
-        c->data = r;
+//        c->data = r;
         c->log = r->connection->log;
         c->pool->log = r->connection->log;
         c->read->log = r->connection->log;
@@ -211,6 +211,7 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *ps) {
             default: break;
         }
     }
+//    if (!c->idle) return NGX_OK;
     if (!PQsendQuery(psc->conn, "SELECT pg_listening_channels() AS channel")) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery and %s", PQerrorMessageMy(psc->conn)); return NGX_ERROR; }
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQsendQuery");
     ps->handler = ngx_postgres_listen_result;
