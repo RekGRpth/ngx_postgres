@@ -552,7 +552,8 @@ void ngx_postgres_common_close(ngx_postgres_common_t *common) {
     PQfinish(common->conn);
     if (c) {
         c->log->connection = c->number;
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+        ngx_log_error(NGX_LOG_WARN, c->log, 0, "%s", __func__);
         if (ngx_del_conn) {
             ngx_del_conn(c, NGX_CLOSE_EVENT);
         } else {
