@@ -30,7 +30,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         pc->connection = c;
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
-        ngx_array_destroy(&psc->listen);
+        if (psc->listen.elts) ngx_array_destroy(&psc->listen);
         return NGX_OK;
     }
     return NGX_DECLINED;
