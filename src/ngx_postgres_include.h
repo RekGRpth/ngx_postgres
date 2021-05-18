@@ -67,10 +67,11 @@ typedef struct {
         ngx_queue_t *head;
         ngx_uint_t size;
     } prepare;
-    ngx_addr_t addr;
     ngx_connection_t *connection;
     ngx_postgres_upstream_srv_conf_t *pusc;
     PGconn *conn;
+    socklen_t socklen;
+    struct sockaddr *sockaddr;
 } ngx_postgres_common_t;
 
 typedef struct {

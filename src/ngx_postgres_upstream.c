@@ -11,7 +11,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
     ngx_queue_each(&pusc->ps.save.head, item) {
         ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
         ngx_postgres_common_t *psc = &ps->common;
-        if (ngx_memn2cmp((u_char *)pdc->addr.sockaddr, (u_char *)psc->addr.sockaddr, pdc->addr.socklen, psc->addr.socklen)) continue;
+        if (ngx_memn2cmp((u_char *)pdc->sockaddr, (u_char *)psc->sockaddr, pdc->socklen, psc->socklen)) continue;
         ngx_queue_remove(item);
         ngx_queue_insert_tail(&pusc->ps.data.head, item);
         *pdc = *psc;
@@ -28,9 +28,6 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         c->write->log = r->connection->log;
         pc->cached = 1;
         pc->connection = c;
-//        pc->name = &pdc->addr.name;
-//        pc->sockaddr = pdc->addr.sockaddr;
-//        pc->socklen = pdc->addr.socklen;
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
         return NGX_OK;
@@ -338,9 +335,8 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (rc != NGX_OK) return rc;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
     ngx_postgres_common_t *pdc = &pd->common;
-    pdc->addr.name = *pc->name;
-    pdc->addr.sockaddr = pc->sockaddr;
-    pdc->addr.socklen = pc->socklen;
+    pdc->sockaddr = pc->sockaddr;
+    pdc->socklen = pc->socklen;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_postgres_connect_t *connect = pc->peer_data;
@@ -349,7 +345,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_connect_t *connect = array->elts;
     ngx_uint_t i;
     for (i = 0; i < array->nelts; i++) for (ngx_uint_t j = 0; j < connect[i].naddrs; j++) {
-        if (ngx_memn2cmp((u_char *)pdc->addr.sockaddr, (u_char *)connect[i].addrs[j].sockaddr, pdc->addr.socklen, connect[i].addrs[j].socklen)) continue;
+        if (ngx_memn2cmp((u_char *)pdc->sockaddr, (u_char *)connect[i].addrs[j].sockaddr, pdc->socklen, connect[i].addrs[j].socklen)) continue;
         connect = &connect[i];
         goto exit;
     }
