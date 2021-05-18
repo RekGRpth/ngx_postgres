@@ -126,7 +126,6 @@ typedef struct ngx_postgres_save_t ngx_postgres_save_t;
 typedef ngx_int_t (*ngx_postgres_save_handler_pt) (ngx_postgres_save_t *ps);
 
 typedef struct ngx_postgres_save_t {
-    ngx_array_t listen;
     ngx_postgres_common_t common;
     ngx_postgres_save_handler_pt handler;
     ngx_queue_t item;

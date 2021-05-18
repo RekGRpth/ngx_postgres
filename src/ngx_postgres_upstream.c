@@ -18,7 +18,6 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         ngx_connection_t *c = pdc->connection;
         ngx_http_upstream_t *u = r->upstream;
         ngx_peer_connection_t *pc = &u->peer;
-//        c->data = r;
         c->idle = 0;
         c->log_error = pc->log_error;
         c->log = r->connection->log;
@@ -30,7 +29,6 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         pc->connection = c;
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
-        if (ps->listen.elts) ngx_array_destroy(&ps->listen);
         return NGX_OK;
     }
     return NGX_DECLINED;
@@ -93,14 +91,11 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_save_t *ps, PGresult *res) {
     c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     if (!PQntuples(res)) return NGX_OK;
-    if (ngx_array_init(&ps->listen, c->pool, PQntuples(res), sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
     for (ngx_uint_t row = 0; row < PQntuples(res); row++) {
         const char *channel = PQgetvalue(res, row, PQfnumber(res, "channel"));
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "row = %i, channel = %s", row, channel);
-        ngx_str_t *listen = ngx_array_push(&ps->listen);
-        if (!listen) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_push"); return NGX_ERROR; }
-        if (!(listen->data = ngx_pnalloc(c->pool, listen->len = ngx_strlen(channel)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-        ngx_memcpy(listen->data, channel, listen->len);
+        ngx_str_t listen = {ngx_strlen(channel), (u_char *)channel};
+        ngx_http_push_stream_delete_channel_my(c->log, &listen, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, c->pool);
     }
     return NGX_OK;
 }
@@ -125,7 +120,6 @@ static ngx_int_t ngx_postgres_listen_result(ngx_postgres_save_t *ps) {
             default: break;
         }
     }
-//    ps->handler = ngx_postgres_idle;
     ngx_postgres_common_close(psc);
     return rc;
 }
@@ -149,7 +143,6 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *ps) {
             default: break;
         }
     }
-//    if (!c->idle) return NGX_OK;
     if (!PQsendQuery(psc->conn, "SELECT pg_listening_channels() AS channel")) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery and %s", PQerrorMessageMy(psc->conn)); return NGX_ERROR; }
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQsendQuery");
     ps->handler = ngx_postgres_listen_result;
@@ -161,13 +154,7 @@ static void ngx_postgres_save_close(ngx_postgres_save_t *ps) {
     ngx_postgres_common_t *psc = &ps->common;
     ngx_connection_t *c = psc->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    if (ngx_http_push_stream_delete_channel_my /*&& !ngx_exiting && !ngx_terminate*/&& ngx_postgres_listen(ps) != NGX_ERROR) return;
-/*        ngx_str_t *listen = ps->listen.elts;
-        for (ngx_uint_t i = 0; i < ps->listen.nelts; i++) {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0, "delete channel = %V", &listen[i]);
-            ngx_http_push_stream_delete_channel_my(c->log, &listen[i], (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, c->pool);
-        }
-    }*/
+    if (ngx_http_push_stream_delete_channel_my && ngx_postgres_listen(ps) != NGX_ERROR) return;
     ngx_postgres_common_close(psc);
 }
 
@@ -220,7 +207,6 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_data_t *pd) {
         ngx_connection_t *c = pdc->connection;
         ngx_http_upstream_t *u = r->upstream;
         ngx_peer_connection_t *pc = &u->peer;
-//        c->data = r;
         c->log = r->connection->log;
         c->pool->log = r->connection->log;
         c->read->log = r->connection->log;
@@ -286,8 +272,6 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     c->log->connection = c->number;
     ngx_add_timer(c->read, pusc->ps.save.timeout);
     ngx_add_timer(c->write, pusc->ps.save.timeout);
-//    if (ngx_http_push_stream_delete_channel_my) ngx_postgres_listen(ps);
-//    else 
     ps->handler = ngx_postgres_idle;
 }
 
