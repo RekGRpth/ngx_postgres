@@ -263,6 +263,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_postgres_log(c, r->connection->log);
         c->data = r;
         r->upstream->reinit_request(r);
+        r->upstream->peer.connection = c;
 //        ngx_http_set_log_request(c->log, r);
         if (ngx_postgres_prepare_or_query(pd) != NGX_ERROR) {
             ngx_peer_connection_t *pc = &u->peer;
