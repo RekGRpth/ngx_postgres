@@ -291,30 +291,6 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
 }
 
 
-/*static ssize_t ngx_postgres_recv(ngx_connection_t *c, u_char *buf, size_t size) {
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "%*.*s", size, size, buf);
-    return size;
-}
-
-
-static ssize_t ngx_postgres_recv_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit) {
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "%*.*s", in->buf->end - in->buf->start, in->buf->end - in->buf->start, in->buf->start);
-    return in->buf->end - in->buf->start;
-}
-
-
-static ssize_t ngx_postgres_send(ngx_connection_t *c, u_char *buf, size_t size) {
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "%*.*s", size, size, buf);
-    return size;
-}
-
-
-static ngx_chain_t *ngx_postgres_send_chain(ngx_connection_t *c, ngx_chain_t *in, off_t limit) {
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "%*.*s", in->buf->end - in->buf->start, in->buf->end - in->buf->start, in->buf->start);
-    return in;
-}*/
-
-
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 static void ngx_postgres_data_cleanup(void *data) {
     ngx_postgres_data_t *pd = data;
@@ -427,10 +403,6 @@ exit:
     c->log = pc->log;
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
     c->read->log = pc->log;
-//    c->recv_chain = ngx_postgres_recv_chain;
-//    c->recv = ngx_postgres_recv;
-//    c->send_chain = ngx_postgres_send_chain;
-//    c->send = ngx_postgres_send;
     c->shared = 1;
     c->start_time = ngx_current_msec;
     c->type = pc->type ? pc->type : SOCK_STREAM;
