@@ -46,7 +46,7 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_common_t *common) {
         ngx_str_t text = { ngx_strlen(notify->extra), (u_char *) notify->extra };
         ngx_pool_t *temp_pool = ngx_create_pool(4096 + id.len + text.len, c->log);
         if (!temp_pool) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_create_pool"); PQfreemem(notify); return NGX_ERROR; }
-        ngx_int_t rc = ngx_http_push_stream_add_msg_to_channel_my(c->log, &id, &text, NULL, NULL, 0, temp_pool);
+        ngx_int_t rc = ngx_http_push_stream_add_msg_to_channel_my(c->log, &id, &text, NULL, NULL, 1, temp_pool);
         ngx_destroy_pool(temp_pool);
         PQfreemem(notify);
         switch (rc) {
