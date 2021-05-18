@@ -281,6 +281,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     c->write->timedout = 0;
     pc->connection = NULL;
     ps->handler = ngx_postgres_idle;
+    c->log->connection = c->number;
     ngx_add_timer(c->read, pusc->ps.save.timeout);
     ngx_add_timer(c->write, pusc->ps.save.timeout);
 //    if (pusc->ps.save.log) pusc->ps.save.log->connection = c->number;
