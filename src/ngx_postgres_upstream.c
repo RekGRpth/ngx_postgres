@@ -330,7 +330,7 @@ static void ngx_postgres_data_cleanup(void *data) {
     ngx_postgres_data_t *pd = data;
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_queue_remove(&pd->item);
+    if (!ngx_queue_empty(&pd->item)) ngx_queue_remove(&pd->item);
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     if (pusc->pd.size) pusc->pd.size--;
