@@ -26,7 +26,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         c->read->log = r->connection->log;
         c->sent = 0;
         c->write->log = r->connection->log;
-//        pc->cached = 1; // ???
+        pc->cached = 1;
         pc->connection = c;
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
@@ -56,8 +56,8 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_common_t *common) {
             default: ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == unknown"); break;
         }
         switch (ngx_postgres_consume_flush_busy(common)) {
-            case NGX_AGAIN: return NGX_AGAIN; // ???
-            case NGX_ERROR: return NGX_ERROR; // ???
+            case NGX_AGAIN: return NGX_AGAIN;
+            case NGX_ERROR: return NGX_ERROR;
             default: break;
         }
     }
@@ -108,7 +108,6 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     if (ps->handler(ps) != NGX_ERROR) return;
 close:
     ngx_postgres_free_connection(psc);
-//    if (!ngx_queue_empty(&ps->item)) // ???
     ngx_queue_remove(&ps->item);
     ngx_postgres_upstream_srv_conf_t *pusc = psc->pusc;
     ngx_queue_insert_tail(&pusc->ps.data.head, &ps->item);
