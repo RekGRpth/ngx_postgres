@@ -339,8 +339,8 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd) {
     }
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
-    for (ngx_queue_t *queue = ngx_queue_head(pdc->prepare.head); queue != ngx_queue_sentinel(pdc->prepare.head); queue = ngx_queue_next(queue)) {
-        ngx_postgres_prepare_t *prepare = ngx_queue_data(queue, ngx_postgres_prepare_t, item);
+    ngx_queue_each(pdc->prepare.head, item) {
+        ngx_postgres_prepare_t *prepare = ngx_queue_data(item, ngx_postgres_prepare_t, item);
         if (prepare->hash == send->hash) return ngx_postgres_query_prepared(pd);
     }
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;

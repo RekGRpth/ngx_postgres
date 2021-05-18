@@ -28,9 +28,9 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         c->write->log = r->connection->log;
         pc->cached = 1;
         pc->connection = c;
-        pc->name = &pdc->addr.name;
-        pc->sockaddr = pdc->addr.sockaddr;
-        pc->socklen = pdc->addr.socklen;
+//        pc->name = &pdc->addr.name;
+//        pc->sockaddr = pdc->addr.sockaddr;
+//        pc->socklen = pdc->addr.socklen;
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
         return NGX_OK;
