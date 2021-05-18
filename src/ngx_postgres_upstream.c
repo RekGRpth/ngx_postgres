@@ -216,6 +216,7 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_data_t *pd) {
         c->write->log = r->connection->log;
         pc->connection = c;
         u->reinit_request(r);
+        ngx_queue_init(item);
         return ngx_postgres_prepare_or_query(pd);
     }
     return NGX_OK;
