@@ -30,7 +30,7 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         pc->connection = c;
         if (c->read->timer_set) ngx_del_timer(c->read);
         if (c->write->timer_set) ngx_del_timer(c->write);
-        if (psc->listen.elts) ngx_array_destroy(&psc->listen);
+        if (ps->listen.elts) ngx_array_destroy(&ps->listen);
         return NGX_OK;
     }
     return NGX_DECLINED;
@@ -87,6 +87,21 @@ static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *ps) {
 }
 
 
+static void ngx_postgres_save_close(ngx_postgres_save_t *ps) {
+    ngx_postgres_common_t *psc = &ps->common;
+    ngx_connection_t *c = psc->connection;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    if (ngx_http_push_stream_delete_channel_my && !ngx_exiting && !ngx_terminate) {
+        ngx_str_t *listen = ps->listen.elts;
+        for (ngx_uint_t i = 0; i < ps->listen.nelts; i++) {
+            ngx_log_error(NGX_LOG_INFO, c->log, 0, "delete channel = %V", &listen[i]);
+            ngx_http_push_stream_delete_channel_my(c->log, &listen[i], (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, c->pool);
+        }
+    }
+    ngx_postgres_common_close(psc);
+}
+
+
 static void ngx_postgres_save_handler(ngx_event_t *ev) {
     ngx_connection_t *c = ev->data;
     c->log->connection = c->number;
@@ -108,7 +123,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     }
     if (ps->handler(ps) != NGX_ERROR) return;
 close:
-    ngx_postgres_common_close(psc);
+    ngx_postgres_save_close(ps);
     ngx_queue_remove(&ps->item);
     ngx_postgres_upstream_srv_conf_t *pusc = psc->pusc;
     ngx_queue_insert_tail(&pusc->ps.data.head, &ps->item);
@@ -156,11 +171,11 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_save_t *ps, PGresult *res) {
     c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     if (!PQntuples(res)) return NGX_OK;
-    if (ngx_array_init(&psc->listen, c->pool, PQntuples(res), sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
+    if (ngx_array_init(&ps->listen, c->pool, PQntuples(res), sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
     for (ngx_uint_t row = 0; row < PQntuples(res); row++) {
         const char *channel = PQgetvalue(res, row, PQfnumber(res, "channel"));
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "row = %i, channel = %s", row, channel);
-        ngx_str_t *listen = ngx_array_push(&psc->listen);
+        ngx_str_t *listen = ngx_array_push(&ps->listen);
         if (!listen) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_push"); return NGX_ERROR; }
         if (!(listen->data = ngx_pnalloc(c->pool, listen->len = ngx_strlen(channel)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
         ngx_memcpy(listen->data, channel, listen->len);
@@ -247,8 +262,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty(data)");
         item = ngx_queue_last(&pusc->ps.save.head);
         ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
-        ngx_postgres_common_t *psc = &ps->common;
-        ngx_postgres_common_close(psc);
+        ngx_postgres_save_close(ps);
     }
     ngx_queue_remove(item);
     ngx_queue_insert_tail(&pusc->ps.save.head, item);
@@ -539,13 +553,6 @@ void ngx_postgres_common_close(ngx_postgres_common_t *common) {
     if (c) {
         c->log->connection = c->number;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-        if (ngx_http_push_stream_delete_channel_my && !ngx_exiting && !ngx_terminate) {
-            ngx_str_t *listen = common->listen.elts;
-            for (ngx_uint_t i = 0; i < common->listen.nelts; i++) {
-                ngx_log_error(NGX_LOG_INFO, c->log, 0, "delete channel = %V", &listen[i]);
-                ngx_http_push_stream_delete_channel_my(c->log, &listen[i], (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, c->pool);
-            }
-        }
         if (ngx_del_conn) {
             ngx_del_conn(c, NGX_CLOSE_EVENT);
         } else {

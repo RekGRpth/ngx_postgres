@@ -67,7 +67,6 @@ typedef struct {
         ngx_queue_t *head;
         ngx_uint_t size;
     } prepare;
-    ngx_array_t listen;
     ngx_connection_t *connection;
     ngx_postgres_upstream_srv_conf_t *pusc;
     PGconn *conn;
@@ -127,6 +126,7 @@ typedef struct ngx_postgres_save_t ngx_postgres_save_t;
 typedef ngx_int_t (*ngx_postgres_save_handler_pt) (ngx_postgres_save_t *ps);
 
 typedef struct ngx_postgres_save_t {
+    ngx_array_t listen;
     ngx_postgres_common_t common;
     ngx_postgres_save_handler_pt handler;
     ngx_queue_t item;
