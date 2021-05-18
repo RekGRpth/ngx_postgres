@@ -108,7 +108,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     }
     if (ps->handler(ps) != NGX_ERROR) return;
 close:
-    ngx_postgres_free_connection(psc);
+    ngx_postgres_common_close(psc);
     ngx_queue_remove(&ps->item);
     ngx_postgres_upstream_srv_conf_t *pusc = psc->pusc;
     ngx_queue_insert_tail(&pusc->ps.data.head, &ps->item);
@@ -248,7 +248,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         item = ngx_queue_last(&pusc->ps.save.head);
         ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
         ngx_postgres_common_t *psc = &ps->common;
-        ngx_postgres_free_connection(psc);
+        ngx_postgres_common_close(psc);
     }
     ngx_queue_remove(item);
     ngx_queue_insert_tail(&pusc->ps.save.head, item);
@@ -285,7 +285,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     ngx_connection_t *c = pc->connection;
     if (ngx_terminate || ngx_exiting || !c || c->error || c->read->error || c->write->error || (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout));
     else if (pusc->ps.save.max) ngx_postgres_free_peer(pd);
-    if (pc->connection) ngx_postgres_free_connection(pdc);
+    if (pc->connection) ngx_postgres_common_close(pdc);
     pc->connection = NULL;
     pd->peer_free(pc, pd->peer_data, state);
 }
@@ -447,7 +447,7 @@ exit:
     pd->handler = ngx_postgres_connect;
     return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
 invalid:
-    ngx_postgres_free_connection(pdc);
+    ngx_postgres_common_close(pdc);
     return NGX_DECLINED; // and ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR) and return
 }
 
@@ -531,7 +531,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 }
 
 
-void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
+void ngx_postgres_common_close(ngx_postgres_common_t *common) {
     ngx_connection_t *c = common->connection;
     ngx_postgres_upstream_srv_conf_t *pusc = common->pusc;
     if (pusc->ps.save.size) pusc->ps.save.size--;
