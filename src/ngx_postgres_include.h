@@ -67,6 +67,7 @@ typedef struct {
         ngx_queue_t *head;
         ngx_uint_t size;
     } prepare;
+    ngx_array_t listen;
     ngx_connection_t *connection;
     ngx_postgres_upstream_srv_conf_t *pusc;
     PGconn *conn;
