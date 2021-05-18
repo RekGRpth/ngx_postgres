@@ -86,6 +86,7 @@ cont:;
 
 ngx_int_t ngx_postgres_notify(ngx_postgres_common_t *common) {
     ngx_connection_t *c = common->connection;
+    c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
 //    size_t len = 0;
     for (PGnotify *notify; PQstatus(common->conn) == CONNECTION_OK && (notify = PQnotifies(common->conn)); ) {
@@ -140,6 +141,7 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_common_t *common) {
 static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *ps) {
     ngx_postgres_common_t *psc = &ps->common;
     ngx_connection_t *c = psc->connection;
+    c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     for (PGresult *res; PQstatus(psc->conn) == CONNECTION_OK && (res = PQgetResult(psc->conn)); ) {
         switch(PQresultStatus(res)) {
@@ -158,8 +160,9 @@ static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *ps) {
 
 
 static void ngx_postgres_save_handler(ngx_event_t *ev) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write = %s", ev->write ? "true" : "false");
     ngx_connection_t *c = ev->data;
+    c->log->connection = c->number;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "write = %s", ev->write ? "true" : "false");
     ngx_postgres_save_t *ps = c->data;
     ngx_postgres_common_t *psc = &ps->common;
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
@@ -542,11 +545,12 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 
 void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
     ngx_connection_t *c = common->connection;
-    if (c) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__); }
     ngx_postgres_upstream_srv_conf_t *pusc = common->pusc;
     if (pusc->ps.save.size) pusc->ps.save.size--;
     PQfinish(common->conn);
     if (c) {
+        c->log->connection = c->number;
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
         /*if (!c->close && ngx_http_push_stream_delete_channel_my) while (!ngx_queue_empty(common->listen.head)) {
             ngx_queue_t *queue = ngx_queue_head(common->listen.head);
             ngx_queue_remove(queue);
