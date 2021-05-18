@@ -141,10 +141,9 @@ static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *ps) {
     ngx_postgres_common_t *psc = &ps->common;
     ngx_connection_t *c = psc->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    ngx_int_t rc = NGX_OK;
     for (PGresult *res; PQstatus(psc->conn) == CONNECTION_OK && (res = PQgetResult(psc->conn)); ) {
         switch(PQresultStatus(res)) {
-            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); rc = NGX_ERROR; break;
+//            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
             default: ngx_log_error(NGX_LOG_WARN, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); break;
         }
         PQclear(res);
@@ -154,7 +153,7 @@ static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *ps) {
             default: break;
         }
     }
-    return rc;
+    return NGX_OK;
 }
 
 
@@ -176,7 +175,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
         case NGX_ERROR: goto close;
         default: break;
     }
-    if (ps->handler(ps) == NGX_OK) return;
+    if (ps->handler(ps) != NGX_ERROR) return;
 close:
     ngx_postgres_free_connection(psc);
 //    if (!ngx_queue_empty(&ps->item)) // ???
