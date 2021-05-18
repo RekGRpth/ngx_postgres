@@ -167,12 +167,14 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *ps) {
 static void ngx_postgres_save_close(ngx_postgres_common_t *common) {
     ngx_connection_t *c = common->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    ngx_postgres_save_t *ps = ngx_pcalloc(c->pool, sizeof(*ps));
-    ngx_postgres_upstream_srv_conf_t *pusc = common->pusc;
-    ps->common = *common;
-    ngx_postgres_set_handler(pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log, c, ngx_postgres_save_handler, ps, 1);
-    c->log->connection = c->number;
-    if (ngx_http_push_stream_delete_channel_my && ngx_postgres_listen(ps) != NGX_ERROR) return;
+    if (!ngx_terminate && !ngx_exiting) {
+        ngx_postgres_save_t *ps = ngx_pcalloc(c->pool, sizeof(*ps));
+        ngx_postgres_upstream_srv_conf_t *pusc = common->pusc;
+        ps->common = *common;
+        ngx_postgres_set_handler(pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log, c, ngx_postgres_save_handler, ps, 1);
+        c->log->connection = c->number;
+        if (ngx_http_push_stream_delete_channel_my && ngx_postgres_listen(ps) != NGX_ERROR) return;
+    }
     ngx_postgres_common_close(common);
 }
 
