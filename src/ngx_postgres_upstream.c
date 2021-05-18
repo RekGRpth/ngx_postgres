@@ -538,7 +538,7 @@ void ngx_postgres_free_connection(ngx_postgres_common_t *common) {
     if (c) {
         c->log->connection = c->number;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-        if (ngx_http_push_stream_delete_channel_my) {
+        if (ngx_http_push_stream_delete_channel_my && !ngx_exiting && !ngx_terminate) {
             ngx_str_t *listen = common->listen.elts;
             for (ngx_uint_t i = 0; i < common->listen.nelts; i++) {
                 ngx_log_error(NGX_LOG_INFO, c->log, 0, "delete channel = %V", &listen[i]);
