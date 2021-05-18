@@ -8,12 +8,12 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
-    for (ngx_queue_t *queue = ngx_queue_head(&pusc->ps.save.head); queue != ngx_queue_sentinel(&pusc->ps.save.head); queue = ngx_queue_next(queue)) {
-        ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, item);
+    ngx_queue_each(&pusc->ps.save.head, item) {
+        ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
         ngx_postgres_common_t *psc = &ps->common;
         if (ngx_memn2cmp((u_char *)pdc->addr.sockaddr, (u_char *)psc->addr.sockaddr, pdc->addr.socklen, psc->addr.socklen)) continue;
-        ngx_queue_remove(&ps->item);
-        ngx_queue_insert_tail(&pusc->ps.data.head, &ps->item);
+        ngx_queue_remove(item);
+        ngx_queue_insert_tail(&pusc->ps.data.head, item);
         *pdc = *psc;
         ngx_connection_t *c = pdc->connection;
         ngx_http_upstream_t *u = r->upstream;

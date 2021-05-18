@@ -201,6 +201,6 @@ void ngx_http_upstream_finalize_request(ngx_http_request_t *r, ngx_http_upstream
 void ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_uint_t ft_type);
 #endif
 
-#define ngx_queue_each(h, q) for (queue_t *(q) = (h)->next, *_; (q) != (h) && (_ = (q)->next); (q) = _)
+#define ngx_queue_each(h, q) for (ngx_queue_t *(q) = (h)->next, *_; (q) != (h) && (_ = (q)->next); (q) = _)
 
 #endif /* _NGX_POSTGRES_INCLUDE_H_ */
