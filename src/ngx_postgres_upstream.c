@@ -6,6 +6,22 @@
 static void ngx_postgres_save_handler(ngx_event_t *ev);
 
 
+static void ngx_postgres_set_handler(ngx_log_t *log, ngx_connection_t *c, ngx_postgres_data_handler_pt handler, void *data, unsigned idle) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "%s", __func__);
+    c->data = data;
+    c->idle = idle;
+    c->log = log;
+    c->pool->log = log;
+    c->read->handler = handler;
+    c->read->log = log;
+    c->read->timedout = 0;
+    c->sent = 0;
+    c->write->handler = handler;
+    c->write->log = log;
+    c->write->timedout = 0;
+}
+
+
 static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
@@ -21,13 +37,8 @@ static ngx_int_t ngx_postgres_peer_multi(ngx_postgres_data_t *pd) {
         ngx_connection_t *c = pdc->connection;
         ngx_http_upstream_t *u = r->upstream;
         ngx_peer_connection_t *pc = &u->peer;
-        c->idle = 0;
+        ngx_postgres_set_handler(r->connection->log, c, NULL, NULL, 0);
         c->log_error = pc->log_error;
-        c->log = r->connection->log;
-        c->pool->log = r->connection->log;
-        c->read->log = r->connection->log;
-        c->sent = 0;
-        c->write->log = r->connection->log;
         pc->cached = 1;
         pc->connection = c;
         if (c->read->timer_set) ngx_del_timer(c->read);
@@ -159,19 +170,7 @@ static void ngx_postgres_save_close(ngx_postgres_common_t *common) {
     ngx_postgres_save_t *ps = ngx_pcalloc(c->pool, sizeof(*ps));
     ngx_postgres_upstream_srv_conf_t *pusc = common->pusc;
     ps->common = *common;
-    c->data = ps;
-    c->idle = 1;
-    c->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
-    c->pool->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
-//    c->read->delayed = 0;
-    c->read->handler = ngx_postgres_save_handler;
-    c->read->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
-    c->read->timedout = 0;
-//    c->write->delayed = 0;
-    c->write->handler = ngx_postgres_save_handler;
-    c->write->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
-    c->write->timedout = 0;
-//    pc->connection = NULL;
+    ngx_postgres_set_handler(pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log, c, ngx_postgres_save_handler, ps, 1);
     c->log->connection = c->number;
     if (ngx_http_push_stream_delete_channel_my && ngx_postgres_listen(ps) != NGX_ERROR) return;
     ngx_postgres_common_close(common);
@@ -226,10 +225,7 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_data_t *pd) {
         ngx_connection_t *c = pdc->connection;
         ngx_http_upstream_t *u = r->upstream;
         ngx_peer_connection_t *pc = &u->peer;
-        c->log = r->connection->log;
-        c->pool->log = r->connection->log;
-        c->read->log = r->connection->log;
-        c->write->log = r->connection->log;
+        ngx_postgres_set_handler(r->connection->log, c, NULL, NULL, 0);
         pc->connection = c;
         u->reinit_request(r);
         ngx_queue_init(item);
@@ -276,18 +272,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
     ngx_postgres_common_t *psc = &ps->common;
     *psc = *pdc;
-    c->data = ps;
-    c->idle = 1;
-    c->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
-    c->pool->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
-//    c->read->delayed = 0;
-    c->read->handler = ngx_postgres_save_handler;
-    c->read->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
-    c->read->timedout = 0;
-//    c->write->delayed = 0;
-    c->write->handler = ngx_postgres_save_handler;
-    c->write->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
-    c->write->timedout = 0;
+    ngx_postgres_set_handler(pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log, c, ngx_postgres_save_handler, ps, 1);
     pc->connection = NULL;
     c->log->connection = c->number;
     ngx_add_timer(c->read, pusc->ps.save.timeout);
