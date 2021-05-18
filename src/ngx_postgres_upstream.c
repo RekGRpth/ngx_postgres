@@ -143,7 +143,7 @@ static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *ps) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     for (PGresult *res; PQstatus(psc->conn) == CONNECTION_OK && (res = PQgetResult(psc->conn)); ) {
         switch(PQresultStatus(res)) {
-//            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
+            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
             default: ngx_log_error(NGX_LOG_WARN, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); break;
         }
         PQclear(res);
@@ -279,7 +279,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ps->handler = ngx_postgres_idle;
     ngx_add_timer(c->read, pusc->ps.save.timeout);
     ngx_add_timer(c->write, pusc->ps.save.timeout);
-    if (pusc->ps.save.log) pusc->ps.save.log->connection = c->number;
+//    if (pusc->ps.save.log) pusc->ps.save.log->connection = c->number;
 }
 
 
