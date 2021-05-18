@@ -226,14 +226,14 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_common_t *pdc = &pd->common;
     ngx_connection_t *c = pdc->connection;
-    if (!c) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!connection"); return; }
-    if (c->error) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "c->error"); return; }
+//    if (!c) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!connection"); return; }
+//    if (c->error) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "c->error"); return; }
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
     ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     if (c->requests >= pusc->ps.save.requests) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "requests = %i", c->requests); return; }
-    if (ngx_terminate) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_terminate"); return; }
-    if (ngx_exiting) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_exiting"); return; }
+//    if (ngx_terminate) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_terminate"); return; }
+//    if (ngx_exiting) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_exiting"); return; }
     switch (PQtransactionStatus(pdc->conn)) {
         case PQTRANS_UNKNOWN: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus == PQTRANS_UNKNOWN"); return;
         case PQTRANS_IDLE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus == PQTRANS_IDLE"); break;
@@ -284,13 +284,13 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
 
 
 static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
-    ngx_connection_t *c = pc->connection;
     ngx_postgres_data_t *pd = data;
-    ngx_postgres_common_t *pdc = &pd->common;
-    ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state = %i", state);
-    if (!c || c->read->error || c->write->error || (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout));
+    ngx_postgres_common_t *pdc = &pd->common;
+    ngx_postgres_upstream_srv_conf_t *pusc = pdc->pusc;
+    ngx_connection_t *c = pc->connection;
+    if (ngx_terminate || ngx_exiting || !c || c->error || c->read->error || c->write->error || (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout));
     else if (pusc->ps.save.max) ngx_postgres_free_peer(pd);
     if (pc->connection) ngx_postgres_free_connection(pdc);
     pc->connection = NULL;
