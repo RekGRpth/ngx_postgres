@@ -192,6 +192,8 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *ps) {
 static void ngx_postgres_save_close(ngx_postgres_common_t *common) {
     ngx_connection_t *c = common->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    if (c->read->timer_set) ngx_del_timer(c->read);
+    if (c->write->timer_set) ngx_del_timer(c->write);
     if (!ngx_terminate && !ngx_exiting) {
         ngx_postgres_save_t *ps = ngx_pcalloc(c->pool, sizeof(*ps));
         ngx_postgres_upstream_srv_conf_t *pusc = common->pusc;
@@ -211,8 +213,8 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     ngx_postgres_save_t *ps = c->data;
     ngx_postgres_common_t *psc = &ps->common;
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
-    if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); c->read->timedout = 0; goto close; }
-    if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); c->write->timedout = 0; goto close; }
+    if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
+    if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
     switch (ngx_postgres_consume_flush_busy(psc)) {
         case NGX_AGAIN: return;
         case NGX_ERROR: goto close;
