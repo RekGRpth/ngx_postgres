@@ -77,7 +77,8 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_common_t *common) {
                 str.len += command->len;
                 PQfreemem(escape);
             } break;
-            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_OK"); break;
+            case NGX_DONE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_DONE"); break;
+            case NGX_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_OK"); c->requests++; break;
             default: ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == %i", rc); PQfreemem(notify); return NGX_ERROR;
         }
         PQfreemem(notify);
