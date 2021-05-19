@@ -426,11 +426,12 @@ exit:
     if (!(pdc->connection = c)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_get_connection"); goto finish; }
     c->log_error = pc->log_error;
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
+    c->read->log = pc->log;
     c->shared = 1;
     c->start_time = ngx_current_msec;
     c->type = pc->type ? pc->type : SOCK_STREAM;
+    c->write->log = pc->log;
     if (!(c->pool = ngx_create_pool(128, pc->log))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_create_pool"); goto close; }
-    ngx_postgres_set_handler(pc->log, c, ngx_postgres_connect, pd, 0);
     if (!(pdc->prepare.head = ngx_pcalloc(c->pool, sizeof(*pdc->prepare.head)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); goto destroy; }
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         if (ngx_add_conn(c) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_add_conn != NGX_OK"); goto destroy; }
