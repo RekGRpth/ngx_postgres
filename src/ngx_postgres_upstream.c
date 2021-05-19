@@ -443,6 +443,7 @@ exit:
     c->write->ready = 1;
     pc->connection = c;
     ngx_queue_init(pdc->prepare.head);
+    pd->handler = ngx_postgres_connect;
     ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQconnectStartParams");
     return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
 declined:
