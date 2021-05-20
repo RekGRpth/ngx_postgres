@@ -487,12 +487,14 @@ typedef struct {
 
 #if (NGX_HTTP_SSL)
 static ngx_int_t ngx_postgres_set_session(ngx_peer_connection_t *pc, void *data) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = data;
     return pd->set_session(pc, pd->peer_data);
 }
 
 
 static void ngx_postgres_save_session(ngx_peer_connection_t *pc, void *data) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = data;
     pd->save_session(pc, pd->peer_data);
 }
