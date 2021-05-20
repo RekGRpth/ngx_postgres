@@ -225,6 +225,39 @@ static ngx_int_t ngx_postgres_next(ngx_connection_t *c, PGconn *conn, ngx_postgr
 #endif
 
 
+static void ngx_postgres_save_cleanup(void *data) {
+    ngx_postgres_data_t *ps = data;
+    ngx_connection_t *c = ps->connection;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    if (!ngx_queue_empty(&ps->item)) ngx_queue_remove(&ps->item);
+}
+
+
+static ngx_postgres_save_t *ngx_postgres_save_create(ngx_connection_t *c, ngx_log_t *log) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    ngx_postgres_save_t *ps = ngx_pcalloc(c->pool, sizeof(*ps));
+    if (!ps) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NULL; }
+    ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(c->pool, 0);
+    if (!cln) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pool_cleanup_add"); return NULL; }
+    c->data = ps;
+    c->idle = 1;
+    cln->data = ps;
+    cln->handler = ngx_postgres_save_cleanup;
+    c->log = log;
+    c->pool->log = log;
+    c->read->handler = ngx_postgres_save_handler;
+    c->read->log = log;
+    c->read->timedout = 0;
+    c->sent = 0;
+    c->write->handler = ngx_postgres_save_handler;
+    c->write->log = log;
+    c->write->timedout = 0;
+    log->connection = c->number;
+    ps->connection = c;
+    return ps;
+}
+
+
 static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = data;
@@ -278,39 +311,6 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     ps->socklen = pc->socklen;
     ngx_add_timer(c->read, usc->ps.save.timeout);
     ngx_add_timer(c->write, usc->ps.save.timeout);
-}
-
-
-static void ngx_postgres_save_cleanup(void *data) {
-    ngx_postgres_data_t *ps = data;
-    ngx_connection_t *c = ps->connection;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    if (!ngx_queue_empty(&ps->item)) ngx_queue_remove(&ps->item);
-}
-
-
-static ngx_postgres_save_t *ngx_postgres_save_create(ngx_connection_t *c, ngx_log_t *log) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    ngx_postgres_save_t *ps = ngx_pcalloc(c->pool, sizeof(*ps));
-    if (!ps) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NULL; }
-    ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(c->pool, 0);
-    if (!cln) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pool_cleanup_add"); return NULL; }
-    c->data = ps;
-    c->idle = 1;
-    cln->data = ps;
-    cln->handler = ngx_postgres_save_cleanup;
-    c->log = log;
-    c->pool->log = log;
-    c->read->handler = ngx_postgres_save_handler;
-    c->read->log = log;
-    c->read->timedout = 0;
-    c->sent = 0;
-    c->write->handler = ngx_postgres_save_handler;
-    c->write->log = log;
-    c->write->timedout = 0;
-    log->connection = c->number;
-    ps->connection = c;
-    return ps;
 }
 
 
