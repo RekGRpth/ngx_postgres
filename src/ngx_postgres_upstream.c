@@ -314,7 +314,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
         }
     }
     pc->connection = NULL;
-    pd->peer_free(pc, pd->peer_data, state);
+    pd->peer.free(pc, pd->peer.data, state);
 }
 
 
@@ -343,7 +343,7 @@ static void ngx_postgres_data_timeout(ngx_event_t *ev) {
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = data;
-    ngx_int_t rc = pd->peer_get(pc, pd->peer_data);
+    ngx_int_t rc = pd->peer.get(pc, pd->peer.data);
     if (rc != NGX_OK) return rc;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "rc = %i", rc);
     ngx_postgres_upstream_srv_conf_t *pusc = pd->pusc;
@@ -489,14 +489,14 @@ typedef struct {
 static ngx_int_t ngx_postgres_set_session(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = data;
-    return pd->set_session(pc, pd->peer_data);
+    return pd->peer.set_session(pc, pd->peer.data);
 }
 
 
 static void ngx_postgres_save_session(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = data;
-    pd->save_session(pc, pd->peer_data);
+    pd->peer.save_session(pc, pd->peer.data);
 }
 #endif
 
@@ -509,17 +509,13 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     if (pusc->peer_init(r, usc) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer_init != NGX_OK"); return NGX_ERROR; }
     pd->request = r;
     ngx_http_upstream_t *u = r->upstream;
-    pd->peer_data = u->peer.data;
+    pd->peer = u->peer;
     u->peer.data = pd;
-    pd->peer_get = u->peer.get;
     u->peer.get = ngx_postgres_peer_get;
-    pd->peer_free = u->peer.free;
     u->peer.free = ngx_postgres_peer_free;
 #if (NGX_HTTP_SSL)
-    pd->set_session = u->peer.set_session;
-    u->peer.set_session = ngx_postgres_set_session;
-    pd->save_session = u->peer.save_session;
     u->peer.save_session = ngx_postgres_save_session;
+    u->peer.set_session = ngx_postgres_set_session;
 #endif
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (ngx_array_init(&pd->send, r->pool, location->query.nelts, sizeof(ngx_postgres_send_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }

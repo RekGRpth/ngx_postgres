@@ -98,24 +98,20 @@ typedef struct ngx_postgres_data_t {
     ngx_array_t send;
     ngx_array_t variable;
     ngx_connection_t *connection;
-    ngx_event_free_peer_pt peer_free;
-    ngx_event_get_peer_pt peer_get;
-#if (NGX_HTTP_SSL)
-    ngx_event_save_peer_session_pt save_session;
-    ngx_event_set_peer_session_pt set_session;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    ngx_event_t timeout;
 #endif
     ngx_http_request_t *request;
+    ngx_peer_connection_t peer;
     ngx_postgres_data_handler_pt handler;
     ngx_postgres_prepare_t *prepare;
     ngx_postgres_result_t result;
     ngx_postgres_upstream_srv_conf_t *pusc;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_event_t timeout;
     ngx_queue_t item;
 #endif
     ngx_uint_t index;
     PGconn *conn;
-    void *peer_data;
 } ngx_postgres_data_t;
 
 typedef struct ngx_postgres_save_t ngx_postgres_save_t;
