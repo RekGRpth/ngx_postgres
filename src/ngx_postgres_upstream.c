@@ -3,9 +3,6 @@
 #include "ngx_postgres_include.h"
 
 
-static void ngx_postgres_save_handler(ngx_event_t *ev);
-
-
 ngx_int_t ngx_postgres_notify(ngx_connection_t *c, PGconn *conn) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_array_t listen;
