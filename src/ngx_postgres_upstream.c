@@ -228,7 +228,7 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_data_t *pd) {
         ngx_connection_t *c = pdc->connection;
         ngx_http_upstream_t *u = r->upstream;
         ngx_peer_connection_t *pc = &u->peer;
-        ngx_postgres_set_handler(r->connection->log, c, NULL, NULL, 0);
+        ngx_postgres_set_handler(pc->log, c, NULL, NULL, 0);
         pc->connection = c;
         u->reinit_request(r);
         ngx_queue_init(item);
