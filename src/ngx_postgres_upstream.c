@@ -200,6 +200,7 @@ static ngx_int_t ngx_postgres_next(ngx_connection_t *c, PGconn *conn, ngx_postgr
         ngx_http_request_t *r = pd->request;
         if (!r->connection || r->connection->error) continue;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
+        ngx_http_upstream_t *u = r->upstream;
         c->data = pd;
         c->idle = 0;
         c->log = r->connection->log;
@@ -215,6 +216,7 @@ static ngx_int_t ngx_postgres_next(ngx_connection_t *c, PGconn *conn, ngx_postgr
         pd->connection = c;
         pd->prepare = prepare;
         r->state = 0;
+        u->peer.connection = c;
         ngx_queue_init(item);
         return ngx_postgres_prepare_or_query(pd);
     }
