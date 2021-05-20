@@ -317,7 +317,13 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     ngx_postgres_data_t *pd = data;
     ngx_postgres_upstream_srv_conf_t *usc = pd->usc;
     ngx_connection_t *c = pc->connection;
-    if (ngx_terminate || ngx_exiting || !c || c->error || c->read->error || c->write->error || (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout));
+    if (ngx_terminate) ngx_log_error(NGX_LOG_WARN, pc->log, 0, "ngx_terminate");
+    else if (ngx_exiting) ngx_log_error(NGX_LOG_WARN, pc->log, 0, "ngx_exiting");
+    else if (!c) ngx_log_error(NGX_LOG_WARN, pc->log, 0, "!c");
+    else if (c->error) ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->error");
+    else if (c->read->error) ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->read->error");
+    else if (c->write->error) ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->write->error");
+    else if (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout) ngx_log_error(NGX_LOG_WARN, pc->log, 0, "state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout");
     else if (usc->ps.save.max) ngx_postgres_free_peer(pc, data);
     if (pc->connection) {
         ngx_postgres_save_t *ps = usc->ps.save.max ? ngx_postgres_save_create(c, usc->ps.save.log ? usc->ps.save.log : ngx_cycle->log) : NULL;
