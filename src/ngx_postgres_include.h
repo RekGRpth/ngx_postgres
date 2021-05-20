@@ -26,7 +26,7 @@ typedef struct {
 } ngx_postgres_connect_t;
 
 typedef struct {
-//    ngx_http_upstream_peer_t peer;
+    ngx_http_upstream_peer_t peer;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     struct {
         ngx_flag_t reject;
@@ -59,8 +59,6 @@ typedef struct {
     struct {
         ngx_log_t *log;
     } trace;
-    ngx_http_upstream_init_peer_pt peer_init;
-    ngx_http_upstream_init_pt peer_init_upstream;
 } ngx_postgres_upstream_srv_conf_t;
 
 typedef struct {
