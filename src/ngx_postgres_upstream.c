@@ -225,25 +225,25 @@ static ngx_int_t ngx_postgres_next(ngx_connection_t *c, PGconn *conn, ngx_postgr
 #endif
 
 
-static void ngx_postgres_save_cleanup(void *data) {
+/*static void ngx_postgres_save_cleanup(void *data) {
     ngx_postgres_data_t *ps = data;
     ngx_connection_t *c = ps->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_queue_remove(&ps->item);
-}
+}*/
 
 
-static ngx_postgres_save_t *ngx_postgres_save_create(ngx_connection_t *c, ngx_postgres_upstream_srv_conf_t *usc) {
+static ngx_postgres_save_t *ngx_postgres_save_create(ngx_connection_t *c, PGconn *conn, ngx_postgres_upstream_srv_conf_t *usc) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_save_t *ps = ngx_pcalloc(c->pool, sizeof(*ps));
     if (!ps) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NULL; }
-    ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(c->pool, 0);
-    if (!cln) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pool_cleanup_add"); return NULL; }
+//    ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(c->pool, 0);
+//    if (!cln) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pool_cleanup_add"); return NULL; }
     ngx_log_t *log = usc->ps.save.log ? usc->ps.save.log : ngx_cycle->log;
     c->data = ps;
     c->idle = 1;
-    cln->data = ps;
-    cln->handler = ngx_postgres_save_cleanup;
+//    cln->data = ps;
+//    cln->handler = ngx_postgres_save_cleanup;
     c->log = log;
     c->pool->log = log;
     c->read->handler = ngx_postgres_save_handler;
@@ -254,9 +254,10 @@ static ngx_postgres_save_t *ngx_postgres_save_create(ngx_connection_t *c, ngx_po
     c->write->log = log;
     c->write->timedout = 0;
     log->connection = c->number;
+    ps->conn = conn;
     ps->connection = c;
     ps->usc = usc;
-    ngx_queue_insert_tail(&usc->ps.save.head, &ps->item);
+//    ngx_queue_insert_tail(&usc->ps.save.head, &ps->item);
     return ps;
 }
 
@@ -331,12 +332,8 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     else if (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout"); }
     else if (usc->ps.save.max) ngx_postgres_free_peer(pc, data);
     if (pc->connection) {
-        ngx_postgres_save_t *ps = usc->ps.save.max ? ngx_postgres_save_create(c, usc) : NULL;
-        if (!ps) ngx_postgres_close(c, pd->conn, usc); else {
-            ps->conn = pd->conn;
-            ps->usc = usc;
-            ngx_postgres_save_close(ps);
-        }
+        ngx_postgres_save_t *ps = usc->ps.save.max ? ngx_postgres_save_create(c, pd->conn, usc) : NULL;
+        ps ? ngx_postgres_save_close(ps) : ngx_postgres_close(c, pd->conn, usc);
         pc->connection = NULL;
     }
     pd->peer.free(pc, pd->peer.data, state);
