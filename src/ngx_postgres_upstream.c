@@ -192,8 +192,7 @@ close:
 
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 static ngx_int_t ngx_postgres_next(ngx_connection_t *c, ngx_postgres_upstream_srv_conf_t *usc) {
-    while (!ngx_queue_empty(&usc->pd.head)) {
-        ngx_queue_t *item = ngx_queue_head(&usc->pd.head);
+    ngx_queue_each(&usc->pd.head, item) {
         ngx_queue_remove(item);
         ngx_postgres_data_t *pd = ngx_queue_data(item, ngx_postgres_data_t, item);
         if (usc->pd.size) usc->pd.size--;

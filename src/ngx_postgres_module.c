@@ -9,11 +9,10 @@ static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
 
 static void ngx_postgres_srv_conf_cleanup(void *data) {
     ngx_postgres_upstream_srv_conf_t *usc = data;
-    while (!ngx_queue_empty(&usc->ps.save.head)) {
-        ngx_queue_t *queue = ngx_queue_head(&usc->ps.save.head);
-        ngx_queue_remove(queue);
-        ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, item);
-        ngx_postgres_close(ps->connection, ps->conn, usc);
+    ngx_queue_each(&usc->ps.save.head, item) {
+        ngx_queue_remove(item);
+        ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
+        ngx_postgres_close(ps->connection, ps->conn, ps->usc);
     }
 }
 
