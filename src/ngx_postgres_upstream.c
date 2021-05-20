@@ -407,7 +407,7 @@ exit:
                 ngx_queue_insert_tail(&pusc->pd.head, &pd->item);
                 pusc->pd.size++;
                 pd->timeout.handler = ngx_postgres_data_timeout;
-                pd->timeout.log = r->connection->log;
+                pd->timeout.log = pc->log;
                 pd->timeout.data = r;
                 ngx_add_timer(&pd->timeout, pusc->pd.timeout);
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "pd.size = %i", pusc->pd.size);
