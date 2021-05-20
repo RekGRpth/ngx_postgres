@@ -8,7 +8,7 @@ ngx_int_t ngx_postgres_notify(ngx_connection_t *c, PGconn *conn) {
     ngx_array_t listen;
     if (ngx_array_init(&listen, c->pool, 1, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
     char *escape;
-    ngx_str_t str = {0, NULL};
+    ngx_str_t str = ngx_null_string;
     PGnotify *notify;
     for (; PQstatus(conn) == CONNECTION_OK && (notify = PQnotifies(conn)); ) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "relname=%s, extra=%s, be_pid=%i", notify->relname, notify->extra, notify->be_pid);
@@ -790,7 +790,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             ngx_str_t name;
             for (name.data = ++s, name.len = 0; s < e && is_variable_character(*s); s++, name.len++);
             if (!name.len) { *p++ = '$'; continue; }
-            ngx_str_t type = {0, NULL};
+            ngx_str_t type = ngx_null_string;
             if (s[0] == ':' && s[1] == ':') for (s += 2, type.data = s, type.len = 0; s < e && is_variable_character(*s); s++, type.len++);
             if (!type.len) { *p++ = '$'; p = ngx_copy(p, name.data, name.len); continue; }
             ngx_int_t index = ngx_http_get_variable_index(cf, &name);
