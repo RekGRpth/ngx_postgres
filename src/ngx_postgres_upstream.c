@@ -276,6 +276,8 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_postgres_common_t *psc = &ps->common;
     *psc = *pdc;
     ps->pusc = pusc;
+    ps->sockaddr = pc->sockaddr;
+    ps->socklen = pc->socklen;
     ngx_postgres_set_handler(pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log, c, ngx_postgres_save_handler, ps, 1);
     pc->connection = NULL;
     c->log->connection = c->number;
@@ -330,8 +332,6 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (rc != NGX_OK) return rc;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
     ngx_postgres_common_t *pdc = &pd->common;
-    pdc->sockaddr = pc->sockaddr;
-    pdc->socklen = pc->socklen;
     ngx_postgres_upstream_srv_conf_t *pusc = pd->pusc;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_postgres_connect_t *connect = pc->peer_data;
@@ -340,7 +340,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_connect_t *connect = array->elts;
     ngx_uint_t i;
     for (i = 0; i < array->nelts; i++) for (ngx_uint_t j = 0; j < connect[i].naddrs; j++) {
-        if (ngx_memn2cmp((u_char *)pdc->sockaddr, (u_char *)connect[i].addrs[j].sockaddr, pdc->socklen, connect[i].addrs[j].socklen)) continue;
+        if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)connect[i].addrs[j].sockaddr, pc->socklen, connect[i].addrs[j].socklen)) continue;
         connect = &connect[i];
         goto exit;
     }
@@ -358,14 +358,12 @@ exit:
         ngx_queue_each(&pusc->ps.save.head, item) {
             ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
             ngx_postgres_common_t *psc = &ps->common;
-            if (ngx_memn2cmp((u_char *)pdc->sockaddr, (u_char *)psc->sockaddr, pdc->socklen, psc->socklen)) continue;
+            if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)ps->sockaddr, pc->socklen, ps->socklen)) continue;
             ngx_queue_remove(item);
             ngx_queue_insert_tail(&pusc->ps.data.head, item);
             *pdc = *psc;
             ngx_connection_t *c = pdc->connection;
-            ngx_http_upstream_t *u = r->upstream;
-            ngx_peer_connection_t *pc = &u->peer;
-            ngx_postgres_set_handler(r->connection->log, c, NULL, NULL, 0);
+            ngx_postgres_set_handler(pc->log, c, NULL, NULL, 0);
             c->log_error = pc->log_error;
             pc->cached = 1;
             pc->connection = c;

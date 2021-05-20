@@ -69,8 +69,6 @@ typedef struct {
     } prepare;
     ngx_connection_t *connection;
     PGconn *conn;
-    socklen_t socklen;
-    struct sockaddr *sockaddr;
 } ngx_postgres_common_t;
 
 typedef struct {
@@ -130,6 +128,8 @@ typedef struct ngx_postgres_save_t {
     ngx_postgres_save_handler_pt handler;
     ngx_postgres_upstream_srv_conf_t *pusc;
     ngx_queue_t item;
+    socklen_t socklen;
+    struct sockaddr *sockaddr;
 } ngx_postgres_save_t;
 
 typedef struct {
