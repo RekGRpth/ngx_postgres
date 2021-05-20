@@ -182,7 +182,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
         default: break;
     }
     if (ps->handler(ps) != NGX_ERROR) return;
-close:;
+close:
     ngx_postgres_save_close(ps);
     ngx_queue_remove(&ps->item);
     ngx_postgres_upstream_srv_conf_t *pusc = ps->pusc;
