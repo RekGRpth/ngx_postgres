@@ -334,8 +334,8 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
             ps->usc = usc;
             ngx_postgres_save_close(ps);
         }
+        pc->connection = NULL;
     }
-    pc->connection = NULL;
     pd->peer.free(pc, pd->peer.data, state);
 }
 
