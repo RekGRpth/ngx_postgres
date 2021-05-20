@@ -13,8 +13,7 @@ static void ngx_postgres_srv_conf_cleanup(void *data) {
         ngx_queue_t *queue = ngx_queue_head(&pusc->ps.save.head);
         ngx_queue_remove(queue);
         ngx_postgres_save_t *ps = ngx_queue_data(queue, ngx_postgres_save_t, item);
-        ngx_postgres_common_t *psc = &ps->common;
-        ngx_postgres_common_close(psc, pusc);
+        ngx_postgres_close(ps->connection, ps->conn, pusc);
     }
 }
 

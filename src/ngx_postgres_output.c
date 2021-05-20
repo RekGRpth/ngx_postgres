@@ -479,8 +479,7 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
 static ngx_int_t ngx_postgres_charset(ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_common_t *pdc = &pd->common;
-    const char *charset = PQparameterStatus(pdc->conn, "client_encoding");
+    const char *charset = PQparameterStatus(pd->conn, "client_encoding");
     if (!charset) return NGX_OK;
     if (!ngx_strcasecmp((u_char *)charset, (u_char *)"utf8")) {
         ngx_str_set(&r->headers_out.charset, "utf-8");
