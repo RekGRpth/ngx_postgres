@@ -270,6 +270,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     if (c->write->timer_set) ngx_del_timer(c->write);
     ngx_postgres_upstream_srv_conf_t *usc = pd->usc;
     ngx_postgres_save_t *ps;
+    if (!usc->ps.save.max) goto create;
     if (c->requests >= usc->ps.save.requests) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "requests = %i", c->requests); goto create; }
     switch (PQtransactionStatus(pd->conn)) {
         case PQTRANS_UNKNOWN: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus == PQTRANS_UNKNOWN"); goto create;
@@ -336,7 +337,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     else if (c->read->error) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->read->error"); }
     else if (c->write->error) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->write->error"); }
     else if (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout"); }
-    else if (usc->ps.save.max) ngx_postgres_free_peer(pc, data);
+    else ngx_postgres_free_peer(pc, data);
     if (pc->connection) { ngx_postgres_close(c, pd->conn, usc); pc->connection = NULL; }
     pd->peer.free(pc, pd->peer.data, state);
 }
