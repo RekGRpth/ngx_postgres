@@ -6,10 +6,10 @@
 ngx_int_t ngx_postgres_notify(ngx_connection_t *c, PGconn *conn) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_array_t listen;
-    ngx_str_t str = {0, NULL};
     if (ngx_array_init(&listen, c->pool, 1, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
-    PGnotify *notify;
     char *escape;
+    ngx_str_t str = {0, NULL};
+    PGnotify *notify;
     for (; PQstatus(conn) == CONNECTION_OK && (notify = PQnotifies(conn)); ) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "relname=%s, extra=%s, be_pid=%i", notify->relname, notify->extra, notify->be_pid);
         if (!ngx_http_push_stream_add_msg_to_channel_my) { PQfreemem(notify); continue; }
