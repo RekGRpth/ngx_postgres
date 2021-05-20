@@ -191,35 +191,27 @@ close:
 
 
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-static ngx_int_t ngx_postgres_next(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_connection_t *c = pd->connection;
-    ngx_postgres_upstream_srv_conf_t *pusc = pd->pusc;
+static ngx_int_t ngx_postgres_next(ngx_connection_t *c, ngx_postgres_upstream_srv_conf_t *pusc) {
     while (!ngx_queue_empty(&pusc->pd.head)) {
         ngx_queue_t *item = ngx_queue_head(&pusc->pd.head);
         ngx_queue_remove(item);
         ngx_postgres_data_t *pd = ngx_queue_data(item, ngx_postgres_data_t, item);
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         if (pusc->pd.size) pusc->pd.size--;
         if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
         ngx_http_request_t *r = pd->request;
         if (!r->connection || r->connection->error) continue;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
-        ngx_http_upstream_t *u = r->upstream;
-        ngx_peer_connection_t *pc = &u->peer;
         c->data = pd;
         c->idle = 0;
-        c->log = pc->log;
-        c->pool->log = pc->log;
+        c->log = r->connection->log;
+        c->pool->log = r->connection->log;
         c->read->handler = ngx_postgres_data_handler;
-        c->read->log = pc->log;
+        c->read->log = r->connection->log;
         c->read->timedout = 0;
         c->sent = 0;
         c->write->handler = ngx_postgres_data_handler;
-        c->write->log = pc->log;
+        c->write->log = r->connection->log;
         c->write->timedout = 0;
-        pc->connection = c;
         r->state = 0;
         ngx_queue_init(item);
         return ngx_postgres_prepare_or_query(pd);
@@ -245,7 +237,7 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_peer_connection_t *pc = &u->peer;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    switch (ngx_postgres_next(pd)) {
+    switch (ngx_postgres_next(c, pusc)) {
         case NGX_ERROR: return;
         case NGX_OK: break;
         default: pc->connection = NULL; return;
