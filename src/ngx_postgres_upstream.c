@@ -122,8 +122,7 @@ static ngx_int_t ngx_postgres_listen_result(ngx_postgres_save_t *ps) {
             default: break;
         }
     }
-    ngx_postgres_upstream_srv_conf_t *pusc = ps->pusc;
-    ngx_postgres_close(c, ps->conn, pusc);
+    ngx_postgres_close(c, ps->conn, ps->pusc);
     return rc;
 }
 
