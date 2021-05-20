@@ -153,14 +153,14 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *ps) {
 }
 
 
-static void ngx_postgres_save_close(ngx_postgres_save_t *ps, ngx_postgres_upstream_srv_conf_t *pusc) {
+static void ngx_postgres_save_close(ngx_postgres_save_t *ps) {
     ngx_connection_t *c = ps->connection;
     c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
     if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && ngx_postgres_listen(ps) != NGX_ERROR) return;
-    ngx_postgres_close(c, ps->conn, pusc);
+    ngx_postgres_close(c, ps->conn, ps->pusc);
 }
 
 
@@ -184,9 +184,9 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     }
     if (ps->handler(ps) != NGX_ERROR) return;
 close:;
-    ngx_postgres_upstream_srv_conf_t *pusc = ps->pusc;
-    ngx_postgres_save_close(ps, pusc);
+    ngx_postgres_save_close(ps);
     ngx_queue_remove(&ps->item);
+    ngx_postgres_upstream_srv_conf_t *pusc = ps->pusc;
     ngx_queue_insert_tail(&pusc->ps.data.head, &ps->item);
 }
 
@@ -254,14 +254,13 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
         ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ngx_queue_empty(data)");
         item = ngx_queue_last(&pusc->ps.save.head);
         ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
-        ngx_postgres_save_close(ps, pusc);
+        ngx_postgres_save_close(ps);
     }
     ngx_queue_remove(item);
     ngx_queue_insert_tail(&pusc->ps.save.head, item);
     ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
     c->data = ps;
     c->idle = 1;
-    c->log->connection = c->number;
     c->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
     c->pool->log = pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log;
     c->read->handler = ngx_postgres_save_handler;
@@ -278,21 +277,49 @@ static void ngx_postgres_free_peer(ngx_postgres_data_t *pd) {
     ps->pusc = pusc;
     ps->sockaddr = pc->sockaddr;
     ps->socklen = pc->socklen;
+    c->log->connection = c->number;
     ngx_add_timer(c->read, pusc->ps.save.timeout);
     ngx_add_timer(c->write, pusc->ps.save.timeout);
     ps->handler = ngx_postgres_idle;
 }
 
 
+static ngx_postgres_save_t *ngx_postgres_save_create(ngx_connection_t *c, ngx_log_t *log) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    ngx_postgres_save_t *ps = ngx_pcalloc(c->pool, sizeof(*ps));
+    if (!ps) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NULL; }
+    c->data = ps;
+    c->idle = 1;
+    c->log = log;
+    c->pool->log = log;
+    c->read->handler = ngx_postgres_save_handler;
+    c->read->log = log;
+    c->read->timedout = 0;
+    c->sent = 0;
+    c->write->handler = ngx_postgres_save_handler;
+    c->write->log = log;
+    c->write->timedout = 0;
+    log->connection = c->number;
+    ps->connection = c;
+    return ps;
+}
+
+
 static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "state = %i", state);
     ngx_postgres_data_t *pd = data;
-    ngx_http_request_t *r = pd->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "state = %i", state);
     ngx_postgres_upstream_srv_conf_t *pusc = pd->pusc;
     ngx_connection_t *c = pc->connection;
     if (ngx_terminate || ngx_exiting || !c || c->error || c->read->error || c->write->error || (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout));
     else if (pusc->ps.save.max) ngx_postgres_free_peer(pd);
-    if (pc->connection) ngx_postgres_close(c, pd->conn, pusc);
+    if (pc->connection) {
+        ngx_postgres_save_t *ps = ngx_postgres_save_create(c, pusc->ps.save.log ? pusc->ps.save.log : ngx_cycle->log);
+        if (!ps) ngx_postgres_close(c, pd->conn, pusc); else {
+            ps->conn = pd->conn;
+            ps->pusc = pusc;
+            ngx_postgres_save_close(ps);
+        }
+    }
     pc->connection = NULL;
     pd->peer_free(pc, pd->peer_data, state);
 }
