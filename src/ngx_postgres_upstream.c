@@ -191,7 +191,7 @@ close:
 
 
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-static ngx_int_t ngx_postgres_next(ngx_connection_t *c, ngx_postgres_upstream_srv_conf_t *usc) {
+static ngx_int_t ngx_postgres_next(ngx_connection_t *c, PGconn *conn, ngx_postgres_prepare_t *prepare, ngx_postgres_upstream_srv_conf_t *usc) {
     ngx_queue_each(&usc->pd.head, item) {
         ngx_queue_remove(item);
         ngx_postgres_data_t *pd = ngx_queue_data(item, ngx_postgres_data_t, item);
@@ -211,6 +211,9 @@ static ngx_int_t ngx_postgres_next(ngx_connection_t *c, ngx_postgres_upstream_sr
         c->write->handler = ngx_postgres_data_handler;
         c->write->log = r->connection->log;
         c->write->timedout = 0;
+        pd->conn = conn;
+        pd->connection = c;
+        pd->prepare = prepare;
         r->state = 0;
         ngx_queue_init(item);
         return ngx_postgres_prepare_or_query(pd);
@@ -234,7 +237,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
         default: ngx_log_error(NGX_LOG_WARN, pc->log, 0, "PQtransactionStatus != PQTRANS_IDLE"); if (!PQrequestCancel(pd->conn)) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQrequestCancel and %s", PQerrorMessageMy(pd->conn)); return; } break;
     }
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    switch (ngx_postgres_next(c, usc)) {
+    switch (ngx_postgres_next(c, pd->conn, pd->prepare, usc)) {
         case NGX_ERROR: return;
         case NGX_OK: break;
         default: pc->connection = NULL; return;
