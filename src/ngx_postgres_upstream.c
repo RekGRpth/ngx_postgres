@@ -208,16 +208,19 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_data_t *pd) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         ngx_http_upstream_t *u = r->upstream;
         ngx_peer_connection_t *pc = &u->peer;
+        c->data = pd;
         c->idle = 0;
         c->log = pc->log;
         c->pool->log = pc->log;
+        c->read->handler = ngx_postgres_data_handler;
         c->read->log = pc->log;
         c->read->timedout = 0;
         c->sent = 0;
+        c->write->handler = ngx_postgres_data_handler;
         c->write->log = pc->log;
         c->write->timedout = 0;
         pc->connection = c;
-        u->reinit_request(r);
+        r->state = 0;
         ngx_queue_init(item);
         return ngx_postgres_prepare_or_query(pd);
     }
