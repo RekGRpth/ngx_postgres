@@ -64,9 +64,9 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_data_t *pd) {
         ngx_add_timer(c->write, query->timeout);
     }
     ngx_postgres_send_t *send = &sendelts[pd->index];
-    ngx_postgres_upstream_srv_conf_t *pusc = pd->pusc;
-    ngx_flag_t prepare = pusc->prepare.max && (location->prepare || query->prepare);
-    if (!pusc->prepare.max && (location->prepare || query->prepare)) ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ignoring prepare");
+    ngx_postgres_upstream_srv_conf_t *usc = pd->usc;
+    ngx_flag_t prepare = usc->prepare.max && (location->prepare || query->prepare);
+    if (!usc->prepare.max && (location->prepare || query->prepare)) ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "ignoring prepare");
     ngx_str_t sql;
     sql.len = query->sql.len - 2 * query->ids.nelts - query->percent;
 //        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &query->sql);
@@ -101,7 +101,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_data_t *pd) {
     *last = '\0';
 //        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "sql = `%V`", &sql);
     send->sql = sql;
-    if (pusc->ps.save.max) {
+    if (usc->ps.save.max) {
         if (prepare) {
             if (!(send->stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
             u_char *last = ngx_snprintf(send->stmtName.data, 31, "ngx_%ul", (unsigned long)(send->hash = ngx_hash_key(sql.data, sql.len)));
@@ -334,8 +334,8 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd) {
         ngx_postgres_prepare_t2 *prepare = ngx_queue_data(item, ngx_postgres_prepare_t2, item);
         if (prepare->hash == send->hash) return ngx_postgres_query_prepared(pd);
     }
-    ngx_postgres_upstream_srv_conf_t *pusc = pd->pusc;
-    if (pd->prepare->size >= pusc->prepare.max && pusc->prepare.deallocate) return ngx_postgres_deallocate(pd);
+    ngx_postgres_upstream_srv_conf_t *usc = pd->usc;
+    if (pd->prepare->size >= usc->prepare.max && usc->prepare.deallocate) return ngx_postgres_deallocate(pd);
     if (!PQsendPrepare(pd->conn, (const char *)send->stmtName.data, (const char *)send->sql.data, send->nParams, send->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(\"%V\", \"%V\") and %s", &send->stmtName, &send->sql, PQerrorMessageMy(pd->conn)); return NGX_ERROR; }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendPrepare(\"%V\", \"%V\")", &send->stmtName, &send->sql);
     ngx_connection_t *c = pd->connection;
@@ -376,16 +376,16 @@ ngx_int_t ngx_postgres_connect(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = pd->connection;
     pd->handler = ngx_postgres_connect;
-    ngx_postgres_upstream_srv_conf_t *pusc = pd->pusc;
+    ngx_postgres_upstream_srv_conf_t *usc = pd->usc;
     switch (PQstatus(pd->conn)) {
-        case CONNECTION_BAD: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD and %s", PQerrorMessageMy(pd->conn)); ngx_postgres_close(c, pd->conn, pusc); return NGX_ERROR;
+        case CONNECTION_BAD: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD and %s", PQerrorMessageMy(pd->conn)); ngx_postgres_close(c, pd->conn, usc); return NGX_ERROR;
         case CONNECTION_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_OK"); goto connected;
         default: break;
     }
 again:
     switch (PQconnectPoll(pd->conn)) {
         case PGRES_POLLING_ACTIVE: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_ACTIVE and %s", ngx_postgres_status(pd->conn)); return NGX_AGAIN;
-        case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PGRES_POLLING_FAILED and %s and %s", ngx_postgres_status(pd->conn), PQerrorMessageMy(pd->conn)); ngx_postgres_close(c, pd->conn, pusc); return NGX_ERROR;
+        case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PGRES_POLLING_FAILED and %s and %s", ngx_postgres_status(pd->conn), PQerrorMessageMy(pd->conn)); ngx_postgres_close(c, pd->conn, usc); return NGX_ERROR;
         case PGRES_POLLING_OK: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_OK and %s", ngx_postgres_status(pd->conn)); goto connected;
         case PGRES_POLLING_READING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_READING and %s", ngx_postgres_status(pd->conn)); return NGX_AGAIN;
         case PGRES_POLLING_WRITING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(pd->conn)); if (PQstatus(pd->conn) == CONNECTION_MADE) goto again; return NGX_AGAIN;

@@ -26,6 +26,7 @@ typedef struct {
 } ngx_postgres_connect_t;
 
 typedef struct {
+//    ngx_http_upstream_peer_t peer;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     struct {
         ngx_flag_t reject;
@@ -106,7 +107,7 @@ typedef struct ngx_postgres_data_t {
     ngx_postgres_data_handler_pt handler;
     ngx_postgres_prepare_t *prepare;
     ngx_postgres_result_t result;
-    ngx_postgres_upstream_srv_conf_t *pusc;
+    ngx_postgres_upstream_srv_conf_t *usc;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_queue_t item;
 #endif
@@ -121,7 +122,7 @@ typedef struct ngx_postgres_save_t {
     ngx_connection_t *connection;
     ngx_postgres_prepare_t *prepare;
     ngx_postgres_save_handler_pt handler;
-    ngx_postgres_upstream_srv_conf_t *pusc;
+    ngx_postgres_upstream_srv_conf_t *usc;
     ngx_queue_t item;
     PGconn *conn;
     socklen_t socklen;
@@ -191,7 +192,7 @@ ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
 ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd);
-void ngx_postgres_close(ngx_connection_t *c, PGconn *conn, ngx_postgres_upstream_srv_conf_t *pusc);
+void ngx_postgres_close(ngx_connection_t *c, PGconn *conn, ngx_postgres_upstream_srv_conf_t *usc);
 void ngx_postgres_data_handler(ngx_event_t *ev);
 
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
