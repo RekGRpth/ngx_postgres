@@ -25,8 +25,8 @@ ngx_int_t ngx_postgres_notify(ngx_connection_t *c, PGconn *conn) {
                 ngx_str_t *command = ngx_array_push(&listen);
                 if (!command) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_array_push"); goto notify; }
                 if (!(escape = PQescapeIdentifier(conn, (const char *)id.data, id.len))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQescapeIdentifier(%V) and %s", &id, PQerrorMessageMy(conn)); goto notify; }
-                if (!(command->data = ngx_pnalloc(c->pool, command->len = sizeof("UNLISTEN ") - 1 + ngx_strlen(escape)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); goto escape; }
-                command->len = ngx_snprintf(command->data, command->len, "UNLISTEN %s", escape) - command->data;
+                if (!(command->data = ngx_pnalloc(c->pool, command->len = sizeof("UNLISTEN ;") - 1 + ngx_strlen(escape)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); goto escape; }
+                command->len = ngx_snprintf(command->data, command->len, "UNLISTEN %s;", escape) - command->data;
                 str.len += command->len;
                 PQfreemem(escape);
             } break;
@@ -49,8 +49,8 @@ ngx_int_t ngx_postgres_notify(ngx_connection_t *c, PGconn *conn) {
         ngx_pfree(c->pool, command[i].data);
     }
     str.data[str.len] = '\0';
-    if (!PQsendQuery(conn, (const char *)str.data)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery(%V) and %s", &str, PQerrorMessageMy(conn)); goto error; }
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQsendQuery(%V)", &str);
+    if (!PQsendQuery(conn, (const char *)str.data)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery(\"%V\") and %s", &str, PQerrorMessageMy(conn)); goto error; }
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQsendQuery(\"%V\")", &str);
 ok:
     ngx_array_destroy(&listen);
     return NGX_OK;
@@ -93,10 +93,12 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_save_t *ps, PGresult *res) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     if (!PQntuples(res)) return NGX_OK;
     for (ngx_uint_t row = 0; row < PQntuples(res); row++) {
-        const char *channel = PQgetvalue(res, row, PQfnumber(res, "channel"));
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "row = %i, channel = %s", row, channel);
-        ngx_str_t listen = {ngx_strlen(channel), (u_char *)channel};
-        ngx_http_push_stream_delete_channel_my(c->log, &listen, (u_char *)"channel unlisten", sizeof("channel unlisten") - 1, c->pool);
+        const char *schannel = PQgetvalue(res, row, PQfnumber(res, "channel"));
+        const char *sunlisten = PQgetvalue(res, row, PQfnumber(res, "unlisten"));
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "row = %i, channel = %s, unlisten = %s", row, schannel, sunlisten);
+        ngx_str_t channel = {ngx_strlen(schannel), (u_char *)schannel};
+        ngx_str_t unlisten = {ngx_strlen(sunlisten), (u_char *)sunlisten};
+        ngx_http_push_stream_delete_channel_my(c->log, &channel, unlisten.data, unlisten.len, c->pool);
     }
     return NGX_OK;
 }
@@ -143,8 +145,9 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *ps) {
             default: break;
         }
     }
-    if (!PQsendQuery(ps->conn, "SELECT pg_listening_channels() AS channel")) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery and %s", PQerrorMessageMy(ps->conn)); return NGX_ERROR; }
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQsendQuery");
+    static const char *command = "SELECT channel, concat_ws(' ', 'UNLISTEN', quote_ident(channel)) AS unlisten FROM pg_listening_channels() AS channel";
+    if (!PQsendQuery(ps->conn, command)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery(\"%s\") and %s", command, PQerrorMessageMy(ps->conn)); return NGX_ERROR; }
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQsendQuery(\"%s\")", command);
     ps->handler = ngx_postgres_listen_result;
     return NGX_OK;
 }
