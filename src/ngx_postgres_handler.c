@@ -42,8 +42,8 @@ void ngx_postgres_data_handler(ngx_event_t *ev) {
     ngx_postgres_data_t *pd = c->data;
     ngx_http_request_t *r = pd->request;
     ngx_http_upstream_t *u = r->upstream;
-    if (c->read->timedout) return PQstatus(pd->share.conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
-    if (c->write->timedout) return PQstatus(pd->share.conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT);
+    if (c->read->timedout) { c->read->timedout = 0; return PQstatus(pd->share.conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); }
+    if (c->write->timedout) { c->write->timedout = 0; return PQstatus(pd->share.conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); }
     if (ngx_http_upstream_test_connect(c) != NGX_OK) return ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
     if (PQstatus(pd->share.conn) == CONNECTION_OK) {
         switch (ngx_postgres_consume_flush_busy(&pd->share)) {
