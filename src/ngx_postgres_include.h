@@ -26,7 +26,6 @@ typedef struct {
 } ngx_postgres_connect_t;
 
 typedef struct {
-    ngx_http_upstream_peer_t peer;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     struct {
         ngx_flag_t reject;
@@ -38,6 +37,10 @@ typedef struct {
 #else
     void *connect;
 #endif
+    struct {
+        ngx_http_upstream_init_peer_pt init;
+        ngx_http_upstream_init_pt init_upstream;
+    } peer;
     struct {
         struct {
             ngx_flag_t reject;
@@ -101,7 +104,6 @@ typedef struct ngx_postgres_data_t {
     ngx_event_t timeout;
 #endif
     ngx_http_request_t *request;
-    ngx_peer_connection_t peer;
     ngx_postgres_data_handler_pt handler;
     ngx_postgres_prepare_t *prepare;
     ngx_postgres_result_t result;
@@ -111,6 +113,15 @@ typedef struct ngx_postgres_data_t {
 #endif
     ngx_uint_t index;
     PGconn *conn;
+    struct {
+        ngx_event_free_peer_pt free;
+        ngx_event_get_peer_pt get;
+#if (NGX_SSL || NGX_COMPAT)
+        ngx_event_save_peer_session_pt save_session;
+        ngx_event_set_peer_session_pt set_session;
+#endif
+        void *data;
+    } peer;
 } ngx_postgres_data_t;
 
 typedef struct ngx_postgres_save_t ngx_postgres_save_t;
@@ -123,8 +134,10 @@ typedef struct ngx_postgres_save_t {
     ngx_postgres_upstream_srv_conf_t *usc;
     ngx_queue_t item;
     PGconn *conn;
-    socklen_t socklen;
-    struct sockaddr *sockaddr;
+    struct {
+        socklen_t socklen;
+        struct sockaddr *sockaddr;
+    } peer;
 } ngx_postgres_save_t;
 
 typedef struct {

@@ -313,8 +313,8 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     ps->handler = ngx_postgres_idle;
     ps->prepare = pd->prepare;
     ps->usc = usc;
-    ps->sockaddr = pc->sockaddr;
-    ps->socklen = pc->socklen;
+    ps->peer.sockaddr = pc->sockaddr;
+    ps->peer.socklen = pc->socklen;
     ngx_add_timer(c->read, usc->ps.save.timeout);
     ngx_add_timer(c->write, usc->ps.save.timeout);
     return;
@@ -397,7 +397,7 @@ exit:
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ps.max");
         ngx_queue_each(&usc->ps.save.head, item) {
             ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
-            if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)ps->sockaddr, pc->socklen, ps->socklen)) continue;
+            if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)ps->peer.sockaddr, pc->socklen, ps->peer.socklen)) continue;
             ngx_queue_remove(item);
             ngx_queue_insert_tail(&usc->ps.data.head, item);
             ngx_connection_t *c = ps->connection;
@@ -534,12 +534,16 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     if (pd->usc->peer.init(r, usc) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer.init != NGX_OK"); return NGX_ERROR; }
     pd->request = r;
     ngx_http_upstream_t *u = r->upstream;
-    pd->peer = u->peer;
+    pd->peer.data = u->peer.data;
     u->peer.data = pd;
+    pd->peer.get = u->peer.get;
     u->peer.get = ngx_postgres_peer_get;
+    pd->peer.free = u->peer.free;
     u->peer.free = ngx_postgres_peer_free;
 #if (NGX_HTTP_SSL)
+    pd->peer.save_session = u->peer.save_session;
     u->peer.save_session = ngx_postgres_save_session;
+    pd->peer.set_session = u->peer.set_session;
     u->peer.set_session = ngx_postgres_set_session;
 #endif
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
