@@ -262,13 +262,12 @@ static ngx_postgres_save_t *ngx_postgres_save_create(ngx_postgres_share_t *s) {
 }
 
 
-static void ngx_postgres_peer_data_save(ngx_peer_connection_t *pc, void *data, ngx_postgres_save_t *ps) {
+static void ngx_postgres_peer_data_share(ngx_peer_connection_t *pc, void *data, ngx_postgres_share_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_connection_t *c = pc->connection;
     ngx_postgres_data_t *pd = data;
-    ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
+    ngx_postgres_upstream_srv_conf_t *usc = s->usc;
     ngx_log_t *log = usc->ps.save.log ? usc->ps.save.log : ngx_cycle->log;
-    c->data = ps;
     c->idle = 1;
     c->log = log;
     c->pool->log = log;
@@ -281,10 +280,7 @@ static void ngx_postgres_peer_data_save(ngx_peer_connection_t *pc, void *data, n
     c->write->timedout = 0;
     log->connection = c->number;
     pc->connection = NULL;
-    ps->handler = ngx_postgres_idle;
-    ps->peer.sockaddr = pc->sockaddr;
-    ps->peer.socklen = pc->socklen;
-    ps->share = pd->share;
+    *s = pd->share;
     ngx_add_timer(c->read, usc->ps.save.timeout);
     ngx_add_timer(c->write, usc->ps.save.timeout);
 }
@@ -322,7 +318,11 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     ngx_queue_remove(item);
     ngx_queue_insert_tail(&usc->ps.save.head, item);
     ps = ngx_queue_data(item, ngx_postgres_save_t, item);
-    ngx_postgres_peer_data_save(pc, data, ps);
+    ngx_postgres_peer_data_share(pc, data, &ps->share);
+    c->data = ps;
+    ps->handler = ngx_postgres_idle;
+    ps->peer.sockaddr = pc->sockaddr;
+    ps->peer.socklen = pc->socklen;
     return;
 create:
     if (!(ps = ngx_postgres_save_create(&pd->share))) return;
