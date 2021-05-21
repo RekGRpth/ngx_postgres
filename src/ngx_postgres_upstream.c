@@ -213,9 +213,7 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_share_t *s) {
         c->write->handler = ngx_postgres_data_handler;
         c->write->log = r->connection->log;
         c->write->timedout = 0;
-        pd->share.conn = s->conn;
-        pd->share.connection = c;
-        pd->share.prepare = s->prepare;
+        pd->share = *s;
         r->state = 0;
         u->peer.connection = c;
         ngx_queue_init(item);
