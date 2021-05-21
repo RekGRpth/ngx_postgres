@@ -129,8 +129,8 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_data_t *pd) {
                 ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(pd->result.res));
                 ngx_postgres_variable_error(pd);
                 ngx_postgres_rewrite_set(pd);
-                rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-                break;
+                PQclear(pd->result.res);
+                return ngx_postgres_done(pd, NGX_HTTP_INTERNAL_SERVER_ERROR);
             case PGRES_COMMAND_OK:
             case PGRES_TUPLES_OK:
                 if (rc == NGX_OK) {
