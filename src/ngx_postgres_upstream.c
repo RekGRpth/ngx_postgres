@@ -158,7 +158,7 @@ static void ngx_postgres_save_close(ngx_postgres_save_t *ps) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && ngx_postgres_listen(ps) != NGX_ERROR) return;
+    if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && PQstatus(ps->share.conn) == CONNECTION_OK && ngx_postgres_listen(ps) != NGX_ERROR) return;
     ngx_postgres_close(&ps->share);
 }
 
