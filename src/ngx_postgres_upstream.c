@@ -240,6 +240,7 @@ static void ngx_postgres_data_share(ngx_postgres_data_t *pd, ngx_postgres_share_
     c->write->handler = ngx_postgres_save_handler;
     c->write->log = log;
     c->write->timedout = 0;
+    *s = pd->share;
     log->connection = c->number;
     ngx_add_timer(c->read, usc->ps.save.timeout);
     ngx_add_timer(c->write, usc->ps.save.timeout);
@@ -252,7 +253,6 @@ static void ngx_postgres_data_save(ngx_postgres_data_t *pd, ngx_postgres_save_t 
     ngx_postgres_data_share(pd, &ps->share);
     pd->share.connection->data = ps;
     ps->handler = ngx_postgres_idle;
-    ps->share = pd->share;
     ngx_queue_remove(&ps->item);
     ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
     ngx_queue_insert_tail(&usc->ps.save.head, &ps->item);
@@ -423,11 +423,11 @@ error:
 }
 
 
-static void ngx_postgres_save_data(ngx_postgres_save_t *ps, ngx_postgres_data_t *pd) {
+static void ngx_postgres_share_data(ngx_postgres_share_t *s, ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_upstream_srv_conf_t *usc = ps->share.usc;
-    ngx_connection_t *c = ps->share.connection;
+    ngx_postgres_upstream_srv_conf_t *usc = s->usc;
+    ngx_connection_t *c = s->connection;
     ngx_log_t *log = r->connection->log;
     c->data = pd;
     c->idle = 0;
@@ -440,11 +440,19 @@ static void ngx_postgres_save_data(ngx_postgres_save_t *ps, ngx_postgres_data_t 
     c->write->handler = ngx_postgres_data_handler;
     c->write->log = log;
     c->write->timedout = 0;
-    pd->share = ps->share;
-    ngx_queue_remove(&ps->item);
-    ngx_queue_insert_tail(&usc->ps.data.head, &ps->item);
+    pd->share = *s;
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
+}
+
+
+static void ngx_postgres_save_data(ngx_postgres_save_t *ps, ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_postgres_share_data(&ps->share, pd);
+    ngx_queue_remove(&ps->item);
+    ngx_postgres_upstream_srv_conf_t *usc = ps->share.usc;
+    ngx_queue_insert_tail(&usc->ps.data.head, &ps->item);
 }
 
 
