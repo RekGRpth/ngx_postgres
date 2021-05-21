@@ -96,23 +96,27 @@ typedef struct {
 typedef struct ngx_postgres_data_t ngx_postgres_data_t;
 typedef ngx_int_t (*ngx_postgres_data_handler_pt) (ngx_postgres_data_t *pd);
 
+typedef struct {
+    ngx_connection_t *connection;
+    ngx_postgres_prepare_t *prepare;
+    ngx_postgres_upstream_srv_conf_t *usc;
+    PGconn *conn;
+} ngx_postgres_common_t;
+
 typedef struct ngx_postgres_data_t {
     ngx_array_t send;
     ngx_array_t variable;
-    ngx_connection_t *connection;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_event_t timeout;
 #endif
     ngx_http_request_t *request;
+    ngx_postgres_common_t common;
     ngx_postgres_data_handler_pt handler;
-    ngx_postgres_prepare_t *prepare;
     ngx_postgres_result_t result;
-    ngx_postgres_upstream_srv_conf_t *usc;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_queue_t item;
 #endif
     ngx_uint_t index;
-    PGconn *conn;
     struct {
         ngx_event_free_peer_pt free;
         ngx_event_get_peer_pt get;
@@ -128,12 +132,9 @@ typedef struct ngx_postgres_save_t ngx_postgres_save_t;
 typedef ngx_int_t (*ngx_postgres_save_handler_pt) (ngx_postgres_save_t *ps);
 
 typedef struct ngx_postgres_save_t {
-    ngx_connection_t *connection;
-    ngx_postgres_prepare_t *prepare;
+    ngx_postgres_common_t common;
     ngx_postgres_save_handler_pt handler;
-    ngx_postgres_upstream_srv_conf_t *usc;
     ngx_queue_t item;
-    PGconn *conn;
     struct {
         socklen_t socklen;
         struct sockaddr *sockaddr;
