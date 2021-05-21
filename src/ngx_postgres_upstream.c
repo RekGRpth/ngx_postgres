@@ -266,10 +266,10 @@ static ngx_postgres_save_t *ngx_postgres_save_create(ngx_postgres_share_t *s) {
 
 static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
-    ngx_postgres_data_t *pd = data;
-    ngx_connection_t *c = pd->share.connection;
+    ngx_connection_t *c = pc->connection;
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
+    ngx_postgres_data_t *pd = data;
     ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
     ngx_postgres_save_t *ps;
     if (!usc->ps.save.max) goto create;
@@ -310,13 +310,10 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     c->write->timedout = 0;
     log->connection = c->number;
     pc->connection = NULL;
-    ps->share.connection = c;
-    ps->share.conn = pd->share.conn;
     ps->handler = ngx_postgres_idle;
-    ps->share.prepare = pd->share.prepare;
-    ps->share.usc = usc;
     ps->peer.sockaddr = pc->sockaddr;
     ps->peer.socklen = pc->socklen;
+    ps->share = pd->share;
     ngx_add_timer(c->read, usc->ps.save.timeout);
     ngx_add_timer(c->write, usc->ps.save.timeout);
     return;
