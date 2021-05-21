@@ -190,6 +190,39 @@ close:
 }
 
 
+static void ngx_postgres_share_data(ngx_postgres_share_t *s, ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_postgres_upstream_srv_conf_t *usc = s->usc;
+    ngx_connection_t *c = s->connection;
+    ngx_log_t *log = r->connection->log;
+    c->data = pd;
+    c->idle = 0;
+    c->log = log;
+    c->pool->log = log;
+    c->read->handler = ngx_postgres_data_handler;
+    c->read->log = log;
+    c->read->timedout = 0;
+    c->sent = 0;
+    c->write->handler = ngx_postgres_data_handler;
+    c->write->log = log;
+    c->write->timedout = 0;
+    pd->share = *s;
+    if (c->read->timer_set) ngx_del_timer(c->read);
+    if (c->write->timer_set) ngx_del_timer(c->write);
+}
+
+
+static void ngx_postgres_save_data(ngx_postgres_save_t *ps, ngx_postgres_data_t *pd) {
+    ngx_http_request_t *r = pd->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_postgres_share_data(&ps->share, pd);
+    ngx_queue_remove(&ps->item);
+    ngx_postgres_upstream_srv_conf_t *usc = ps->share.usc;
+    ngx_queue_insert_tail(&usc->ps.data.head, &ps->item);
+}
+
+
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 static ngx_int_t ngx_postgres_next(ngx_postgres_share_t *s) {
     ngx_queue_each(&s->usc->pd.head, item) {
@@ -200,20 +233,9 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_share_t *s) {
         ngx_http_request_t *r = pd->request;
         if (!r->connection || r->connection->error) continue;
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
+        ngx_postgres_share_data(s, pd);
         ngx_http_upstream_t *u = r->upstream;
         ngx_connection_t *c = s->connection;
-        c->data = pd;
-        c->idle = 0;
-        c->log = r->connection->log;
-        c->pool->log = r->connection->log;
-        c->read->handler = ngx_postgres_data_handler;
-        c->read->log = r->connection->log;
-        c->read->timedout = 0;
-        c->sent = 0;
-        c->write->handler = ngx_postgres_data_handler;
-        c->write->log = r->connection->log;
-        c->write->timedout = 0;
-        pd->share = *s;
         r->state = 0;
         u->peer.connection = c;
         ngx_queue_init(item);
@@ -420,39 +442,6 @@ finish:
     pd->share.conn = NULL;
 error:
     return NGX_ERROR;
-}
-
-
-static void ngx_postgres_share_data(ngx_postgres_share_t *s, ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_upstream_srv_conf_t *usc = s->usc;
-    ngx_connection_t *c = s->connection;
-    ngx_log_t *log = r->connection->log;
-    c->data = pd;
-    c->idle = 0;
-    c->log = log;
-    c->pool->log = log;
-    c->read->handler = ngx_postgres_data_handler;
-    c->read->log = log;
-    c->read->timedout = 0;
-    c->sent = 0;
-    c->write->handler = ngx_postgres_data_handler;
-    c->write->log = log;
-    c->write->timedout = 0;
-    pd->share = *s;
-    if (c->read->timer_set) ngx_del_timer(c->read);
-    if (c->write->timer_set) ngx_del_timer(c->write);
-}
-
-
-static void ngx_postgres_save_data(ngx_postgres_save_t *ps, ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_share_data(&ps->share, pd);
-    ngx_queue_remove(&ps->item);
-    ngx_postgres_upstream_srv_conf_t *usc = ps->share.usc;
-    ngx_queue_insert_tail(&usc->ps.data.head, &ps->item);
 }
 
 
