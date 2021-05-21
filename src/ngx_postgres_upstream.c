@@ -224,11 +224,8 @@ static void ngx_postgres_save_data(ngx_postgres_save_t *ps, ngx_postgres_data_t 
 
 
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-static ngx_int_t ngx_postgres_next(ngx_peer_connection_t *pc, void *data) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
-    ngx_postgres_data_t *pd = data;
-    ngx_postgres_share_t *s = &pd->share;
-    ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
+static ngx_int_t ngx_postgres_next(ngx_postgres_share_t *s) {
+    ngx_postgres_upstream_srv_conf_t *usc = s->usc;
     ngx_queue_each(&usc->pd.head, item) {
         ngx_queue_remove(item);
         ngx_postgres_data_t *pd = ngx_queue_data(item, ngx_postgres_data_t, item);
@@ -239,7 +236,8 @@ static ngx_int_t ngx_postgres_next(ngx_peer_connection_t *pc, void *data) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         ngx_postgres_share_data(s, pd);
         r->state = 0;
-        pc->connection = s->connection;
+        ngx_http_upstream_t *u = r->upstream;
+        u->peer.connection = s->connection;
         ngx_queue_init(item);
         return ngx_postgres_prepare_or_query(pd);
     }
@@ -299,7 +297,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
         default: ngx_log_error(NGX_LOG_WARN, pc->log, 0, "PQtransactionStatus != PQTRANS_IDLE"); if (!PQrequestCancel(pd->share.conn)) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQrequestCancel and %s", PQerrorMessageMy(pd->share.conn)); goto create; } break;
     }
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    switch (ngx_postgres_next(pc, data)) {
+    switch (ngx_postgres_next(&pd->share)) {
         case NGX_ERROR: goto create;
         case NGX_OK: break;
         default: goto null;
