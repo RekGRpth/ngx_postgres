@@ -584,22 +584,20 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 
 
 void ngx_postgres_close(ngx_postgres_share_t *s) {
+    ngx_connection_t *c = s->connection;
+    c->log->connection = c->number;
+//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    ngx_log_error(NGX_LOG_WARN, c->log, 0, "%s", __func__);
     if (s->usc->ps.save.size) s->usc->ps.save.size--;
     PQfinish(s->conn);
-    ngx_connection_t *c = s->connection;
-    if (c) {
-        c->log->connection = c->number;
-//        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-        ngx_log_error(NGX_LOG_WARN, c->log, 0, "%s", __func__);
-        if (ngx_del_conn) {
-            ngx_del_conn(c, NGX_CLOSE_EVENT);
-        } else {
-            if (c->read->active || c->read->disabled) { ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT); }
-            if (c->write->active || c->write->disabled) { ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT); }
-        }
-        ngx_destroy_pool(c->pool);
-        ngx_close_connection(c);
+    if (ngx_del_conn) {
+        ngx_del_conn(c, NGX_CLOSE_EVENT);
+    } else {
+        if (c->read->active || c->read->disabled) { ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT); }
+        if (c->write->active || c->write->disabled) { ngx_del_event(c->write, NGX_WRITE_EVENT, NGX_CLOSE_EVENT); }
     }
+    ngx_destroy_pool(c->pool);
+    ngx_close_connection(c);
 }
 
 
