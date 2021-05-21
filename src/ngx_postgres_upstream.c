@@ -327,14 +327,15 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     ngx_postgres_data_t *pd = data;
     ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
     ngx_connection_t *c = pc->connection;
-    if (ngx_terminate) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "ngx_terminate"); }
-    else if (ngx_exiting) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "ngx_exiting"); }
-    else if (!c) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "!c"); }
-    else if (c->error) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->error"); }
-    else if (c->read->error) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->read->error"); }
-    else if (c->write->error) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->write->error"); }
-    else if (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout"); }
-    else ngx_postgres_free_peer(pc, data);
+    if (ngx_terminate) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "ngx_terminate"); goto close; }
+    if (ngx_exiting) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "ngx_exiting"); goto close; }
+    if (!c) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "!c"); goto close; }
+    if (c->error) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->error"); goto close; }
+    if (c->read->error) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->read->error"); goto close; }
+    if (c->write->error) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->write->error"); goto close; }
+    if (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout"); goto close; }
+    ngx_postgres_free_peer(pc, data);
+close:
     if (pc->connection) { ngx_postgres_close(&pd->share); pc->connection = NULL; }
     pd->peer.free(pc, pd->peer.data, state);
 }
