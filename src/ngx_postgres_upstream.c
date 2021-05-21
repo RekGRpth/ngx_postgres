@@ -235,9 +235,8 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_share_t *s) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "pd = %p", pd);
         ngx_postgres_share_data(s, pd);
         ngx_http_upstream_t *u = r->upstream;
-        ngx_connection_t *c = s->connection;
         r->state = 0;
-        u->peer.connection = c;
+        u->peer.connection = s->connection;
         ngx_queue_init(item);
         return ngx_postgres_prepare_or_query(pd);
     }
