@@ -270,18 +270,18 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_data_t *pd = data;
     ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
     ngx_postgres_save_t *ps;
-    if (!usc->ps.save.max) goto close;
-    if (c->requests >= usc->ps.save.requests) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "requests = %i", c->requests); goto close; }
+    if (!usc->ps.save.max) goto create;
+    if (c->requests >= usc->ps.save.requests) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "requests = %i", c->requests); goto create; }
     switch (PQtransactionStatus(pd->share.conn)) {
-        case PQTRANS_UNKNOWN: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus == PQTRANS_UNKNOWN"); goto close;
+        case PQTRANS_UNKNOWN: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus == PQTRANS_UNKNOWN"); goto create;
         case PQTRANS_IDLE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus == PQTRANS_IDLE"); break;
-        default: ngx_log_error(NGX_LOG_WARN, pc->log, 0, "PQtransactionStatus != PQTRANS_IDLE"); if (!PQrequestCancel(pd->share.conn)) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQrequestCancel and %s", PQerrorMessageMy(pd->share.conn)); goto close; } break;
+        default: ngx_log_error(NGX_LOG_WARN, pc->log, 0, "PQtransactionStatus != PQTRANS_IDLE"); if (!PQrequestCancel(pd->share.conn)) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQrequestCancel and %s", PQerrorMessageMy(pd->share.conn)); goto create; } break;
     }
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     switch (ngx_postgres_next(&pd->share)) {
-        case NGX_ERROR: goto close;
+        case NGX_ERROR: goto create;
         case NGX_OK: break;
-        default: pc->connection = NULL; return;
+        default: goto null;
     }
 #endif
     ngx_queue_t *item;
@@ -307,17 +307,18 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     c->write->log = log;
     c->write->timedout = 0;
     log->connection = c->number;
-    pc->connection = NULL;
     ps->handler = ngx_postgres_idle;
     ps->peer.sockaddr = pc->sockaddr;
     ps->peer.socklen = pc->socklen;
     ps->share = pd->share;
     ngx_add_timer(c->read, usc->ps.save.timeout);
     ngx_add_timer(c->write, usc->ps.save.timeout);
-    return;
-close:
+    goto null;
+create:
     if (!(ps = ngx_postgres_save_create(&pd->share))) return;
+close:
     ngx_postgres_save_close(ps);
+null:
     pc->connection = NULL;
 }
 
