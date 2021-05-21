@@ -164,9 +164,9 @@ static void ngx_postgres_save_close(ngx_postgres_save_t *ps) {
 
 
 static void ngx_postgres_save_handler(ngx_event_t *ev) {
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, ev->write ? "write" : "read");
     ngx_connection_t *c = ev->data;
     c->log->connection = c->number;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "write = %s", ev->write ? "true" : "false");
     ngx_postgres_save_t *ps = c->data;
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "read timedout"); c->read->timedout = 0; goto close; }
@@ -359,7 +359,7 @@ static void ngx_postgres_data_cleanup(void *data) {
 
 
 static void ngx_postgres_data_timeout(ngx_event_t *ev) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0, "write = %s", ev->write ? "true" : "false");
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, ev->write ? "write" : "read");
     ngx_http_request_t *r = ev->data;
     if (!r->connection || r->connection->error) return;
     ngx_http_upstream_t *u = r->upstream;
