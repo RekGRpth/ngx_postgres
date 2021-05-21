@@ -46,7 +46,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_data_t *pd) {
         if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);
     }
     pd->handler = ngx_postgres_prepare_or_query;
-    switch (ngx_postgres_consume_flush_busy(c, pd->share.conn)) {
+    switch (ngx_postgres_consume_flush_busy(&pd->share)) {
         case NGX_AGAIN: return NGX_AGAIN;
         case NGX_ERROR: return NGX_ERROR;
         default: break;
@@ -149,7 +149,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_data_t *pd) {
                 break;
         }
         PQclear(pd->result.res);
-        switch (ngx_postgres_consume_flush_busy(pd->share.connection, pd->share.conn)) {
+        switch (ngx_postgres_consume_flush_busy(&pd->share)) {
             case NGX_AGAIN: return NGX_AGAIN;
             case NGX_ERROR: return NGX_ERROR;
             default: break;
@@ -214,7 +214,7 @@ static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_data_t *pd) {
                 return ngx_postgres_done(pd, NGX_HTTP_INTERNAL_SERVER_ERROR);
         }
         PQclear(pd->result.res);
-        switch (ngx_postgres_consume_flush_busy(pd->share.connection, pd->share.conn)) {
+        switch (ngx_postgres_consume_flush_busy(&pd->share)) {
             case NGX_AGAIN: return NGX_AGAIN;
             case NGX_ERROR: return NGX_ERROR;
             default: break;
@@ -238,7 +238,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
             default: ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
         }
         PQclear(pd->result.res);
-        switch (ngx_postgres_consume_flush_busy(pd->share.connection, pd->share.conn)) {
+        switch (ngx_postgres_consume_flush_busy(&pd->share)) {
             case NGX_AGAIN: return NGX_AGAIN;
             case NGX_ERROR: return NGX_ERROR;
             default: break;
@@ -273,7 +273,7 @@ static ngx_int_t ngx_postgres_deallocate_result(ngx_postgres_data_t *pd) {
                 return ngx_postgres_done(pd, NGX_HTTP_INTERNAL_SERVER_ERROR);
         }
         PQclear(pd->result.res);
-        switch (ngx_postgres_consume_flush_busy(pd->share.connection, pd->share.conn)) {
+        switch (ngx_postgres_consume_flush_busy(&pd->share)) {
             case NGX_AGAIN: return NGX_AGAIN;
             case NGX_ERROR: return NGX_ERROR;
             default: break;
@@ -322,7 +322,7 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd) {
             default: ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
         }
         PQclear(pd->result.res);
-        switch (ngx_postgres_consume_flush_busy(pd->share.connection, pd->share.conn)) {
+        switch (ngx_postgres_consume_flush_busy(&pd->share)) {
             case NGX_AGAIN: return NGX_AGAIN;
             case NGX_ERROR: return NGX_ERROR;
             default: break;
@@ -378,14 +378,14 @@ ngx_int_t ngx_postgres_connect(ngx_postgres_data_t *pd) {
     pd->handler = ngx_postgres_connect;
     ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
     switch (PQstatus(pd->share.conn)) {
-        case CONNECTION_BAD: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD and %s", PQerrorMessageMy(pd->share.conn)); ngx_postgres_close(c, pd->share.conn, usc); return NGX_ERROR;
+        case CONNECTION_BAD: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PQstatus == CONNECTION_BAD and %s", PQerrorMessageMy(pd->share.conn)); ngx_postgres_close(&pd->share); return NGX_ERROR;
         case CONNECTION_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_OK"); goto connected;
         default: break;
     }
 again:
     switch (PQconnectPoll(pd->share.conn)) {
         case PGRES_POLLING_ACTIVE: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_ACTIVE and %s", ngx_postgres_status(pd->share.conn)); return NGX_AGAIN;
-        case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PGRES_POLLING_FAILED and %s and %s", ngx_postgres_status(pd->share.conn), PQerrorMessageMy(pd->share.conn)); ngx_postgres_close(c, pd->share.conn, usc); return NGX_ERROR;
+        case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PGRES_POLLING_FAILED and %s and %s", ngx_postgres_status(pd->share.conn), PQerrorMessageMy(pd->share.conn)); ngx_postgres_close(&pd->share); return NGX_ERROR;
         case PGRES_POLLING_OK: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_OK and %s", ngx_postgres_status(pd->share.conn)); goto connected;
         case PGRES_POLLING_READING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_READING and %s", ngx_postgres_status(pd->share.conn)); return NGX_AGAIN;
         case PGRES_POLLING_WRITING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(pd->share.conn)); if (PQstatus(pd->share.conn) == CONNECTION_MADE) goto again; return NGX_AGAIN;
