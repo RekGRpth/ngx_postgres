@@ -254,9 +254,7 @@ static ngx_postgres_save_t *ngx_postgres_save_create(ngx_postgres_share_t *s) {
     c->write->log = log;
     c->write->timedout = 0;
     log->connection = c->number;
-    ps->share.conn = s->conn;
-    ps->share.connection = c;
-    ps->share.usc = s->usc;
+    ps->share = *s;
 //    ngx_queue_insert_tail(&usc->ps.save.head, &ps->item);
     return ps;
 }
