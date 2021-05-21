@@ -101,7 +101,7 @@ typedef struct {
     ngx_postgres_prepare_t *prepare;
     ngx_postgres_upstream_srv_conf_t *usc;
     PGconn *conn;
-} ngx_postgres_common_t;
+} ngx_postgres_share_t;
 
 typedef struct ngx_postgres_data_t {
     ngx_array_t send;
@@ -110,9 +110,9 @@ typedef struct ngx_postgres_data_t {
     ngx_event_t timeout;
 #endif
     ngx_http_request_t *request;
-    ngx_postgres_common_t common;
     ngx_postgres_data_handler_pt handler;
     ngx_postgres_result_t result;
+    ngx_postgres_share_t share;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_queue_t item;
 #endif
@@ -132,8 +132,8 @@ typedef struct ngx_postgres_save_t ngx_postgres_save_t;
 typedef ngx_int_t (*ngx_postgres_save_handler_pt) (ngx_postgres_save_t *ps);
 
 typedef struct ngx_postgres_save_t {
-    ngx_postgres_common_t common;
     ngx_postgres_save_handler_pt handler;
+    ngx_postgres_share_t share;
     ngx_queue_t item;
     struct {
         socklen_t socklen;
@@ -197,7 +197,7 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_output_plain(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
-ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *upstream_srv_conf);
+ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *usc);
 ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd);
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);

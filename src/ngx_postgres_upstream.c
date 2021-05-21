@@ -68,16 +68,16 @@ error:
 
 
 static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *ps) {
-    ngx_connection_t *c = ps->common.connection;
+    ngx_connection_t *c = ps->share.connection;
     c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    for (PGresult *res; PQstatus(ps->common.conn) == CONNECTION_OK && (res = PQgetResult(ps->common.conn)); ) {
+    for (PGresult *res; PQstatus(ps->share.conn) == CONNECTION_OK && (res = PQgetResult(ps->share.conn)); ) {
         switch(PQresultStatus(res)) {
             case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
             default: ngx_log_error(NGX_LOG_WARN, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); break;
         }
         PQclear(res);
-        switch (ngx_postgres_consume_flush_busy(c, ps->common.conn)) {
+        switch (ngx_postgres_consume_flush_busy(c, ps->share.conn)) {
             case NGX_AGAIN: return NGX_AGAIN;
             case NGX_ERROR: return NGX_ERROR;
             default: break;
@@ -88,7 +88,7 @@ static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *ps) {
 
 
 static ngx_int_t ngx_postgres_result(ngx_postgres_save_t *ps, PGresult *res) {
-    ngx_connection_t *c = ps->common.connection;
+    ngx_connection_t *c = ps->share.connection;
     c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     if (!PQntuples(res)) return NGX_OK;
@@ -105,47 +105,47 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_save_t *ps, PGresult *res) {
 
 
 static ngx_int_t ngx_postgres_listen_result(ngx_postgres_save_t *ps) {
-    ngx_connection_t *c = ps->common.connection;
+    ngx_connection_t *c = ps->share.connection;
     c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ps->handler = ngx_postgres_listen_result;
     ngx_int_t rc = NGX_OK;
-    for (PGresult *res; PQstatus(ps->common.conn) == CONNECTION_OK && (res = PQgetResult(ps->common.conn)); ) {
+    for (PGresult *res; PQstatus(ps->share.conn) == CONNECTION_OK && (res = PQgetResult(ps->share.conn)); ) {
         switch(PQresultStatus(res)) {
             case PGRES_TUPLES_OK: rc = ngx_postgres_result(ps, res); break;
             default: ngx_log_error(NGX_LOG_WARN, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); rc = NGX_ERROR; break;
         }
         PQclear(res);
-        switch (ngx_postgres_consume_flush_busy(c, ps->common.conn)) {
+        switch (ngx_postgres_consume_flush_busy(c, ps->share.conn)) {
             case NGX_AGAIN: return NGX_AGAIN;
             case NGX_ERROR: return NGX_ERROR;
             default: break;
         }
     }
-    ngx_postgres_close(c, ps->common.conn, ps->common.usc);
+    ngx_postgres_close(c, ps->share.conn, ps->share.usc);
     return rc;
 }
 
 
 static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *ps) {
-    ngx_connection_t *c = ps->common.connection;
+    ngx_connection_t *c = ps->share.connection;
     c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ps->handler = ngx_postgres_listen;
-    for (PGresult *res; PQstatus(ps->common.conn) == CONNECTION_OK && (res = PQgetResult(ps->common.conn)); ) {
+    for (PGresult *res; PQstatus(ps->share.conn) == CONNECTION_OK && (res = PQgetResult(ps->share.conn)); ) {
         switch(PQresultStatus(res)) {
             case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
             default: ngx_log_error(NGX_LOG_WARN, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); break;
         }
         PQclear(res);
-        switch (ngx_postgres_consume_flush_busy(c, ps->common.conn)) {
+        switch (ngx_postgres_consume_flush_busy(c, ps->share.conn)) {
             case NGX_AGAIN: return NGX_AGAIN;
             case NGX_ERROR: return NGX_ERROR;
             default: break;
         }
     }
     static const char *command = "SELECT channel, concat_ws(' ', 'UNLISTEN', quote_ident(channel)) AS unlisten FROM pg_listening_channels() AS channel";
-    if (!PQsendQuery(ps->common.conn, command)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery(\"%s\") and %s", command, PQerrorMessageMy(ps->common.conn)); return NGX_ERROR; }
+    if (!PQsendQuery(ps->share.conn, command)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery(\"%s\") and %s", command, PQerrorMessageMy(ps->share.conn)); return NGX_ERROR; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQsendQuery(\"%s\")", command);
     ps->handler = ngx_postgres_listen_result;
     return NGX_OK;
@@ -153,13 +153,13 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *ps) {
 
 
 static void ngx_postgres_save_close(ngx_postgres_save_t *ps) {
-    ngx_connection_t *c = ps->common.connection;
+    ngx_connection_t *c = ps->share.connection;
     c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
     if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && ngx_postgres_listen(ps) != NGX_ERROR) return;
-    ngx_postgres_close(c, ps->common.conn, ps->common.usc);
+    ngx_postgres_close(c, ps->share.conn, ps->share.usc);
 }
 
 
@@ -171,12 +171,12 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "close"); goto close; }
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
     if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, "timedout"); goto close; }
-    switch (ngx_postgres_consume_flush_busy(c, ps->common.conn)) {
+    switch (ngx_postgres_consume_flush_busy(c, ps->share.conn)) {
         case NGX_AGAIN: return;
         case NGX_ERROR: goto close;
         default: break;
     }
-    switch (ngx_postgres_notify(c, ps->common.conn)) {
+    switch (ngx_postgres_notify(c, ps->share.conn)) {
         case NGX_AGAIN: return;
         case NGX_ERROR: goto close;
         default: break;
@@ -185,7 +185,7 @@ static void ngx_postgres_save_handler(ngx_event_t *ev) {
 close:
     ngx_postgres_save_close(ps);
     ngx_queue_remove(&ps->item);
-    ngx_postgres_upstream_srv_conf_t *usc = ps->common.usc;
+    ngx_postgres_upstream_srv_conf_t *usc = ps->share.usc;
     ngx_queue_insert_tail(&usc->ps.data.head, &ps->item);
 }
 
@@ -212,9 +212,9 @@ static ngx_int_t ngx_postgres_next(ngx_connection_t *c, PGconn *conn, ngx_postgr
         c->write->handler = ngx_postgres_data_handler;
         c->write->log = r->connection->log;
         c->write->timedout = 0;
-        pd->common.conn = conn;
-        pd->common.connection = c;
-        pd->common.prepare = prepare;
+        pd->share.conn = conn;
+        pd->share.connection = c;
+        pd->share.prepare = prepare;
         r->state = 0;
         u->peer.connection = c;
         ngx_queue_init(item);
@@ -227,7 +227,7 @@ static ngx_int_t ngx_postgres_next(ngx_connection_t *c, PGconn *conn, ngx_postgr
 
 /*static void ngx_postgres_save_cleanup(void *data) {
     ngx_postgres_data_t *ps = data;
-    ngx_connection_t *c = ps->common.connection;
+    ngx_connection_t *c = ps->share.connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_queue_remove(&ps->item);
 }*/
@@ -254,9 +254,9 @@ static ngx_postgres_save_t *ngx_postgres_save_create(ngx_connection_t *c, PGconn
     c->write->log = log;
     c->write->timedout = 0;
     log->connection = c->number;
-    ps->common.conn = conn;
-    ps->common.connection = c;
-    ps->common.usc = usc;
+    ps->share.conn = conn;
+    ps->share.connection = c;
+    ps->share.usc = usc;
 //    ngx_queue_insert_tail(&usc->ps.save.head, &ps->item);
     return ps;
 }
@@ -265,20 +265,20 @@ static ngx_postgres_save_t *ngx_postgres_save_create(ngx_connection_t *c, PGconn
 static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = data;
-    ngx_connection_t *c = pd->common.connection;
+    ngx_connection_t *c = pd->share.connection;
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    ngx_postgres_upstream_srv_conf_t *usc = pd->common.usc;
+    ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
     ngx_postgres_save_t *ps;
     if (!usc->ps.save.max) goto create;
     if (c->requests >= usc->ps.save.requests) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "requests = %i", c->requests); goto create; }
-    switch (PQtransactionStatus(pd->common.conn)) {
+    switch (PQtransactionStatus(pd->share.conn)) {
         case PQTRANS_UNKNOWN: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus == PQTRANS_UNKNOWN"); goto create;
         case PQTRANS_IDLE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus == PQTRANS_IDLE"); break;
-        default: ngx_log_error(NGX_LOG_WARN, pc->log, 0, "PQtransactionStatus != PQTRANS_IDLE"); if (!PQrequestCancel(pd->common.conn)) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQrequestCancel and %s", PQerrorMessageMy(pd->common.conn)); goto create; } break;
+        default: ngx_log_error(NGX_LOG_WARN, pc->log, 0, "PQtransactionStatus != PQTRANS_IDLE"); if (!PQrequestCancel(pd->share.conn)) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQrequestCancel and %s", PQerrorMessageMy(pd->share.conn)); goto create; } break;
     }
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    switch (ngx_postgres_next(c, pd->common.conn, pd->common.prepare, usc)) {
+    switch (ngx_postgres_next(c, pd->share.conn, pd->share.prepare, usc)) {
         case NGX_ERROR: goto create;
         case NGX_OK: break;
         default: pc->connection = NULL; return;
@@ -308,18 +308,18 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     c->write->timedout = 0;
     log->connection = c->number;
     pc->connection = NULL;
-    ps->common.connection = c;
-    ps->common.conn = pd->common.conn;
+    ps->share.connection = c;
+    ps->share.conn = pd->share.conn;
     ps->handler = ngx_postgres_idle;
-    ps->common.prepare = pd->common.prepare;
-    ps->common.usc = usc;
+    ps->share.prepare = pd->share.prepare;
+    ps->share.usc = usc;
     ps->peer.sockaddr = pc->sockaddr;
     ps->peer.socklen = pc->socklen;
     ngx_add_timer(c->read, usc->ps.save.timeout);
     ngx_add_timer(c->write, usc->ps.save.timeout);
     return;
 create:
-    if (!(ps = ngx_postgres_save_create(c, pd->common.conn, usc))) return;
+    if (!(ps = ngx_postgres_save_create(c, pd->share.conn, usc))) return;
     ngx_postgres_save_close(ps);
     pc->connection = NULL;
 }
@@ -328,7 +328,7 @@ create:
 static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_uint_t state) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "state = %i", state);
     ngx_postgres_data_t *pd = data;
-    ngx_postgres_upstream_srv_conf_t *usc = pd->common.usc;
+    ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
     ngx_connection_t *c = pc->connection;
     if (ngx_terminate) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "ngx_terminate"); }
     else if (ngx_exiting) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "ngx_exiting"); }
@@ -338,7 +338,7 @@ static void ngx_postgres_peer_free(ngx_peer_connection_t *pc, void *data, ngx_ui
     else if (c->write->error) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "c->write->error"); }
     else if (state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "state & NGX_PEER_FAILED && !c->read->timedout && !c->write->timedout"); }
     else ngx_postgres_free_peer(pc, data);
-    if (pc->connection) { ngx_postgres_close(c, pd->common.conn, usc); pc->connection = NULL; }
+    if (pc->connection) { ngx_postgres_close(c, pd->share.conn, usc); pc->connection = NULL; }
     pd->peer.free(pc, pd->peer.data, state);
 }
 
@@ -349,7 +349,7 @@ static void ngx_postgres_data_cleanup(void *data) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (!ngx_queue_empty(&pd->item)) ngx_queue_remove(&pd->item);
-    ngx_postgres_upstream_srv_conf_t *usc = pd->common.usc;
+    ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
     if (usc->pd.size) usc->pd.size--;
     if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
 }
@@ -371,7 +371,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_int_t rc = pd->peer.get(pc, pd->peer.data);
     if (rc != NGX_OK) return rc;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "rc = %i", rc);
-    ngx_postgres_upstream_srv_conf_t *usc = pd->common.usc;
+    ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_postgres_connect_t *connect = pc->peer_data;
 #else
@@ -400,7 +400,7 @@ exit:
             if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)ps->peer.sockaddr, pc->socklen, ps->peer.socklen)) continue;
             ngx_queue_remove(item);
             ngx_queue_insert_tail(&usc->ps.data.head, item);
-            ngx_connection_t *c = ps->common.connection;
+            ngx_connection_t *c = ps->share.connection;
             c->idle = 0;
             c->log_error = pc->log_error;
             c->log = pc->log;
@@ -412,9 +412,9 @@ exit:
             c->write->timedout = 0;
             pc->cached = 1;
             pc->connection = c;
-            pd->common.connection = c;
-            pd->common.conn = ps->common.conn;
-            pd->common.prepare = ps->common.prepare;
+            pd->share.connection = c;
+            pd->share.conn = ps->share.conn;
+            pd->share.prepare = ps->share.prepare;
             if (c->read->timer_set) ngx_del_timer(c->read);
             if (c->write->timer_set) ngx_del_timer(c->write);
             return ngx_postgres_prepare_or_query(pd);
@@ -454,16 +454,16 @@ exit:
     if (host) ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "host = %s", host);
     connect->values[0] = (const char *)addr.data + (pc->sockaddr->sa_family == AF_UNIX ? 5 : 0);
     for (int i = 0; connect->keywords[i]; i++) ngx_log_debug3(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%i: %s = %s", i, connect->keywords[i], connect->values[i]);
-    pd->common.conn = PQconnectStartParams(connect->keywords, connect->values, 0);
+    pd->share.conn = PQconnectStartParams(connect->keywords, connect->values, 0);
     connect->values[0] = host;
-    if (PQstatus(pd->common.conn) == CONNECTION_BAD) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQstatus == CONNECTION_BAD %s in upstream \"%V\"", PQerrorMessageMy(pd->common.conn), pc->name); goto declined; }
-    if (PQsetnonblocking(pd->common.conn, 1) == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(pd->common.conn), pc->name); goto declined; }
+    if (PQstatus(pd->share.conn) == CONNECTION_BAD) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQstatus == CONNECTION_BAD %s in upstream \"%V\"", PQerrorMessageMy(pd->share.conn), pc->name); goto declined; }
+    if (PQsetnonblocking(pd->share.conn, 1) == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQsetnonblocking == -1 and %s in upstream \"%V\"", PQerrorMessageMy(pd->share.conn), pc->name); goto declined; }
     usc->ps.save.size++;
-    if (usc->trace.log) PQtrace(pd->common.conn, fdopen(usc->trace.log->file->fd, "a+"));
+    if (usc->trace.log) PQtrace(pd->share.conn, fdopen(usc->trace.log->file->fd, "a+"));
     pgsocket fd;
-    if ((fd = PQsocket(pd->common.conn)) == PGINVALID_SOCKET) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQsocket == PGINVALID_SOCKET"); goto declined; }
+    if ((fd = PQsocket(pd->share.conn)) == PGINVALID_SOCKET) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQsocket == PGINVALID_SOCKET"); goto declined; }
     ngx_connection_t *c = ngx_get_connection(fd, pc->log);
-    if (!(pd->common.connection = c)) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_get_connection"); goto finish; }
+    if (!(pd->share.connection = c)) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_get_connection"); goto finish; }
     c->log_error = pc->log_error;
     c->number = ngx_atomic_fetch_add(ngx_connection_counter, 1);
     c->read->log = pc->log;
@@ -472,7 +472,7 @@ exit:
     c->type = pc->type ? pc->type : SOCK_STREAM;
     c->write->log = pc->log;
     if (!(c->pool = ngx_create_pool(128, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_create_pool"); goto close; }
-    if (!(pd->common.prepare = ngx_pcalloc(c->pool, sizeof(*pd->common.prepare)))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pcalloc"); goto destroy; }
+    if (!(pd->share.prepare = ngx_pcalloc(c->pool, sizeof(*pd->share.prepare)))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pcalloc"); goto destroy; }
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         if (ngx_add_conn(c) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_add_conn != NGX_OK"); goto destroy; }
     } else {
@@ -482,23 +482,23 @@ exit:
     c->read->ready = 1;
     c->write->ready = 1;
     pc->connection = c;
-    ngx_queue_init(&pd->common.prepare->head);
+    ngx_queue_init(&pd->share.prepare->head);
     pd->handler = ngx_postgres_connect;
     ngx_log_error(NGX_LOG_WARN, pc->log, 0, "PQconnectStartParams");
     return NGX_AGAIN; // and ngx_add_timer(c->write, u->conf->connect_timeout) and return
 declined:
-    PQfinish(pd->common.conn);
-    pd->common.conn = NULL;
+    PQfinish(pd->share.conn);
+    pd->share.conn = NULL;
     return NGX_DECLINED; // and ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR) and return
 destroy:
     ngx_destroy_pool(c->pool);
     c->pool = NULL;
 close:
     ngx_close_connection(c);
-    pd->common.connection = NULL;
+    pd->share.connection = NULL;
 finish:
-    PQfinish(pd->common.conn);
-    pd->common.conn = NULL;
+    PQfinish(pd->share.conn);
+    pd->share.conn = NULL;
 error:
     return NGX_ERROR; // ngx_http_upstream_finalize_request(r, u, NGX_HTTP_INTERNAL_SERVER_ERROR) and return
 }
@@ -530,8 +530,8 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = ngx_pcalloc(r->pool, sizeof(*pd));
     if (!pd) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-    pd->common.usc = ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module);
-    if (pd->common.usc->peer.init(r, usc) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer.init != NGX_OK"); return NGX_ERROR; }
+    pd->share.usc = ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module);
+    if (pd->share.usc->peer.init(r, usc) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer.init != NGX_OK"); return NGX_ERROR; }
     pd->request = r;
     ngx_http_upstream_t *u = r->upstream;
     pd->peer.data = u->peer.data;
