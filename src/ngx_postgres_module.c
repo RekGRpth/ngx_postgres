@@ -11,8 +11,8 @@ static void ngx_postgres_srv_conf_cleanup(void *data) {
     ngx_postgres_upstream_srv_conf_t *usc = data;
     ngx_queue_each(&usc->ps.save.head, item) {
         ngx_queue_remove(item);
-        ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, share.item);
-        ngx_postgres_close(&ps->share);
+        ngx_postgres_share_t *s = ngx_queue_data(item, ngx_postgres_share_t, item);
+        ngx_postgres_close(s);
     }
 }
 
