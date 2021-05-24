@@ -316,7 +316,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     ps->peer.socklen = pc->socklen;
     goto null;
 create:
-    if (!(ps = ngx_pcalloc(c->pool, sizeof(*ps)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return; }
+    if (!(ps = ngx_pcalloc(c->pool, sizeof(*ps)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pcalloc"); return; }
     ngx_postgres_data_save(pd, ps);
 close:
     ngx_postgres_save_close(ps);
