@@ -188,7 +188,7 @@ static void ngx_postgres_data_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
 }
 
 
-static void ngx_postgres_save_close(ngx_postgres_share_t *s) {
+static void ngx_postgres_share_close(ngx_postgres_share_t *s) {
     ngx_connection_t *c = s->connection;
     c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
@@ -227,7 +227,7 @@ void ngx_postgres_save_handler(ngx_event_t *ev) {
     }
     if (ps->handler(ps) != NGX_ERROR) return;
 close:
-    ngx_postgres_save_close(&ps->share);
+    ngx_postgres_share_close(&ps->share);
     ngx_queue_remove(&ps->share.item);
     ngx_postgres_upstream_srv_conf_t *usc = ps->share.usc;
     ngx_queue_insert_tail(&usc->ps.data.head, &ps->share.item);
@@ -318,7 +318,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
         ngx_log_error(NGX_LOG_WARN, pc->log, 0, "ngx_queue_empty(data)");
         item = ngx_queue_last(&usc->ps.save.head);
         ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, share.item);
-        ngx_postgres_save_close(&ps->share);
+        ngx_postgres_share_close(&ps->share);
     }
     ps = ngx_queue_data(item, ngx_postgres_save_t, share.item);
     ngx_postgres_data_to_save(pd, ps);
@@ -326,7 +326,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     ps->peer.socklen = pc->socklen;
     goto null;
 close:
-    ngx_postgres_save_close(&pd->share);
+    ngx_postgres_share_close(&pd->share);
 null:
     pc->connection = NULL;
 }
