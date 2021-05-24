@@ -199,6 +199,7 @@ static void ngx_postgres_save_close(ngx_postgres_share_t *s) {
         if (!ps) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pcalloc"); goto close; }
         ngx_postgres_share_to_save(c->log, s, &ps->share);
         ps->share.connection->data = ps;
+        ngx_queue_init(&ps->share.item);
         if (ngx_postgres_listen(ps) != NGX_ERROR) return;
     }
 close:
