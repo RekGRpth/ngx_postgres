@@ -165,7 +165,10 @@ static void ngx_postgres_share_to_save(ngx_log_t *log, ngx_postgres_share_t *sd,
     c->write->handler = ngx_postgres_save_handler;
     c->write->log = log;
     c->write->timedout = 0;
-    *ss = *sd;
+    ss->connection = sd->connection;
+    ss->conn = sd->conn;
+    ss->prepare = sd->prepare;
+    ss->usc = sd->usc;
     log->connection = c->number;
     ngx_postgres_upstream_srv_conf_t *usc = sd->usc;
     ngx_add_timer(c->read, usc->ps.save.timeout);
@@ -243,7 +246,10 @@ static void ngx_postgres_share_to_data(ngx_log_t *log, ngx_postgres_share_t *ss,
     c->write->handler = ngx_postgres_data_handler;
     c->write->log = log;
     c->write->timedout = 0;
-    *sd = *ss;
+    sd->connection = ss->connection;
+    sd->conn = ss->conn;
+    sd->prepare = ss->prepare;
+    sd->usc = ss->usc;
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
 }
