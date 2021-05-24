@@ -183,8 +183,8 @@ static void ngx_postgres_data_to_save(ngx_postgres_data_t *pd, ngx_postgres_save
     ngx_postgres_share_to_save(usc->ps.save.log ? usc->ps.save.log : ngx_cycle->log, &pd->share, &ps->share);
     ps->share.connection->data = ps;
     ps->handler = ngx_postgres_idle;
-    ngx_queue_remove(&ps->item);
-    ngx_queue_insert_tail(&usc->ps.save.head, &ps->item);
+    ngx_queue_remove(&ps->share.item);
+    ngx_queue_insert_tail(&usc->ps.save.head, &ps->share.item);
 }
 
 
@@ -227,9 +227,9 @@ void ngx_postgres_save_handler(ngx_event_t *ev) {
     if (ps->handler(ps) != NGX_ERROR) return;
 close:
     ngx_postgres_save_close(&ps->share);
-    ngx_queue_remove(&ps->item);
+    ngx_queue_remove(&ps->share.item);
     ngx_postgres_upstream_srv_conf_t *usc = ps->share.usc;
-    ngx_queue_insert_tail(&usc->ps.data.head, &ps->item);
+    ngx_queue_insert_tail(&usc->ps.data.head, &ps->share.item);
 }
 
 
@@ -260,9 +260,9 @@ static void ngx_postgres_save_to_data(ngx_postgres_save_t *ps, ngx_postgres_data
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_share_to_data(r->connection->log, &ps->share, &pd->share);
     pd->share.connection->data = pd;
-    ngx_queue_remove(&ps->item);
+    ngx_queue_remove(&ps->share.item);
     ngx_postgres_upstream_srv_conf_t *usc = ps->share.usc;
-    ngx_queue_insert_tail(&usc->ps.data.head, &ps->item);
+    ngx_queue_insert_tail(&usc->ps.data.head, &ps->share.item);
 }
 
 
@@ -316,10 +316,10 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     if (!ngx_queue_empty(&usc->ps.data.head)) item = ngx_queue_head(&usc->ps.data.head); else {
         ngx_log_error(NGX_LOG_WARN, pc->log, 0, "ngx_queue_empty(data)");
         item = ngx_queue_last(&usc->ps.save.head);
-        ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
+        ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, share.item);
         ngx_postgres_save_close(&ps->share);
     }
-    ps = ngx_queue_data(item, ngx_postgres_save_t, item);
+    ps = ngx_queue_data(item, ngx_postgres_save_t, share.item);
     ngx_postgres_data_to_save(pd, ps);
     ps->peer.sockaddr = pc->sockaddr;
     ps->peer.socklen = pc->socklen;
@@ -461,7 +461,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (usc->ps.save.max) {
         ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ps.max");
         ngx_queue_each(&usc->ps.save.head, item) {
-            ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
+            ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, share.item);
             if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)ps->peer.sockaddr, pc->socklen, ps->peer.socklen)) continue;
             ngx_postgres_save_to_data(ps, pd);
             pc->cached = 1;
