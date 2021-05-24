@@ -209,7 +209,7 @@ static void ngx_postgres_share_data(ngx_log_t *log, ngx_postgres_share_t *ss, ng
 }
 
 
-static void ngx_postgres_save_data(ngx_postgres_save_t *ps, ngx_postgres_data_t *pd) {
+static void ngx_postgres_save_to_data(ngx_postgres_save_t *ps, ngx_postgres_data_t *pd) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_share_data(r->connection->log, &ps->share, &pd->share);
@@ -265,7 +265,7 @@ static void ngx_postgres_data_share(ngx_log_t *log, ngx_postgres_share_t *sd, ng
 }
 
 
-static void ngx_postgres_data_save(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
+static void ngx_postgres_data_to_save(ngx_postgres_data_t *pd, ngx_postgres_save_t *ps) {
     ngx_http_request_t *r = pd->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
@@ -307,13 +307,13 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
         ngx_postgres_save_close(ps);
     }
     ps = ngx_queue_data(item, ngx_postgres_save_t, item);
-    ngx_postgres_data_save(pd, ps);
+    ngx_postgres_data_to_save(pd, ps);
     ps->peer.sockaddr = pc->sockaddr;
     ps->peer.socklen = pc->socklen;
     goto null;
 create:
     if (!(ps = ngx_pcalloc(c->pool, sizeof(*ps)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pcalloc"); return; }
-    ngx_postgres_data_save(pd, ps);
+    ngx_postgres_data_to_save(pd, ps);
 close:
     ngx_postgres_save_close(ps);
 null:
@@ -453,7 +453,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         ngx_queue_each(&usc->ps.save.head, item) {
             ngx_postgres_save_t *ps = ngx_queue_data(item, ngx_postgres_save_t, item);
             if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)ps->peer.sockaddr, pc->socklen, ps->peer.socklen)) continue;
-            ngx_postgres_save_data(ps, pd);
+            ngx_postgres_save_to_data(ps, pd);
             pc->cached = 1;
             pc->connection = ps->share.connection;
             return ngx_postgres_prepare_or_query(pd);
