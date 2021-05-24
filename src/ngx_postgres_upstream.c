@@ -587,6 +587,7 @@ void ngx_postgres_close(ngx_postgres_share_t *s) {
     c->log->connection = c->number;
 //        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_log_error(NGX_LOG_WARN, c->log, 0, "%s", __func__);
+    if (!ngx_queue_empty(&s->item)) ngx_queue_remove(&s->item);
     if (s->usc->ps.save.size) s->usc->ps.save.size--;
     PQfinish(s->conn);
     if (ngx_del_conn) {
