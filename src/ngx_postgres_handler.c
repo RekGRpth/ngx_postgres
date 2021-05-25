@@ -103,6 +103,7 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
     ngx_http_upstream_t *u = r->upstream;
     u->out_bufs = NULL;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return; }
+    ngx_http_run_posted_requests(r->connection);
     ngx_postgres_data_t *pd = u->peer.data;
     ngx_connection_t *c = pd->share.connection;
     if (!c) return;
