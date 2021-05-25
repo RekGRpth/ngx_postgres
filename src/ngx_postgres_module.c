@@ -123,17 +123,14 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_queue_init(&pusc->ps.save.head);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_queue_init(&pusc->pd.head);
+    ngx_conf_init_msec_value(pusc->pd.timeout, 60 * 1000);
 #endif
-    if (!pusc->ps.save.max) return NGX_OK;
     ngx_conf_init_msec_value(pusc->ps.save.timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(pusc->ps.save.requests, 1000);
+    if (!pusc->ps.save.max) return NGX_OK;
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(*ps) * pusc->ps.save.max);
     if (!ps) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0; i < pusc->ps.save.max; i++) { ngx_queue_insert_tail(&pusc->ps.data.head, &ps[i].share.item); }
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    if (!pusc->pd.max) return NGX_OK;
-    ngx_conf_init_msec_value(pusc->pd.timeout, 60 * 1000);
-#endif
     return NGX_OK;
 }
 
