@@ -188,7 +188,8 @@ static void ngx_postgres_share_close(ngx_postgres_share_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && PQstatus(s->conn) == CONNECTION_OK) {
+    ngx_postgres_upstream_srv_conf_t *usc = s->usc;
+    if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && usc->ps.save.max && PQstatus(s->conn) == CONNECTION_OK) {
         ngx_postgres_save_t *ps = ngx_pcalloc(c->pool, sizeof(*ps));
         if (!ps) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pcalloc"); goto close; }
         ngx_postgres_share_to_save(c->log, s, &ps->share);
