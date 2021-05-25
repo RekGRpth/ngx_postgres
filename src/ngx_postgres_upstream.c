@@ -69,7 +69,6 @@ error:
 
 static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *ps) {
     ngx_connection_t *c = ps->share.connection;
-    c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     for (PGresult *res; PQstatus(ps->share.conn) == CONNECTION_OK && (res = PQgetResult(ps->share.conn)); ) {
         switch(PQresultStatus(res)) {
@@ -89,7 +88,6 @@ static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *ps) {
 
 static ngx_int_t ngx_postgres_result(ngx_postgres_save_t *ps, PGresult *res) {
     ngx_connection_t *c = ps->share.connection;
-    c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     if (!PQntuples(res)) return NGX_OK;
     for (ngx_uint_t row = 0; row < PQntuples(res); row++) {
@@ -106,7 +104,6 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_save_t *ps, PGresult *res) {
 
 static ngx_int_t ngx_postgres_listen_result(ngx_postgres_save_t *ps) {
     ngx_connection_t *c = ps->share.connection;
-    c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ps->handler = ngx_postgres_listen_result;
     ngx_int_t rc = NGX_OK;
@@ -129,7 +126,6 @@ static ngx_int_t ngx_postgres_listen_result(ngx_postgres_save_t *ps) {
 
 static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *ps) {
     ngx_connection_t *c = ps->share.connection;
-    c->log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ps->handler = ngx_postgres_listen;
     for (PGresult *res; PQstatus(ps->share.conn) == CONNECTION_OK && (res = PQgetResult(ps->share.conn)); ) {
