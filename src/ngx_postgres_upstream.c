@@ -426,8 +426,6 @@ exit:
         if (ngx_add_event(c->write, NGX_WRITE_EVENT, ngx_event_flags & NGX_USE_CLEAR_EVENT ? NGX_CLEAR_EVENT : NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_add_event != NGX_OK"); goto destroy; }
         else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ngx_add_event(write)"); }
     }
-    c->read->ready = 1;
-    c->write->ready = 1;
     pc->connection = c;
     ngx_queue_init(&pd->share.item);
     ngx_queue_init(&pd->share.prepare->head);

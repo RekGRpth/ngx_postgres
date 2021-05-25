@@ -382,12 +382,14 @@ ngx_int_t ngx_postgres_connect(ngx_postgres_data_t *pd) {
         case CONNECTION_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_OK"); goto connected;
         default: break;
     }
+    c->read->active = 1;
+    c->write->active = 1;
     switch (PQconnectPoll(pd->share.conn)) {
         case PGRES_POLLING_ACTIVE: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_ACTIVE and %s", ngx_postgres_status(pd->share.conn)); return NGX_AGAIN;
         case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PGRES_POLLING_FAILED and %s and %s", ngx_postgres_status(pd->share.conn), PQerrorMessageMy(pd->share.conn)); ngx_postgres_close(&pd->share); return NGX_ERROR;
         case PGRES_POLLING_OK: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_OK and %s", ngx_postgres_status(pd->share.conn)); goto connected;
-        case PGRES_POLLING_READING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_READING and %s", ngx_postgres_status(pd->share.conn)); return NGX_AGAIN;
-        case PGRES_POLLING_WRITING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(pd->share.conn)); return NGX_AGAIN;
+        case PGRES_POLLING_READING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_READING and %s", ngx_postgres_status(pd->share.conn)); c->write->active = 0; return NGX_AGAIN;
+        case PGRES_POLLING_WRITING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(pd->share.conn)); c->read->active = 0; return NGX_AGAIN;
     }
 connected:
     if (c->read->timer_set) ngx_del_timer(c->read);
