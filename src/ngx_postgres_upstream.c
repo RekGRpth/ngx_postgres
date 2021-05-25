@@ -425,6 +425,7 @@ exit:
     c->read->ready = 1;
     c->write->ready = 1;
     pc->connection = c;
+    ngx_queue_init(&s->item);
     ngx_queue_init(&s->prepare->head);
     pd->handler = ngx_postgres_connect;
     return NGX_AGAIN;
