@@ -153,9 +153,8 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *ps) {
 
 
 static void ngx_postgres_share_to_save(ngx_log_t *log, ngx_postgres_share_t *sd, ngx_postgres_share_t *ss) {
-    ngx_connection_t *c = sd->connection;
-    log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "%s", __func__);
+    ngx_connection_t *c = sd->connection;
     c->idle = 1;
     c->log = log;
     c->pool->log = log;
