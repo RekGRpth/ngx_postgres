@@ -227,7 +227,7 @@ void ngx_postgres_save_handler(ngx_event_t *ev) {
     if (ps->handler(ps) != NGX_ERROR) return;
 close:
     ngx_postgres_share_close(&ps->share);
-    ngx_queue_remove(&ps->share.item);
+    if (!ngx_queue_empty(&ps->share.item)) ngx_queue_remove(&ps->share.item);
     ngx_postgres_upstream_srv_conf_t *usc = ps->share.usc;
     ngx_queue_insert_tail(&usc->ps.data.head, &ps->share.item);
 }
@@ -587,6 +587,7 @@ void ngx_postgres_close(ngx_postgres_share_t *s) {
 //        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_log_error(NGX_LOG_WARN, c->log, 0, "%s", __func__);
     if (!ngx_queue_empty(&s->item)) ngx_queue_remove(&s->item);
+    ngx_queue_init(&s->item);
     if (s->usc->ps.save.size) s->usc->ps.save.size--;
     PQfinish(s->conn);
     if (ngx_del_conn) {
