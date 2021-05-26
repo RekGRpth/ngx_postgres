@@ -62,7 +62,7 @@ GET /postgres
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config
     upstream database {
-        postgres_server     host=$TEST_NGINX_POSTGRESQL_HOST port=1 dbname=ngx_test
+        postgres_server     host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT dbname=ngx_test
                             user=ngx_test password=ngx_test sslmode=disable;
     }
 --- config
