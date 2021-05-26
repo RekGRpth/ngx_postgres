@@ -182,6 +182,8 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_data_t *pd) {
     ngx_postgres_output_t *output = &query->output;
     if (output->handler == ngx_postgres_output_plain || output->handler == ngx_postgres_output_csv) if (output->single && !PQsetSingleRowMode(pd->share.conn)) ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(pd->share.conn));
     pd->handler = ngx_postgres_query_result;
+    ngx_connection_t *c = pd->share.connection;
+    c->write->active = 0;
     return NGX_AGAIN;
 }
 
@@ -382,8 +384,6 @@ ngx_int_t ngx_postgres_connect(ngx_postgres_data_t *pd) {
         case CONNECTION_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_OK"); goto connected;
         default: break;
     }
-    c->read->active = 1;
-    c->write->active = 1;
     switch (PQconnectPoll(pd->share.conn)) {
         case PGRES_POLLING_ACTIVE: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_ACTIVE and %s", ngx_postgres_status(pd->share.conn)); break;
         case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PGRES_POLLING_FAILED and %s and %s", ngx_postgres_status(pd->share.conn), PQerrorMessageMy(pd->share.conn)); return NGX_ERROR;
