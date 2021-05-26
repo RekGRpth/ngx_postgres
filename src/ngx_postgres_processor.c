@@ -306,6 +306,8 @@ static ngx_int_t ngx_postgres_deallocate(ngx_postgres_data_t *pd) {
     ngx_queue_remove(queue);
     pd->share.prepare->size--;
     pd->handler = ngx_postgres_deallocate_result;
+    ngx_connection_t *c = pd->share.connection;
+    c->write->active = 0;
     return NGX_AGAIN;
 }
 
@@ -347,6 +349,7 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd) {
     ngx_queue_insert_tail(&pd->share.prepare->head, &prepare->item);
     pd->share.prepare->size++;
     pd->handler = ngx_postgres_prepare_result;
+    c->write->active = 0;
     return NGX_AGAIN;
 }
 
