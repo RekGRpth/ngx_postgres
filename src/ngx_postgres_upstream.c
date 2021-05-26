@@ -426,17 +426,17 @@ exit:
         if (ngx_add_event(c->write, NGX_WRITE_EVENT, ngx_event_flags & NGX_USE_CLEAR_EVENT ? NGX_CLEAR_EVENT : NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_add_event != NGX_OK"); goto destroy; }
         else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ngx_add_event(write)"); }
     }
+    switch (PQconnectPoll(pd->share.conn)) {
+        case PGRES_POLLING_ACTIVE: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_ACTIVE and %s", ngx_postgres_status(pd->share.conn)); break;
+        case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PGRES_POLLING_FAILED and %s and %s", ngx_postgres_status(pd->share.conn), PQerrorMessageMy(pd->share.conn)); goto destroy;
+        case PGRES_POLLING_OK: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_OK and %s", ngx_postgres_status(pd->share.conn)); goto connected;
+        case PGRES_POLLING_READING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_READING and %s", ngx_postgres_status(pd->share.conn)); break;
+        case PGRES_POLLING_WRITING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(pd->share.conn)); break;
+    }
     pc->connection = c;
     ngx_queue_init(&pd->share.item);
     ngx_queue_init(&pd->share.prepare->head);
     pd->handler = ngx_postgres_connect;
-    switch (PQconnectPoll(pd->share.conn)) {
-        case PGRES_POLLING_ACTIVE: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_ACTIVE and %s", ngx_postgres_status(pd->share.conn)); return NGX_AGAIN;
-        case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PGRES_POLLING_FAILED and %s and %s", ngx_postgres_status(pd->share.conn), PQerrorMessageMy(pd->share.conn)); goto destroy;
-        case PGRES_POLLING_OK: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_OK and %s", ngx_postgres_status(pd->share.conn)); goto connected;
-        case PGRES_POLLING_READING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_READING and %s", ngx_postgres_status(pd->share.conn)); return NGX_AGAIN;
-        case PGRES_POLLING_WRITING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(pd->share.conn)); return NGX_AGAIN;
-    }
     return NGX_AGAIN;
 connected:
     if (c->read->timer_set) ngx_del_timer(c->read);
