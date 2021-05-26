@@ -7,6 +7,12 @@ static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
 }
 
 
+static void ngx_postgres_srv_conf_cleanup(void *data) {
+    ngx_postgres_upstream_srv_conf_t *usc = data;
+    ngx_queue_each(&usc->ps.save.head, item) ngx_postgres_close(ngx_queue_data(item, ngx_postgres_share_t, item));
+}
+
+
 static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_upstream_srv_conf_t *usc = ngx_pcalloc(cf->pool, sizeof(*usc));
     if (!usc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
@@ -131,6 +137,10 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(*ps) * pusc->ps.save.max);
     if (!ps) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     for (ngx_uint_t i = 0; i < pusc->ps.save.max; i++) { ngx_queue_insert_tail(&pusc->ps.data.head, &ps[i].share.item); }
+    ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
+    if (!cln) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
+    cln->handler = ngx_postgres_srv_conf_cleanup;
+    cln->data = pusc;
     return NGX_OK;
 }
 
