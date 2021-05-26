@@ -161,7 +161,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_data_t *pd) {
         if (pd->index < location->query.nelts) return NGX_AGAIN;
     }
     if (rc == NGX_OK && PQtransactionStatus(pd->share.conn) != PQTRANS_IDLE) {
-        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
         ngx_postgres_query_t *query = ngx_array_push(&location->query);
         if (!query) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_push"); return NGX_ERROR; }
         ngx_memzero(query, sizeof(*query));
@@ -237,7 +237,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_data_t *pd) {
                 ngx_postgres_variable_error(pd);
                 PQclear(pd->result.res);
                 return ngx_postgres_done(pd, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            default: ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
+            default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
         }
         PQclear(pd->result.res);
         switch (ngx_postgres_consume_flush_busy(&pd->share)) {
@@ -322,7 +322,7 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd) {
                 ngx_postgres_variable_error(pd);
                 PQclear(pd->result.res);
                 return ngx_postgres_done(pd, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            default: ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
+            default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(pd->result.res)), PQcmdStatus(pd->result.res)); break;
         }
         PQclear(pd->result.res);
         switch (ngx_postgres_consume_flush_busy(&pd->share)) {
