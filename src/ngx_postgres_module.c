@@ -9,7 +9,8 @@ static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
 
 static void ngx_postgres_srv_conf_cleanup(void *data) {
     ngx_postgres_upstream_srv_conf_t *usc = data;
-    ngx_queue_each(&usc->ps.save.head, item) ngx_postgres_close(ngx_queue_data(item, ngx_postgres_share_t, item));
+    queue_each(&usc->ps.save.head, item) ngx_postgres_close(queue_data(item, ngx_postgres_share_t, item));
+    queue_each(&usc->ps.data.head, item) ngx_postgres_close(queue_data(item, ngx_postgres_share_t, item));
 }
 
 
@@ -125,18 +126,15 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_postgres_upstream_srv_conf_t *pusc = ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module);
     if (pusc->peer.init_upstream(cf, usc) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "peer.init_upstream != NGX_OK"); return NGX_ERROR; }
     if (usc->peer.init != ngx_postgres_peer_init) { pusc->peer.init = usc->peer.init; usc->peer.init = ngx_postgres_peer_init; }
-    ngx_queue_init(&pusc->ps.data.head);
-    ngx_queue_init(&pusc->ps.save.head);
+    queue_init(&pusc->ps.data.head);
+    queue_init(&pusc->ps.save.head);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_queue_init(&pusc->pd.head);
+    queue_init(&pusc->pd.head);
     ngx_conf_init_msec_value(pusc->pd.timeout, 60 * 1000);
 #endif
     ngx_conf_init_msec_value(pusc->ps.save.timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(pusc->ps.save.requests, 1000);
     if (!pusc->ps.save.max) return NGX_OK;
-    ngx_postgres_save_t *ps = ngx_pcalloc(cf->pool, sizeof(*ps) * pusc->ps.save.max);
-    if (!ps) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-    for (ngx_uint_t i = 0; i < pusc->ps.save.max; i++) { ngx_queue_insert_tail(&pusc->ps.data.head, &ps[i].share.item); }
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
     cln->handler = ngx_postgres_srv_conf_cleanup;

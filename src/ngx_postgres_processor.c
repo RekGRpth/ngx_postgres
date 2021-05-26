@@ -4,8 +4,8 @@
 
 
 typedef struct {
-    ngx_queue_t item;
     ngx_uint_t hash;
+    queue_t item;
 } ngx_postgres_prepare_t2;
 
 
@@ -302,9 +302,8 @@ static ngx_int_t ngx_postgres_deallocate(ngx_postgres_data_t *pd) {
     *last = '\0';
     if (!PQsendQuery(pd->share.conn, (const char *)sql.data)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendQuery(\"%V\") and %s", &sql, PQerrorMessageMy(pd->share.conn)); return NGX_ERROR; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQuery(\"%V\")", &sql);
-    ngx_queue_t *queue = ngx_queue_head(&pd->share.prepare->head);
-    ngx_queue_remove(queue);
-    pd->share.prepare->size--;
+    queue_t *queue = queue_head(&pd->share.prepare->head);
+    queue_remove(queue);
     pd->handler = ngx_postgres_deallocate_result;
     ngx_connection_t *c = pd->share.connection;
     c->write->active = 0;
@@ -334,20 +333,19 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd) {
     }
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
-    ngx_queue_each(&pd->share.prepare->head, item) {
-        ngx_postgres_prepare_t2 *prepare = ngx_queue_data(item, ngx_postgres_prepare_t2, item);
+    queue_each(&pd->share.prepare->head, item) {
+        ngx_postgres_prepare_t2 *prepare = queue_data(item, ngx_postgres_prepare_t2, item);
         if (prepare->hash == send->hash) return ngx_postgres_query_prepared(pd);
     }
     ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
-    if (pd->share.prepare->size >= usc->prepare.max && usc->prepare.deallocate) return ngx_postgres_deallocate(pd);
+    if (usc->prepare.deallocate && queue_size(&pd->share.prepare->head) >= usc->prepare.max) return ngx_postgres_deallocate(pd);
     if (!PQsendPrepare(pd->share.conn, (const char *)send->stmtName.data, (const char *)send->sql.data, send->nParams, send->paramTypes)) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!PQsendPrepare(\"%V\", \"%V\") and %s", &send->stmtName, &send->sql, PQerrorMessageMy(pd->share.conn)); return NGX_ERROR; }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendPrepare(\"%V\", \"%V\")", &send->stmtName, &send->sql);
     ngx_connection_t *c = pd->share.connection;
     ngx_postgres_prepare_t2 *prepare = ngx_pcalloc(c->pool, sizeof(*prepare));
     if (!prepare) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     prepare->hash = send->hash;
-    ngx_queue_insert_tail(&pd->share.prepare->head, &prepare->item);
-    pd->share.prepare->size++;
+    queue_insert_tail(&pd->share.prepare->head, &prepare->item);
     pd->handler = ngx_postgres_prepare_result;
     c->write->active = 0;
     return NGX_AGAIN;

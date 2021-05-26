@@ -3,6 +3,7 @@
 
 #include <libpq-fe.h>
 #include <ngx_http.h>
+#include "queue.h"
 
 #ifndef WIN32
 typedef int pgsocket;
@@ -30,9 +31,8 @@ typedef struct {
     struct {
         ngx_flag_t reject;
         ngx_msec_t timeout;
-        ngx_queue_t head;
         ngx_uint_t max;
-        ngx_uint_t size;
+        queue_t head;
     } pd;
 #else
     void *connect;
@@ -46,13 +46,12 @@ typedef struct {
             ngx_flag_t reject;
             ngx_log_t *log;
             ngx_msec_t timeout;
-            ngx_queue_t head;
             ngx_uint_t max;
             ngx_uint_t requests;
-            ngx_uint_t size;
+            queue_t head;
         } save;
         struct {
-            ngx_queue_t head;
+            queue_t head;
         } data;
     } ps;
     struct {
@@ -89,8 +88,7 @@ typedef struct {
 } ngx_postgres_send_t;
 
 typedef struct {
-    ngx_queue_t head;
-    ngx_uint_t size;
+    queue_t head;
 } ngx_postgres_prepare_t;
 
 typedef struct ngx_postgres_data_t ngx_postgres_data_t;
@@ -100,8 +98,8 @@ typedef struct {
     ngx_connection_t *connection;
     ngx_postgres_prepare_t *prepare;
     ngx_postgres_upstream_srv_conf_t *usc;
-    ngx_queue_t item;
     PGconn *conn;
+    queue_t item;
 } ngx_postgres_share_t;
 
 typedef struct ngx_postgres_data_t {
@@ -114,10 +112,10 @@ typedef struct ngx_postgres_data_t {
     ngx_postgres_data_handler_pt handler;
     ngx_postgres_result_t result;
     ngx_postgres_share_t share;
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_queue_t item;
-#endif
     ngx_uint_t index;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    queue_t item;
+#endif
     struct {
         ngx_event_free_peer_pt free;
         ngx_event_get_peer_pt get;
@@ -214,7 +212,5 @@ ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);
 void ngx_http_upstream_finalize_request(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t rc);
 void ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_uint_t ft_type);
 #endif
-
-#define ngx_queue_each(h, q) for (ngx_queue_t *(q) = (h)->next, *_; (q) != (h) && (_ = (q)->next); (q) = _)
 
 #endif /* _NGX_POSTGRES_INCLUDE_H_ */
