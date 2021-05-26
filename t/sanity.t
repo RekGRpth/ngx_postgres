@@ -13,7 +13,7 @@ $ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
 our $http_config = <<'_EOC_';
     upstream database {
         postgres_server  host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
-                         dbname=test user=test password=test;
+                         dbname=test user=test password=test sslmode=disable;
         postgres_keepalive 10;
     }
 _EOC_
@@ -28,7 +28,7 @@ __DATA__
 --- http_config
     upstream database {
         postgres_server     host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
-                            dbname=test user=test password=ngx_test;
+                            dbname=test user=test password=ngx_test sslmode=disable;
 #        postgres_keepalive  off;
     }
 --- config
