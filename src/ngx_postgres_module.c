@@ -346,7 +346,6 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     us->host = url.host;
 #else
-    connect->name = url.url;
     connect->addrs = url.addrs;
     connect->naddrs = url.naddrs;
 #endif
@@ -510,7 +509,6 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     if (!pusc->connect && !(pusc->connect = ngx_array_create(cf->pool, 1, sizeof(*pusc->connect)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_create", &cmd->name); return NGX_CONF_ERROR; }
     ngx_postgres_connect_t *connect2 = ngx_array_push(pusc->connect);
     if (!connect2) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
-    connect->name = url.url;
     connect->addrs = url.addrs;
     connect->naddrs = url.naddrs;
     *connect2 = *connect;
