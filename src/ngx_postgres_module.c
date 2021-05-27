@@ -339,9 +339,9 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     us->data = connect;
     us->host = url.host;
 #else
-    if (!pusc->connect && !(pusc->connect = ngx_array_create(cf->pool, 1, sizeof(*pusc->connect)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_create", &cmd->name); return NGX_CONF_ERROR; }
+    if (!pusc->connect.elts && ngx_array_init(&pusc->connect, cf->pool, 1, sizeof(ngx_postgres_connect_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     for (ngx_uint_t i = 0; i < url.naddrs; i++) {
-        ngx_postgres_connect_t *connect2 = ngx_array_push(pusc->connect);
+        ngx_postgres_connect_t *connect2 = ngx_array_push(&pusc->connect);
         if (!connect2) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
         *connect2 = *connect;
         connect2->peer.sockaddr = url.addrs[i].sockaddr;
@@ -504,9 +504,9 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     usc->peer_data = connect;
 #else
-    if (!pusc->connect && !(pusc->connect = ngx_array_create(cf->pool, 1, sizeof(*pusc->connect)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_create", &cmd->name); return NGX_CONF_ERROR; }
+    if (!pusc->connect.elts && ngx_array_init(&pusc->connect, cf->pool, 1, sizeof(ngx_postgres_connect_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     for (ngx_uint_t i = 0; i < url.naddrs; i++) {
-        ngx_postgres_connect_t *connect2 = ngx_array_push(pusc->connect);
+        ngx_postgres_connect_t *connect2 = ngx_array_push(&pusc->connect);
         if (!connect2) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
         *connect2 = *connect;
         connect2->peer.sockaddr = url.addrs[i].sockaddr;

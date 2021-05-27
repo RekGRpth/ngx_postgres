@@ -36,7 +36,7 @@ typedef struct {
         queue_t head;
     } pd;
 #else
-    ngx_array_t *connect;
+    ngx_array_t connect;
 #endif
     struct {
         ngx_http_upstream_init_peer_pt init;
