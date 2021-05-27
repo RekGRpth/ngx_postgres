@@ -28,14 +28,7 @@ typedef struct {
 } ngx_postgres_connect_t;
 
 typedef struct {
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    struct {
-        ngx_flag_t reject;
-        ngx_msec_t timeout;
-        ngx_uint_t max;
-        queue_t queue;
-    } pd;
-#else
+#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_array_t connect;
 #endif
     struct {
@@ -49,6 +42,14 @@ typedef struct {
         ngx_flag_t deallocate;
         ngx_uint_t max;
     } prepare;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    struct {
+        ngx_flag_t reject;
+        ngx_msec_t timeout;
+        ngx_uint_t max;
+        queue_t queue;
+    } request;
+#endif
     struct {
         ngx_flag_t reject;
         ngx_log_t *log;

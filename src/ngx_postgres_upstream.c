@@ -260,7 +260,7 @@ static void ngx_postgres_save_to_data(ngx_postgres_save_t *ps, ngx_postgres_data
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 static ngx_int_t ngx_postgres_next(ngx_postgres_share_t *s) {
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
-    queue_each(&usc->pd.queue, q) {
+    queue_each(&usc->request.queue, q) {
         queue_remove(q);
         ngx_postgres_data_t *pd = queue_data(q, typeof(*pd), queue);
         if (pd->timeout.timer_set) ngx_del_timer(&pd->timeout);
@@ -469,24 +469,24 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         if (queue_size(&usc->save.queue) + queue_size(&usc->data.queue) < usc->save.max) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.size = %i, data.size = %i", queue_size(&usc->save.queue), queue_size(&usc->data.queue));
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-        } else if (usc->pd.max) {
-            if (queue_size(&usc->pd.queue) < usc->pd.max) {
+        } else if (usc->request.max) {
+            if (queue_size(&usc->request.queue) < usc->request.max) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "pd = %p", pd);
                 ngx_http_request_t *r = pd->request;
                 ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(r->pool, 0);
                 if (!cln) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
                 cln->handler = ngx_postgres_data_cleanup;
                 cln->data = pd;
-                queue_insert_tail(&usc->pd.queue, &pd->queue);
+                queue_insert_tail(&usc->request.queue, &pd->queue);
                 pd->timeout.handler = ngx_postgres_data_timeout;
                 pd->timeout.log = pc->log;
                 pd->timeout.data = r;
-                ngx_add_timer(&pd->timeout, usc->pd.timeout);
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "pd.size = %i", queue_size(&usc->pd.queue));
+                ngx_add_timer(&pd->timeout, usc->request.timeout);
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "request.size = %i", queue_size(&usc->request.queue));
                 return NGX_YIELD;
             }
-            if (usc->pd.reject) {
-                ngx_log_error(NGX_LOG_WARN, pc->log, 0, "pd.size = %i", queue_size(&usc->pd.queue));
+            if (usc->request.reject) {
+                ngx_log_error(NGX_LOG_WARN, pc->log, 0, "request.size = %i", queue_size(&usc->request.queue));
                 return NGX_BUSY;
             }
 #endif
