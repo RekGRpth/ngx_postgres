@@ -100,7 +100,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_share_t *s) {
     if (last != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_snprintf"); return NGX_ERROR; }
     *last = '\0';
     send->sql = sql;
-    if (usc->ps.max) {
+    if (usc->save.max) {
         if (prepare) {
             if (!(send->stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
             u_char *last = ngx_snprintf(send->stmtName.data, 31, "ngx_%ul", (unsigned long)(send->hash = ngx_hash_key(sql.data, sql.len)));

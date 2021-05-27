@@ -55,8 +55,6 @@ typedef struct {
         ngx_msec_t timeout;
         ngx_uint_t max;
         ngx_uint_t requests;
-    } ps;
-    struct {
         queue_t queue;
     } save;
     struct {
