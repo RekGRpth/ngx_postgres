@@ -21,7 +21,6 @@ typedef struct {
     ngx_msec_t timeout;
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_addr_t *addrs;
-    ngx_str_t name;
     ngx_uint_t naddrs;
 #endif
 } ngx_postgres_connect_t;
