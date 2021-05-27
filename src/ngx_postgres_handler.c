@@ -60,7 +60,7 @@ void ngx_postgres_data_handler(ngx_event_t *ev) {
             default: break;
         }
     }
-    ngx_int_t rc = pd->handler(pd);
+    ngx_int_t rc = pd->share.handler(&pd->share);
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) { ngx_http_upstream_finalize_request(r, u, rc); goto run; }
     if (rc == NGX_ERROR) { ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); goto run; }
 run:
