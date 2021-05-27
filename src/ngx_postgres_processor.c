@@ -290,7 +290,7 @@ static ngx_int_t ngx_postgres_deallocate(ngx_postgres_data_t *pd) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     queue_t *q = queue_last(&pd->share.prepare->queue);
     queue_remove(q);
-    ngx_postgres_prepare_t *prepare = queue_data(q, ngx_postgres_prepare_t, queue);
+    ngx_postgres_prepare_t *prepare = queue_data(q, typeof(*prepare), queue);
     ngx_str_t stmtName;
     ngx_int_t rc = NGX_ERROR;
     if (!(stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
@@ -338,7 +338,7 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_data_t *pd) {
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
     queue_each(&pd->share.prepare->queue, q) {
-        ngx_postgres_prepare_t *prepare = queue_data(q, ngx_postgres_prepare_t, queue);
+        ngx_postgres_prepare_t *prepare = queue_data(q, typeof(*prepare), queue);
         if (prepare->hash == send->hash) return ngx_postgres_query_prepared(pd);
     }
     ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
