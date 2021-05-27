@@ -93,10 +93,10 @@ typedef struct ngx_postgres_share_t {
     ngx_int_t (*handler) (struct ngx_postgres_share_t *s);
     ngx_postgres_upstream_srv_conf_t *usc;
     PGconn *conn;
+    queue_t queue;
     struct {
         queue_t queue;
     } *prepare;
-    queue_t queue;
 } ngx_postgres_share_t;
 
 typedef struct {
