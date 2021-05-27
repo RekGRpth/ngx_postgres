@@ -36,9 +36,9 @@ ngx_int_t ngx_postgres_consume_flush_busy(ngx_postgres_save_t *s) {
 }
 
 
-void ngx_postgres_data_handler(ngx_event_t *ev) {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, ev->log, 0, ev->write ? "write" : "read");
-    ngx_connection_t *c = ev->data;
+void ngx_postgres_data_handler(ngx_event_t *e) {
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, e->write ? "write" : "read");
+    ngx_connection_t *c = e->data;
     ngx_postgres_data_t *pd = c->data;
     ngx_http_request_t *r = pd->request;
     ngx_http_upstream_t *u = r->upstream;
