@@ -93,12 +93,9 @@ typedef enum {
     type_save,
 } ngx_postgres_share_type_t;
 
-typedef struct ngx_postgres_share_t ngx_postgres_share_t;
-typedef ngx_int_t (*ngx_postgres_share_handler_pt) (ngx_postgres_share_t *s);
-
-typedef struct ngx_postgres_share_t {
+typedef struct {
     ngx_connection_t *connection;
-    ngx_postgres_share_handler_pt handler;
+    ngx_int_t (*handler) (struct ngx_postgres_share_t *s);
     ngx_postgres_share_type_t type;
     ngx_postgres_upstream_srv_conf_t *usc;
     PGconn *conn;
