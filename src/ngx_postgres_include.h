@@ -88,18 +88,16 @@ typedef struct {
     u_char **paramValues;
 } ngx_postgres_send_t;
 
-typedef struct {
-    queue_t queue;
-} ngx_postgres_prepare_t;
-
 typedef struct ngx_postgres_data_t ngx_postgres_data_t;
 typedef ngx_int_t (*ngx_postgres_data_handler_pt) (ngx_postgres_data_t *pd);
 
 typedef struct {
     ngx_connection_t *connection;
-    ngx_postgres_prepare_t *prepare;
     ngx_postgres_upstream_srv_conf_t *usc;
     PGconn *conn;
+    struct {
+        queue_t queue;
+    } *prepare;
     queue_t queue;
 } ngx_postgres_share_t;
 
