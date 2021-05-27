@@ -344,8 +344,8 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
         ngx_postgres_connect_t *connect2 = ngx_array_push(pusc->connect);
         if (!connect2) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
         *connect2 = *connect;
-        connect2->sockaddr = url.addrs[i].sockaddr;
-        connect2->socklen = url.addrs[i].socklen;
+        connect2->peer.sockaddr = url.addrs[i].sockaddr;
+        connect2->peer.socklen = url.addrs[i].socklen;
     }
 #endif
     return NGX_CONF_OK;
@@ -509,8 +509,8 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
         ngx_postgres_connect_t *connect2 = ngx_array_push(pusc->connect);
         if (!connect2) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
         *connect2 = *connect;
-        connect2->sockaddr = url.addrs[i].sockaddr;
-        connect2->socklen = url.addrs[i].socklen;
+        connect2->peer.sockaddr = url.addrs[i].sockaddr;
+        connect2->peer.socklen = url.addrs[i].socklen;
     }
 #endif
     return NGX_CONF_OK;

@@ -372,7 +372,7 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
 #else
     ngx_postgres_connect_t *connect = usc->connect->elts;
     ngx_uint_t i;
-    for (i = 0; i < usc->connect->nelts; i++) if (!ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)connect[i].sockaddr, pc->socklen, connect[i].socklen)) { connect = &connect[i]; break; }
+    for (i = 0; i < usc->connect->nelts; i++) if (!ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)connect[i].peer.sockaddr, pc->socklen, connect[i].peer.socklen)) { connect = &connect[i]; break; }
     if (i == usc->connect->nelts) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "connect not found"); return NGX_BUSY; }
 #endif
     ngx_http_request_t *r = pd->request;
