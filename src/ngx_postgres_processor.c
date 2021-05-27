@@ -194,7 +194,6 @@ static ngx_int_t ngx_postgres_query_prepared(ngx_postgres_share_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
-    ngx_http_request_t *r = pd->request;
     s->handler = ngx_postgres_query_prepared;
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
@@ -208,7 +207,6 @@ static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_share_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
-    ngx_http_request_t *r = pd->request;
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
     s->handler = ngx_postgres_prepare_result;
@@ -236,7 +234,6 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_share_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
-    ngx_http_request_t *r = pd->request;
     s->handler = ngx_postgres_query;
     while (PQstatus(s->conn) == CONNECTION_OK && (pd->result.res = PQgetResult(s->conn))) {
         switch (PQresultStatus(pd->result.res)) {
@@ -271,7 +268,6 @@ static ngx_int_t ngx_postgres_deallocate_result(ngx_postgres_share_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
-    ngx_http_request_t *r = pd->request;
     ngx_postgres_send_t *sendelts = pd->send.elts;
     ngx_postgres_send_t *send = &sendelts[pd->index];
     s->handler = ngx_postgres_deallocate_result;
@@ -330,7 +326,6 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_share_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
-    ngx_http_request_t *r = pd->request;
     s->handler = ngx_postgres_prepare;
     while (PQstatus(s->conn) == CONNECTION_OK && (pd->result.res = PQgetResult(s->conn))) {
         switch (PQresultStatus(pd->result.res)) {
@@ -393,8 +388,6 @@ const char *ngx_postgres_status(PGconn *conn) {
 ngx_int_t ngx_postgres_connect(ngx_postgres_share_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    ngx_postgres_data_t *pd = c->data;
-    ngx_http_request_t *r = pd->request;
     s->handler = ngx_postgres_connect;
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
     switch (PQstatus(s->conn)) {
