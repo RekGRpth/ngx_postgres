@@ -88,15 +88,9 @@ typedef struct {
     u_char **paramValues;
 } ngx_postgres_send_t;
 
-typedef enum {
-    type_data = 1,
-    type_save,
-} ngx_postgres_share_type_t;
-
-typedef struct {
+typedef struct ngx_postgres_share_t {
     ngx_connection_t *connection;
     ngx_int_t (*handler) (struct ngx_postgres_share_t *s);
-    ngx_postgres_share_type_t type;
     ngx_postgres_upstream_srv_conf_t *usc;
     PGconn *conn;
     struct {
