@@ -43,12 +43,12 @@ typedef struct {
         ngx_http_upstream_init_pt init_upstream;
     } peer;
     struct {
+        ngx_flag_t reject;
+        ngx_log_t *log;
+        ngx_msec_t timeout;
+        ngx_uint_t max;
+        ngx_uint_t requests;
         struct {
-            ngx_flag_t reject;
-            ngx_log_t *log;
-            ngx_msec_t timeout;
-            ngx_uint_t max;
-            ngx_uint_t requests;
             queue_t head;
         } save;
         struct {
