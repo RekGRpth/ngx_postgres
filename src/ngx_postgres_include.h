@@ -20,8 +20,10 @@ typedef struct {
     const char **values;
     ngx_msec_t timeout;
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_addr_t *addrs;
-    ngx_uint_t naddrs;
+    struct {
+        socklen_t socklen;
+        struct sockaddr *sockaddr;
+    } peer;
 #endif
 } ngx_postgres_connect_t;
 
@@ -34,7 +36,7 @@ typedef struct {
         queue_t head;
     } pd;
 #else
-    void *connect;
+    ngx_array_t *connect;
 #endif
     struct {
         ngx_http_upstream_init_peer_pt init;

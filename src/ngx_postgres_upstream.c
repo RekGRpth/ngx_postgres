@@ -370,16 +370,10 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_postgres_connect_t *connect = pc->peer_data;
 #else
-    ngx_array_t *array = usc->connect;
-    ngx_postgres_connect_t *connect = array->elts;
+    ngx_postgres_connect_t *connect = usc->connect->elts;
     ngx_uint_t i;
-    for (i = 0; i < array->nelts; i++) for (ngx_uint_t j = 0; j < connect[i].naddrs; j++) {
-        if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)connect[i].addrs[j].sockaddr, pc->socklen, connect[i].addrs[j].socklen)) continue;
-        connect = &connect[i];
-        goto exit;
-    }
-exit:
-    if (i == array->nelts) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "connect not found"); return NGX_BUSY; }
+    for (i = 0; i < usc->connect->nelts; i++) if (!ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)connect[i].sockaddr, pc->socklen, connect[i].socklen)) { connect = &connect[i]; break; }
+    if (i == usc->connect->nelts) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "connect not found"); return NGX_BUSY; }
 #endif
     ngx_http_request_t *r = pd->request;
     ngx_http_upstream_t *u = r->upstream;
