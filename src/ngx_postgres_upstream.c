@@ -169,7 +169,7 @@ static void ngx_postgres_share_to_save(ngx_log_t *log, ngx_postgres_share_t *sd,
     ngx_add_timer(c->read, usc->ps.timeout);
     ngx_add_timer(c->write, usc->ps.timeout);
     queue_remove(&sd->queue);
-    queue_insert_tail(&usc->ps.save.queue, &ss->queue);
+    queue_insert_tail(&usc->save.queue, &ss->queue);
 }
 
 
@@ -245,7 +245,7 @@ static void ngx_postgres_share_to_data(ngx_log_t *log, ngx_postgres_share_t *ss,
     if (c->write->timer_set) ngx_del_timer(c->write);
     queue_remove(&ss->queue);
     ngx_postgres_upstream_srv_conf_t *usc = ss->usc;
-    queue_insert_tail(&usc->ps.data.queue, &sd->queue);
+    queue_insert_tail(&usc->data.queue, &sd->queue);
 }
 
 
@@ -301,7 +301,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
         default: goto null;
     }
 #endif
-    if (queue_size(&usc->ps.save.queue) < usc->ps.max) {
+    if (queue_size(&usc->save.queue) < usc->ps.max) {
         ngx_postgres_save_t *ps = ngx_pcalloc(c->pool, sizeof(*ps));
         if (!ps) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pcalloc"); goto close; }
         ngx_postgres_data_to_save(pd, ps);
@@ -310,7 +310,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
         ps->share.handler = ngx_postgres_idle;
         goto null;
     }
-    queue_t *q = queue_last(&usc->ps.save.queue);
+    queue_t *q = queue_last(&usc->save.queue);
     ngx_postgres_save_t *ps = queue_data(q, typeof(*ps), share.queue);
     ngx_postgres_share_close(&ps->share);
     ngx_postgres_share_to_save(c->log, &pd->share, &ps->share);
@@ -424,12 +424,12 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
     }
     pc->connection = c;
     pd->share.handler = ngx_postgres_connect;
-    queue_insert_tail(&usc->ps.data.queue, &pd->share.queue);
+    queue_insert_tail(&usc->data.queue, &pd->share.queue);
     return NGX_AGAIN;
 connected:
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    queue_insert_tail(&usc->ps.data.queue, &pd->share.queue);
+    queue_insert_tail(&usc->data.queue, &pd->share.queue);
     return ngx_postgres_prepare_or_query(&pd->share);
 declined:
     PQfinish(pd->share.conn);
@@ -458,7 +458,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_upstream_srv_conf_t *usc = pd->share.usc;
     if (usc->ps.max) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ps.max = %i", usc->ps.max);
-        queue_each(&usc->ps.save.queue, q) {
+        queue_each(&usc->save.queue, q) {
             ngx_postgres_save_t *ps = queue_data(q, typeof(*ps), share.queue);
             if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)ps->share.peer.sockaddr, pc->socklen, ps->share.peer.socklen)) continue;
             ngx_postgres_save_to_data(ps, pd);
@@ -466,8 +466,8 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             pc->connection = ps->share.connection;
             return ngx_postgres_prepare_or_query(&pd->share);
         }
-        if (queue_size(&usc->ps.save.queue) + queue_size(&usc->ps.data.queue) < usc->ps.max) {
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ps.save.size = %i, ps.data.size = %i", queue_size(&usc->ps.save.queue), queue_size(&usc->ps.data.queue));
+        if (queue_size(&usc->save.queue) + queue_size(&usc->data.queue) < usc->ps.max) {
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.size = %i, data.size = %i", queue_size(&usc->save.queue), queue_size(&usc->data.queue));
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
         } else if (usc->pd.max) {
             if (queue_size(&usc->pd.queue) < usc->pd.max) {
@@ -491,7 +491,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             }
 #endif
         } else if (usc->ps.reject) {
-            ngx_log_error(NGX_LOG_WARN, pc->log, 0, "ps.save.size = %i, ps.data.size = %i", queue_size(&usc->ps.save.queue), queue_size(&usc->ps.data.queue));
+            ngx_log_error(NGX_LOG_WARN, pc->log, 0, "save.size = %i, data.size = %i", queue_size(&usc->save.queue), queue_size(&usc->data.queue));
             return NGX_BUSY;
         }
     }

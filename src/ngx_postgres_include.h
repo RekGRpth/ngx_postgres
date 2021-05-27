@@ -39,26 +39,26 @@ typedef struct {
     ngx_array_t connect;
 #endif
     struct {
+        queue_t queue;
+    } data;
+    struct {
         ngx_http_upstream_init_peer_pt init;
         ngx_http_upstream_init_pt init_upstream;
     } peer;
+    struct {
+        ngx_flag_t deallocate;
+        ngx_uint_t max;
+    } prepare;
     struct {
         ngx_flag_t reject;
         ngx_log_t *log;
         ngx_msec_t timeout;
         ngx_uint_t max;
         ngx_uint_t requests;
-        struct {
-            queue_t queue;
-        } save;
-        struct {
-            queue_t queue;
-        } data;
     } ps;
     struct {
-        ngx_flag_t deallocate;
-        ngx_uint_t max;
-    } prepare;
+        queue_t queue;
+    } save;
     struct {
         ngx_log_t *log;
     } trace;
