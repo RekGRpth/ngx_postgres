@@ -33,7 +33,7 @@ typedef struct {
         ngx_flag_t reject;
         ngx_msec_t timeout;
         ngx_uint_t max;
-        queue_t head;
+        queue_t queue;
     } pd;
 #else
     ngx_array_t connect;
@@ -49,10 +49,10 @@ typedef struct {
         ngx_uint_t max;
         ngx_uint_t requests;
         struct {
-            queue_t head;
+            queue_t queue;
         } save;
         struct {
-            queue_t head;
+            queue_t queue;
         } data;
     } ps;
     struct {
@@ -89,7 +89,7 @@ typedef struct {
 } ngx_postgres_send_t;
 
 typedef struct {
-    queue_t head;
+    queue_t queue;
 } ngx_postgres_prepare_t;
 
 typedef struct ngx_postgres_data_t ngx_postgres_data_t;
@@ -100,7 +100,7 @@ typedef struct {
     ngx_postgres_prepare_t *prepare;
     ngx_postgres_upstream_srv_conf_t *usc;
     PGconn *conn;
-    queue_t item;
+    queue_t queue;
 } ngx_postgres_share_t;
 
 typedef struct ngx_postgres_data_t {
@@ -115,7 +115,7 @@ typedef struct ngx_postgres_data_t {
     ngx_postgres_share_t share;
     ngx_uint_t index;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    queue_t item;
+    queue_t queue;
 #endif
     struct {
         ngx_event_free_peer_pt free;

@@ -9,8 +9,8 @@ static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
 
 static void ngx_postgres_srv_conf_cleanup(void *data) {
     ngx_postgres_upstream_srv_conf_t *usc = data;
-    queue_each(&usc->ps.save.head, item) ngx_postgres_close(queue_data(item, ngx_postgres_share_t, item));
-    queue_each(&usc->ps.data.head, item) ngx_postgres_close(queue_data(item, ngx_postgres_share_t, item));
+    queue_each(&usc->ps.save.queue, q) ngx_postgres_close(queue_data(q, ngx_postgres_share_t, queue));
+    queue_each(&usc->ps.data.queue, q) ngx_postgres_close(queue_data(q, ngx_postgres_share_t, queue));
 }
 
 
@@ -126,10 +126,10 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     ngx_postgres_upstream_srv_conf_t *pusc = ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module);
     if (pusc->peer.init_upstream(cf, usc) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "peer.init_upstream != NGX_OK"); return NGX_ERROR; }
     if (usc->peer.init != ngx_postgres_peer_init) { pusc->peer.init = usc->peer.init; usc->peer.init = ngx_postgres_peer_init; }
-    queue_init(&pusc->ps.data.head);
-    queue_init(&pusc->ps.save.head);
+    queue_init(&pusc->ps.data.queue);
+    queue_init(&pusc->ps.save.queue);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    queue_init(&pusc->pd.head);
+    queue_init(&pusc->pd.queue);
     ngx_conf_init_msec_value(pusc->pd.timeout, 60 * 1000);
 #endif
     ngx_conf_init_msec_value(pusc->ps.timeout, 60 * 60 * 1000);
