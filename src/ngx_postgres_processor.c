@@ -9,8 +9,8 @@ typedef struct {
 } ngx_postgres_prepare_t;
 
 
-static ngx_int_t ngx_postgres_prepare(ngx_postgres_share_t *s);
-static ngx_int_t ngx_postgres_query(ngx_postgres_share_t *s);
+static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s);
+static ngx_int_t ngx_postgres_query(ngx_postgres_save_t *s);
 
 
 static ngx_int_t ngx_postgres_done(ngx_postgres_data_t *pd, ngx_int_t rc) {
@@ -23,7 +23,7 @@ static ngx_int_t ngx_postgres_done(ngx_postgres_data_t *pd, ngx_int_t rc) {
 }
 
 
-ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_share_t *s) {
+ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
@@ -112,7 +112,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_share_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_query_result(ngx_postgres_share_t *s) {
+static ngx_int_t ngx_postgres_query_result(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
@@ -174,7 +174,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_share_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_result(ngx_postgres_share_t *s) {
+static ngx_int_t ngx_postgres_result(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
@@ -190,7 +190,7 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_share_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_query_prepared(ngx_postgres_share_t *s) {
+static ngx_int_t ngx_postgres_query_prepared(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
@@ -203,7 +203,7 @@ static ngx_int_t ngx_postgres_query_prepared(ngx_postgres_share_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_share_t *s) {
+static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
@@ -230,7 +230,7 @@ static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_share_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_query(ngx_postgres_share_t *s) {
+static ngx_int_t ngx_postgres_query(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
@@ -264,7 +264,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_share_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_deallocate_result(ngx_postgres_share_t *s) {
+static ngx_int_t ngx_postgres_deallocate_result(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
@@ -291,7 +291,7 @@ static ngx_int_t ngx_postgres_deallocate_result(ngx_postgres_share_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_deallocate(ngx_postgres_share_t *s) {
+static ngx_int_t ngx_postgres_deallocate(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
@@ -322,7 +322,7 @@ free:
 }
 
 
-static ngx_int_t ngx_postgres_prepare(ngx_postgres_share_t *s) {
+static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *pd = c->data;
@@ -385,7 +385,7 @@ const char *ngx_postgres_status(PGconn *conn) {
 }
 
 
-ngx_int_t ngx_postgres_connect(ngx_postgres_share_t *s) {
+ngx_int_t ngx_postgres_connect(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     s->handler = ngx_postgres_connect;

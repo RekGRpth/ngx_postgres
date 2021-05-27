@@ -9,8 +9,8 @@ static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
 
 static void ngx_postgres_srv_conf_cleanup(void *data) {
     ngx_postgres_upstream_srv_conf_t *usc = data;
-    queue_each(&usc->save.queue, q) ngx_postgres_close(queue_data(q, ngx_postgres_share_t, queue));
-    queue_each(&usc->data.queue, q) ngx_postgres_close(queue_data(q, ngx_postgres_share_t, queue));
+    queue_each(&usc->save.queue, q) ngx_postgres_close(queue_data(q, ngx_postgres_save_t, queue));
+    queue_each(&usc->data.queue, q) ngx_postgres_close(queue_data(q, ngx_postgres_save_t, queue));
 }
 
 
