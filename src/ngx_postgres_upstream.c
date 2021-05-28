@@ -467,12 +467,12 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     if (usc->save.max) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.max = %i", usc->save.max);
         queue_each(&usc->save.queue, q) {
-            ngx_postgres_save_t *ps = queue_data(q, typeof(*ps), queue);
-            if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)ps->peer.sockaddr, pc->socklen, ps->peer.socklen)) continue;
-            ngx_postgres_save_to_data(ps, d);
+            ngx_postgres_save_t *s = queue_data(q, typeof(*s), queue);
+            if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)s->peer.sockaddr, pc->socklen, s->peer.socklen)) continue;
+            ngx_postgres_save_to_data(s, d);
             pc->cached = 1;
-            pc->connection = ps->connection;
-            return ngx_postgres_prepare_or_query(ds);
+            pc->connection = s->connection;
+            return ngx_postgres_prepare_or_query(s);
         }
         if (queue_size(&usc->save.queue) + queue_size(&usc->data.queue) < usc->save.max) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.size = %i, data.size = %i", queue_size(&usc->save.queue), queue_size(&usc->data.queue));
