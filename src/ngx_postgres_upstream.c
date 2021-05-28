@@ -166,7 +166,7 @@ static void ngx_postgres_log_to_save(ngx_log_t *log, ngx_postgres_save_t *s) {
     ngx_add_timer(c->read, usc->save.timeout);
     ngx_add_timer(c->write, usc->save.timeout);
     queue_remove(&s->queue);
-    queue_insert_tail(&usc->save.queue, &s->queue);
+    queue_insert_head(&usc->save.queue, &s->queue);
 }
 
 
@@ -223,7 +223,7 @@ static void ngx_postgres_log_to_data(ngx_log_t *log, ngx_postgres_save_t *s) {
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
     queue_remove(&s->queue);
-    queue_insert_tail(&usc->data.queue, &s->queue);
+    queue_insert_head(&usc->data.queue, &s->queue);
 }
 
 
@@ -395,7 +395,7 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
     ds->peer.socklen = pc->socklen;
     ds->usc = usc;
     pc->connection = c;
-    queue_insert_tail(&usc->data.queue, &ds->queue);
+    queue_insert_head(&usc->data.queue, &ds->queue);
     return NGX_AGAIN;
 connected:
     if (!(d->save = ds = ngx_pcalloc(c->pool, sizeof(*ds)))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pcalloc"); goto destroy; }
@@ -408,7 +408,7 @@ connected:
     pc->connection = c;
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    queue_insert_tail(&usc->data.queue, &ds->queue);
+    queue_insert_head(&usc->data.queue, &ds->queue);
     return ngx_postgres_prepare_or_query(ds);
 declined:
     PQfinish(conn);
