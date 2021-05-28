@@ -350,7 +350,7 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s) {
     ngx_postgres_prepare_t *prepare = ngx_pcalloc(c->pool, sizeof(*prepare));
     if (!prepare) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     prepare->hash = send->hash;
-    queue_insert_tail(&s->prepare.queue, &prepare->queue);
+    queue_insert_head(&s->prepare.queue, &prepare->queue);
     s->handler = ngx_postgres_prepare_result;
     return NGX_AGAIN;
 }
