@@ -472,7 +472,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             ngx_postgres_save_to_data(s, d);
             pc->cached = 1;
             pc->connection = s->connection;
-            return ngx_postgres_prepare_or_query(s);
+            return ngx_postgres_prepare_or_query(ds);
         }
         if (queue_size(&usc->save.queue) + queue_size(&usc->data.queue) < usc->save.max) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.size = %i, data.size = %i", queue_size(&usc->save.queue), queue_size(&usc->data.queue));
