@@ -114,6 +114,7 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return; }
     ngx_postgres_data_t *d = u->peer.data;
     ngx_postgres_save_t *ds = d->save;
+    if (!ds) return;
     ngx_connection_t *c = ds->connection;
     if (!c) return;
     if (c->read->timer_set) ngx_del_timer(c->read);
