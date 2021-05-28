@@ -291,7 +291,7 @@ static ngx_int_t ngx_postgres_deallocate(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
-    queue_t *q = queue_last(&s->prepare->queue);
+    queue_t *q = queue_last(&s->prepare.queue);
     queue_remove(q);
     ngx_postgres_prepare_t *prepare = queue_data(q, typeof(*prepare), queue);
     ngx_str_t stmtName;
@@ -339,18 +339,18 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s) {
     }
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->index];
-    queue_each(&s->prepare->queue, q) {
+    queue_each(&s->prepare.queue, q) {
         ngx_postgres_prepare_t *prepare = queue_data(q, typeof(*prepare), queue);
         if (prepare->hash == send->hash) return ngx_postgres_query_prepared(s);
     }
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
-    if (usc->prepare.deallocate && queue_size(&s->prepare->queue) >= usc->prepare.max) return ngx_postgres_deallocate(s);
+    if (usc->prepare.deallocate && queue_size(&s->prepare.queue) >= usc->prepare.max) return ngx_postgres_deallocate(s);
     if (!PQsendPrepare(s->conn, (const char *)send->stmtName.data, (const char *)send->sql.data, send->nParams, send->paramTypes)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendPrepare(\"%V\", \"%V\") and %s", &send->stmtName, &send->sql, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQsendPrepare(\"%V\", \"%V\")", &send->stmtName, &send->sql);
     ngx_postgres_prepare_t *prepare = ngx_pcalloc(c->pool, sizeof(*prepare));
     if (!prepare) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     prepare->hash = send->hash;
-    queue_insert_tail(&s->prepare->queue, &prepare->queue);
+    queue_insert_tail(&s->prepare.queue, &prepare->queue);
     s->handler = ngx_postgres_prepare_result;
     return NGX_AGAIN;
 }

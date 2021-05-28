@@ -44,7 +44,7 @@ void ngx_postgres_data_handler(ngx_event_t *e) {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, e->write ? "write" : "read");
     ngx_connection_t *c = e->data;
     ngx_postgres_data_t *d = c->data;
-    ngx_postgres_save_t *ds = &d->save;
+    ngx_postgres_save_t *ds = d->save;
     ngx_http_request_t *r = d->request;
     ngx_http_upstream_t *u = r->upstream;
     ngx_connection_t *co = r->connection;
@@ -97,7 +97,7 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     ngx_postgres_data_t *d = u->peer.data;
-    ngx_postgres_save_t *ds = &d->save;
+    ngx_postgres_save_t *ds = d->save;
     ngx_connection_t *c = ds->connection;
     c->data = d;
     c->read->handler = ngx_postgres_data_handler;
@@ -113,7 +113,7 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
     u->out_bufs = NULL;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return; }
     ngx_postgres_data_t *d = u->peer.data;
-    ngx_postgres_save_t *ds = &d->save;
+    ngx_postgres_save_t *ds = d->save;
     ngx_connection_t *c = ds->connection;
     if (!c) return;
     if (c->read->timer_set) ngx_del_timer(c->read);

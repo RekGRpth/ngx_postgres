@@ -99,7 +99,7 @@ typedef struct ngx_postgres_save_t {
     } peer;
     struct {
         queue_t queue;
-    } *prepare;
+    } prepare;
 } ngx_postgres_save_t;
 
 typedef struct {
@@ -110,7 +110,7 @@ typedef struct {
 #endif
     ngx_http_request_t *request;
     ngx_postgres_result_t result;
-    ngx_postgres_save_t save;
+    ngx_postgres_save_t *save;
     ngx_postgres_upstream_srv_conf_t *usc;
     ngx_uint_t index;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
