@@ -66,8 +66,6 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->index];
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
-    ngx_flag_t prepare = usc->prepare.max && (location->prepare || query->prepare);
-    if (!usc->prepare.max && (location->prepare || query->prepare)) ngx_log_error(NGX_LOG_WARN, c->log, 0, "ignoring prepare");
     ngx_str_t sql;
     sql.len = query->sql.len - 2 * query->ids.nelts - query->percent;
     ngx_str_t *ids = NULL;
@@ -100,15 +98,14 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
     if (last != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_snprintf"); return NGX_ERROR; }
     *last = '\0';
     send->sql = sql;
-    if (usc->save.max) {
-        if (prepare) {
-            if (!(send->stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
-            u_char *last = ngx_snprintf(send->stmtName.data, 31, "ngx_%ul", (unsigned long)(send->hash = ngx_hash_key(sql.data, sql.len)));
-            *last = '\0';
-            send->stmtName.len = last - send->stmtName.data;
-        }
+    if (usc->save.max && usc->prepare.max && (location->prepare || query->prepare)) {
+        if (!(send->stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
+        u_char *last = ngx_snprintf(send->stmtName.data, 31, "ngx_%ul", (unsigned long)(send->hash = ngx_hash_key(sql.data, sql.len)));
+        *last = '\0';
+        send->stmtName.len = last - send->stmtName.data;
+        return ngx_postgres_prepare(s);
     }
-    return prepare ? ngx_postgres_prepare(s) : ngx_postgres_query(s);
+    return ngx_postgres_query(s);
 }
 
 
