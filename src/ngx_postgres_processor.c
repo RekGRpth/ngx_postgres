@@ -182,7 +182,6 @@ static ngx_int_t ngx_postgres_result(ngx_postgres_save_t *s) {
     ngx_postgres_output_t *output = &query->output;
     if (output->handler == ngx_postgres_output_plain || output->handler == ngx_postgres_output_csv) if (output->single && !PQsetSingleRowMode(s->conn)) ngx_log_error(NGX_LOG_WARN, c->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(s->conn));
     s->handler = ngx_postgres_query_result;
-    c->write->active = 0;
     return NGX_AGAIN;
 }
 
@@ -310,7 +309,6 @@ static ngx_int_t ngx_postgres_deallocate(ngx_postgres_save_t *s) {
     if (!PQsendQuery(s->conn, (const char *)sql.data)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery(\"%V\") and %s", &sql, PQerrorMessageMy(s->conn)); goto free; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQsendQuery(\"%V\")", &sql);
     s->handler = ngx_postgres_deallocate_result;
-    c->write->active = 0;
     rc = NGX_AGAIN;
 free:
     PQfreemem(str);
@@ -354,7 +352,6 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s) {
     prepare->hash = send->hash;
     queue_insert_tail(&s->prepare->queue, &prepare->queue);
     s->handler = ngx_postgres_prepare_result;
-    c->write->active = 0;
     return NGX_AGAIN;
 }
 
@@ -395,8 +392,8 @@ ngx_int_t ngx_postgres_connect(ngx_postgres_save_t *s) {
         case PGRES_POLLING_ACTIVE: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PGRES_POLLING_ACTIVE and %s", ngx_postgres_status(s->conn)); break;
         case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PGRES_POLLING_FAILED and %s and %s", ngx_postgres_status(s->conn), PQerrorMessageMy(s->conn)); return NGX_ERROR;
         case PGRES_POLLING_OK: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PGRES_POLLING_OK and %s", ngx_postgres_status(s->conn)); goto connected;
-        case PGRES_POLLING_READING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PGRES_POLLING_READING and %s", ngx_postgres_status(s->conn)); c->write->active = 0; break;
-        case PGRES_POLLING_WRITING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(s->conn)); c->read->active = 0; break;
+        case PGRES_POLLING_READING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PGRES_POLLING_READING and %s", ngx_postgres_status(s->conn)); break;
+        case PGRES_POLLING_WRITING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(s->conn)); break;
     }
     return NGX_AGAIN;
 connected:

@@ -51,8 +51,6 @@ void ngx_postgres_data_handler(ngx_event_t *e) {
     if (c->read->timedout) { c->read->timedout = 0; PQstatus(ds->conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); goto run; }
     if (c->write->timedout) { c->write->timedout = 0; PQstatus(ds->conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); goto run; }
     if (ngx_http_upstream_test_connect(c) != NGX_OK) { ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); goto run; }
-    c->read->active = 1;
-    c->write->active = 1;
     if (PQstatus(ds->conn) == CONNECTION_OK) {
         switch (ngx_postgres_consume_flush_busy(ds)) {
             case NGX_AGAIN: goto run;
