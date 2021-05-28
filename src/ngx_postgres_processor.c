@@ -29,14 +29,12 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *queryelts = location->query.elts;
-    ngx_postgres_send_t *sendelts = d->send.elts;
 #if (HAVE_NGX_UPSTREAM_TIMEOUT_FIELDS)
     u->connect_timeout = NGX_MAX_INT_T_VALUE;
 #else
     u->conf->connect_timeout = NGX_MAX_INT_T_VALUE;
 #endif
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location->timeout) {
 #if (HAVE_NGX_UPSTREAM_TIMEOUT_FIELDS)
         u->connect_timeout = location->timeout;
@@ -52,6 +50,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
         case NGX_ERROR: return NGX_ERROR;
         default: break;
     }
+    ngx_postgres_query_t *queryelts = location->query.elts;
     for (; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
     if (d->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     ngx_postgres_query_t *query = &queryelts[d->index];
@@ -64,6 +63,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
         ngx_add_timer(c->read, query->timeout);
         ngx_add_timer(c->write, query->timeout);
     }
+    ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->index];
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
     ngx_flag_t prepare = usc->prepare.max && (location->prepare || query->prepare);
