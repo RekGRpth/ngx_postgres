@@ -126,7 +126,7 @@ typedef struct {
     } peer;
 } ngx_postgres_data_t;
 
-typedef ngx_int_t (*ngx_postgres_data_handler_pt) (ngx_postgres_data_t *pd);
+typedef ngx_int_t (*ngx_postgres_data_handler_pt) (ngx_postgres_data_t *d);
 
 typedef struct {
     ngx_flag_t binary;
@@ -179,22 +179,22 @@ ngx_int_t ngx_postgres_consume(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_flush(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s);
-ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd);
-ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *pd);
-ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd);
-ngx_int_t ngx_postgres_output_plain(ngx_postgres_data_t *pd);
-ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd);
+ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *d);
+ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *d);
+ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *d);
+ngx_int_t ngx_postgres_output_plain(ngx_postgres_data_t *d);
+ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *d);
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *usc);
 ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s);
-ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd);
+ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *d);
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
-ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd);
-ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd);
-ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd);
+ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *d);
+ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *d);
+ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *d);
 void ngx_postgres_close(ngx_postgres_save_t *s);
-void ngx_postgres_data_handler(ngx_event_t *ev);
-void ngx_postgres_save_handler(ngx_event_t *ev);
+void ngx_postgres_data_handler(ngx_event_t *e);
+void ngx_postgres_save_handler(ngx_event_t *e);
 
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
 ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);

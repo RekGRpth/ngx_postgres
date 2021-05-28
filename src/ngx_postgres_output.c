@@ -23,15 +23,15 @@ static ngx_buf_t *ngx_postgres_buffer(ngx_http_request_t *r, size_t size) {
 }
 
 
-ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (!r->headers_out.content_type.data) {
         ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
         r->headers_out.content_type = core->default_type;
         r->headers_out.content_type_len = core->default_type.len;
     }
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_result_t *result = &d->result;
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
@@ -262,17 +262,17 @@ static ngx_flag_t ngx_postgres_oid_is_string(Oid oid) {
 }
 
 
-static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_result_t *result = &d->result;
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
     if (!result->ntuples || !result->nfields) return NGX_OK;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
     ngx_postgres_output_t *output = &query->output;
     ngx_http_upstream_t *u = r->upstream;
     if (output->header && !u->out_bufs) {
@@ -373,32 +373,32 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_data_t *pd) {
 }
 
 
-ngx_int_t ngx_postgres_output_plain(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_output_plain(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_str_set(&r->headers_out.content_type, "text/plain");
     r->headers_out.content_type_len = r->headers_out.content_type.len;
-    return ngx_postgres_output_plain_csv(pd);
+    return ngx_postgres_output_plain_csv(d);
 }
 
 
-ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_str_set(&r->headers_out.content_type, "text/csv");
     r->headers_out.content_type_len = r->headers_out.content_type.len;
-    return ngx_postgres_output_plain_csv(pd);
+    return ngx_postgres_output_plain_csv(d);
 }
 
 
-ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_str_set(&r->headers_out.content_type, "application/json");
     r->headers_out.content_type_len = r->headers_out.content_type.len;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_result_t *result = &d->result;
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
@@ -476,10 +476,10 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *pd) {
 }
 
 
-static ngx_int_t ngx_postgres_charset(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+static ngx_int_t ngx_postgres_charset(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    const char *charset = PQparameterStatus(pd->save.conn, "client_encoding");
+    const char *charset = PQparameterStatus(d->save.conn, "client_encoding");
     if (!charset) return NGX_OK;
     if (!ngx_strcasecmp((u_char *)charset, (u_char *)"utf8")) {
         ngx_str_set(&r->headers_out.charset, "utf-8");
@@ -496,15 +496,15 @@ static ngx_int_t ngx_postgres_charset(ngx_postgres_data_t *pd) {
 }
 
 
-ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
     if (!r->header_sent) {
-        ngx_postgres_result_t *result = &pd->result;
+        ngx_postgres_result_t *result = &d->result;
         r->headers_out.status = result->status ? result->status : NGX_HTTP_OK;
         r->headers_out.content_type_lowcase = NULL;
-        if (ngx_postgres_charset(pd) != NGX_OK) return NGX_ERROR;
+        if (ngx_postgres_charset(d) != NGX_OK) return NGX_ERROR;
         ngx_http_clear_content_length(r);
         r->headers_out.content_length_n = 0;
         for (ngx_chain_t *chain = u->out_bufs; chain; chain = chain->next) {

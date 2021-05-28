@@ -7,9 +7,9 @@ static ngx_int_t ngx_postgres_variable_nfields(ngx_http_request_t *r, ngx_http_v
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
-    ngx_postgres_data_t *pd = u->peer.data;
-    if (!pd) return NGX_OK;
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_data_t *d = u->peer.data;
+    if (!d) return NGX_OK;
+    ngx_postgres_result_t *result = &d->result;
     if (!result->sfields.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
@@ -26,9 +26,9 @@ static ngx_int_t ngx_postgres_variable_ntuples(ngx_http_request_t *r, ngx_http_v
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
-    ngx_postgres_data_t *pd = u->peer.data;
-    if (!pd) return NGX_OK;
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_data_t *d = u->peer.data;
+    if (!d) return NGX_OK;
+    ngx_postgres_result_t *result = &d->result;
     if (!result->stuples.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
@@ -45,9 +45,9 @@ static ngx_int_t ngx_postgres_variable_cmdtuples(ngx_http_request_t *r, ngx_http
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
-    ngx_postgres_data_t *pd = u->peer.data;
-    if (!pd) return NGX_OK;
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_data_t *d = u->peer.data;
+    if (!d) return NGX_OK;
+    ngx_postgres_result_t *result = &d->result;
     if (!result->cmdTuples.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
@@ -64,9 +64,9 @@ static ngx_int_t ngx_postgres_variable_cmdstatus(ngx_http_request_t *r, ngx_http
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
-    ngx_postgres_data_t *pd = u->peer.data;
-    if (!pd) return NGX_OK;
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_data_t *d = u->peer.data;
+    if (!d) return NGX_OK;
+    ngx_postgres_result_t *result = &d->result;
     if (!result->cmdStatus.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
@@ -83,9 +83,9 @@ static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_var
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
-    ngx_postgres_data_t *pd = u->peer.data;
-    if (!pd) return NGX_OK;
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_data_t *d = u->peer.data;
+    if (!d) return NGX_OK;
+    ngx_postgres_result_t *result = &d->result;
     if (!result->sql.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
@@ -102,9 +102,9 @@ static ngx_int_t ngx_postgres_variable_error_(ngx_http_request_t *r, ngx_http_va
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
-    ngx_postgres_data_t *pd = u->peer.data;
-    if (!pd) return NGX_OK;
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_data_t *d = u->peer.data;
+    if (!d) return NGX_OK;
+    ngx_postgres_result_t *result = &d->result;
     if (!result->error.data) return NGX_OK;
     v->valid = 1;
     v->no_cacheable = 0;
@@ -121,9 +121,9 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
-    ngx_postgres_data_t *pd = u->peer.data;
-    if (!pd || !pd->variable.elts) return NGX_OK;
-    ngx_str_t *variableelts = pd->variable.elts;
+    ngx_postgres_data_t *d = u->peer.data;
+    if (!d || !d->variable.elts) return NGX_OK;
+    ngx_str_t *variableelts = d->variable.elts;
     ngx_uint_t index = (ngx_uint_t)data;
     if (!variableelts[index].data) return NGX_OK;
     v->valid = 1;
@@ -155,12 +155,12 @@ typedef struct {
 } ngx_postgres_variable_t;
 
 
-ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_result_t *result = &d->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
     result->sql = query->sql;
     PGresult *res = result->res;
     result->ntuples = 0;
@@ -182,12 +182,12 @@ ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *pd) {
 }
 
 
-ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_result_t *result = &d->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
     result->sql = query->sql;
     PGresult *res = result->res;
     const char *value;
@@ -220,18 +220,18 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *pd) {
 }
 
 
-ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->index);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", d->index);
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
     ngx_array_t *array = &query->variable;
     if (!array->elts) return NGX_OK;
     ngx_postgres_variable_t *variable = array->elts;
-    ngx_str_t *variableelts = pd->variable.elts;
-//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", pd->variable.nelts);
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_str_t *variableelts = d->variable.elts;
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "nelts = %i", d->variable.nelts);
+    ngx_postgres_result_t *result = &d->result;
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
     result->nfields = PQnfields(res);
@@ -277,7 +277,7 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *pd) {
         ngx_http_upstream_t *u = r->upstream;
         ngx_chain_t *chain = u->out_bufs;
         u->out_bufs = NULL;
-        if (variable[i].handler(pd) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
+        if (variable[i].handler(d) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!handler"); return NGX_ERROR; }
         variableelts[variable[i].index].len = u->out_bufs->buf->end - u->out_bufs->buf->start;
         variableelts[variable[i].index].data = u->out_bufs->buf->start;
         u->out_bufs = chain;

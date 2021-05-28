@@ -1,7 +1,7 @@
 #include "ngx_postgres_include.h"
 
 
-typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_postgres_data_t *pd, ngx_uint_t key, ngx_uint_t status);
+typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_postgres_data_t *d, ngx_uint_t key, ngx_uint_t status);
 
 
 typedef struct  {
@@ -13,18 +13,18 @@ typedef struct  {
 } ngx_postgres_rewrite_t;
 
 
-ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd) {
-    ngx_http_request_t *r = pd->request;
+ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", pd->index);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[pd->index];
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "query = %i", d->index);
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
     ngx_array_t *rewrite = &query->rewrite;
     if (!rewrite->elts) return NGX_OK;
     ngx_postgres_rewrite_t *rewriteelts = rewrite->elts;
     ngx_int_t rc = NGX_OK;
-    ngx_postgres_result_t *result = &pd->result;
-    for (ngx_uint_t i = 0; i < rewrite->nelts; i++) if ((!rewriteelts[i].method || rewriteelts[i].method & r->method) && (rc = rewriteelts[i].handler(pd, rewriteelts[i].key, rewriteelts[i].status)) != NGX_OK) {
+    ngx_postgres_result_t *result = &d->result;
+    for (ngx_uint_t i = 0; i < rewrite->nelts; i++) if ((!rewriteelts[i].method || rewriteelts[i].method & r->method) && (rc = rewriteelts[i].handler(d, rewriteelts[i].key, rewriteelts[i].status)) != NGX_OK) {
         result->status = rc;
         if (rewriteelts[i].keep) rc = NGX_OK;
         break;
@@ -33,10 +33,10 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *pd) {
 }
 
 
-static ngx_int_t ngx_postgres_rewrite_changes(ngx_postgres_data_t *pd, ngx_uint_t key, ngx_uint_t status) {
-    ngx_http_request_t *r = pd->request;
+static ngx_int_t ngx_postgres_rewrite_changes(ngx_postgres_data_t *d, ngx_uint_t key, ngx_uint_t status) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_result_t *result = &d->result;
     PGresult *res = result->res;
     if (ngx_strncasecmp((u_char *)PQcmdStatus(res), (u_char *)"SELECT", sizeof("SELECT") - 1)) {
         char *affected = PQcmdTuples(res);
@@ -50,10 +50,10 @@ static ngx_int_t ngx_postgres_rewrite_changes(ngx_postgres_data_t *pd, ngx_uint_
 }
 
 
-static ngx_int_t ngx_postgres_rewrite_rows(ngx_postgres_data_t *pd, ngx_uint_t key, ngx_uint_t status) {
-    ngx_http_request_t *r = pd->request;
+static ngx_int_t ngx_postgres_rewrite_rows(ngx_postgres_data_t *d, ngx_uint_t key, ngx_uint_t status) {
+    ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_result_t *result = &pd->result;
+    ngx_postgres_result_t *result = &d->result;
     PGresult *res = result->res;
     result->ntuples = PQntuples(res);
     if (key % 2 == 0 && !result->ntuples) return status;
