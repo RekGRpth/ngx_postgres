@@ -433,7 +433,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "rc = %i", rc);
     ngx_postgres_upstream_srv_conf_t *usc = d->usc;
     if (usc->save.max) {
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.max = %i", usc->save.max);
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.max = %i, save.size = %i, data.size = %i", usc->save.max, queue_size(&usc->save.queue), queue_size(&usc->data.queue));
         queue_each(&usc->save.queue, q) {
             ngx_postgres_save_t *s = queue_data(q, typeof(*s), queue);
             if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)s->peer.sockaddr, pc->socklen, s->peer.socklen)) continue;
@@ -448,6 +448,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.size = %i, data.size = %i", queue_size(&usc->save.queue), queue_size(&usc->data.queue));
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
         } else if (usc->request.max) {
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "request.max = %i, request.size = %i", usc->request.max, queue_size(&usc->request.queue));
             if (queue_size(&usc->request.queue) < usc->request.max) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "d = %p", d);
                 ngx_http_request_t *r = d->request;
