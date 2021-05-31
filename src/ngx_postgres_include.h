@@ -111,7 +111,6 @@ typedef struct {
     ngx_http_request_t *request;
     ngx_postgres_result_t result;
     ngx_postgres_save_t *save;
-    ngx_postgres_upstream_srv_conf_t *usc;
     ngx_uint_t index;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     queue_t queue;
