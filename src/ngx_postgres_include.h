@@ -19,12 +19,7 @@ typedef struct {
     const char **keywords;
     const char **values;
     ngx_msec_t timeout;
-#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
-    struct {
-        socklen_t socklen;
-        struct sockaddr *sockaddr;
-    } peer;
-#endif
+    ngx_url_t url;
 } ngx_postgres_connect_t;
 
 typedef struct {
@@ -160,6 +155,7 @@ typedef struct {
     ngx_http_complex_value_t complex;
     ngx_http_upstream_conf_t upstream;
     ngx_msec_t timeout;
+    ngx_postgres_connect_t *connect;
     ngx_uint_t variable;
 } ngx_postgres_location_t;
 
