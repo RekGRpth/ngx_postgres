@@ -322,7 +322,6 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_postgres_upstream_srv_conf_t *pusc = conf;
     pusc->peer.init_upstream = usc->peer.init_upstream;
     usc->peer.init_upstream = ngx_postgres_peer_init_upstream;
-    if (!usc->servers && !(usc->servers = ngx_array_create(cf->pool, 1, sizeof(*usc->servers)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_create", &cmd->name); return NGX_CONF_ERROR; }
     ngx_http_upstream_server_t *us = ngx_array_push(usc->servers);
     if (!us) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(us, sizeof(*us));
