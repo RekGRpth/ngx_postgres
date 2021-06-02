@@ -125,7 +125,8 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *usc) {
     ngx_postgres_upstream_srv_conf_t *pusc = ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module);
     if ((pusc->peer.init_upstream ? pusc->peer.init_upstream : ngx_http_upstream_init_round_robin)(cf, usc) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "peer.init_upstream != NGX_OK"); return NGX_ERROR; }
-    if (usc->peer.init != ngx_postgres_peer_init) { pusc->peer.init = usc->peer.init; usc->peer.init = ngx_postgres_peer_init; }
+    pusc->peer.init = usc->peer.init;
+    usc->peer.init = ngx_postgres_peer_init;
     queue_init(&pusc->data.queue);
     queue_init(&pusc->save.queue);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
