@@ -122,7 +122,7 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return NGX_ERROR; }
     v->not_found = 1;
     ngx_postgres_data_t *d = u->peer.data;
-    if (!d || !d->variable.elts) return NGX_OK;
+    if (!d || !d->variable.nelts) return NGX_OK;
     ngx_str_t *variableelts = d->variable.elts;
     ngx_uint_t index = (ngx_uint_t)data;
     if (!variableelts[index].data) return NGX_OK;
@@ -368,7 +368,7 @@ ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf) {
 
 char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    if (!location->query.elts || !location->query.nelts) return "must defined after \"postgres_query\" directive";
+    if (!location->query.nelts) return "must defined after \"postgres_query\" directive";
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1];
     ngx_str_t *args = cf->args->elts;
     if (args[1].len < 2) return "error: empty variable name";

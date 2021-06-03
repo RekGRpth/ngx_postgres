@@ -75,7 +75,7 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_postgres_location_t *prev = parent;
     ngx_postgres_location_t *conf = child;
     if (!conf->complex.value.data) conf->complex = prev->complex;
-    if (!conf->query.elts) conf->query = prev->query;
+    if (!conf->query.nelts) conf->query = prev->query;
     if (!conf->upstream.upstream) conf->upstream = prev->upstream;
     if (conf->upstream.store == NGX_CONF_UNSET) {
         ngx_conf_merge_value(conf->upstream.store, prev->upstream.store, 0);
@@ -511,7 +511,7 @@ static char *ngx_postgres_trace_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 
 static char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    ngx_postgres_query_t *query = location->query.elts && location->query.nelts ? &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1] : NULL;
+    ngx_postgres_query_t *query = location->query.nelts ? &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1] : NULL;
     ngx_str_t *args = cf->args->elts;
     ngx_int_t n = ngx_parse_time(&args[1], 0);
     if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be time", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
@@ -526,7 +526,7 @@ static char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void 
 
 static char *ngx_postgres_prepare_conf_(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    ngx_postgres_query_t *query = location->query.elts && location->query.nelts ? &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1] : NULL;
+    ngx_postgres_query_t *query = location->query.nelts ? &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1] : NULL;
     ngx_str_t *args = cf->args->elts;
     static const ngx_conf_enum_t e[] = {
         { ngx_string("off"), 0 },

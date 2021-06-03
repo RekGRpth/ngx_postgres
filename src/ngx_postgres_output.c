@@ -533,7 +533,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *d) {
 
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
-    if (!location->query.elts || !location->query.nelts) return "must defined after \"postgres_query\" directive";
+    if (!location->query.nelts) return "must defined after \"postgres_query\" directive";
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1];
     ngx_postgres_output_t *output = &query->output;
     if (output->handler) return "duplicate";
