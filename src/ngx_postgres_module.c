@@ -22,7 +22,7 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     usc->request.timeout = NGX_CONF_UNSET_MSEC;
 #else
-    if (ngx_array_init(&usc->connect, cf->pool, 1, sizeof(ngx_postgres_connect_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
+    if (ngx_array_init(&usc->connect, cf->pool, 1, sizeof(ngx_postgres_connect_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "ngx_array_init != NGX_OK"); return NULL; }
 #endif
     return usc;
 }
