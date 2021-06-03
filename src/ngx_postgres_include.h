@@ -159,6 +159,16 @@ typedef struct {
     ngx_uint_t variable;
 } ngx_postgres_location_t;
 
+typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_postgres_data_t *d, ngx_uint_t key, ngx_uint_t status);
+
+typedef struct  {
+    ngx_flag_t keep;
+    ngx_postgres_rewrite_handler_pt handler;
+    ngx_uint_t key;
+    ngx_uint_t method;
+    ngx_uint_t status;
+} ngx_postgres_rewrite_t;
+
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);

@@ -1,18 +1,6 @@
 #include "ngx_postgres_include.h"
 
 
-typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_postgres_data_t *d, ngx_uint_t key, ngx_uint_t status);
-
-
-typedef struct  {
-    ngx_flag_t keep;
-    ngx_postgres_rewrite_handler_pt handler;
-    ngx_uint_t key;
-    ngx_uint_t method;
-    ngx_uint_t status;
-} ngx_postgres_rewrite_t;
-
-
 ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
@@ -85,9 +73,7 @@ char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
     ngx_uint_t i;
     for (i = 0; e[i].name.len; i++) if (e[i].name.len == what.len && !ngx_strncasecmp(e[i].name.data, what.data, e[i].name.len)) break;
     if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: condition \"%V\" must be \"no_changes\", \"changes\", \"no_rows\", \"rows\", \"no_errors\" or \"errors\"", &cmd->name, &what); return NGX_CONF_ERROR; }
-    ngx_array_t *array = &query->rewrite;
-    if (!array->elts && ngx_array_init(array, cf->pool, 1, sizeof(ngx_postgres_rewrite_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_postgres_rewrite_t *rewrite = ngx_array_push(array);
+    ngx_postgres_rewrite_t *rewrite = ngx_array_push(&query->rewrite);
     if (!rewrite) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(rewrite, sizeof(*rewrite));
     rewrite->handler = e[i].handler;
