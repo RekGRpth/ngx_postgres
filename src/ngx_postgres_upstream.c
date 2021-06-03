@@ -494,12 +494,6 @@ ret:
 }
 
 
-typedef struct {
-    ngx_uint_t index;
-    ngx_uint_t oid;
-} ngx_postgres_param_t;
-
-
 #if (NGX_HTTP_SSL)
 static ngx_int_t ngx_postgres_set_session(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);

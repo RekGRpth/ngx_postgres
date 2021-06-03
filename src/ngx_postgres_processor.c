@@ -3,12 +3,6 @@
 #include "ngx_postgres_include.h"
 
 
-typedef struct {
-    ngx_uint_t hash;
-    queue_t queue;
-} ngx_postgres_prepare_t;
-
-
 static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s);
 static ngx_int_t ngx_postgres_query(ngx_postgres_save_t *s);
 

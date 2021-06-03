@@ -187,6 +187,16 @@ typedef struct {
     u_char *field;
 } ngx_postgres_variable_t;
 
+typedef struct {
+    ngx_uint_t hash;
+    queue_t queue;
+} ngx_postgres_prepare_t;
+
+typedef struct {
+    ngx_uint_t index;
+    ngx_uint_t oid;
+} ngx_postgres_param_t;
+
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
