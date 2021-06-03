@@ -169,6 +169,24 @@ typedef struct  {
     ngx_uint_t status;
 } ngx_postgres_rewrite_t;
 
+typedef enum {
+    type_nfields = 1,
+    type_ntuples,
+    type_cmdTuples,
+    type_cmdStatus,
+} ngx_postgres_type_t;
+
+typedef struct {
+    ngx_postgres_data_handler_pt handler;
+    ngx_postgres_type_t type;
+    ngx_str_t name;
+    ngx_uint_t col;
+    ngx_uint_t index;
+    ngx_uint_t required;
+    ngx_uint_t row;
+    u_char *field;
+} ngx_postgres_variable_t;
+
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);

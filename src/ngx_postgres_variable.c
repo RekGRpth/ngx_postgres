@@ -135,26 +135,6 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
 }
 
 
-typedef enum {
-    type_nfields = 1,
-    type_ntuples,
-    type_cmdTuples,
-    type_cmdStatus,
-} ngx_postgres_type_t;
-
-
-typedef struct {
-    ngx_postgres_data_handler_pt handler;
-    ngx_postgres_type_t type;
-    ngx_str_t name;
-    ngx_uint_t col;
-    ngx_uint_t index;
-    ngx_uint_t required;
-    ngx_uint_t row;
-    u_char *field;
-} ngx_postgres_variable_t;
-
-
 ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
@@ -395,9 +375,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (args[1].data[0] != '$') return "error: invalid variable name";
     args[1].len--;
     args[1].data++;
-    ngx_array_t *array = &query->variable;
-    if (!array->elts && ngx_array_init(array, cf->pool, 1, sizeof(ngx_postgres_variable_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_postgres_variable_t *variable = ngx_array_push(array);
+    ngx_postgres_variable_t *variable = ngx_array_push(&query->variable);
     if (!variable) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(variable, sizeof(*variable));
     variable->index = location->variable++;
