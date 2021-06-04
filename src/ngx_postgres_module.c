@@ -126,10 +126,11 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 
 
 static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *usc) {
-    ngx_postgres_upstream_srv_conf_t *pusc = ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module);
-    if ((pusc->peer.init_upstream ? pusc->peer.init_upstream : ngx_http_upstream_init_round_robin)(cf, usc) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "peer.init_upstream != NGX_OK"); return NGX_ERROR; }
-    pusc->peer.init = usc->peer.init;
+    ngx_postgres_upstream_srv_conf_t *pusc = usc->srv_conf ? ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module) : NULL;
+    if (((pusc && pusc->peer.init_upstream) ? pusc->peer.init_upstream : ngx_http_upstream_init_round_robin)(cf, usc) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "peer.init_upstream != NGX_OK"); return NGX_ERROR; }
+    if (pusc) pusc->peer.init = usc->peer.init;
     usc->peer.init = ngx_postgres_peer_init;
+    if (!pusc) return NGX_OK;
     queue_init(&pusc->data.queue);
     queue_init(&pusc->save.queue);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
@@ -475,9 +476,10 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     ngx_http_core_loc_conf_t *core = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     core->handler = ngx_postgres_handler;
     if (core->name.data[core->name.len - 1] == '/') core->auto_redirect = 1;
+    ngx_url_t url;
+    ngx_postgres_connect_t *connect;
     if (cf->args->nelts == 2) {
         ngx_str_t *elts = cf->args->elts;
-        ngx_url_t url;
         ngx_memzero(&url, sizeof(url));
         url.no_resolve = 1;
         url.url = elts[1];
@@ -487,13 +489,21 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
             if (ngx_http_compile_complex_value(&ccv) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_http_compile_complex_value != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
             return NGX_CONF_OK;
         }
-        if (!(location->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_upstream_add", &cmd->name); return NGX_CONF_ERROR; }
-        return NGX_CONF_OK;
+    } else {
+        if (!(connect = ngx_pcalloc(cf->pool, sizeof(*connect)))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
+        if (ngx_postgres_connect_conf(cf, cmd, connect, NULL) == NGX_CONF_ERROR) return NGX_CONF_ERROR;
+        url = connect->url;
     }
-    ngx_postgres_connect_t *connect = ngx_pcalloc(cf->pool, sizeof(*connect));
-    if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
+    if (!(location->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_upstream_add", &cmd->name); return NGX_CONF_ERROR; }
+    if (cf->args->nelts == 2) return NGX_CONF_OK;
+    ngx_http_upstream_srv_conf_t *usc = location->upstream.upstream;
+    usc->peer.init_upstream = ngx_postgres_peer_init_upstream;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    usc->peer_data = connect;
+#else
     location->connect = connect;
-    return ngx_postgres_connect_conf(cf, cmd, connect, NULL);
+#endif
+    return NGX_CONF_OK;
 }
 
 

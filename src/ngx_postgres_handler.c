@@ -122,20 +122,6 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
 }
 
 
-static void ngx_postgres_init(ngx_http_request_t *r) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_http_upstream_t *u = r->upstream;
-    ngx_http_cleanup_t *cln = ngx_http_cleanup_add(r, 0);
-    if (!cln) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_http_cleanup_add"); return ngx_http_upstream_finalize_request(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); }
-    cln->handler = ngx_http_upstream_cleanup;
-    cln->data = r;
-    u->cleanup = &cln->handler;
-    if (ngx_postgres_peer_init(r, NULL) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_peer_init != NGX_OK"); return ngx_http_upstream_finalize_request(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); }
-    if (ngx_event_connect_peer(&u->peer) != NGX_AGAIN) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_event_connect_peer != NGX_AGAIN"); return ngx_http_upstream_finalize_request(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); }
-    if (ngx_postgres_reinit_request(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_postgres_reinit_request != NGX_OK"); return ngx_http_upstream_finalize_request(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); }
-}
-
-
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
 //    if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "subrequest_in_memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; } // TODO: add support for subrequest in memory by emitting output into u->buffer instead
@@ -162,7 +148,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     r->state = 0;
     u->buffering = location->upstream.buffering;
     if (!location->upstream.request_buffering && location->upstream.pass_request_body && !r->headers_in.chunked) r->request_body_no_buffering = 1;
-    if ((rc = ngx_http_read_client_request_body(r, location->connect ? ngx_postgres_init : ngx_http_upstream_init)) >= NGX_HTTP_SPECIAL_RESPONSE) return rc;
+    if ((rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init)) >= NGX_HTTP_SPECIAL_RESPONSE) return rc;
     return NGX_DONE;
 }
 

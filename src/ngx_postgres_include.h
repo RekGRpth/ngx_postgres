@@ -155,7 +155,9 @@ typedef struct {
     ngx_http_complex_value_t complex;
     ngx_http_upstream_conf_t upstream;
     ngx_msec_t timeout;
+#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_postgres_connect_t *connect;
+#endif
     ngx_uint_t variable;
 } ngx_postgres_location_t;
 
