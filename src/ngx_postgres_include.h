@@ -232,6 +232,7 @@ void ngx_postgres_save_handler(ngx_event_t *e);
 
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
 ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);
+void ngx_http_upstream_cleanup(void *data);
 void ngx_http_upstream_finalize_request(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t rc);
 void ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_uint_t ft_type);
 #endif

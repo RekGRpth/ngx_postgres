@@ -122,13 +122,6 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
 }
 
 
-static void ngx_http_upstream_cleanup(void *data) {
-    ngx_http_request_t *r = data;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "cleanup http upstream request: \"%V\"", &r->uri);
-    ngx_http_upstream_finalize_request(r, r->upstream, NGX_DONE);
-}
-
-
 static void ngx_postgres_init(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
@@ -175,6 +168,57 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
 
 
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
+ngx_int_t
+ngx_http_upstream_test_connect(ngx_connection_t *c)
+{
+    int        err;
+    socklen_t  len;
+
+#if (NGX_HAVE_KQUEUE)
+
+    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT)  {
+        if (c->write->pending_eof || c->read->pending_eof) {
+            if (c->write->pending_eof) {
+                err = c->write->kq_errno;
+
+            } else {
+                err = c->read->kq_errno;
+            }
+
+            c->log->action = "connecting to upstream";
+            (void) ngx_connection_error(c, err,
+                                    "kevent() reported that connect() failed");
+            return NGX_ERROR;
+        }
+
+    } else
+#endif
+    {
+        err = 0;
+        len = sizeof(int);
+
+        /*
+         * BSDs and Linux return 0 and set a pending error in err
+         * Solaris returns -1 and sets errno
+         */
+
+        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len)
+            == -1)
+        {
+            err = ngx_socket_errno;
+        }
+
+        if (err) {
+            c->log->action = "connecting to upstream";
+            (void) ngx_connection_error(c, err, "connect() failed");
+            return NGX_ERROR;
+        }
+    }
+
+    return NGX_OK;
+}
+
+
 void
 ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_uint_t ft_type)
@@ -349,54 +393,15 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 }
 
 
-ngx_int_t
-ngx_http_upstream_test_connect(ngx_connection_t *c)
+void
+ngx_http_upstream_cleanup(void *data)
 {
-    int        err;
-    socklen_t  len;
+    ngx_http_request_t *r = data;
 
-#if (NGX_HAVE_KQUEUE)
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                   "cleanup http upstream request: \"%V\"", &r->uri);
 
-    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT)  {
-        if (c->write->pending_eof || c->read->pending_eof) {
-            if (c->write->pending_eof) {
-                err = c->write->kq_errno;
-
-            } else {
-                err = c->read->kq_errno;
-            }
-
-            c->log->action = "connecting to upstream";
-            (void) ngx_connection_error(c, err,
-                                    "kevent() reported that connect() failed");
-            return NGX_ERROR;
-        }
-
-    } else
-#endif
-    {
-        err = 0;
-        len = sizeof(int);
-
-        /*
-         * BSDs and Linux return 0 and set a pending error in err
-         * Solaris returns -1 and sets errno
-         */
-
-        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len)
-            == -1)
-        {
-            err = ngx_socket_errno;
-        }
-
-        if (err) {
-            c->log->action = "connecting to upstream";
-            (void) ngx_connection_error(c, err, "connect() failed");
-            return NGX_ERROR;
-        }
-    }
-
-    return NGX_OK;
+    ngx_http_upstream_finalize_request(r, r->upstream, NGX_DONE);
 }
 
 
