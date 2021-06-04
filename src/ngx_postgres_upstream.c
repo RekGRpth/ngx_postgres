@@ -387,10 +387,11 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
         else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ngx_add_event(write)"); }
     }
     ngx_postgres_save_t *s;
+    ngx_flag_t connected = 0;
     switch (PQconnectPoll(conn)) {
         case PGRES_POLLING_ACTIVE: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_ACTIVE and %s", ngx_postgres_status(conn)); break;
         case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PGRES_POLLING_FAILED and %s and %s", ngx_postgres_status(conn), PQerrorMessageMy(conn)); goto destroy;
-        case PGRES_POLLING_OK: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_OK and %s", ngx_postgres_status(conn)); goto connected;
+        case PGRES_POLLING_OK: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_OK and %s", ngx_postgres_status(conn)); connected = 1; break;
         case PGRES_POLLING_READING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_READING and %s", ngx_postgres_status(conn)); break;
         case PGRES_POLLING_WRITING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(conn)); break;
     }
@@ -404,20 +405,7 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
     s->usc = usc;
     pc->connection = c;
     if (usc) queue_insert_head(&usc->data.queue, &s->queue);
-    return NGX_AGAIN;
-connected:
-    if (!(s = d->save = ngx_pcalloc(c->pool, sizeof(*s)))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pcalloc"); goto destroy; }
-    queue_init(&s->prepare.queue);
-    s->conn = conn;
-    s->connection = c;
-    s->peer.sockaddr = pc->sockaddr;
-    s->peer.socklen = pc->socklen;
-    s->usc = usc;
-    pc->connection = c;
-    if (c->read->timer_set) ngx_del_timer(c->read);
-    if (c->write->timer_set) ngx_del_timer(c->write);
-    if (usc) queue_insert_head(&usc->data.queue, &s->queue);
-    return ngx_postgres_prepare_or_query(s);
+    return connected ? ngx_postgres_prepare_or_query(s) : NGX_AGAIN;
 declined:
     PQfinish(conn);
     return NGX_DECLINED;
