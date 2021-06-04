@@ -188,23 +188,23 @@ void ngx_postgres_save_handler(ngx_event_t *e) {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, e->write ? "write" : "read");
     ngx_connection_t *c = e->data;
     c->log->connection = c->number;
-    ngx_postgres_save_t *ps = c->data;
+    ngx_postgres_save_t *s = c->data;
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "close"); goto close; }
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "read timedout"); c->read->timedout = 0; goto close; }
     if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "write timedout"); c->write->timedout = 0; goto close; }
-    switch (ngx_postgres_consume_flush_busy(ps)) {
+    switch (ngx_postgres_consume_flush_busy(s)) {
         case NGX_AGAIN: return;
         case NGX_ERROR: goto close;
         default: break;
     }
-    switch (ngx_postgres_notify(ps)) {
+    switch (ngx_postgres_notify(s)) {
         case NGX_AGAIN: return;
         case NGX_ERROR: goto close;
         default: break;
     }
-    if (ps->handler(ps) != NGX_ERROR) return;
+    if (s->handler(s) != NGX_ERROR) return;
 close:
-    ngx_postgres_save_close(ps);
+    ngx_postgres_save_close(s);
 }
 
 
