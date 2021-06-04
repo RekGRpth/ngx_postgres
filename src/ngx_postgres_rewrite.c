@@ -71,7 +71,7 @@ char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
         { ngx_null_string, 0, NULL }
     };
     ngx_uint_t i;
-    for (i = 0; e[i].name.len; i++) if (e[i].name.len == what.len && !ngx_strncasecmp(e[i].name.data, what.data, e[i].name.len)) break;
+    for (i = 0; e[i].name.len; i++) if (e[i].name.len == what.len && !ngx_strncmp(e[i].name.data, what.data, e[i].name.len)) break;
     if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: condition \"%V\" must be \"no_changes\", \"changes\", \"no_rows\", \"rows\", \"no_errors\" or \"errors\"", &cmd->name, &what); return NGX_CONF_ERROR; }
     ngx_postgres_rewrite_t *rewrite = ngx_array_push(&query->rewrite);
     if (!rewrite) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }

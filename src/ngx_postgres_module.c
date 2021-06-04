@@ -153,7 +153,7 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
     ngx_str_t conninfo = ngx_null_string;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
         if (us) {
-            if (args[i].len > sizeof("weight=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"weight=", sizeof("weight=") - 1)) {
+            if (args[i].len > sizeof("weight=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"weight=", sizeof("weight=") - 1)) {
                 args[i].len = args[i].len - (sizeof("weight=") - 1);
                 args[i].data = &args[i].data[sizeof("weight=") - 1];
                 ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
@@ -162,7 +162,7 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
                 us->weight = (ngx_uint_t)n;
                 continue;
             }
-            if (args[i].len > sizeof("max_conns=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"max_conns=", sizeof("max_conns=") - 1)) {
+            if (args[i].len > sizeof("max_conns=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"max_conns=", sizeof("max_conns=") - 1)) {
                 args[i].len = args[i].len - (sizeof("max_conns=") - 1);
                 args[i].data = &args[i].data[sizeof("max_conns=") - 1];
                 ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
@@ -170,7 +170,7 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
                 us->max_conns = (ngx_uint_t)n;
                 continue;
             }
-            if (args[i].len > sizeof("max_fails=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"max_fails=", sizeof("max_fails=") - 1)) {
+            if (args[i].len > sizeof("max_fails=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"max_fails=", sizeof("max_fails=") - 1)) {
                 args[i].len = args[i].len - (sizeof("max_fails=") - 1);
                 args[i].data = &args[i].data[sizeof("max_fails=") - 1];
                 ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
@@ -178,7 +178,7 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
                 us->max_fails = (ngx_uint_t)n;
                 continue;
             }
-            if (args[i].len > sizeof("fail_timeout=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"fail_timeout=", sizeof("fail_timeout=") - 1)) {
+            if (args[i].len > sizeof("fail_timeout=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"fail_timeout=", sizeof("fail_timeout=") - 1)) {
                 args[i].len = args[i].len - (sizeof("fail_timeout=") - 1);
                 args[i].data = &args[i].data[sizeof("fail_timeout=") - 1];
                 ngx_int_t n = ngx_parse_time(&args[i], 1);
@@ -186,16 +186,16 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
                 us->fail_timeout = (time_t)n;
                 continue;
             }
-            if (args[i].len == sizeof("backup") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"backup", sizeof("backup") - 1)) {
+            if (args[i].len == sizeof("backup") - 1 && !ngx_strncmp(args[i].data, (u_char *)"backup", sizeof("backup") - 1)) {
                 us->backup = 1;
                 continue;
             }
-            if (args[i].len == sizeof("down") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"down", sizeof("down") - 1)) {
+            if (args[i].len == sizeof("down") - 1 && !ngx_strncmp(args[i].data, (u_char *)"down", sizeof("down") - 1)) {
                 us->down = 1;
                 continue;
             }
 #if (T_NGX_HTTP_UPSTREAM_ID)
-            if (args[i].len > sizeof("id=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"id=", sizeof("id=") - 1)) {
+            if (args[i].len > sizeof("id=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"id=", sizeof("id=") - 1)) {
                 us->id.len = args[i].len - 3;
                 us->id.data = &args[i].data[3];
                 continue;
@@ -209,14 +209,14 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
     u_char *p = conninfo.data;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
         if (us) {
-            if (args[i].len > sizeof("weight=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"weight=", sizeof("weight=") - 1)) continue;
-            if (args[i].len > sizeof("max_conns=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"max_conns=", sizeof("max_conns=") - 1)) continue;
-            if (args[i].len > sizeof("max_fails=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"max_fails=", sizeof("max_fails=") - 1)) continue;
-            if (args[i].len > sizeof("fail_timeout=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"fail_timeout=", sizeof("fail_timeout=") - 1)) continue;
-            if (args[i].len == sizeof("backup") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"backup", sizeof("backup") - 1)) continue;
-            if (args[i].len == sizeof("down") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"down", sizeof("down") - 1)) continue;
+            if (args[i].len > sizeof("weight=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"weight=", sizeof("weight=") - 1)) continue;
+            if (args[i].len > sizeof("max_conns=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"max_conns=", sizeof("max_conns=") - 1)) continue;
+            if (args[i].len > sizeof("max_fails=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"max_fails=", sizeof("max_fails=") - 1)) continue;
+            if (args[i].len > sizeof("fail_timeout=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"fail_timeout=", sizeof("fail_timeout=") - 1)) continue;
+            if (args[i].len == sizeof("backup") - 1 && !ngx_strncmp(args[i].data, (u_char *)"backup", sizeof("backup") - 1)) continue;
+            if (args[i].len == sizeof("down") - 1 && !ngx_strncmp(args[i].data, (u_char *)"down", sizeof("down") - 1)) continue;
 #if (T_NGX_HTTP_UPSTREAM_ID)
-            if (args[i].len > sizeof("id=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"id=", sizeof("id=") - 1)) continue;
+            if (args[i].len > sizeof("id=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"id=", sizeof("id=") - 1)) continue;
 #endif
         }
         if (i > 1) *p++ = ' ';
@@ -361,7 +361,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
     ngx_http_upstream_srv_conf_t *usc = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
     if ((pusc->save.max = (ngx_uint_t)n) < usc->servers->nelts) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be greater or equal than servers count (%i)", &cmd->name, &args[1], usc->servers->nelts); return NGX_CONF_ERROR; }
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (args[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
+        if (args[i].len > sizeof("overflow=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
             args[i].len = args[i].len - (sizeof("overflow=") - 1);
             args[i].data = &args[i].data[sizeof("overflow=") - 1];
             static const ngx_conf_enum_t e[] = {
@@ -370,11 +370,11 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
                 { ngx_null_string, 0 }
             };
             ngx_uint_t j;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncasecmp(e[j].name.data, args[i].data, args[i].len)) { pusc->save.reject = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { pusc->save.reject = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             continue;
         }
-        if (args[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
+        if (args[i].len > sizeof("timeout=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
             args[i].len = args[i].len - (sizeof("timeout=") - 1);
             args[i].data = &args[i].data[sizeof("timeout=") - 1];
             ngx_int_t n = ngx_parse_time(&args[i], 0);
@@ -383,7 +383,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             pusc->save.timeout = (ngx_msec_t)n;
             continue;
         }
-        if (args[i].len > sizeof("requests=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"requests=", sizeof("requests=") - 1)) {
+        if (args[i].len > sizeof("requests=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"requests=", sizeof("requests=") - 1)) {
             args[i].len = args[i].len - (sizeof("requests=") - 1);
             args[i].data = &args[i].data[sizeof("requests=") - 1];
             ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
@@ -409,7 +409,7 @@ static char *ngx_postgres_prepare_conf(ngx_conf_t *cf, ngx_command_t *cmd, void 
     if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     usc->prepare.max = (ngx_uint_t)n;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (args[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
+        if (args[i].len > sizeof("overflow=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
             args[i].len = args[i].len - (sizeof("overflow=") - 1);
             args[i].data = &args[i].data[sizeof("overflow=") - 1];
             static const ngx_conf_enum_t e[] = {
@@ -418,7 +418,7 @@ static char *ngx_postgres_prepare_conf(ngx_conf_t *cf, ngx_command_t *cmd, void 
                 { ngx_null_string, 0 }
             };
             ngx_uint_t j;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncasecmp(e[j].name.data, args[i].data, args[i].len)) { usc->prepare.deallocate = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { usc->prepare.deallocate = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"deallocate\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             continue;
         }
@@ -440,7 +440,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     usc->request.max = (ngx_uint_t)n;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (args[i].len > sizeof("overflow=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
+        if (args[i].len > sizeof("overflow=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
             args[i].len = args[i].len - (sizeof("overflow=") - 1);
             args[i].data = &args[i].data[sizeof("overflow=") - 1];
             static const ngx_conf_enum_t e[] = {
@@ -449,11 +449,11 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
                 { ngx_null_string, 0 }
             };
             ngx_uint_t j;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncasecmp(e[j].name.data, args[i].data, args[i].len)) { usc->request.reject = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { usc->request.reject = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             continue;
         }
-        if (args[i].len > sizeof("timeout=") - 1 && !ngx_strncasecmp(args[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
+        if (args[i].len > sizeof("timeout=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
             args[i].len = args[i].len - (sizeof("timeout=") - 1);
             args[i].data = &args[i].data[sizeof("timeout=") - 1];
             ngx_int_t n = ngx_parse_time(&args[i], 0);
@@ -549,7 +549,7 @@ static char *ngx_postgres_prepare_conf_(ngx_conf_t *cf, ngx_command_t *cmd, void
     };
     ngx_flag_t prepare;
     ngx_uint_t j;
-    for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[1].len && !ngx_strncasecmp(e[j].name.data, args[1].data, args[1].len)) { prepare = e[j].value; break; }
+    for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[1].len && !ngx_strncmp(e[j].name.data, args[1].data, args[1].len)) { prepare = e[j].value; break; }
     if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"append\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     if (!query) location->prepare = prepare;
     else if (location->prepare) return "duplicate";
@@ -581,9 +581,9 @@ static char *ngx_postgres_store_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     ngx_postgres_location_t *location = conf;
     if (location->upstream.store != NGX_CONF_UNSET) return "is duplicate";
     ngx_str_t *args = cf->args->elts;
-    if (args[1].len == sizeof("off") - 1 && !ngx_strncasecmp(args[1].data, (u_char *)"off", sizeof("off") - 1)) { location->upstream.store = 0; return NGX_CONF_OK; }
+    if (args[1].len == sizeof("off") - 1 && !ngx_strncmp(args[1].data, (u_char *)"off", sizeof("off") - 1)) { location->upstream.store = 0; return NGX_CONF_OK; }
     location->upstream.store = 1;
-    if (args[1].len == sizeof("on") - 1 && !ngx_strncasecmp(args[1].data, (u_char *)"on", sizeof("on") - 1)) return NGX_CONF_OK;
+    if (args[1].len == sizeof("on") - 1 && !ngx_strncmp(args[1].data, (u_char *)"on", sizeof("on") - 1)) return NGX_CONF_OK;
     args[1].len++;
     ngx_http_script_compile_t sc;
     ngx_memzero(&sc, sizeof(sc));

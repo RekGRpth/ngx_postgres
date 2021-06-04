@@ -402,7 +402,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             { ngx_null_string, 0, NULL }
         };
         ngx_uint_t i;
-        for (i = 0; e[i].name.len; i++) if (e[i].name.len == args[2].len && !ngx_strncasecmp(e[i].name.data, args[2].data, args[2].len)) { variable->type = e[i].type; variable->handler = e[i].handler; break; }
+        for (i = 0; e[i].name.len; i++) if (e[i].name.len == args[2].len && !ngx_strncmp(e[i].name.data, args[2].data, args[2].len)) { variable->type = e[i].type; variable->handler = e[i].handler; break; }
         if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: type \"%V\" must be \"nfields\", \"ntuples\", \"cmdTuples\", \"cmdStatus\", \"value\" or \"json\"", &cmd->name, &args[2]); return NGX_CONF_ERROR; }
         return NGX_CONF_OK;
     }
@@ -421,7 +421,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             { ngx_null_string, 0 }
         };
         ngx_uint_t i;
-        for (i = 0; e[i].name.len; i++) if (e[i].name.len == args[4].len && !ngx_strncasecmp(e[i].name.data, args[4].data, args[4].len)) { variable->required = e[i].value; break; }
+        for (i = 0; e[i].name.len; i++) if (e[i].name.len == args[4].len && !ngx_strncmp(e[i].name.data, args[4].data, args[4].len)) { variable->required = e[i].value; break; }
         if (!e[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: requirment \"%V\" must be \"optional\" or \"required\"", &cmd->name, &args[4]); return NGX_CONF_ERROR; }
     }
     return NGX_CONF_OK;
