@@ -352,11 +352,7 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
         if (i == connect->nelts) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "connect not found"); return NGX_BUSY; }
     }
 #endif
-#if (HAVE_NGX_UPSTREAM_TIMEOUT_FIELDS)
-    u->connect_timeout = connect->timeout;
-#else
     u->conf->connect_timeout = connect->timeout;
-#endif
     const char *host = connect->values[0];
     if (host) ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "host = %s", host);
     ngx_str_t addr;

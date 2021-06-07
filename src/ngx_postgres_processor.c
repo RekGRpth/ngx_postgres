@@ -23,18 +23,10 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
     ngx_http_upstream_t *u = r->upstream;
-#if (HAVE_NGX_UPSTREAM_TIMEOUT_FIELDS)
-    u->connect_timeout = NGX_MAX_INT_T_VALUE;
-#else
     u->conf->connect_timeout = NGX_MAX_INT_T_VALUE;
-#endif
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (location->timeout) {
-#if (HAVE_NGX_UPSTREAM_TIMEOUT_FIELDS)
-        u->connect_timeout = location->timeout;
-#else
         u->conf->connect_timeout = location->timeout;
-#endif
         if (!c->read->timer_set) ngx_add_timer(c->read, location->timeout);
         if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);
     }
@@ -49,11 +41,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
     if (d->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     ngx_postgres_query_t *query = &queryelts[d->index];
     if (query->timeout) {
-#if (HAVE_NGX_UPSTREAM_TIMEOUT_FIELDS)
-        u->connect_timeout = query->timeout;
-#else
         u->conf->connect_timeout = query->timeout;
-#endif
         ngx_add_timer(c->read, query->timeout);
         ngx_add_timer(c->write, query->timeout);
     }
