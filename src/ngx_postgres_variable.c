@@ -96,7 +96,7 @@ static ngx_int_t ngx_postgres_variable_query(ngx_http_request_t *r, ngx_http_var
 }
 
 
-static ngx_int_t ngx_postgres_variable_error_(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
+static ngx_int_t ngx_postgres_variable_error(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (!r->upstream) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "there is not upstream"); return NGX_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
@@ -131,33 +131,6 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
     v->not_found = 0;
     v->len = variableelts[index].len;
     v->data = variableelts[index].data;
-    return NGX_OK;
-}
-
-
-ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *d) {
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_result_t *result = &d->result;
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
-    result->sql = query->sql;
-    PGresult *res = result->res;
-    result->ntuples = 0;
-    result->nfields = 0;
-    if (result->stuples.data) ngx_pfree(r->pool, result->stuples.data);
-    if (result->sfields.data) ngx_pfree(r->pool, result->sfields.data);
-    if (result->cmdTuples.data) ngx_pfree(r->pool, result->cmdTuples.data);
-    if (result->cmdStatus.data) ngx_pfree(r->pool, result->cmdStatus.data);
-    ngx_str_null(&result->stuples);
-    ngx_str_null(&result->sfields);
-    ngx_str_null(&result->cmdTuples);
-    ngx_str_null(&result->cmdStatus);
-    const char *value;
-    if ((value = PQresultErrorMessage(res)) && !result->error.len && (result->error.len = ngx_strlen(value))) {
-        if (!(result->error.data = ngx_pnalloc(r->pool, result->error.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-        ngx_memcpy(result->error.data, value, result->error.len);
-    }
     return NGX_OK;
 }
 
@@ -347,7 +320,7 @@ static ngx_http_variable_t ngx_postgres_module_variable[] = {
     .index = 0 },
   { .name = ngx_string("postgres_error"),
     .set_handler = NULL,
-    .get_handler = ngx_postgres_variable_error_,
+    .get_handler = ngx_postgres_variable_error,
     .data = 0,
     .flags = NGX_HTTP_VAR_NOCACHEABLE|NGX_HTTP_VAR_NOHASH,
     .index = 0 },
