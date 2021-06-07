@@ -40,6 +40,18 @@ ngx_int_t ngx_postgres_consume_flush_busy(ngx_postgres_save_t *s) {
 }
 
 
+ngx_int_t ngx_postgres_result(ngx_postgres_save_t *s) {
+    ngx_connection_t *c = s->connection;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    ngx_postgres_data_t *d = c->data;
+    ngx_int_t rc = NGX_OK;
+    for (; PQstatus(s->conn) == CONNECTION_OK && (d->result.res = PQgetResult(s->conn)); PQclear(d->result.res)) if (rc == NGX_OK) rc = s->handler(s);
+    d->result.res = NULL;
+    if (rc == NGX_OK) rc = s->handler(s);
+    return rc;
+}
+
+
 void ngx_postgres_data_handler(ngx_event_t *e) {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, e->write ? "write" : "read");
     ngx_connection_t *c = e->data;
@@ -51,19 +63,12 @@ void ngx_postgres_data_handler(ngx_event_t *e) {
     if (c->read->timedout) { c->read->timedout = 0; PQstatus(s->conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); goto run; }
     if (c->write->timedout) { c->write->timedout = 0; PQstatus(s->conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); goto run; }
     if (ngx_http_upstream_test_connect(c) != NGX_OK) { ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); goto run; }
-    if (PQstatus(s->conn) == CONNECTION_OK) {
-        switch (ngx_postgres_consume_flush_busy(s)) {
-            case NGX_AGAIN: goto run;
-            case NGX_ERROR: ngx_http_upstream_finalize_request(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); goto run;
-            default: break;
-        }
-        switch (ngx_postgres_notify(s)) {
-            case NGX_AGAIN: goto run;
-            case NGX_ERROR: ngx_http_upstream_finalize_request(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); goto run;
-            default: break;
-        }
+    ngx_int_t rc = NGX_OK;
+    if (PQstatus(s->conn) != CONNECTION_OK) rc = s->handler(s); else {
+        if (rc == NGX_OK) rc = ngx_postgres_consume_flush_busy(s);
+        if (rc == NGX_OK) rc = ngx_postgres_notify(s);
+        if (rc == NGX_OK) rc = ngx_postgres_result(s);
     }
-    ngx_int_t rc = s->handler(s);
     if (rc >= NGX_HTTP_SPECIAL_RESPONSE) { ngx_http_upstream_finalize_request(r, u, rc); goto run; }
     if (rc == NGX_ERROR) { ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); goto run; }
 run:

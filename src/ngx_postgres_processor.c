@@ -12,7 +12,7 @@ static ngx_int_t ngx_postgres_done(ngx_postgres_data_t *d, ngx_int_t rc) {
     if (rc == NGX_OK) rc = ngx_postgres_output_chain(d);
     ngx_http_upstream_t *u = r->upstream;
     ngx_http_upstream_finalize_request(r, u, rc);
-    return NGX_OK;
+    return NGX_DONE;
 }
 
 
@@ -28,13 +28,12 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_save_t *s) {
     ngx_int_t rc = NGX_OK;
     const char *value;
     ngx_postgres_output_t *output = &query->output;
-    while (PQstatus(s->conn) == CONNECTION_OK && (d->result.res = PQgetResult(s->conn))) {
+    if (d->result.res) {
         switch (PQresultStatus(d->result.res)) {
             case PGRES_FATAL_ERROR:
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(d->result.res));
                 ngx_postgres_variable_error(d);
                 ngx_postgres_rewrite_set(d);
-                PQclear(d->result.res);
                 return ngx_postgres_done(d, NGX_HTTP_INTERNAL_SERVER_ERROR);
             case PGRES_COMMAND_OK:
             case PGRES_TUPLES_OK:
@@ -53,12 +52,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_save_t *s) {
                 else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, PQresStatus(PQresultStatus(d->result.res))); }
                 break;
         }
-        PQclear(d->result.res);
-        switch (ngx_postgres_consume_flush_busy(s)) {
-            case NGX_AGAIN: return NGX_AGAIN;
-            case NGX_ERROR: return NGX_ERROR;
-            default: break;
-        }
+        return rc;
     }
     s->handler = ngx_postgres_prepare_or_query;
     if (rc == NGX_OK && d->index < location->query.nelts - 1) {
@@ -112,21 +106,15 @@ static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_save_t *s) {
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->index];
     s->handler = ngx_postgres_prepare_result;
-    while (PQstatus(s->conn) == CONNECTION_OK && (d->result.res = PQgetResult(s->conn))) {
+    if (d->result.res) {
         switch (PQresultStatus(d->result.res)) {
             case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); break;
             default:
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(d->result.res)), PQcmdStatus(d->result.res), PQresultErrorMessageMy(d->result.res));
                 ngx_postgres_variable_error(d);
-                PQclear(d->result.res);
                 return ngx_postgres_done(d, NGX_HTTP_INTERNAL_SERVER_ERROR);
         }
-        PQclear(d->result.res);
-        switch (ngx_postgres_consume_flush_busy(s)) {
-            case NGX_AGAIN: return NGX_AGAIN;
-            case NGX_ERROR: return NGX_ERROR;
-            default: break;
-        }
+        return NGX_OK;
     }
     return ngx_postgres_query_prepared(s);
 }
@@ -137,21 +125,15 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *d = c->data;
     s->handler = ngx_postgres_query;
-    while (PQstatus(s->conn) == CONNECTION_OK && (d->result.res = PQgetResult(s->conn))) {
+    if (d->result.res) {
         switch (PQresultStatus(d->result.res)) {
             case PGRES_FATAL_ERROR:
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(d->result.res));
                 ngx_postgres_variable_error(d);
-                PQclear(d->result.res);
                 return ngx_postgres_done(d, NGX_HTTP_INTERNAL_SERVER_ERROR);
             default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(d->result.res)), PQcmdStatus(d->result.res)); break;
         }
-        PQclear(d->result.res);
-        switch (ngx_postgres_consume_flush_busy(s)) {
-            case NGX_AGAIN: return NGX_AGAIN;
-            case NGX_ERROR: return NGX_ERROR;
-            default: break;
-        }
+        return NGX_OK;
     }
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->index];
@@ -173,21 +155,15 @@ static ngx_int_t ngx_postgres_deallocate_result(ngx_postgres_save_t *s) {
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->index];
     s->handler = ngx_postgres_deallocate_result;
-    while (PQstatus(s->conn) == CONNECTION_OK && (d->result.res = PQgetResult(s->conn))) {
+    if (d->result.res) {
         switch (PQresultStatus(d->result.res)) {
             case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); break;
             default:
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(d->result.res)), PQcmdStatus(d->result.res), PQresultErrorMessageMy(d->result.res));
                 ngx_postgres_variable_error(d);
-                PQclear(d->result.res);
                 return ngx_postgres_done(d, NGX_HTTP_INTERNAL_SERVER_ERROR);
         }
-        PQclear(d->result.res);
-        switch (ngx_postgres_consume_flush_busy(s)) {
-            case NGX_AGAIN: return NGX_AGAIN;
-            case NGX_ERROR: return NGX_ERROR;
-            default: break;
-        }
+        return NGX_OK;
     }
     return ngx_postgres_prepare(s);
 }
@@ -228,21 +204,15 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *d = c->data;
     s->handler = ngx_postgres_prepare;
-    while (PQstatus(s->conn) == CONNECTION_OK && (d->result.res = PQgetResult(s->conn))) {
+    if (d->result.res) {
         switch (PQresultStatus(d->result.res)) {
             case PGRES_FATAL_ERROR:
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(d->result.res));
                 ngx_postgres_variable_error(d);
-                PQclear(d->result.res);
                 return ngx_postgres_done(d, NGX_HTTP_INTERNAL_SERVER_ERROR);
             default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(d->result.res)), PQcmdStatus(d->result.res)); break;
         }
-        PQclear(d->result.res);
-        switch (ngx_postgres_consume_flush_busy(s)) {
-            case NGX_AGAIN: return NGX_AGAIN;
-            case NGX_ERROR: return NGX_ERROR;
-            default: break;
-        }
+        return NGX_OK;
     }
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->index];
@@ -277,11 +247,6 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
         if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);
     }
     s->handler = ngx_postgres_prepare_or_query;
-    switch (ngx_postgres_consume_flush_busy(s)) {
-        case NGX_AGAIN: return NGX_AGAIN;
-        case NGX_ERROR: return NGX_ERROR;
-        default: break;
-    }
     ngx_postgres_query_t *queryelts = location->query.elts;
     for (; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
     if (d->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
