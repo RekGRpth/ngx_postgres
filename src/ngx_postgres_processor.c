@@ -139,6 +139,7 @@ static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_save_t *s) {
             default:
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(d->result.res)), PQcmdStatus(d->result.res), PQresultErrorMessageMy(d->result.res));
                 ngx_postgres_variable_error(d);
+                ngx_postgres_rewrite_set(d);
                 return ngx_postgres_done(d, NGX_HTTP_INTERNAL_SERVER_ERROR);
         }
         return NGX_OK;
@@ -157,6 +158,7 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_save_t *s) {
             case PGRES_FATAL_ERROR:
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(d->result.res));
                 ngx_postgres_variable_error(d);
+                ngx_postgres_rewrite_set(d);
                 return ngx_postgres_done(d, NGX_HTTP_INTERNAL_SERVER_ERROR);
             default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(d->result.res)), PQcmdStatus(d->result.res)); break;
         }
@@ -188,6 +190,7 @@ static ngx_int_t ngx_postgres_deallocate_result(ngx_postgres_save_t *s) {
             default:
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(d->result.res)), PQcmdStatus(d->result.res), PQresultErrorMessageMy(d->result.res));
                 ngx_postgres_variable_error(d);
+                ngx_postgres_rewrite_set(d);
                 return ngx_postgres_done(d, NGX_HTTP_INTERNAL_SERVER_ERROR);
         }
         return NGX_OK;
@@ -236,6 +239,7 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s) {
             case PGRES_FATAL_ERROR:
                 ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(d->result.res));
                 ngx_postgres_variable_error(d);
+                ngx_postgres_rewrite_set(d);
                 return ngx_postgres_done(d, NGX_HTTP_INTERNAL_SERVER_ERROR);
             default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(d->result.res)), PQcmdStatus(d->result.res)); break;
         }
