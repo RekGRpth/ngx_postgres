@@ -17,80 +17,6 @@ static ngx_int_t ngx_postgres_done(ngx_postgres_data_t *d, ngx_int_t rc) {
 }
 
 
-ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
-    ngx_connection_t *c = s->connection;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    ngx_postgres_data_t *d = c->data;
-    ngx_http_request_t *r = d->request;
-    ngx_http_upstream_t *u = r->upstream;
-    u->conf->connect_timeout = NGX_MAX_INT_T_VALUE;
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (location->timeout) {
-        u->conf->connect_timeout = location->timeout;
-        if (!c->read->timer_set) ngx_add_timer(c->read, location->timeout);
-        if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);
-    }
-    s->handler = ngx_postgres_prepare_or_query;
-    switch (ngx_postgres_consume_flush_busy(s)) {
-        case NGX_AGAIN: return NGX_AGAIN;
-        case NGX_ERROR: return NGX_ERROR;
-        default: break;
-    }
-    ngx_postgres_query_t *queryelts = location->query.elts;
-    for (; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
-    if (d->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
-    ngx_postgres_query_t *query = &queryelts[d->index];
-    if (query->timeout) {
-        u->conf->connect_timeout = query->timeout;
-        ngx_add_timer(c->read, query->timeout);
-        ngx_add_timer(c->write, query->timeout);
-    }
-    ngx_postgres_send_t *sendelts = d->send.elts;
-    ngx_postgres_send_t *send = &sendelts[d->index];
-    ngx_str_t sql;
-    sql.len = query->sql.len - 2 * query->ids.nelts - query->percent;
-    ngx_str_t *ids = NULL;
-    if (query->ids.nelts) {
-        ngx_uint_t *idselts = query->ids.elts;
-        if (!(ids = ngx_pnalloc(r->pool, query->ids.nelts * sizeof(*ids)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-        for (ngx_uint_t i = 0; i < query->ids.nelts; i++) {
-            ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, idselts[i]);
-            if (!value || !value->data || !value->len) { ngx_str_set(&ids[i], "NULL"); } else {
-                char *str = PQescapeIdentifier(s->conn, (const char *)value->data, value->len);
-                if (!str) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQescapeIdentifier(%*.*s) and %s", value->len, value->len, value->data, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
-                ngx_str_t id = {ngx_strlen(str), NULL};
-                if (!(id.data = ngx_pnalloc(r->pool, id.len))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); PQfreemem(str); return NGX_ERROR; }
-                ngx_memcpy(id.data, str, id.len);
-                PQfreemem(str);
-                ids[i] = id;
-            }
-            sql.len += ids[i].len;
-        }
-    }
-    if (!(sql.data = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-    av_alist alist;
-    u_char *last = NULL;
-    av_start_ptr(alist, &ngx_snprintf, u_char *, &last);
-    if (av_ptr(alist, u_char *, sql.data)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "av_ptr"); return NGX_ERROR; }
-    if (av_ulong(alist, sql.len)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "av_ulong"); return NGX_ERROR; }
-    if (av_ptr(alist, char *, query->sql.data)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "av_ptr"); return NGX_ERROR; }
-    for (ngx_uint_t i = 0; i < query->ids.nelts; i++) if (av_ptr(alist, ngx_str_t *, &ids[i])) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "av_ptr"); return NGX_ERROR; }
-    if (av_call(alist)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "av_call"); return NGX_ERROR; }
-    if (last != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_snprintf"); return NGX_ERROR; }
-    *last = '\0';
-    send->sql = sql;
-    ngx_postgres_upstream_srv_conf_t *usc = s->usc;
-    if (usc && usc->save.max && usc->prepare.max && (location->prepare || query->prepare)) {
-        if (!(send->stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
-        u_char *last = ngx_snprintf(send->stmtName.data, 31, "ngx_%ul", (unsigned long)(send->hash = ngx_hash_key(sql.data, sql.len)));
-        *last = '\0';
-        send->stmtName.len = last - send->stmtName.data;
-        return ngx_postgres_prepare(s);
-    }
-    return ngx_postgres_query(s);
-}
-
-
 static ngx_int_t ngx_postgres_query_result(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
@@ -335,6 +261,80 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s) {
     queue_insert_head(&s->prepare.queue, &prepare->queue);
     s->handler = ngx_postgres_prepare_result;
     return NGX_AGAIN;
+}
+
+
+ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
+    ngx_connection_t *c = s->connection;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    ngx_postgres_data_t *d = c->data;
+    ngx_http_request_t *r = d->request;
+    ngx_http_upstream_t *u = r->upstream;
+    u->conf->connect_timeout = NGX_MAX_INT_T_VALUE;
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    if (location->timeout) {
+        u->conf->connect_timeout = location->timeout;
+        if (!c->read->timer_set) ngx_add_timer(c->read, location->timeout);
+        if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);
+    }
+    s->handler = ngx_postgres_prepare_or_query;
+    switch (ngx_postgres_consume_flush_busy(s)) {
+        case NGX_AGAIN: return NGX_AGAIN;
+        case NGX_ERROR: return NGX_ERROR;
+        default: break;
+    }
+    ngx_postgres_query_t *queryelts = location->query.elts;
+    for (; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
+    if (d->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
+    ngx_postgres_query_t *query = &queryelts[d->index];
+    if (query->timeout) {
+        u->conf->connect_timeout = query->timeout;
+        ngx_add_timer(c->read, query->timeout);
+        ngx_add_timer(c->write, query->timeout);
+    }
+    ngx_postgres_send_t *sendelts = d->send.elts;
+    ngx_postgres_send_t *send = &sendelts[d->index];
+    ngx_str_t sql;
+    sql.len = query->sql.len - 2 * query->ids.nelts - query->percent;
+    ngx_str_t *ids = NULL;
+    if (query->ids.nelts) {
+        ngx_uint_t *idselts = query->ids.elts;
+        if (!(ids = ngx_pnalloc(r->pool, query->ids.nelts * sizeof(*ids)))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+        for (ngx_uint_t i = 0; i < query->ids.nelts; i++) {
+            ngx_http_variable_value_t *value = ngx_http_get_indexed_variable(r, idselts[i]);
+            if (!value || !value->data || !value->len) { ngx_str_set(&ids[i], "NULL"); } else {
+                char *str = PQescapeIdentifier(s->conn, (const char *)value->data, value->len);
+                if (!str) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQescapeIdentifier(%*.*s) and %s", value->len, value->len, value->data, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
+                ngx_str_t id = {ngx_strlen(str), NULL};
+                if (!(id.data = ngx_pnalloc(r->pool, id.len))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); PQfreemem(str); return NGX_ERROR; }
+                ngx_memcpy(id.data, str, id.len);
+                PQfreemem(str);
+                ids[i] = id;
+            }
+            sql.len += ids[i].len;
+        }
+    }
+    if (!(sql.data = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+    av_alist alist;
+    u_char *last = NULL;
+    av_start_ptr(alist, &ngx_snprintf, u_char *, &last);
+    if (av_ptr(alist, u_char *, sql.data)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "av_ptr"); return NGX_ERROR; }
+    if (av_ulong(alist, sql.len)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "av_ulong"); return NGX_ERROR; }
+    if (av_ptr(alist, char *, query->sql.data)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "av_ptr"); return NGX_ERROR; }
+    for (ngx_uint_t i = 0; i < query->ids.nelts; i++) if (av_ptr(alist, ngx_str_t *, &ids[i])) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "av_ptr"); return NGX_ERROR; }
+    if (av_call(alist)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "av_call"); return NGX_ERROR; }
+    if (last != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_snprintf"); return NGX_ERROR; }
+    *last = '\0';
+    send->sql = sql;
+    ngx_postgres_upstream_srv_conf_t *usc = s->usc;
+    if (usc && usc->save.max && usc->prepare.max && (location->prepare || query->prepare)) {
+        if (!(send->stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
+        u_char *last = ngx_snprintf(send->stmtName.data, 31, "ngx_%ul", (unsigned long)(send->hash = ngx_hash_key(sql.data, sql.len)));
+        *last = '\0';
+        send->stmtName.len = last - send->stmtName.data;
+        return ngx_postgres_prepare(s);
+    }
+    return ngx_postgres_query(s);
 }
 
 
