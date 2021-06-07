@@ -35,7 +35,7 @@ static ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *d) {
     ngx_str_null(&result->cmdTuples);
     ngx_str_null(&result->cmdStatus);
     const char *value;
-    if ((value = PQresultErrorMessage(res)) && !result->error.len && (result->error.len = ngx_strlen(value))) {
+    if ((value = PQresultErrorMessageMy(res)) && !result->error.len && (result->error.len = ngx_strlen(value))) {
         if (!(result->error.data = ngx_pnalloc(r->pool, result->error.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
         ngx_memcpy(result->error.data, value, result->error.len);
     }
