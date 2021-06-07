@@ -4,7 +4,6 @@
 
 
 static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s);
-static ngx_int_t ngx_postgres_query(ngx_postgres_save_t *s);
 
 
 static ngx_int_t ngx_postgres_done(ngx_postgres_data_t *d, ngx_int_t rc) {
