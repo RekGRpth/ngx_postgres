@@ -340,10 +340,11 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_memzero(us, sizeof(*us));
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_postgres_connect_t *connect = ngx_pcalloc(cf->pool, sizeof(*connect));
+    if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
 #else
     ngx_postgres_connect_t *connect = ngx_array_push(&pusc->connect);
+    if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
 #endif
-    if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
     us->fail_timeout = 10;
     us->max_fails = 1;
     us->weight = 1;
