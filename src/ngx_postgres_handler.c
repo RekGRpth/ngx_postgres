@@ -45,7 +45,15 @@ ngx_int_t ngx_postgres_result(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *d = c->data;
     ngx_int_t rc = NGX_OK;
-    for (; PQstatus(s->conn) == CONNECTION_OK && (d->result.res = PQgetResult(s->conn)); PQclear(d->result.res)) if (rc == NGX_OK) rc = s->handler(s);
+    while (PQstatus(s->conn) == CONNECTION_OK && (d->result.res = PQgetResult(s->conn))) {
+        if (rc == NGX_OK) rc = s->handler(s);
+        PQclear(d->result.res);
+        switch (ngx_postgres_consume_flush_busy(s)) {
+            case NGX_AGAIN: return NGX_AGAIN;
+            case NGX_ERROR: return NGX_ERROR;
+            default: break;
+        }
+    }
     d->result.res = NULL;
     if (rc == NGX_OK) rc = s->handler(s);
     return rc;

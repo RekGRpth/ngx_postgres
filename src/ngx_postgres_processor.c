@@ -255,6 +255,18 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
         if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);
     }
     s->handler = ngx_postgres_prepare_or_query;
+    while (PQstatus(s->conn) == CONNECTION_OK && (d->result.res = PQgetResult(s->conn))) {
+        if (d->result.res) switch (PQresultStatus(d->result.res)) {
+            case PGRES_FATAL_ERROR: PQclear(d->result.res); return ngx_postgres_error(s);
+            default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(d->result.res)), PQcmdStatus(d->result.res)); break;
+        }
+        PQclear(d->result.res);
+        switch (ngx_postgres_consume_flush_busy(s)) {
+            case NGX_AGAIN: return NGX_AGAIN;
+            case NGX_ERROR: return NGX_ERROR;
+            default: break;
+        }
+    }
     ngx_postgres_query_t *queryelts = location->query.elts;
     for (; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
     if (d->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
