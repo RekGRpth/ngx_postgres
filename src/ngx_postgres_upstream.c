@@ -71,29 +71,21 @@ error:
 static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    for (PGresult *res; PQstatus(s->conn) == CONNECTION_OK && (res = PQgetResult(s->conn)); ) {
-        switch(PQresultStatus(res)) {
-            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
-            default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); break;
-        }
-        PQclear(res);
-        switch (ngx_postgres_consume_flush_busy(s)) {
-            case NGX_AGAIN: return NGX_AGAIN;
-            case NGX_ERROR: return NGX_ERROR;
-            default: break;
-        }
+    if (s->res) switch (PQresultStatus(s->res)) {
+        case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(s->res)); break;
+        default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res), PQresultErrorMessageMy(s->res)); break;
     }
     return NGX_OK;
 }
 
 
-static ngx_int_t ngx_postgres_result(ngx_postgres_save_t *s, PGresult *res) {
+static ngx_int_t ngx_postgres_listen_result_(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    if (!PQntuples(res)) return NGX_OK;
-    for (ngx_uint_t row = 0; row < PQntuples(res); row++) {
-        const char *schannel = PQgetvalue(res, row, PQfnumber(res, "channel"));
-        const char *sunlisten = PQgetvalue(res, row, PQfnumber(res, "unlisten"));
+    if (!PQntuples(s->res)) return NGX_OK;
+    for (ngx_uint_t row = 0; row < PQntuples(s->res); row++) {
+        const char *schannel = PQgetvalue(s->res, row, PQfnumber(s->res, "channel"));
+        const char *sunlisten = PQgetvalue(s->res, row, PQfnumber(s->res, "unlisten"));
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "row = %i, channel = %s, unlisten = %s", row, schannel, sunlisten);
         ngx_str_t channel = {ngx_strlen(schannel), (u_char *)schannel};
         ngx_str_t unlisten = {ngx_strlen(sunlisten), (u_char *)sunlisten};
@@ -107,21 +99,12 @@ static ngx_int_t ngx_postgres_listen_result(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     s->handler = ngx_postgres_listen_result;
-    ngx_int_t rc = NGX_OK;
-    for (PGresult *res; PQstatus(s->conn) == CONNECTION_OK && (res = PQgetResult(s->conn)); ) {
-        switch(PQresultStatus(res)) {
-            case PGRES_TUPLES_OK: rc = ngx_postgres_result(s, res); break;
-            default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); rc = NGX_ERROR; break;
-        }
-        PQclear(res);
-        switch (ngx_postgres_consume_flush_busy(s)) {
-            case NGX_AGAIN: return NGX_AGAIN;
-            case NGX_ERROR: return NGX_ERROR;
-            default: break;
-        }
+    if (s->res) switch (PQresultStatus(s->res)) {
+        case PGRES_TUPLES_OK: return ngx_postgres_listen_result_(s);
+        default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res), PQresultErrorMessageMy(s->res)); return NGX_ERROR;
     }
     ngx_postgres_close(s);
-    return rc;
+    return NGX_OK;
 }
 
 
@@ -155,17 +138,9 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *s) {
     ngx_postgres_log_to_save(usc->save.log ? usc->save.log : ngx_cycle->log, s);
     s->connection->data = s;
     s->handler = ngx_postgres_listen;
-    for (PGresult *res; PQstatus(s->conn) == CONNECTION_OK && (res = PQgetResult(s->conn)); ) {
-        switch(PQresultStatus(res)) {
-            case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(res)); break;
-            default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(res)), PQcmdStatus(res), PQresultErrorMessageMy(res)); break;
-        }
-        PQclear(res);
-        switch (ngx_postgres_consume_flush_busy(s)) {
-            case NGX_AGAIN: return NGX_AGAIN;
-            case NGX_ERROR: return NGX_ERROR;
-            default: break;
-        }
+    if (s->res) switch (PQresultStatus(s->res)) {
+        case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(s->res)); return NGX_ERROR;
+        default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res), PQresultErrorMessageMy(s->res)); return NGX_OK;
     }
     static const char *command = "SELECT channel, concat_ws(' ', 'UNLISTEN', quote_ident(channel)) AS unlisten FROM pg_listening_channels() AS channel";
     if (!PQsendQuery(s->conn, command)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!PQsendQuery(\"%s\") and %s", command, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
@@ -195,17 +170,11 @@ void ngx_postgres_save_handler(ngx_event_t *e) {
     if (c->close) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "close"); goto close; }
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "read timedout"); c->read->timedout = 0; goto close; }
     if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "write timedout"); c->write->timedout = 0; goto close; }
-    switch (ngx_postgres_consume_flush_busy(s)) {
-        case NGX_AGAIN: return;
-        case NGX_ERROR: goto close;
-        default: break;
-    }
-    switch (ngx_postgres_notify(s)) {
-        case NGX_AGAIN: return;
-        case NGX_ERROR: goto close;
-        default: break;
-    }
-    if (s->handler(s) != NGX_ERROR) return;
+    ngx_int_t rc = NGX_OK;
+    if (rc == NGX_OK) rc = ngx_postgres_consume_flush_busy(s);
+    if (rc == NGX_OK) rc = ngx_postgres_notify(s);
+    if (rc == NGX_OK) rc = ngx_postgres_result(s);
+    if (rc != NGX_ERROR) return;
 close:
     ngx_postgres_save_close(s);
 }
