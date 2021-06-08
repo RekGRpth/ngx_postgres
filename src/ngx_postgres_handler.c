@@ -40,7 +40,7 @@ ngx_int_t ngx_postgres_consume_flush_busy(ngx_postgres_save_t *s) {
 }
 
 
-ngx_int_t ngx_postgres_result(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_result(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *d = c->data;
