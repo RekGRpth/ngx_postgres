@@ -69,7 +69,6 @@ typedef struct {
     ngx_uint_t nsingle;
     ngx_uint_t ntuples;
     ngx_uint_t status;
-//    PGresult *res;
 } ngx_postgres_result_t;
 
 typedef struct {

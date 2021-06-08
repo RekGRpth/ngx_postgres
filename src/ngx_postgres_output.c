@@ -31,9 +31,7 @@ ngx_int_t ngx_postgres_output_value(ngx_postgres_save_t *s) {
     ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
     if (!r->headers_out.content_type.data) { r->headers_out.content_type = core->default_type; r->headers_out.content_type_len = core->default_type.len; }
     ngx_postgres_result_t *result = &d->result;
-    result->ntuples = PQntuples(s->res);
-    result->nfields = PQnfields(s->res);
-    if (result->ntuples != 1 || result->nfields != 1) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "\"postgres_output value\" received %i value(s) instead of expected single value in location \"%V\"", result->ntuples * result->nfields, &core->name); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
+    if (PQntuples(s->res) != 1 || PQnfields(s->res) != 1) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "\"postgres_output value\" received %i value(s) instead of expected single value in location \"%V\"", PQntuples(s->res) * PQnfields(s->res), &core->name); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     if (PQgetisnull(s->res, 0, 0)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "\"postgres_output value\" received NULL value in location \"%V\"", &core->name); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     size_t size = PQgetlength(s->res, 0, 0);
     if (!size) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "\"postgres_output value\" received empty value in location \"%V\"", &core->name); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
@@ -254,17 +252,15 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_save_t *s) {
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
     ngx_postgres_result_t *result = &d->result;
-    result->ntuples = PQntuples(s->res);
-    result->nfields = PQnfields(s->res);
-    if (!result->ntuples || !result->nfields) return NGX_OK;
+    if (!PQntuples(s->res) || !PQnfields(s->res)) return NGX_OK;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
     ngx_postgres_output_t *output = &query->output;
     ngx_http_upstream_t *u = r->upstream;
     if (output->header && !u->out_bufs) {
-        size += result->nfields - 1; // header delimiters
-        for (ngx_uint_t col = 0; col < result->nfields; col++) {
+        size += PQnfields(s->res) - 1; // header delimiters
+        for (ngx_uint_t col = 0; col < PQnfields(s->res); col++) {
             int len = ngx_strlen(PQfname(s->res, col));
             if (output->quote) size++;
             if (output->escape) size += ngx_postgres_count((u_char *)PQfname(s->res, col), len, output->escape);
@@ -288,10 +284,10 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_save_t *s) {
             if (output->quote) size++;
         }
     }
-    size += result->ntuples * (result->nfields - 1); // value delimiters
-    for (ngx_uint_t row = 0; row < result->ntuples; row++) {
+    size += PQntuples(s->res) * (PQnfields(s->res) - 1); // value delimiters
+    for (ngx_uint_t row = 0; row < PQntuples(s->res); row++) {
         if (output->header || u->out_bufs || row > 0) size++;
-        for (ngx_uint_t col = 0; col < result->nfields; col++) {
+        for (ngx_uint_t col = 0; col < PQnfields(s->res); col++) {
             int len = PQgetlength(s->res, row, col);
             if (PQgetisnull(s->res, row, col)) size += output->null.len; else {
                 if (!ngx_postgres_oid_is_string(PQftype(s->res, col)) && output->string) {
@@ -311,7 +307,7 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_save_t *s) {
     ngx_buf_t *b = ngx_postgres_buffer(r, size);
     if (!b) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_postgres_buffer"); return NGX_ERROR; }
     if (output->header && !u->out_bufs->next) {
-        for (ngx_uint_t col = 0; col < result->nfields; col++) {
+        for (ngx_uint_t col = 0; col < PQnfields(s->res); col++) {
             int len = ngx_strlen(PQfname(s->res, col));
             if (col > 0) *b->last++ = output->delimiter;
             if (output->quote) *b->last++ = output->quote;
@@ -336,9 +332,9 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_save_t *s) {
             if (output->quote) *b->last++ = output->quote;
         }
     }
-    for (ngx_uint_t row = 0; row < result->ntuples; row++) {
+    for (ngx_uint_t row = 0; row < PQntuples(s->res); row++) {
         if (output->header || u->out_bufs->next || row > 0) *b->last++ = '\n';
-        for (ngx_uint_t col = 0; col < result->nfields; col++) {
+        for (ngx_uint_t col = 0; col < PQnfields(s->res); col++) {
             int len = PQgetlength(s->res, row, col);
             if (col > 0) *b->last++ = output->delimiter;
             if (PQgetisnull(s->res, row, col)) b->last = ngx_copy(b->last, output->null.data, output->null.len); else {
@@ -392,14 +388,12 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_save_t *s) {
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_result_t *result = &d->result;
-    result->ntuples = PQntuples(s->res);
-    result->nfields = PQnfields(s->res);
-    if (!result->ntuples || !result->nfields) return NGX_OK;
-    if (result->ntuples == 1 && result->nfields == 1 && (PQftype(s->res, 0) == JSONOID || PQftype(s->res, 0) == JSONBOID)) size = PQgetlength(s->res, 0, 0); else {
-        if (result->ntuples > 1) size += 2; // [] + \0
-        for (ngx_uint_t row = 0; row < result->ntuples; row++) {
+    if (!PQntuples(s->res) || !PQnfields(s->res)) return NGX_OK;
+    if (PQntuples(s->res) == 1 && PQnfields(s->res) == 1 && (PQftype(s->res, 0) == JSONOID || PQftype(s->res, 0) == JSONBOID)) size = PQgetlength(s->res, 0, 0); else {
+        if (PQntuples(s->res) > 1) size += 2; // [] + \0
+        for (ngx_uint_t row = 0; row < PQntuples(s->res); row++) {
             size += sizeof("{}") - 1;
-            for (ngx_uint_t col = 0; col < result->nfields; col++) {
+            for (ngx_uint_t col = 0; col < PQnfields(s->res); col++) {
                 int len = PQgetlength(s->res, row, col);
                 if (PQgetisnull(s->res, row, col)) size += sizeof("null") - 1; else {
                     if (PQftype(s->res, col) == BOOLOID) switch (PQgetvalue(s->res, row, col)[0]) {
@@ -410,28 +404,28 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_save_t *s) {
                 }
             }
         }
-        for (ngx_uint_t col = 0; col < result->nfields; col++) {
+        for (ngx_uint_t col = 0; col < PQnfields(s->res); col++) {
             int len = ngx_strlen(PQfname(s->res, col));
-            size += (len + 3 + ngx_escape_json(NULL, (u_char *)PQfname(s->res, col), len)) * result->ntuples; // extra "":
+            size += (len + 3 + ngx_escape_json(NULL, (u_char *)PQfname(s->res, col), len)) * PQntuples(s->res); // extra "":
             if (location->append && !ngx_strstr(PQfname(s->res, col), "::")) {
-                size += 2 * result->ntuples;
+                size += 2 * PQntuples(s->res);
                 Oid oid = PQftype(s->res, col);
                 const char *type = PQftypeMy(oid);
-                if (type) size += ngx_strlen(type) * result->ntuples; else size += snprintf(NULL, 0, "%i", oid) * result->ntuples;
+                if (type) size += ngx_strlen(type) * PQntuples(s->res); else size += snprintf(NULL, 0, "%i", oid) * PQntuples(s->res);
             }
         }
-        size += result->ntuples * (result->nfields - 1); /* col delimiters */
-        size += result->ntuples - 1;                      /* row delimiters */
+        size += PQntuples(s->res) * (PQnfields(s->res) - 1); /* col delimiters */
+        size += PQntuples(s->res) - 1;                      /* row delimiters */
     }
     if (!size) return NGX_OK;
     ngx_buf_t *b = ngx_postgres_buffer(r, size);
     if (!b) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_postgres_buffer"); return NGX_ERROR; }
-    if (result->ntuples == 1 && result->nfields == 1 && (PQftype(s->res, 0) == JSONOID || PQftype(s->res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(s->res, 0, 0), PQgetlength(s->res, 0, 0)); else { /* fill data */
-        if (result->ntuples > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
-        for (ngx_uint_t row = 0; row < result->ntuples; row++) {
+    if (PQntuples(s->res) == 1 && PQnfields(s->res) == 1 && (PQftype(s->res, 0) == JSONOID || PQftype(s->res, 0) == JSONBOID)) b->last = ngx_copy(b->last, PQgetvalue(s->res, 0, 0), PQgetlength(s->res, 0, 0)); else { /* fill data */
+        if (PQntuples(s->res) > 1) b->last = ngx_copy(b->last, "[", sizeof("[") - 1);
+        for (ngx_uint_t row = 0; row < PQntuples(s->res); row++) {
             if (row > 0) b->last = ngx_copy(b->last, ",", 1);
             b->last = ngx_copy(b->last, "{", sizeof("{") - 1);
-            for (ngx_uint_t col = 0; col < result->nfields; col++) {
+            for (ngx_uint_t col = 0; col < PQnfields(s->res); col++) {
                 int len = PQgetlength(s->res, row, col);
                 if (col > 0) b->last = ngx_copy(b->last, ",", 1);
                 b->last = ngx_copy(b->last, "\"", sizeof("\"") - 1);
@@ -461,7 +455,7 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_save_t *s) {
             }
             b->last = ngx_copy(b->last, "}", sizeof("}") - 1);
         }
-        if (result->ntuples > 1) b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
+        if (PQntuples(s->res) > 1) b->last = ngx_copy(b->last, "]", sizeof("]") - 1);
     }
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "b->last != b->end"); return NGX_ERROR; }
     return NGX_OK;
