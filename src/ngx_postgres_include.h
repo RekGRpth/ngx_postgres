@@ -69,7 +69,7 @@ typedef struct {
     ngx_uint_t nsingle;
     ngx_uint_t ntuples;
     ngx_uint_t status;
-    PGresult *res;
+//    PGresult *res;
 } ngx_postgres_result_t;
 
 typedef struct {
@@ -82,11 +82,15 @@ typedef struct {
     u_char **paramValues;
 } ngx_postgres_send_t;
 
+typedef struct ngx_postgres_save_t ngx_postgres_save_t;
+typedef ngx_int_t (*ngx_postgres_save_handler_pt) (ngx_postgres_save_t *s);
+
 typedef struct ngx_postgres_save_t {
     ngx_connection_t *connection;
-    ngx_int_t (*handler) (struct ngx_postgres_save_t *s);
+    ngx_postgres_save_handler_pt handler;
     ngx_postgres_upstream_srv_conf_t *usc;
     PGconn *conn;
+    PGresult *res;
     queue_t queue;
     struct {
         socklen_t socklen;
@@ -122,14 +126,12 @@ typedef struct {
     } peer;
 } ngx_postgres_data_t;
 
-typedef ngx_int_t (*ngx_postgres_data_handler_pt) (ngx_postgres_data_t *d);
-
 typedef struct {
     ngx_flag_t binary;
     ngx_flag_t header;
     ngx_flag_t single;
     ngx_flag_t string;
-    ngx_postgres_data_handler_pt handler;
+    ngx_postgres_save_handler_pt handler;
     ngx_str_t null;
     u_char delimiter;
     u_char escape;
@@ -162,7 +164,7 @@ typedef struct {
     ngx_uint_t variable;
 } ngx_postgres_location_t;
 
-typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_postgres_data_t *d, ngx_uint_t key, ngx_uint_t status);
+typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_postgres_save_t *s, ngx_uint_t key, ngx_uint_t status);
 
 typedef struct  {
     ngx_flag_t keep;
@@ -180,7 +182,7 @@ typedef enum {
 } ngx_postgres_type_t;
 
 typedef struct {
-    ngx_postgres_data_handler_pt handler;
+    ngx_postgres_save_handler_pt handler;
     ngx_postgres_type_t type;
     ngx_str_t name;
     ngx_uint_t col;
@@ -217,17 +219,17 @@ ngx_int_t ngx_postgres_flush(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *d);
-ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *d);
-ngx_int_t ngx_postgres_output_json(ngx_postgres_data_t *d);
-ngx_int_t ngx_postgres_output_plain(ngx_postgres_data_t *d);
-ngx_int_t ngx_postgres_output_value(ngx_postgres_data_t *d);
+ngx_int_t ngx_postgres_output_csv(ngx_postgres_save_t *s);
+ngx_int_t ngx_postgres_output_json(ngx_postgres_save_t *s);
+ngx_int_t ngx_postgres_output_plain(ngx_postgres_save_t *s);
+ngx_int_t ngx_postgres_output_value(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *usc);
 ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s);
-ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *d);
+ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
-ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *d);
-ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *d);
+ngx_int_t ngx_postgres_variable_output(ngx_postgres_save_t *s);
+ngx_int_t ngx_postgres_variable_set(ngx_postgres_save_t *s);
 void ngx_postgres_close(ngx_postgres_save_t *s);
 void ngx_postgres_data_handler(ngx_event_t *e);
 void ngx_postgres_save_handler(ngx_event_t *e);
