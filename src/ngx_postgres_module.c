@@ -1,4 +1,3 @@
-#include <pg_config.h>
 #include "ngx_postgres_include.h"
 
 

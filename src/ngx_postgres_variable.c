@@ -149,12 +149,12 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_save_t *s) {
     result->nfields = PQnfields(s->res);
     switch (PQresultStatus(s->res)) {
         case PGRES_TUPLES_OK:
-            result->sfields.len = snprintf(NULL, 0, "%li", result->nfields);
+            result->sfields.len = snprintf(NULL, 0, "%i", result->nfields);
             if (!(result->sfields.data = ngx_pnalloc(r->pool, result->sfields.len))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-            result->sfields.len = ngx_snprintf(result->sfields.data, result->sfields.len, "%li", result->nfields) - result->sfields.data;
-            result->stuples.len = snprintf(NULL, 0, "%li", result->ntuples);
+            result->sfields.len = ngx_snprintf(result->sfields.data, result->sfields.len, "%i", result->nfields) - result->sfields.data;
+            result->stuples.len = snprintf(NULL, 0, "%i", result->ntuples);
             if (!(result->stuples.data = ngx_pnalloc(r->pool, result->stuples.len))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-            result->stuples.len = ngx_snprintf(result->stuples.data, result->stuples.len, "%li", result->ntuples) - result->stuples.data;
+            result->stuples.len = ngx_snprintf(result->stuples.data, result->stuples.len, "%i", result->ntuples) - result->stuples.data;
             // fall through
         case PGRES_COMMAND_OK:
             if (ngx_strncasecmp((u_char *)PQcmdStatus(s->res), (u_char *)"SELECT", sizeof("SELECT") - 1) && (value = PQcmdTuples(s->res)) && (result->cmdTuples.len = ngx_strlen(value))) {
@@ -196,14 +196,14 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_save_t *s) {
             case PGRES_TUPLES_OK:
                 switch (variable[i].type) {
                     case type_nfields:
-                        variableelts[variable[i].index].len = snprintf(NULL, 0, "%li", result->nfields);
+                        variableelts[variable[i].index].len = snprintf(NULL, 0, "%i", result->nfields);
                         if (!(variableelts[variable[i].index].data = ngx_pnalloc(r->pool, variableelts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-                        variableelts[variable[i].index].len = ngx_snprintf(variableelts[variable[i].index].data, variableelts[variable[i].index].len, "%li", result->nfields) - variableelts[variable[i].index].data;
+                        variableelts[variable[i].index].len = ngx_snprintf(variableelts[variable[i].index].data, variableelts[variable[i].index].len, "%i", result->nfields) - variableelts[variable[i].index].data;
                         break;
                     case type_ntuples:
-                        variableelts[variable[i].index].len = snprintf(NULL, 0, "%li", result->ntuples);
+                        variableelts[variable[i].index].len = snprintf(NULL, 0, "%i", result->ntuples);
                         if (!(variableelts[variable[i].index].data = ngx_pnalloc(r->pool, variableelts[variable[i].index].len))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-                        variableelts[variable[i].index].len = ngx_snprintf(variableelts[variable[i].index].data, variableelts[variable[i].index].len, "%li", result->ntuples) - variableelts[variable[i].index].data;
+                        variableelts[variable[i].index].len = ngx_snprintf(variableelts[variable[i].index].data, variableelts[variable[i].index].len, "%i", result->ntuples) - variableelts[variable[i].index].data;
                         break;
                     case type_cmdTuples:
                         if ((value = PQcmdTuples(s->res)) && (variableelts[variable[i].index].len = ngx_strlen(value))) {

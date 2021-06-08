@@ -1,8 +1,11 @@
 #ifndef _NGX_POSTGRES_INCLUDE_H_
 #define _NGX_POSTGRES_INCLUDE_H_
 
+#include <avcall.h>
 #include <libpq-fe.h>
 #include <ngx_http.h>
+#include <pg_config.h>
+#include <postgresql/server/catalog/pg_type_d.h>
 #include "queue.h"
 
 #ifndef WIN32
@@ -59,15 +62,15 @@ typedef struct {
 } ngx_postgres_upstream_srv_conf_t;
 
 typedef struct {
+    int nfields;
+    int nsingle;
+    int ntuples;
     ngx_str_t cmdStatus;
     ngx_str_t cmdTuples;
     ngx_str_t error;
     ngx_str_t sfields;
     ngx_str_t sql;
     ngx_str_t stuples;
-    ngx_uint_t nfields;
-    ngx_uint_t nsingle;
-    ngx_uint_t ntuples;
     ngx_uint_t status;
 } ngx_postgres_result_t;
 
@@ -181,13 +184,13 @@ typedef enum {
 } ngx_postgres_type_t;
 
 typedef struct {
+    int col;
+    int row;
     ngx_postgres_save_handler_pt handler;
     ngx_postgres_type_t type;
     ngx_str_t name;
-    ngx_uint_t col;
     ngx_uint_t index;
     ngx_uint_t required;
-    ngx_uint_t row;
     u_char *field;
 } ngx_postgres_variable_t;
 

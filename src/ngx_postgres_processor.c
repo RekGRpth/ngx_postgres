@@ -1,5 +1,3 @@
-#include <postgresql/server/catalog/pg_type_d.h>
-#include <avcall.h>
 #include "ngx_postgres_include.h"
 
 
@@ -38,8 +36,8 @@ static ngx_int_t ngx_postgres_error(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
     const char *value;
-    if ((value = PQcmdStatus(s->res)) && ngx_strlen(value)) ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), value, PQresultErrorMessageMy(s->res));
-    else ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res));
+    if ((value = PQcmdStatus(s->res)) && ngx_strlen(value)) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), value, PQresultErrorMessageMy(s->res)); }
+    else { ngx_log_error(NGX_LOG_ERR, c->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); }
     ngx_postgres_variable_error(s);
     ngx_postgres_rewrite_set(s);
     return ngx_postgres_done(d, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -125,9 +123,6 @@ static ngx_int_t ngx_postgres_query_prepared(ngx_postgres_save_t *s) {
 static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    ngx_postgres_data_t *d = c->data;
-    ngx_postgres_send_t *sendelts = d->send.elts;
-    ngx_postgres_send_t *send = &sendelts[d->index];
     s->handler = ngx_postgres_prepare_result;
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); return NGX_OK;
@@ -162,9 +157,6 @@ static ngx_int_t ngx_postgres_query(ngx_postgres_save_t *s) {
 static ngx_int_t ngx_postgres_deallocate_result(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
-    ngx_postgres_data_t *d = c->data;
-    ngx_postgres_send_t *sendelts = d->send.elts;
-    ngx_postgres_send_t *send = &sendelts[d->index];
     s->handler = ngx_postgres_deallocate_result;
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); return NGX_OK;

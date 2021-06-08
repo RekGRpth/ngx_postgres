@@ -1,5 +1,3 @@
-#include <pg_config.h>
-#include <postgresql/server/catalog/pg_type_d.h>
 #include "ngx_postgres_include.h"
 
 
@@ -83,7 +81,7 @@ static ngx_int_t ngx_postgres_listen_result_(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     if (!PQntuples(s->res)) return NGX_OK;
-    for (ngx_uint_t row = 0; row < PQntuples(s->res); row++) {
+    for (int row = 0; row < PQntuples(s->res); row++) {
         const char *schannel = PQgetvalue(s->res, row, PQfnumber(s->res, "channel"));
         const char *sunlisten = PQgetvalue(s->res, row, PQfnumber(s->res, "unlisten"));
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "row = %i, channel = %s, unlisten = %s", row, schannel, sunlisten);
@@ -157,7 +155,6 @@ static void ngx_postgres_save_close(ngx_postgres_save_t *s) {
     if (c->write->timer_set) ngx_del_timer(c->write);
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
     if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && usc && usc->save.max && PQstatus(s->conn) == CONNECTION_OK && ngx_postgres_listen(s) != NGX_ERROR) return;
-close:
     ngx_postgres_close(s);
 }
 
@@ -310,10 +307,10 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
     ngx_http_request_t *r = d->request;
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_upstream_srv_conf_t *usc = u->conf->upstream->srv_conf ? ngx_http_conf_upstream_srv_conf(u->conf->upstream, ngx_postgres_module) : NULL;
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_postgres_connect_t *connect = pc->peer_data;
 #else
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_connect_t *connect = location->connect ? location->connect : usc->connect.elts;
     if (!location->connect) {
         ngx_uint_t i;
@@ -440,7 +437,6 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             return NGX_BUSY;
         }
     }
-ret:
     return ngx_postgres_open(pc, data);
 }
 
