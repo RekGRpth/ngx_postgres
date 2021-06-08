@@ -494,8 +494,7 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *d) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
     if (!r->header_sent) {
-        ngx_postgres_result_t *result = &d->result;
-        r->headers_out.status = result->status ? result->status : NGX_HTTP_OK;
+        r->headers_out.status = d->result.status ? d->result.status : NGX_HTTP_OK;
         r->headers_out.content_type_lowcase = NULL;
         if (ngx_postgres_charset(d) != NGX_OK) return NGX_ERROR;
         ngx_http_clear_content_length(r);
