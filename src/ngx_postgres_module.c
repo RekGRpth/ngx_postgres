@@ -477,7 +477,7 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     core->handler = ngx_postgres_handler;
     if (core->name.data[core->name.len - 1] == '/') core->auto_redirect = 1;
     ngx_url_t url;
-    ngx_postgres_connect_t *connect;
+    ngx_postgres_connect_t *connect = NULL;
     if (cf->args->nelts == 2) {
         ngx_str_t *elts = cf->args->elts;
         ngx_memzero(&url, sizeof(url));
