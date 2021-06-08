@@ -243,11 +243,13 @@ static ngx_flag_t ngx_postgres_oid_is_string(Oid oid) {
 }
 
 
-static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_save_t *s, ngx_str_t content_type) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
+    r->headers_out.content_type = content_type;
+    r->headers_out.content_type_len = r->headers_out.content_type.len;
     if (!PQntuples(s->res) || !PQnfields(s->res)) return NGX_OK;
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
@@ -354,23 +356,13 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_save_t *s) {
 
 ngx_int_t ngx_postgres_output_plain(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    ngx_connection_t *c = s->connection;
-    ngx_postgres_data_t *d = c->data;
-    ngx_http_request_t *r = d->request;
-    ngx_str_set(&r->headers_out.content_type, "text/plain");
-    r->headers_out.content_type_len = r->headers_out.content_type.len;
-    return ngx_postgres_output_plain_csv(s);
+    return ngx_postgres_output_plain_csv(s, (ngx_str_t)ngx_string("text/plain"));
 }
 
 
 ngx_int_t ngx_postgres_output_csv(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    ngx_connection_t *c = s->connection;
-    ngx_postgres_data_t *d = c->data;
-    ngx_http_request_t *r = d->request;
-    ngx_str_set(&r->headers_out.content_type, "text/csv");
-    r->headers_out.content_type_len = r->headers_out.content_type.len;
-    return ngx_postgres_output_plain_csv(s);
+    return ngx_postgres_output_plain_csv(s, (ngx_str_t)ngx_string("text/csv"));
 }
 
 
