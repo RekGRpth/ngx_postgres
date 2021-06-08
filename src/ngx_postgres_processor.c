@@ -21,24 +21,14 @@ static ngx_int_t ngx_postgres_variable_error(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
-    ngx_postgres_result_t *result = &d->result;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
-    result->sql = query->sql;
-    result->ntuples = 0;
-    result->nfields = 0;
-    if (result->stuples.data) ngx_pfree(r->pool, result->stuples.data);
-    if (result->sfields.data) ngx_pfree(r->pool, result->sfields.data);
-    if (result->cmdTuples.data) ngx_pfree(r->pool, result->cmdTuples.data);
-    if (result->cmdStatus.data) ngx_pfree(r->pool, result->cmdStatus.data);
-    ngx_str_null(&result->stuples);
-    ngx_str_null(&result->sfields);
-    ngx_str_null(&result->cmdTuples);
-    ngx_str_null(&result->cmdStatus);
+    ngx_memzero(&d->result, sizeof(d->result));
+    d->result.sql = query->sql;
     const char *value;
-    if ((value = PQresultErrorMessageMy(s->res)) && !result->error.len && (result->error.len = ngx_strlen(value))) {
-        if (!(result->error.data = ngx_pnalloc(r->pool, result->error.len))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-        ngx_memcpy(result->error.data, value, result->error.len);
+    if ((value = PQresultErrorMessageMy(s->res)) && !d->result.error.len && (d->result.error.len = ngx_strlen(value))) {
+        if (!(d->result.error.data = ngx_pnalloc(r->pool, d->result.error.len))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
+        ngx_memcpy(d->result.error.data, value, d->result.error.len);
     }
     return NGX_OK;
 }
