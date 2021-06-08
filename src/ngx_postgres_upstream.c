@@ -94,12 +94,11 @@ static ngx_int_t ngx_postgres_listen_result_(ngx_postgres_save_t *s) {
 
 
 static ngx_int_t ngx_postgres_listen_result(ngx_postgres_save_t *s) {
-    ngx_connection_t *c = s->connection;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     s->handler = ngx_postgres_listen_result;
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_TUPLES_OK: return ngx_postgres_listen_result_(s);
-        default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res), PQresultErrorMessageMy(s->res)); return NGX_ERROR;
+        default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res), PQresultErrorMessageMy(s->res)); return NGX_ERROR;
     }
     ngx_postgres_close(s);
     return NGX_OK;
@@ -284,8 +283,7 @@ close:;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 static void ngx_postgres_data_cleanup(void *data) {
     ngx_postgres_data_t *d = data;
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, d->request->connection->log, 0, "%s", __func__);
     if (!queue_empty(&d->queue)) queue_remove(&d->queue);
     if (d->timeout.timer_set) ngx_del_timer(&d->timeout);
 }
@@ -320,7 +318,7 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
 #endif
     u->conf->connect_timeout = connect->timeout;
     const char *host = connect->values[0];
-    if (host) ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "host = %s", host);
+    if (host) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "host = %s", host); }
     ngx_str_t addr;
     if (!(addr.data = ngx_pcalloc(r->pool, NGX_SOCKADDR_STRLEN + 1))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pcalloc"); goto error; }
     if (!(addr.len = ngx_sock_ntop(pc->sockaddr, pc->socklen, addr.data, NGX_SOCKADDR_STRLEN, 0))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_sock_ntop"); goto error; }
