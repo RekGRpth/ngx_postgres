@@ -47,9 +47,8 @@ static ngx_int_t ngx_postgres_rewrite_rows(ngx_postgres_save_t *s, ngx_uint_t ke
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
     ngx_postgres_result_t *result = &d->result;
-    result->ntuples = PQntuples(s->res);
-    if (key % 2 == 0 && !result->ntuples) return status;
-    if (key % 2 == 1 && result->ntuples > 0) return status;
+    if (key % 2 == 0 && !PQntuples(s->res)) return status;
+    if (key % 2 == 1 && PQntuples(s->res) > 0) return status;
     return NGX_OK;
 }
 
