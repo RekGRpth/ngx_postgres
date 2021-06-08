@@ -103,6 +103,7 @@ typedef struct {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_event_t timeout;
 #endif
+    ngx_flag_t catch;
     ngx_http_request_t *request;
     ngx_postgres_result_t result;
     ngx_postgres_save_t *save;

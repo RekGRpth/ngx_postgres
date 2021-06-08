@@ -256,8 +256,8 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
     }
     s->handler = ngx_postgres_prepare_or_query;
     while (PQstatus(s->conn) == CONNECTION_OK && (d->result.res = PQgetResult(s->conn))) {
-        if (d->result.res) switch (PQresultStatus(d->result.res)) {
-            case PGRES_FATAL_ERROR: PQclear(d->result.res); return ngx_postgres_error(s);
+        switch (PQresultStatus(d->result.res)) {
+            case PGRES_FATAL_ERROR: if (d->catch) { PQclear(d->result.res); return ngx_postgres_error(s); } ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(d->result.res)), PQresultErrorMessageMy(d->result.res)); break;
             default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(d->result.res)), PQcmdStatus(d->result.res)); break;
         }
         PQclear(d->result.res);
@@ -311,6 +311,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
     *last = '\0';
     send->sql = sql;
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
+    d->catch = 1;
     if (usc && usc->save.max && usc->prepare.max && (location->prepare || query->prepare)) {
         if (!(send->stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, c->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
         u_char *last = ngx_snprintf(send->stmtName.data, 31, "ngx_%ul", (unsigned long)(send->hash = ngx_hash_key(sql.data, sql.len)));
