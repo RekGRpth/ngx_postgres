@@ -62,19 +62,6 @@ typedef struct {
 } ngx_postgres_upstream_srv_conf_t;
 
 typedef struct {
-    int nfields;
-    int nsingle;
-    int ntuples;
-    ngx_str_t cmdStatus;
-    ngx_str_t cmdTuples;
-    ngx_str_t error;
-    ngx_str_t sfields;
-    ngx_str_t sql;
-    ngx_str_t stuples;
-    ngx_uint_t status;
-} ngx_postgres_result_t;
-
-typedef struct {
     ngx_flag_t binary;
     ngx_str_t sql;
     ngx_str_t stmtName;
@@ -111,7 +98,6 @@ typedef struct {
 #endif
     ngx_flag_t catch;
     ngx_http_request_t *request;
-    ngx_postgres_result_t result;
     ngx_postgres_save_t *save;
     ngx_uint_t index;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
@@ -126,6 +112,18 @@ typedef struct {
 #endif
         void *data;
     } peer;
+    struct {
+        int nfields;
+        int nsingle;
+        int ntuples;
+        ngx_str_t cmdStatus;
+        ngx_str_t cmdTuples;
+        ngx_str_t error;
+        ngx_str_t sfields;
+        ngx_str_t sql;
+        ngx_str_t stuples;
+        ngx_uint_t status;
+    } result;
 } ngx_postgres_data_t;
 
 typedef struct {
