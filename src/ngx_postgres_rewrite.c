@@ -14,7 +14,7 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_save_t *s) {
     ngx_postgres_rewrite_t *rewriteelts = rewrite->elts;
     ngx_int_t rc = NGX_OK;
     for (ngx_uint_t i = 0; i < rewrite->nelts; i++) if ((!rewriteelts[i].method || rewriteelts[i].method & r->method) && (rc = rewriteelts[i].handler(s, rewriteelts[i].key, rewriteelts[i].status)) != NGX_OK) {
-        r->headers_out.status = rc;
+        r->err_status = rc;
         if (rewriteelts[i].keep) rc = NGX_OK;
         break;
     }
