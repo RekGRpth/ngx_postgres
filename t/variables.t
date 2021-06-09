@@ -70,7 +70,7 @@ X-Test: test
     location /postgres {
         postgres_pass       database;
         postgres_query      "select 'test' as echo";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_set        $test 0 1;
         add_header          "X-Test" $test;
     }
@@ -78,7 +78,7 @@ X-Test: test
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 ! X-Test
 --- timeout: 10
 
@@ -92,7 +92,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select NULL as echo";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_set        $test 0 0;
         add_header          "X-Test" $test;
     }
@@ -100,7 +100,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 ! X-Test
 --- timeout: 10
 
@@ -114,7 +114,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select '' as echo";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_set        $test 0 0;
         add_header          "X-Test" $test;
     }
@@ -122,7 +122,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 ! X-Test
 --- timeout: 10
 
@@ -136,7 +136,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select 'test' as echo";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_set        $test 0 1 required;
         add_header          "X-Test" $test;
     }
@@ -155,7 +155,7 @@ GET /postgres
     location /postgres {
         postgres_pass       database;
         postgres_query      "select NULL as echo";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_set        $test 0 0 required;
         add_header          "X-Test" $test;
     }
@@ -174,7 +174,7 @@ GET /postgres
     location /postgres {
         postgres_pass       database;
         postgres_query      "select '' as echo";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_set        $test 0 0 required;
         add_header          "X-Test" $test;
     }
@@ -193,14 +193,14 @@ GET /postgres
     location /postgres {
         postgres_pass       database;
         postgres_query      "select 'a', 'b', 'c'";
-        postgres_output     plain;
+        postgres_output     rds;
         add_header          "X-Columns" $postgres_nfields;
     }
 --- request
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 X-Columns: 3
 --- timeout: 10
 
@@ -214,14 +214,14 @@ X-Columns: 3
     location /postgres {
         postgres_pass       database;
         postgres_query      "select 'a', 'b', 'c'";
-        postgres_output     plain;
+        postgres_output     rds;
         add_header          "X-Rows" $postgres_ntuples;
     }
 --- request
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 X-Rows: 1
 --- timeout: 10
 
@@ -235,14 +235,14 @@ X-Rows: 1
     location /postgres {
         postgres_pass       database;
         postgres_query      "select 'test' as echo";
-        postgres_output     plain;
+        postgres_output     rds;
         add_header          "X-Query" $postgres_query;
     }
 --- request
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 X-Query: select 'test' as echo
 --- timeout: 10
 
@@ -256,14 +256,14 @@ X-Query: select 'test' as echo
     location /postgres {
         postgres_pass       database;
         postgres_query      "select $request_method::text as echo";
-        postgres_output     plain;
+        postgres_output     rds;
         add_header          "X-Query" $postgres_query;
     }
 --- request
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 X-Query: select $1 as echo
 --- timeout: 10
 
