@@ -448,27 +448,6 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_charset(ngx_postgres_data_t *d) {
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_save_t *s = d->save;
-    const char *charset = PQparameterStatus(s->conn, "client_encoding");
-    if (!charset) return NGX_OK;
-    if (!ngx_strcasecmp((u_char *)charset, (u_char *)"utf8")) {
-        ngx_str_set(&r->headers_out.charset, "utf-8");
-    } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"windows1251")) {
-        ngx_str_set(&r->headers_out.charset, "windows-1251");
-    } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"koi8r")) {
-        ngx_str_set(&r->headers_out.charset, "koi8-r");
-    } else {
-        r->headers_out.charset.len = ngx_strlen(charset);
-        if (!(r->headers_out.charset.data = ngx_pnalloc(r->pool, r->headers_out.charset.len))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc"); return NGX_ERROR; }
-        ngx_memcpy(r->headers_out.charset.data, charset, r->headers_out.charset.len);
-    }
-    return NGX_OK;
-}
-
-
 ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
@@ -476,7 +455,6 @@ ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *d) {
     if (!r->header_sent) {
         if (!r->headers_out.status) r->headers_out.status = NGX_HTTP_OK;
         r->headers_out.content_type_lowcase = NULL;
-        if (ngx_postgres_charset(d) != NGX_OK) return NGX_ERROR;
         ngx_http_clear_content_length(r);
         r->headers_out.content_length_n = 0;
         for (ngx_chain_t *chain = u->out_bufs; chain; chain = chain->next) {
