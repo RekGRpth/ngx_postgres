@@ -230,7 +230,6 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_variable_set(ngx_postgres_save_t *s);
 void ngx_postgres_close(ngx_postgres_save_t *s);
 void ngx_postgres_data_handler(ngx_event_t *e);
-void ngx_postgres_output(ngx_http_request_t *r);
 void ngx_postgres_save_handler(ngx_event_t *e);
 
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)

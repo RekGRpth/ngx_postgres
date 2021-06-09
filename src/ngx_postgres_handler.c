@@ -114,6 +114,19 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
 }
 
 
+static void ngx_postgres_output(ngx_http_request_t *r) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    if (!r->headers_out.status) r->headers_out.status = NGX_HTTP_OK;
+    ngx_int_t rc = ngx_http_send_header(r);
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return;
+    ngx_http_upstream_t *u = r->upstream;
+    u->header_sent = 1;
+    if (!u->out_bufs) return;
+    if (ngx_http_output_filter(r, u->out_bufs) != NGX_OK) return;
+    ngx_chain_update_chains(r->pool, &u->free_bufs, &u->busy_bufs, &u->out_bufs, u->output.tag);
+}
+
+
 static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
     ngx_http_upstream_t *u = r->upstream;
