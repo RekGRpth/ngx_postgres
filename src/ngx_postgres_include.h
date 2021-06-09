@@ -122,7 +122,6 @@ typedef struct {
         ngx_str_t sfields;
         ngx_str_t sql;
         ngx_str_t stuples;
-        ngx_uint_t status;
     } result;
 } ngx_postgres_data_t;
 
