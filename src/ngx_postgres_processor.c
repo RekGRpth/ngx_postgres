@@ -56,7 +56,6 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_save_t *s) {
     ngx_postgres_query_t *query = &queryelts[d->index];
     ngx_int_t rc = NGX_OK;
     const char *value;
-    ngx_postgres_output_t *output = &query->output;
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_FATAL_ERROR: return ngx_postgres_error(s);
         case PGRES_COMMAND_OK:
@@ -70,7 +69,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_save_t *s) {
             // fall through
         case PGRES_SINGLE_TUPLE:
             if (PQresultStatus(s->res) == PGRES_SINGLE_TUPLE) d->result.nsingle++;
-            if (rc == NGX_OK && output->handler) rc = output->handler(s); // fall through
+            if (rc == NGX_OK && query->output.handler) rc = query->output.handler(s); // fall through
         default:
             if ((value = PQcmdStatus(s->res)) && ngx_strlen(value)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(s->res)), value); }
             else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, PQresStatus(PQresultStatus(s->res))); }
@@ -102,8 +101,7 @@ static ngx_int_t ngx_postgres_query_prepared_result(ngx_postgres_save_t *s) {
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[d->index];
-    ngx_postgres_output_t *output = &query->output;
-    if (output->handler == ngx_postgres_output_plain || output->handler == ngx_postgres_output_csv) if (output->single && !PQsetSingleRowMode(s->conn)) ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(s->conn));
+    if (query->output.handler == ngx_postgres_output_plain || query->output.handler == ngx_postgres_output_csv) if (query->output.single && !PQsetSingleRowMode(s->conn)) ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(s->conn));
     s->handler = ngx_postgres_query_result;
     return NGX_AGAIN;
 }

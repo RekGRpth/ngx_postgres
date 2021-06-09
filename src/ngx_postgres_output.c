@@ -254,49 +254,48 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_save_t *s, ngx_str_t
     size_t size = 0;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
-    ngx_postgres_output_t *output = &query->output;
     ngx_http_upstream_t *u = r->upstream;
-    if (output->header && !u->out_bufs) {
+    if (query->output.header && !u->out_bufs) {
         size += PQnfields(s->res) - 1; // header delimiters
         for (int col = 0; col < PQnfields(s->res); col++) {
             int len = ngx_strlen(PQfname(s->res, col));
-            if (output->quote) size++;
-            if (output->escape) size += ngx_postgres_count((u_char *)PQfname(s->res, col), len, output->escape);
+            if (query->output.quote) size++;
+            if (query->output.escape) size += ngx_postgres_count((u_char *)PQfname(s->res, col), len, query->output.escape);
             else size += len;
             if (location->append && !ngx_strstr(PQfname(s->res, col), "::")) {
-                if (output->escape) size += ngx_postgres_count((u_char *)"::", sizeof("::") - 1, output->escape);
+                if (query->output.escape) size += ngx_postgres_count((u_char *)"::", sizeof("::") - 1, query->output.escape);
                 else size += sizeof("::") - 1;
                 Oid oid = PQftype(s->res, col);
                 const char *type = PQftypeMy(oid);
                 if (type) {
-                    if (output->escape) size += ngx_postgres_count((u_char *)type, ngx_strlen(type), output->escape);
+                    if (query->output.escape) size += ngx_postgres_count((u_char *)type, ngx_strlen(type), query->output.escape);
                     else size += ngx_strlen(type);
                 } else {
                     size_t len = snprintf(NULL, 0, "%i", oid);
                     char type[len + 1];
                     snprintf(type, len + 1, "%i", oid);
-                    if (output->escape) size += ngx_postgres_count((u_char *)type, len, output->escape);
+                    if (query->output.escape) size += ngx_postgres_count((u_char *)type, len, query->output.escape);
                     else size += len;
                 }
             }
-            if (output->quote) size++;
+            if (query->output.quote) size++;
         }
     }
     size += PQntuples(s->res) * (PQnfields(s->res) - 1); // value delimiters
     for (int row = 0; row < PQntuples(s->res); row++) {
-        if (output->header || u->out_bufs || row > 0) size++;
+        if (query->output.header || u->out_bufs || row > 0) size++;
         for (int col = 0; col < PQnfields(s->res); col++) {
             int len = PQgetlength(s->res, row, col);
-            if (PQgetisnull(s->res, row, col)) size += output->null.len; else {
-                if (!ngx_postgres_oid_is_string(PQftype(s->res, col)) && output->string) {
+            if (PQgetisnull(s->res, row, col)) size += query->output.null.len; else {
+                if (!ngx_postgres_oid_is_string(PQftype(s->res, col)) && query->output.string) {
                     size += len;
                 } else {
-                    if (output->quote) size++;
+                    if (query->output.quote) size++;
                     if (len) {
-                        if (output->escape) size += ngx_postgres_count((u_char *)PQgetvalue(s->res, row, col), len, output->escape);
+                        if (query->output.escape) size += ngx_postgres_count((u_char *)PQgetvalue(s->res, row, col), len, query->output.escape);
                         else size += len;
                     }
-                    if (output->quote) size++;
+                    if (query->output.quote) size++;
                 }
             }
         }
@@ -304,47 +303,47 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_save_t *s, ngx_str_t
     if (!size) return NGX_OK;
     ngx_buf_t *b = ngx_postgres_buffer(r, size);
     if (!b) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_postgres_buffer"); return NGX_ERROR; }
-    if (output->header && !u->out_bufs->next) {
+    if (query->output.header && !u->out_bufs->next) {
         for (int col = 0; col < PQnfields(s->res); col++) {
             int len = ngx_strlen(PQfname(s->res, col));
-            if (col > 0) *b->last++ = output->delimiter;
-            if (output->quote) *b->last++ = output->quote;
-            if (output->escape) b->last = ngx_postgres_escape(b->last, (u_char *)PQfname(s->res, col), len, output->escape);
+            if (col > 0) *b->last++ = query->output.delimiter;
+            if (query->output.quote) *b->last++ = query->output.quote;
+            if (query->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)PQfname(s->res, col), len, query->output.escape);
             else b->last = ngx_copy(b->last, PQfname(s->res, col), len);
             if (location->append && !ngx_strstr(PQfname(s->res, col), "::")) {
-                if (output->escape) b->last = ngx_postgres_escape(b->last, (u_char *)"::", sizeof("::") - 1, output->escape);
+                if (query->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)"::", sizeof("::") - 1, query->output.escape);
                 else b->last = ngx_copy(b->last, "::", sizeof("::") - 1);
                 Oid oid = PQftype(s->res, col);
                 const char *type = PQftypeMy(oid);
                 if (type) {
-                    if (output->escape) b->last = ngx_postgres_escape(b->last, (u_char *)type, ngx_strlen(type), output->escape);
+                    if (query->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)type, ngx_strlen(type), query->output.escape);
                     else b->last = ngx_copy(b->last, type, ngx_strlen(type));
                 } else {
                     size_t len = snprintf(NULL, 0, "%i", oid);
                     char type[len + 1];
                     snprintf(type, len + 1, "%i", oid);
-                    if (output->escape) b->last = ngx_postgres_escape(b->last, (u_char *)type, len, output->escape);
+                    if (query->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)type, len, query->output.escape);
                     else b->last = ngx_copy(b->last, type, len);
                 }
             }
-            if (output->quote) *b->last++ = output->quote;
+            if (query->output.quote) *b->last++ = query->output.quote;
         }
     }
     for (int row = 0; row < PQntuples(s->res); row++) {
-        if (output->header || u->out_bufs->next || row > 0) *b->last++ = '\n';
+        if (query->output.header || u->out_bufs->next || row > 0) *b->last++ = '\n';
         for (int col = 0; col < PQnfields(s->res); col++) {
             int len = PQgetlength(s->res, row, col);
-            if (col > 0) *b->last++ = output->delimiter;
-            if (PQgetisnull(s->res, row, col)) b->last = ngx_copy(b->last, output->null.data, output->null.len); else {
-                if (!ngx_postgres_oid_is_string(PQftype(s->res, col)) && output->string) {
+            if (col > 0) *b->last++ = query->output.delimiter;
+            if (PQgetisnull(s->res, row, col)) b->last = ngx_copy(b->last, query->output.null.data, query->output.null.len); else {
+                if (!ngx_postgres_oid_is_string(PQftype(s->res, col)) && query->output.string) {
                     if (len) b->last = ngx_copy(b->last, (u_char *)PQgetvalue(s->res, row, col), len);
                 } else {
-                    if (output->quote) *b->last++ = output->quote;
+                    if (query->output.quote) *b->last++ = query->output.quote;
                     if (len) {
-                        if (output->escape) b->last = ngx_postgres_escape(b->last, (u_char *)PQgetvalue(s->res, row, col), len, output->escape);
+                        if (query->output.escape) b->last = ngx_postgres_escape(b->last, (u_char *)PQgetvalue(s->res, row, col), len, query->output.escape);
                         else b->last = ngx_copy(b->last, (u_char *)PQgetvalue(s->res, row, col), len);
                     }
-                    if (output->quote) *b->last++ = output->quote;
+                    if (query->output.quote) *b->last++ = query->output.quote;
                 }
             }
         }
@@ -507,8 +506,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_location_t *location = conf;
     if (!location->query.nelts) return "must defined after \"postgres_query\" directive";
     ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[location->query.nelts - 1];
-    ngx_postgres_output_t *output = &query->output;
-    if (output->handler) return "duplicate";
+    if (query->output.handler) return "duplicate";
     ngx_str_t *args = cf->args->elts;
     static const struct {
         ngx_str_t name;
@@ -524,19 +522,19 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         { ngx_null_string, 0, NULL }
     };
     ngx_uint_t i;
-    for (i = 0; h[i].name.len; i++) if (h[i].name.len == args[1].len && !ngx_strncmp(h[i].name.data, args[1].data, args[1].len)) { output->handler = h[i].handler; break; }
+    for (i = 0; h[i].name.len; i++) if (h[i].name.len == args[1].len && !ngx_strncmp(h[i].name.data, args[1].data, args[1].len)) { query->output.handler = h[i].handler; break; }
     if (!h[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: format \"%V\" must be \"none\", \"plain\", \"csv\", \"value\", \"binary\" or \"json\"", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
-    output->binary = h[i].binary;
-    output->header = 1;
-    output->string = 1;
-    if (output->handler == ngx_postgres_output_plain) {
-        output->delimiter = '\t';
-        ngx_str_set(&output->null, "\\N");
-    } else if (output->handler == ngx_postgres_output_csv) {
-        output->delimiter = ',';
-        ngx_str_set(&output->null, "");
-        output->quote = '"';
-        output->escape = '"';
+    query->output.binary = h[i].binary;
+    query->output.header = 1;
+    query->output.string = 1;
+    if (query->output.handler == ngx_postgres_output_plain) {
+        query->output.delimiter = '\t';
+        ngx_str_set(&query->output.null, "\\N");
+    } else if (query->output.handler == ngx_postgres_output_csv) {
+        query->output.delimiter = ',';
+        ngx_str_set(&query->output.null, "");
+        query->output.quote = '"';
+        query->output.escape = '"';
     }
     static const ngx_conf_enum_t e[] = {
         { ngx_string("off"), 0 },
@@ -549,57 +547,57 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     };
     ngx_uint_t j;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (output->handler == ngx_postgres_output_plain || output->handler == ngx_postgres_output_csv) {
+        if (query->output.handler == ngx_postgres_output_plain || query->output.handler == ngx_postgres_output_csv) {
             if (args[i].len > sizeof("delimiter=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"delimiter=", sizeof("delimiter=") - 1)) {
                 args[i].len = args[i].len - (sizeof("delimiter=") - 1);
                 if (!args[i].len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty \"delimiter\" value", &cmd->name); return NGX_CONF_ERROR; }
                 if (args[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"delimiter\" value \"%V\" must be one character", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
                 args[i].data = &args[i].data[sizeof("delimiter=") - 1];
-                output->delimiter = *args[i].data;
+                query->output.delimiter = *args[i].data;
                 continue;
             }
             if (args[i].len > sizeof("null=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"null=", sizeof("null=") - 1)) {
                 args[i].len = args[i].len - (sizeof("null=") - 1);
-                if (!(output->null.len = args[i].len)) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty \"null\" value", &cmd->name); return NGX_CONF_ERROR; }
+                if (!(query->output.null.len = args[i].len)) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty \"null\" value", &cmd->name); return NGX_CONF_ERROR; }
                 args[i].data = &args[i].data[sizeof("null=") - 1];
-                output->null.data = args[i].data;
+                query->output.null.data = args[i].data;
                 continue;
             }
             if (args[i].len > sizeof("header=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"header=", sizeof("header=") - 1)) {
                 args[i].len = args[i].len - (sizeof("header=") - 1);
                 args[i].data = &args[i].data[sizeof("header=") - 1];
-                for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { output->header = e[j].value; break; }
+                for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { query->output.header = e[j].value; break; }
                 if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"header\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
                 continue;
             }
             if (args[i].len > sizeof("string=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"string=", sizeof("string=") - 1)) {
                 args[i].len = args[i].len - (sizeof("string=") - 1);
                 args[i].data = &args[i].data[sizeof("string=") - 1];
-                for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { output->string = e[j].value; break; }
+                for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { query->output.string = e[j].value; break; }
                 if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"string\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
                 continue;
             }
             if (args[i].len > sizeof("single=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"single=", sizeof("single=") - 1)) {
                 args[i].len = args[i].len - (sizeof("single=") - 1);
                 args[i].data = &args[i].data[sizeof("single=") - 1];
-                for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { output->single = e[j].value; break; }
+                for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { query->output.single = e[j].value; break; }
                 if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"single\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
                 continue;
             }
             if (args[i].len >= sizeof("quote=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"quote=", sizeof("quote=") - 1)) {
                 args[i].len = args[i].len - (sizeof("quote=") - 1);
-                if (!args[i].len) { output->quote = '\0'; continue; }
+                if (!args[i].len) { query->output.quote = '\0'; continue; }
                 else if (args[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"quote\" value \"%V\" must be one character", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
                 args[i].data = &args[i].data[sizeof("quote=") - 1];
-                output->quote = *args[i].data;
+                query->output.quote = *args[i].data;
                 continue;
             }
             if (args[i].len >= sizeof("escape=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"escape=", sizeof("escape=") - 1)) {
                 args[i].len = args[i].len - (sizeof("escape=") - 1);
-                if (!args[i].len) { output->escape = '\0'; continue; }
+                if (!args[i].len) { query->output.escape = '\0'; continue; }
                 else if (args[i].len > 1) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"escape\" value \"%V\" must be one character", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
                 args[i].data = &args[i].data[sizeof("escape=") - 1];
-                output->escape = *args[i].data;
+                query->output.escape = *args[i].data;
                 continue;
             }
         }
