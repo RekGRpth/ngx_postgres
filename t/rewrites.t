@@ -383,7 +383,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
         if ($arg_foo) {
             postgres_pass       database;
             postgres_query      "select * from cats";
-            postgres_output     plain;
+            postgres_output     rds;
             postgres_rewrite    no_changes 500;
             postgres_rewrite    changes 500;
             postgres_rewrite    no_rows 410;
@@ -397,5 +397,5 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres?foo=1
 --- error_code: 206
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- timeout: 10
