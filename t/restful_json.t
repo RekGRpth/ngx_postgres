@@ -217,7 +217,7 @@ Content-Length: 0
 PUT /numbers/123
 --- error_code: 410
 --- response_headers
-Content-Type: text/html
+Content-Type: text/html; charset=utf-8
 --- response_body_like: 410 Gone
 --- timeout: 10
 --- skip_slave: 3: CentOS
@@ -234,7 +234,7 @@ Content-Type: text/html
 GET /numbers/123
 --- error_code: 410
 --- response_headers
-Content-Type: text/html
+Content-Type: text/html; charset=utf-8
 --- response_body_like: 410 Gone
 --- timeout: 10
 
@@ -250,7 +250,7 @@ Content-Type: text/html
 DELETE /numbers/123
 --- error_code: 410
 --- response_headers
-Content-Type: text/html
+Content-Type: text/html; charset=utf-8
 --- response_body_like: 410 Gone
 --- timeout: 10
 

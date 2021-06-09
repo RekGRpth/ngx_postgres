@@ -125,7 +125,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 410
 --- response_headers
-Content-Type: text/html
+Content-Type: text/html; charset=utf-8
 --- timeout: 10
 
 
@@ -297,7 +297,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 409
 --- response_headers
-Content-Type: text/html
+Content-Type: text/html; charset=utf-8
 --- timeout: 10
 
 
