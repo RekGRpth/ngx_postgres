@@ -310,7 +310,7 @@ Content-Type: text/html; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "update cats set id=3 where name='noone'";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_rewrite    no_changes =409;
         postgres_rewrite    changes 500;
     }
@@ -318,7 +318,7 @@ Content-Type: text/html; charset=utf-8
 GET /postgres
 --- error_code: 409
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- timeout: 10
 
 
@@ -331,7 +331,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_rewrite    no_rows 500;
         postgres_rewrite    rows =409;
     }
@@ -339,48 +339,37 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 409
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- response_body eval
-"id".
-"\x{09}".
-"name".
-"\x{0a}".
-"2".
-"\x{09}".
-"\\N".
-"\x{0a}".
-"3".
-"\x{09}".
-"bob"
-#"\x{00}".        # endian
-#"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
-#"\x{00}".        # result type
-#"\x{00}\x{00}".  # std errcode
-#"\x{02}\x{00}".  # driver errcode
-#"\x{00}\x{00}".  # driver errstr len
-#"".              # driver errstr data
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
-#"\x{02}\x{00}".  # col count
-#"\x{09}\x{00}".  # std col type (integer/int)
-#"\x{17}\x{00}".  # driver col type
-#"\x{02}\x{00}".  # col name len
-#"id".            # col name data
-#"\x{06}\x{80}".  # std col type (varchar/str)
-#"\x{19}\x{00}".  # driver col type
-#"\x{04}\x{00}".  # col name len
-#"name".          # col name data
-#"\x{01}".        # valid row flag
-#"\x{01}\x{00}\x{00}\x{00}".  # field len
-#"2".             # field data
-#"\x{ff}\x{ff}\x{ff}\x{ff}".  # field len
-#"".              # field data
-#"\x{01}".        # valid row flag
-#"\x{01}\x{00}\x{00}\x{00}".  # field len
-#"3".             # field data
-#"\x{03}\x{00}\x{00}\x{00}".  # field len
-#"bob".           # field data
-#"\x{00}"         # row list terminator
+"\x{00}".        # endian
+"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
+"\x{00}".        # result type
+"\x{00}\x{00}".  # std errcode
+"\x{02}\x{00}".  # driver errcode
+"\x{00}\x{00}".  # driver errstr len
+"".              # driver errstr data
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
+"\x{02}\x{00}".  # col count
+"\x{09}\x{00}".  # std col type (integer/int)
+"\x{17}\x{00}".  # driver col type
+"\x{02}\x{00}".  # col name len
+"id".            # col name data
+"\x{06}\x{80}".  # std col type (varchar/str)
+"\x{19}\x{00}".  # driver col type
+"\x{04}\x{00}".  # col name len
+"name".          # col name data
+"\x{01}".        # valid row flag
+"\x{01}\x{00}\x{00}\x{00}".  # field len
+"2".             # field data
+"\x{ff}\x{ff}\x{ff}\x{ff}".  # field len
+"".              # field data
+"\x{01}".        # valid row flag
+"\x{01}\x{00}\x{00}\x{00}".  # field len
+"3".             # field data
+"\x{03}\x{00}\x{00}\x{00}".  # field len
+"bob".           # field data
+"\x{00}"         # row list terminator
 --- timeout: 10
 
 
