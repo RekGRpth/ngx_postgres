@@ -29,15 +29,15 @@ __DATA__
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
-        postgres_output     plain;
-        postgres_rewrite    no_changes 200;
+        postgres_output     rds;
+        postgres_rewrite    no_changes 500;
         postgres_rewrite    changes 500;
     }
 --- request
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- timeout: 10
 
 
@@ -50,7 +50,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "update cats set id=3 where name='noone'";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_rewrite    no_changes 206;
         postgres_rewrite    changes 500;
     }
@@ -58,7 +58,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- timeout: 10
 
 
@@ -71,7 +71,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "update cats set id=3 where name='bob'";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_rewrite    no_changes 500;
         postgres_rewrite    changes 206;
     }
@@ -79,7 +79,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- timeout: 10
 
 
@@ -92,7 +92,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_rewrite    no_changes 500;
         postgres_rewrite    changes 500;
         postgres_rewrite    no_rows 410;
@@ -102,7 +102,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- timeout: 10
 
 
@@ -115,7 +115,7 @@ Content-Type: text/plain; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats where name='noone'";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_rewrite    no_changes 500;
         postgres_rewrite    changes 500;
         postgres_rewrite    no_rows 410;
