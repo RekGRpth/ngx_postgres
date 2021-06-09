@@ -27,7 +27,8 @@ ngx_int_t ngx_postgres_output_value(ngx_postgres_save_t *s) {
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
     ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-    if (!r->headers_out.content_type.data) { r->headers_out.content_type = core->default_type; r->headers_out.content_type_len = core->default_type.len; }
+    r->headers_out.content_type = core->default_type;
+    r->headers_out.content_type_len = core->default_type.len;
     if (PQntuples(s->res) != 1 || PQnfields(s->res) != 1) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "\"postgres_output value\" received %i value(s) instead of expected single value in location \"%V\"", PQntuples(s->res) * PQnfields(s->res), &core->name); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     if (PQgetisnull(s->res, 0, 0)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "\"postgres_output value\" received NULL value in location \"%V\"", &core->name); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     size_t size = PQgetlength(s->res, 0, 0);
