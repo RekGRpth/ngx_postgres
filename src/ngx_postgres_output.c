@@ -515,10 +515,9 @@ static ngx_int_t ngx_postgres_output_rds(ngx_postgres_save_t *s) {
         size += sizeof(uint8_t)                 /* row number */
              + (PQnfields(s->res) * sizeof(uint32_t))  /* field string length */
              ;
-        if (row == PQntuples(s->res) - 1) size += sizeof(uint8_t);
         for (int col = 0; col < PQnfields(s->res); col++) size += PQgetlength(s->res, row, col);  /* field string data */
     }
-    if (!PQntuples(s->res)) size += sizeof(uint8_t);
+    size += sizeof(uint8_t);
     ngx_buf_t *b = ngx_postgres_buffer(r, size);
     if (!b) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_postgres_buffer"); return NGX_ERROR; }
 #if NGX_HAVE_LITTLE_ENDIAN
@@ -563,9 +562,8 @@ static ngx_int_t ngx_postgres_output_rds(ngx_postgres_save_t *s) {
                 if (PQgetlength(s->res, row, col)) b->last = ngx_copy(b->last, PQgetvalue(s->res, row, col), PQgetlength(s->res, row, col));
             }
         }
-        if (row == PQntuples(s->res) - 1) *b->last++ = (uint8_t) 0; /* row terminator */
     }
-    if (!PQntuples(s->res)) *b->last++ = (uint8_t) 0; /* row terminator */
+    *b->last++ = (uint8_t) 0; /* row terminator */
     if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
     return NGX_OK;
 }
