@@ -80,8 +80,6 @@ char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
     ngx_int_t n = ngx_atoi(to.data, to.len);
     if (n == NGX_ERROR || n < NGX_HTTP_OK || n > NGX_HTTP_INSUFFICIENT_STORAGE || (n >= NGX_HTTP_SPECIAL_RESPONSE && n < NGX_HTTP_BAD_REQUEST)) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid status value \"%V\" for condition \"%V\"", &cmd->name, &to, &what); return NGX_CONF_ERROR; }
     else rewrite->status = (ngx_uint_t)n;
-    for (i = 1; i < cf->args->nelts - 2; i++) {
-    }
     static const ngx_conf_bitmask_t b[] = {
         { ngx_string("UNKNOWN"), NGX_HTTP_UNKNOWN },
         { ngx_string("GET"), NGX_HTTP_GET },
