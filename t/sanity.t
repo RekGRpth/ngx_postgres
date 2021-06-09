@@ -5,7 +5,7 @@ use Test::Nginx::Socket;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 5) - 4;
+plan tests => repeat_each() * (blocks() * 5) - 2;
 
 $ENV{TEST_NGINX_POSTGRESQL_HOST} ||= 'postgres';
 $ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
@@ -173,33 +173,33 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      "select * from cats where name='tom'";
-        postgres_output     plain;
+        postgres_output     rds;
     }
 --- request
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- response_body eval
-#"\x{00}".        # endian
-#"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
-#"\x{00}".        # result type
-#"\x{00}\x{00}".  # std errcode
-#"\x{02}\x{00}".  # driver errcode
-#"\x{00}\x{00}".  # driver errstr len
-#"".              # driver errstr data
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
-#"\x{02}\x{00}".  # col count
-#"\x{09}\x{00}".  # std col type (integer/int)
-#"\x{17}\x{00}".  # driver col type
-#"\x{02}\x{00}".  # col name len
-#"id".            # col name data
-#"\x{06}\x{80}".  # std col type (varchar/str)
-#"\x{19}\x{00}".  # driver col type
-#"\x{04}\x{00}".  # col name len
-#"name".          # col name data
-#"\x{00}"         # row list terminator
+"\x{00}".        # endian
+"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
+"\x{00}".        # result type
+"\x{00}\x{00}".  # std errcode
+"\x{02}\x{00}".  # driver errcode
+"\x{00}\x{00}".  # driver errstr len
+"".              # driver errstr data
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
+"\x{02}\x{00}".  # col count
+"\x{09}\x{00}".  # std col type (integer/int)
+"\x{17}\x{00}".  # driver col type
+"\x{02}\x{00}".  # col name len
+"id".            # col name data
+"\x{06}\x{80}".  # std col type (varchar/str)
+"\x{19}\x{00}".  # driver col type
+"\x{04}\x{00}".  # col name len
+"name".          # col name data
+"\x{00}"         # row list terminator
 --- timeout: 10
 --- no_error_log
 [alert]
