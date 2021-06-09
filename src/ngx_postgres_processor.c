@@ -4,31 +4,9 @@
 static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s);
 
 
-static void ngx_postgres_charset(ngx_postgres_data_t *d) {
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_save_t *s = d->save;
-    const char *charset = PQparameterStatus(s->conn, "client_encoding");
-    if (!charset) return;
-    if (!ngx_strcasecmp((u_char *)charset, (u_char *)"utf8")) {
-        ngx_str_set(&r->headers_out.charset, "utf-8");
-    } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"windows1251")) {
-        ngx_str_set(&r->headers_out.charset, "windows-1251");
-    } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"koi8r")) {
-        ngx_str_set(&r->headers_out.charset, "koi8-r");
-    } else if (!(r->headers_out.charset.data = ngx_pnalloc(r->pool, r->headers_out.charset.len = ngx_strlen(charset)))) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc");
-        return;
-    } else {
-        ngx_memcpy(r->headers_out.charset.data, charset, r->headers_out.charset.len);
-    }
-}
-
-
 static ngx_int_t ngx_postgres_done(ngx_postgres_data_t *d, ngx_int_t rc) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
-    ngx_postgres_charset(d);
     if (rc == NGX_OK) rc = ngx_postgres_output_chain(r);
     ngx_http_upstream_t *u = r->upstream;
     ngx_http_upstream_finalize_request(r, u, rc);
