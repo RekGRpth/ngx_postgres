@@ -4,15 +4,6 @@
 static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s);
 
 
-static ngx_int_t ngx_postgres_done(ngx_http_request_t *r, ngx_int_t rc) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
-    if (rc == NGX_OK) rc = ngx_postgres_output_chain(r);
-    ngx_http_upstream_t *u = r->upstream;
-    ngx_http_upstream_finalize_request(r, u, rc);
-    return NGX_DONE;
-}
-
-
 static ngx_int_t ngx_postgres_variable_error(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
@@ -38,10 +29,7 @@ static ngx_int_t ngx_postgres_error(ngx_postgres_save_t *s) {
     else { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); }
     ngx_postgres_variable_error(s);
     ngx_postgres_rewrite_set(s);
-    ngx_connection_t *c = s->connection;
-    ngx_postgres_data_t *d = c->data;
-    ngx_http_request_t *r = d->request;
-    return ngx_postgres_done(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    return NGX_HTTP_INTERNAL_SERVER_ERROR;
 }
 
 
@@ -89,7 +77,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_save_t *s) {
         d->index++;
         return NGX_AGAIN;
     }
-    return ngx_postgres_done(r, rc);
+    return rc;
 }
 
 
