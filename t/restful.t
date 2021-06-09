@@ -37,14 +37,14 @@ our $config = <<'_EOC_';
         postgres_pass       database;
 
         postgres_query      HEAD GET  "SELECT * FROM numbers";
-        postgres_output     plain;
+        postgres_output     rds;
 
         postgres_query      POST      "INSERT INTO numbers VALUES($random::int8) RETURNING *";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_rewrite    POST      changes 201;
 
         postgres_query      DELETE    "DELETE FROM numbers";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_rewrite    DELETE    no_changes 204;
         postgres_rewrite    DELETE    changes 204;
     }
@@ -54,15 +54,15 @@ our $config = <<'_EOC_';
         postgres_pass       database;
 
         postgres_query      HEAD GET  "SELECT * FROM numbers WHERE number=$number::int8";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_rewrite    HEAD GET  no_rows 410;
 
         postgres_query      PUT       "UPDATE numbers SET number=$number::int8 WHERE number=$number::int8 RETURNING *";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_rewrite    PUT       no_changes 410;
 
         postgres_query      DELETE    "DELETE FROM numbers WHERE number=$number::int8";
-        postgres_output     plain;
+        postgres_output     rds;
         postgres_rewrite    DELETE    no_changes 410;
         postgres_rewrite    DELETE    changes 204;
     }
@@ -104,24 +104,23 @@ DELETE /numbers/
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- response_body eval
-""
-#"\x{00}".        # endian
-#"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
-#"\x{00}".        # result type
-#"\x{00}\x{00}".  # std errcode
-#"\x{02}\x{00}".  # driver errcode
-#"\x{00}\x{00}".  # driver errstr len
-#"".              # driver errstr data
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
-#"\x{01}\x{00}".  # col count
-#"\x{09}\x{00}".  # std col type (integer/int)
-#"\x{17}\x{00}".  # driver col type
-#"\x{06}\x{00}".  # col name len
-#"number".        # col name data
-#"\x{00}"         # row list terminator
+"\x{00}".        # endian
+"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
+"\x{00}".        # result type
+"\x{00}\x{00}".  # std errcode
+"\x{02}\x{00}".  # driver errcode
+"\x{00}\x{00}".  # driver errstr len
+"".              # driver errstr data
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
+"\x{01}\x{00}".  # col count
+"\x{09}\x{00}".  # std col type (integer/int)
+"\x{17}\x{00}".  # driver col type
+"\x{06}\x{00}".  # col name len
+"number".        # col name data
+"\x{00}"         # row list terminator
 --- timeout: 10
 
 
@@ -136,29 +135,26 @@ Content-Type: text/plain; charset=utf-8
 POST /numbers/
 --- error_code: 201
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- response_body eval
-"number".
-"\x{0a}".
-"123"
-#"\x{00}".        # endian
-#"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
-#"\x{00}".        # result type
-#"\x{00}\x{00}".  # std errcode
-#"\x{02}\x{00}".  # driver errcode
-#"\x{00}\x{00}".  # driver errstr len
-#"".              # driver errstr data
-#"\x{01}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
-#"\x{01}\x{00}".  # col count
-#"\x{09}\x{00}".  # std col type (integer/int)
-#"\x{17}\x{00}".  # driver col type
-#"\x{06}\x{00}".  # col name len
-#"number".        # col name data
-#"\x{01}".        # valid row flag
-#"\x{03}\x{00}\x{00}\x{00}".  # field len
-#"123".           # field data
-#"\x{00}"         # row list terminator
+"\x{00}".        # endian
+"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
+"\x{00}".        # result type
+"\x{00}\x{00}".  # std errcode
+"\x{02}\x{00}".  # driver errcode
+"\x{00}\x{00}".  # driver errstr len
+"".              # driver errstr data
+"\x{01}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
+"\x{01}\x{00}".  # col count
+"\x{09}\x{00}".  # std col type (integer/int)
+"\x{17}\x{00}".  # driver col type
+"\x{06}\x{00}".  # col name len
+"number".        # col name data
+"\x{01}".        # valid row flag
+"\x{03}\x{00}\x{00}\x{00}".  # field len
+"123".           # field data
+"\x{00}"         # row list terminator
 --- timeout: 10
 --- skip_slave: 3: CentOS
 
@@ -174,29 +170,26 @@ Content-Type: text/plain; charset=utf-8
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- response_body eval
-"number".
-"\x{0a}".
-"123"
-#"\x{00}".        # endian
-#"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
-#"\x{00}".        # result type
-#"\x{00}\x{00}".  # std errcode
-#"\x{02}\x{00}".  # driver errcode
-#"\x{00}\x{00}".  # driver errstr len
-#"".              # driver errstr data
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
-#"\x{01}\x{00}".  # col count
-#"\x{09}\x{00}".  # std col type (integer/int)
-#"\x{17}\x{00}".  # driver col type
-#"\x{06}\x{00}".  # col name len
-#"number".        # col name data
-#"\x{01}".        # valid row flag
-#"\x{03}\x{00}\x{00}\x{00}".  # field len
-#"123".           # field data
-#"\x{00}"         # row list terminator
+"\x{00}".        # endian
+"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
+"\x{00}".        # result type
+"\x{00}\x{00}".  # std errcode
+"\x{02}\x{00}".  # driver errcode
+"\x{00}\x{00}".  # driver errstr len
+"".              # driver errstr data
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
+"\x{01}\x{00}".  # col count
+"\x{09}\x{00}".  # std col type (integer/int)
+"\x{17}\x{00}".  # driver col type
+"\x{06}\x{00}".  # col name len
+"number".        # col name data
+"\x{01}".        # valid row flag
+"\x{03}\x{00}\x{00}\x{00}".  # field len
+"123".           # field data
+"\x{00}"         # row list terminator
 --- timeout: 10
 --- skip_slave: 3: CentOS
 
@@ -212,29 +205,26 @@ Content-Type: text/plain; charset=utf-8
 GET /numbers/123
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- response_body eval
-"number".
-"\x{0a}".
-"123"
-#"\x{00}".        # endian
-#"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
-#"\x{00}".        # result type
-#"\x{00}\x{00}".  # std errcode
-#"\x{02}\x{00}".  # driver errcode
-#"\x{00}\x{00}".  # driver errstr len
-#"".              # driver errstr data
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
-#"\x{01}\x{00}".  # col count
-#"\x{09}\x{00}".  # std col type (integer/int)
-#"\x{17}\x{00}".  # driver col type
-#"\x{06}\x{00}".  # col name len
-#"number".        # col name data
-#"\x{01}".        # valid row flag
-#"\x{03}\x{00}\x{00}\x{00}".  # field len
-#"123".           # field data
-#"\x{00}"         # row list terminator
+"\x{00}".        # endian
+"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
+"\x{00}".        # result type
+"\x{00}\x{00}".  # std errcode
+"\x{02}\x{00}".  # driver errcode
+"\x{00}\x{00}".  # driver errstr len
+"".              # driver errstr data
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
+"\x{01}\x{00}".  # col count
+"\x{09}\x{00}".  # std col type (integer/int)
+"\x{17}\x{00}".  # driver col type
+"\x{06}\x{00}".  # col name len
+"number".        # col name data
+"\x{01}".        # valid row flag
+"\x{03}\x{00}\x{00}\x{00}".  # field len
+"123".           # field data
+"\x{00}"         # row list terminator
 --- timeout: 10
 --- skip_slave: 3: CentOS
 
@@ -252,29 +242,26 @@ Content-Length: 0
 PUT /numbers/123
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- response_body eval
-"number".
-"\x{0a}".
-"123"
-#"\x{00}".        # endian
-#"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
-#"\x{00}".        # result type
-#"\x{00}\x{00}".  # std errcode
-#"\x{02}\x{00}".  # driver errcode
-#"\x{00}\x{00}".  # driver errstr len
-#"".              # driver errstr data
-#"\x{01}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
-#"\x{01}\x{00}".  # col count
-#"\x{09}\x{00}".  # std col type (integer/int)
-#"\x{17}\x{00}".  # driver col type
-#"\x{06}\x{00}".  # col name len
-#"number".        # col name data
-#"\x{01}".        # valid row flag
-#"\x{03}\x{00}\x{00}\x{00}".  # field len
-#"123".           # field data
-#"\x{00}"         # row list terminator
+"\x{00}".        # endian
+"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
+"\x{00}".        # result type
+"\x{00}\x{00}".  # std errcode
+"\x{02}\x{00}".  # driver errcode
+"\x{00}\x{00}".  # driver errstr len
+"".              # driver errstr data
+"\x{01}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
+"\x{01}\x{00}".  # col count
+"\x{09}\x{00}".  # std col type (integer/int)
+"\x{17}\x{00}".  # driver col type
+"\x{06}\x{00}".  # col name len
+"number".        # col name data
+"\x{01}".        # valid row flag
+"\x{03}\x{00}\x{00}\x{00}".  # field len
+"123".           # field data
+"\x{00}"         # row list terminator
 --- timeout: 10
 --- skip_slave: 3: CentOS
 
@@ -359,22 +346,21 @@ Content-Type: text/html; charset=utf-8
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- response_body eval
-""
-#"\x{00}".        # endian
-#"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
-#"\x{00}".        # result type
-#"\x{00}\x{00}".  # std errcode
-#"\x{02}\x{00}".  # driver errcode
-#"\x{00}\x{00}".  # driver errstr len
-#"".              # driver errstr data
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
-#"\x{01}\x{00}".  # col count
-#"\x{09}\x{00}".  # std col type (integer/int)
-#"\x{17}\x{00}".  # driver col type
-#"\x{06}\x{00}".  # col name len
-#"number".        # col name data
-#"\x{00}"         # row list terminator
+"\x{00}".        # endian
+"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
+"\x{00}".        # result type
+"\x{00}\x{00}".  # std errcode
+"\x{02}\x{00}".  # driver errcode
+"\x{00}\x{00}".  # driver errstr len
+"".              # driver errstr data
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
+"\x{01}\x{00}".  # col count
+"\x{09}\x{00}".  # std col type (integer/int)
+"\x{17}\x{00}".  # driver col type
+"\x{06}\x{00}".  # col name len
+"number".        # col name data
+"\x{00}"         # row list terminator
 --- timeout: 10
