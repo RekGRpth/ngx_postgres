@@ -127,28 +127,26 @@ typedef struct {
 } ngx_postgres_data_t;
 
 typedef struct {
-    ngx_flag_t binary;
-    ngx_flag_t header;
-    ngx_flag_t single;
-    ngx_flag_t string;
-    ngx_postgres_save_handler_pt handler;
-    ngx_str_t null;
-    u_char delimiter;
-    u_char escape;
-    u_char quote;
-} ngx_postgres_output_t;
-
-typedef struct {
     ngx_array_t ids;
     ngx_array_t params;
     ngx_array_t rewrite;
     ngx_array_t variable;
     ngx_flag_t prepare;
     ngx_msec_t timeout;
-    ngx_postgres_output_t output;
     ngx_str_t sql;
     ngx_uint_t method;
     ngx_uint_t percent;
+    struct {
+        ngx_flag_t binary;
+        ngx_flag_t header;
+        ngx_flag_t single;
+        ngx_flag_t string;
+        ngx_postgres_save_handler_pt handler;
+        ngx_str_t null;
+        u_char delimiter;
+        u_char escape;
+        u_char quote;
+    } output;
 } ngx_postgres_query_t;
 
 typedef struct {
