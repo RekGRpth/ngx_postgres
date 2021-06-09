@@ -143,35 +143,32 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
     location /postgres {
         postgres_pass       database;
         postgres_query      LOCK GET UNLOCK "select $request_method::text as echo";
-        postgres_output     plain;
+        postgres_output     rds;
     }
 --- request
 LOCK /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- response_body eval
-"echo".
-"\x{0a}".
-"LOCK"
-#"\x{00}".        # endian
-#"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
-#"\x{00}".        # result type
-#"\x{00}\x{00}".  # std errcode
-#"\x{02}\x{00}".  # driver errcode
-#"\x{00}\x{00}".  # driver errstr len
-#"".              # driver errstr data
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
-#"\x{01}\x{00}".  # col count
-#"\x{00}\x{80}".  # std col type (unknown/str)
-#"\x{c1}\x{02}".  # driver col type
-#"\x{04}\x{00}".  # col name len
-#"echo".          # col name data
-#"\x{01}".        # valid row flag
-#"\x{04}\x{00}\x{00}\x{00}".  # field len
-#"LOCK".          # field data
-#"\x{00}"         # row list terminator
+"\x{00}".        # endian
+"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
+"\x{00}".        # result type
+"\x{00}\x{00}".  # std errcode
+"\x{02}\x{00}".  # driver errcode
+"\x{00}\x{00}".  # driver errstr len
+"".              # driver errstr data
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
+"\x{01}\x{00}".  # col count
+"\x{06}\x{80}".  # std col type (text/str)
+"\x{19}\x{00}".  # driver col type
+"\x{04}\x{00}".  # col name len
+"echo".          # col name data
+"\x{01}".        # valid row flag
+"\x{04}\x{00}\x{00}\x{00}".  # field len
+"LOCK".          # field data
+"\x{00}"         # row list terminator
 --- timeout: 10
 
 
