@@ -13,9 +13,8 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_save_t *s) {
     if (!rewrite->elts) return NGX_OK;
     ngx_postgres_rewrite_t *rewriteelts = rewrite->elts;
     ngx_int_t rc = NGX_OK;
-    ngx_postgres_result_t *result = &d->result;
     for (ngx_uint_t i = 0; i < rewrite->nelts; i++) if ((!rewriteelts[i].method || rewriteelts[i].method & r->method) && (rc = rewriteelts[i].handler(s, rewriteelts[i].key, rewriteelts[i].status)) != NGX_OK) {
-        result->status = rc;
+        d->result.status = rc;
         if (rewriteelts[i].keep) rc = NGX_OK;
         break;
     }
