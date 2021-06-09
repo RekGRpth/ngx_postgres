@@ -387,18 +387,6 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
 
 
 void
-ngx_http_upstream_cleanup(void *data)
-{
-    ngx_http_request_t *r = data;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                   "cleanup http upstream request: \"%V\"", &r->uri);
-
-    ngx_http_upstream_finalize_request(r, r->upstream, NGX_DONE);
-}
-
-
-void
 ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc)
 {
