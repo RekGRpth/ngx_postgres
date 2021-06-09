@@ -626,7 +626,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     };
     ngx_uint_t i;
     for (i = 0; h[i].name.len; i++) if (h[i].name.len == args[1].len && !ngx_strncmp(h[i].name.data, args[1].data, args[1].len)) { query->output.handler = h[i].handler; break; }
-    if (!h[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: format \"%V\" must be \"none\", \"plain\", \"csv\", \"value\", \"binary\" or \"json\"", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
+    if (!h[i].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: format \"%V\" must be \"none\", \"plain\", \"csv\", \"value\", \"binary\", \"json\" or \"rds\"", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     query->output.binary = h[i].binary;
     query->output.header = 1;
     query->output.string = 1;
