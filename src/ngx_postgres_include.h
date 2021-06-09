@@ -215,7 +215,7 @@ ngx_int_t ngx_postgres_consume(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_flush(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s);
-ngx_int_t ngx_postgres_output_chain(ngx_postgres_data_t *d);
+ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_output_csv(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_output_json(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_output_plain(ngx_postgres_save_t *s);

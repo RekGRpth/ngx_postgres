@@ -29,7 +29,7 @@ static ngx_int_t ngx_postgres_done(ngx_postgres_data_t *d, ngx_int_t rc) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
     ngx_postgres_charset(d);
-    if (rc == NGX_OK) rc = ngx_postgres_output_chain(d);
+    if (rc == NGX_OK) rc = ngx_postgres_output_chain(r);
     ngx_http_upstream_t *u = r->upstream;
     ngx_http_upstream_finalize_request(r, u, rc);
     return NGX_DONE;
