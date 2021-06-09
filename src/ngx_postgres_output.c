@@ -448,6 +448,129 @@ ngx_int_t ngx_postgres_output_json(ngx_postgres_save_t *s) {
 }
 
 
+static rds_col_type_t ngx_postgres_rds_col_type(Oid col_type) {
+    switch (col_type) {
+        case INT8OID: return rds_col_type_bigint;
+        case BITOID: return rds_col_type_bit;
+        case VARBITOID: return rds_col_type_bit_varying;
+        case BOOLOID: return rds_col_type_bool;
+        case CHAROID: return rds_col_type_char;
+        case NAMEOID: /* FALLTROUGH */
+        case TEXTOID: /* FALLTROUGH */
+        case VARCHAROID: return rds_col_type_varchar;
+        case DATEOID: return rds_col_type_date;
+        case FLOAT8OID: return rds_col_type_double;
+        case INT4OID: return rds_col_type_integer;
+        case INTERVALOID: return rds_col_type_interval;
+        case NUMERICOID: return rds_col_type_decimal;
+        case FLOAT4OID: return rds_col_type_real;
+        case INT2OID: return rds_col_type_smallint;
+        case TIMETZOID: return rds_col_type_time_with_time_zone;
+        case TIMEOID: return rds_col_type_time;
+        case TIMESTAMPTZOID: return rds_col_type_timestamp_with_time_zone;
+        case TIMESTAMPOID: return rds_col_type_timestamp;
+        case XMLOID: return rds_col_type_xml;
+        case BYTEAOID: return rds_col_type_blob;
+        default: return rds_col_type_unknown;
+    }
+}
+
+
+static ngx_int_t ngx_postgres_output_rds(ngx_postgres_save_t *s) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
+    ngx_connection_t *c = s->connection;
+    ngx_postgres_data_t *d = c->data;
+    ngx_http_request_t *r = d->request;
+    ngx_str_set(&r->headers_out.content_type, "application/x-resty-dbd-stream");
+    r->headers_out.content_type_len = r->headers_out.content_type.len;
+//    if (!PQntuples(s->res) || !PQnfields(s->res)) return NGX_OK;
+    const char *errstr = PQresultErrorMessage(s->res);
+    size_t errstr_len = ngx_strlen(errstr);
+    ngx_int_t ncmdTuples = NGX_ERROR;
+    if (ngx_strncasecmp((u_char *)PQcmdStatus(s->res), (u_char *)"SELECT", sizeof("SELECT") - 1)) {
+        char *affected = PQcmdTuples(s->res);
+        size_t affected_len = ngx_strlen(affected);
+        if (affected_len) ncmdTuples = ngx_atoi((u_char *)affected, affected_len);
+    }
+    size_t size = 0;
+    size += sizeof(uint8_t)        /* endian type */
+         + sizeof(uint32_t)       /* format version */
+         + sizeof(uint8_t)        /* result type */
+         + sizeof(uint16_t)       /* standard error code */
+         + sizeof(uint16_t)       /* driver-specific error code */
+         + sizeof(uint16_t)       /* driver-specific error string length */
+         + (uint16_t) errstr_len  /* driver-specific error string data */
+         + sizeof(uint64_t)       /* rows affected */
+         + sizeof(uint64_t)       /* insert id */
+         + sizeof(uint16_t)       /* column count */
+         ;
+    size += PQnfields(s->res)
+         * (sizeof(uint16_t)    /* standard column type */
+            + sizeof(uint16_t)  /* driver-specific column type */
+            + sizeof(uint16_t)  /* column name string length */
+           )
+         ;
+    for (int col = 0; col < PQnfields(s->res); col++) size += ngx_strlen(PQfname(s->res, col));  /* column name string data */
+    for (int row = 0; row < PQntuples(s->res); row++) {
+        size += sizeof(uint8_t)                 /* row number */
+             + (PQnfields(s->res) * sizeof(uint32_t))  /* field string length */
+             ;
+        if (row == PQntuples(s->res) - 1) size += sizeof(uint8_t);
+        for (int col = 0; col < PQnfields(s->res); col++) size += PQgetlength(s->res, row, col);  /* field string data */
+    }
+    if (!PQntuples(s->res)) size += sizeof(uint8_t);
+    ngx_buf_t *b = ngx_postgres_buffer(r, size);
+    if (!b) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_postgres_buffer"); return NGX_ERROR; }
+#if NGX_HAVE_LITTLE_ENDIAN
+    *b->last++ = 0;
+#else
+    *b->last++ = 1;
+#endif
+    *(uint32_t *) b->last = (uint32_t) resty_dbd_stream_version;
+    b->last += sizeof(uint32_t);
+    *b->last++ = 0;
+    *(uint16_t *) b->last = (uint16_t) 0;
+    b->last += sizeof(uint16_t);
+    *(uint16_t *) b->last = (uint16_t) PQresultStatus(s->res);
+    b->last += sizeof(uint16_t);
+    *(uint16_t *) b->last = (uint16_t) errstr_len;
+    b->last += sizeof(uint16_t);
+    if (errstr_len) b->last = ngx_copy(b->last, (u_char *) errstr, errstr_len);
+    *(uint64_t *) b->last = (uint64_t) (ncmdTuples == NGX_ERROR ? 0 : ncmdTuples);
+    b->last += sizeof(uint64_t);
+    *(uint64_t *) b->last = (uint64_t) PQoidValue(s->res);
+    b->last += sizeof(uint64_t);
+    *(uint16_t *) b->last = (uint16_t) PQnfields(s->res);
+    b->last += sizeof(uint16_t);
+    for (int col = 0; col < PQnfields(s->res); col++) {
+        *(uint16_t *) b->last = (uint16_t) ngx_postgres_rds_col_type(PQftype(s->res, col));
+        b->last += sizeof(uint16_t);
+        *(uint16_t *) b->last = PQftype(s->res, col);
+        b->last += sizeof(uint16_t);
+        *(uint16_t *) b->last = (uint16_t) ngx_strlen(PQfname(s->res, col));
+        b->last += sizeof(uint16_t);
+        b->last = ngx_copy(b->last, PQfname(s->res, col), ngx_strlen(PQfname(s->res, col)));
+    }
+    for (int row = 0; row < PQntuples(s->res); row++) {
+        *b->last++ = (uint8_t) 1; /* valid row */
+        for (int col = 0; col < PQnfields(s->res); col++) {
+            if (PQgetisnull(s->res, row, col)) {
+                *(uint32_t *) b->last = (uint32_t) -1;
+                 b->last += sizeof(uint32_t);
+            } else {
+                *(uint32_t *) b->last = (uint32_t) PQgetlength(s->res, row, col);
+                b->last += sizeof(uint32_t);
+                if (PQgetlength(s->res, row, col)) b->last = ngx_copy(b->last, PQgetvalue(s->res, row, col), PQgetlength(s->res, row, col));
+            }
+        }
+        if (row == PQntuples(s->res) - 1) *b->last++ = (uint8_t) 0; /* row terminator */
+    }
+    if (!PQntuples(s->res)) *b->last++ = (uint8_t) 0; /* row terminator */
+    if (b->last != b->end) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "b->last != b->end"); return NGX_ERROR; }
+    return NGX_OK;
+}
+
+
 ngx_int_t ngx_postgres_output_chain(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
@@ -496,6 +619,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         { ngx_string("value"), 0, ngx_postgres_output_value },
         { ngx_string("binary"), 1, ngx_postgres_output_value },
         { ngx_string("json"), 0, ngx_postgres_output_json },
+        { ngx_string("rds"), 0, ngx_postgres_output_rds },
         { ngx_null_string, 0, NULL }
     };
     ngx_uint_t i;

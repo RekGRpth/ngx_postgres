@@ -7,6 +7,7 @@
 #include <pg_config.h>
 #include <postgresql/server/catalog/pg_type_d.h>
 #include "queue.h"
+#include "resty_dbd_stream.h"
 
 #ifndef WIN32
 typedef int pgsocket;
