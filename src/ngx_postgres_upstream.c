@@ -197,28 +197,6 @@ static void ngx_postgres_log_to_data(ngx_log_t *log, ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_charset(ngx_postgres_data_t *d) {
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_save_t *s = d->save;
-    const char *charset = PQparameterStatus(s->conn, "client_encoding");
-    if (!charset) return NGX_OK;
-    if (!ngx_strcasecmp((u_char *)charset, (u_char *)"utf8")) {
-        ngx_str_set(&r->headers_out.charset, "utf-8");
-    } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"windows1251")) {
-        ngx_str_set(&r->headers_out.charset, "windows-1251");
-    } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"koi8r")) {
-        ngx_str_set(&r->headers_out.charset, "koi8-r");
-    } else if (!(r->headers_out.charset.data = ngx_pnalloc(r->pool, r->headers_out.charset.len = ngx_strlen(charset)))) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc");
-        return NGX_ERROR;
-    } else {
-        ngx_memcpy(r->headers_out.charset.data, charset, r->headers_out.charset.len);
-    }
-    return NGX_OK;
-}
-
-
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 static ngx_int_t ngx_postgres_next(ngx_postgres_save_t *s) {
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
@@ -237,7 +215,6 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_save_t *s) {
         ngx_http_upstream_t *u = r->upstream;
         u->peer.connection = s->connection;
         queue_init(q);
-        if (ngx_postgres_charset(d) == NGX_ERROR) return NGX_ERROR;
         return ngx_postgres_prepare_or_query(s);
     }
     return NGX_OK;
@@ -389,7 +366,6 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
     s->usc = usc;
     pc->connection = c;
     if (usc) queue_insert_head(&usc->data.queue, &s->queue);
-    if (ngx_postgres_charset(d) == NGX_ERROR) return NGX_ERROR;
     return connected ? ngx_postgres_prepare_or_query(s) : NGX_AGAIN;
 declined:
     PQfinish(conn);
@@ -425,7 +401,6 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             pc->cached = 1;
             pc->connection = s->connection;
             s->connection->data = d;
-            if (ngx_postgres_charset(d) == NGX_ERROR) return NGX_ERROR;
             return ngx_postgres_prepare_or_query(s);
         }
         if (queue_size(&usc->save.queue) + queue_size(&usc->data.queue) < usc->save.max) {

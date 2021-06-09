@@ -221,6 +221,28 @@ static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s) {
 }
 
 
+static ngx_int_t ngx_postgres_charset(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_postgres_save_t *s = d->save;
+    const char *charset = PQparameterStatus(s->conn, "client_encoding");
+    if (!charset) return NGX_OK;
+    if (!ngx_strcasecmp((u_char *)charset, (u_char *)"utf8")) {
+        ngx_str_set(&r->headers_out.charset, "utf-8");
+    } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"windows1251")) {
+        ngx_str_set(&r->headers_out.charset, "windows-1251");
+    } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"koi8r")) {
+        ngx_str_set(&r->headers_out.charset, "koi8-r");
+    } else if (!(r->headers_out.charset.data = ngx_pnalloc(r->pool, r->headers_out.charset.len = ngx_strlen(charset)))) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc");
+        return NGX_ERROR;
+    } else {
+        ngx_memcpy(r->headers_out.charset.data, charset, r->headers_out.charset.len);
+    }
+    return NGX_OK;
+}
+
+
 ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
@@ -292,6 +314,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
     send->sql = sql;
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
     d->catch = 1;
+    if (!r->headers_out.charset.data && ngx_postgres_charset(d) == NGX_ERROR) return NGX_ERROR;
     if (usc && usc->save.max && usc->prepare.max && (location->prepare || query->prepare)) {
         if (!(send->stmtName.data = ngx_pnalloc(r->pool, 31 + 1))) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "ngx_pnalloc"); return NGX_ERROR; }
         u_char *last = ngx_snprintf(send->stmtName.data, 31, "ngx_%ul", (unsigned long)(send->hash = ngx_hash_key(sql.data, sql.len)));
