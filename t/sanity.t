@@ -5,7 +5,7 @@ use Test::Nginx::Socket;
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 5) - 2;
+plan tests => repeat_each() * (blocks() * 5);
 
 $ENV{TEST_NGINX_POSTGRESQL_HOST} ||= 'postgres';
 $ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
@@ -216,24 +216,25 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
         set                 $backend  database;
         postgres_pass       $backend;
         postgres_query      "update cats set name='bob' where name='bob'";
-        postgres_output     plain;
+        postgres_output     rds;
     }
 --- request
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: application/x-resty-dbd-stream; charset=utf-8
 --- response_body eval
-#"\x{00}".        # endian
-#"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
-#"\x{00}".        # result type
-#"\x{00}\x{00}".  # std errcode
-#"\x{01}\x{00}".  # driver errcode
-#"\x{00}\x{00}".  # driver errstr len
-#"".              # driver errstr data
-#"\x{01}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
-#"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
-#"\x{00}\x{00}"   # col count
+"\x{00}".        # endian
+"\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
+"\x{00}".        # result type
+"\x{00}\x{00}".  # std errcode
+"\x{01}\x{00}".  # driver errcode
+"\x{00}\x{00}".  # driver errstr len
+"".              # driver errstr data
+"\x{01}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # rows affected
+"\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}\x{00}".  # insert id
+"\x{00}\x{00}".   # col count
+"\x{00}"         # row list terminator
 --- timeout: 10
 --- no_error_log
 [alert]
