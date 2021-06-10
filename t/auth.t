@@ -29,8 +29,6 @@ __DATA__
 --- config
     location = /auth {
         internal;
-#        postgres_escape     $user $remote_user;
-#        postgres_escape     $pass $remote_passwd;
         postgres_pass       database;
         postgres_query      "select login from users where login=$remote_user::text and pass=$remote_passwd::text";
         postgres_rewrite    no_rows 403;
@@ -64,8 +62,6 @@ hi, ngx_test!
 --- config
     location = /auth {
         internal;
-#        postgres_escape     $user $remote_user;
-#        postgres_escape     $pass $remote_passwd;
         postgres_pass       database;
         postgres_query      "select login from users where login=$remote_user::text and pass=$remote_passwd::text";
         postgres_rewrite    no_rows 403;
@@ -97,8 +93,6 @@ Content-Type: text/html
 --- config
     location = /auth {
         internal;
-#        postgres_escape     $user $remote_user;
-#        postgres_escape     $pass $remote_passwd;
         postgres_pass       database;
         postgres_query      "select login from users where login=$remote_user::text and pass=$remote_passwd::text";
         postgres_rewrite    no_rows 403;
