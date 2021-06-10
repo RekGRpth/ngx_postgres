@@ -41,7 +41,7 @@ __DATA__
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -93,7 +93,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -145,7 +145,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -179,7 +179,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -222,7 +222,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -256,7 +256,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 HEAD /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 ""
 --- timeout: 10
@@ -285,7 +285,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres?foo=1
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3

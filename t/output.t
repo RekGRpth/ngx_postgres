@@ -58,7 +58,7 @@ GET /postgres
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 --- response_body chomp
 test
 --- timeout: 10
@@ -81,7 +81,7 @@ test
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/html; charset=utf-8
+Content-Type: text/html
 --- response_body chomp
 test
 --- timeout: 10
@@ -142,7 +142,7 @@ GET /postgres
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 --- response_body eval
 "a".
 "\x{09}".  # tab - delimiter
@@ -169,7 +169,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -207,7 +207,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -248,7 +248,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 --- response_body chomp
 test
 --- timeout: 10
@@ -294,7 +294,7 @@ GET /postgres
 GET /postgres.jpg
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 --- response_body chomp
 test
 --- timeout: 10
@@ -317,7 +317,7 @@ test
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 --- response_body_like chomp
 ^(?:\\001|\\x01)$
 --- timeout: 10
@@ -340,7 +340,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 --- response_body eval
 "\x01"
 --- timeout: 10
@@ -363,7 +363,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 --- response_body eval
 "\0\3"
 --- timeout: 10
@@ -391,7 +391,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres?foo=1
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 --- response_body chomp
 2
 --- timeout: 10
@@ -414,7 +414,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 --- response_body eval
 "2".
 "\x{09}".  # tab - delimiter
@@ -443,7 +443,7 @@ Content-Type: text/plain; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 --- response_body eval
 ""
 --- timeout: 10

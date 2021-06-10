@@ -37,7 +37,7 @@ __DATA__
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10
 
 
@@ -58,7 +58,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10
 
 
@@ -79,7 +79,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10
 
 
@@ -102,7 +102,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10
 
 
@@ -125,7 +125,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 410
 --- response_headers
-Content-Type: text/html; charset=utf-8
+Content-Type: text/html
 --- timeout: 10
 
 
@@ -153,7 +153,7 @@ Content-Type: text/html; charset=utf-8
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10
 
 
@@ -182,7 +182,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10
 
 
@@ -207,7 +207,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10
 
 
@@ -231,7 +231,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10
 
 
@@ -254,7 +254,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10
 
 
@@ -275,7 +275,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 202
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10
 --- skip_nginx: 2: < 0.8.41
 
@@ -297,7 +297,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 409
 --- response_headers
-Content-Type: text/html; charset=utf-8
+Content-Type: text/html
 --- timeout: 10
 
 
@@ -318,7 +318,7 @@ Content-Type: text/html; charset=utf-8
 GET /postgres
 --- error_code: 409
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10
 
 
@@ -339,7 +339,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 409
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -397,5 +397,5 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres?foo=1
 --- error_code: 206
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- timeout: 10

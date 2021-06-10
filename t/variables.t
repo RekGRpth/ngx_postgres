@@ -37,7 +37,7 @@ __DATA__
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 X-Test: test
 --- response_body eval
 "\x{00}".        # endian
@@ -78,7 +78,7 @@ X-Test: test
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 ! X-Test
 --- timeout: 10
 
@@ -100,7 +100,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 ! X-Test
 --- timeout: 10
 
@@ -122,7 +122,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 ! X-Test
 --- timeout: 10
 
@@ -200,7 +200,7 @@ GET /postgres
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 X-Columns: 3
 --- timeout: 10
 
@@ -221,7 +221,7 @@ X-Columns: 3
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 X-Rows: 1
 --- timeout: 10
 
@@ -242,7 +242,7 @@ X-Rows: 1
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 X-Query: select 'test' as echo
 --- timeout: 10
 
@@ -263,7 +263,7 @@ X-Query: select 'test' as echo
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 X-Query: select $1 as echo
 --- timeout: 10
 
@@ -312,7 +312,7 @@ Content-Type: text/plain
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 ! X-Affected
 --- timeout: 10
 
@@ -333,7 +333,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 X-Affected: 0
 --- timeout: 10
 
@@ -354,7 +354,7 @@ X-Affected: 0
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 X-Affected: 1
 --- timeout: 10
 
@@ -399,7 +399,7 @@ GET /postgres
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 ! X-Test
 --- timeout: 10
 
@@ -421,7 +421,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 X-Test: test
 --- timeout: 10
 
@@ -443,7 +443,7 @@ X-Test: test
 GET /postgres
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 ! X-Test
 --- timeout: 10
 

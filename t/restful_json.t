@@ -106,7 +106,7 @@ DELETE /numbers/
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: application/json; charset=utf-8
+Content-Type: application/json
 --- response_body chomp
 
 --- timeout: 10
@@ -123,7 +123,7 @@ Content-Type: application/json; charset=utf-8
 POST /numbers/
 --- error_code: 201
 --- response_headers
-Content-Type: application/json; charset=utf-8
+Content-Type: application/json
 --- response_body chomp
 {"number":123}
 --- timeout: 10
@@ -141,7 +141,7 @@ Content-Type: application/json; charset=utf-8
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: application/json; charset=utf-8
+Content-Type: application/json
 --- response_body chomp
 {"number":123}
 --- timeout: 10
@@ -159,7 +159,7 @@ Content-Type: application/json; charset=utf-8
 GET /numbers/123
 --- error_code: 200
 --- response_headers
-Content-Type: application/json; charset=utf-8
+Content-Type: application/json
 --- response_body chomp
 {"number":123}
 --- timeout: 10
@@ -179,7 +179,7 @@ Content-Length: 0
 PUT /numbers/123
 --- error_code: 200
 --- response_headers
-Content-Type: application/json; charset=utf-8
+Content-Type: application/json
 --- response_body chomp
 {"number":123}
 --- timeout: 10
@@ -217,7 +217,7 @@ Content-Length: 0
 PUT /numbers/123
 --- error_code: 410
 --- response_headers
-Content-Type: text/html; charset=utf-8
+Content-Type: text/html
 --- response_body_like: 410 Gone
 --- timeout: 10
 --- skip_slave: 3: CentOS
@@ -234,7 +234,7 @@ Content-Type: text/html; charset=utf-8
 GET /numbers/123
 --- error_code: 410
 --- response_headers
-Content-Type: text/html; charset=utf-8
+Content-Type: text/html
 --- response_body_like: 410 Gone
 --- timeout: 10
 
@@ -250,7 +250,7 @@ Content-Type: text/html; charset=utf-8
 DELETE /numbers/123
 --- error_code: 410
 --- response_headers
-Content-Type: text/html; charset=utf-8
+Content-Type: text/html
 --- response_body_like: 410 Gone
 --- timeout: 10
 
@@ -266,7 +266,7 @@ Content-Type: text/html; charset=utf-8
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: application/json; charset=utf-8
+Content-Type: application/json
 --- response_body chomp
 
 --- timeout: 10

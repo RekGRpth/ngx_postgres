@@ -104,7 +104,7 @@ DELETE /numbers/
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -135,7 +135,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 POST /numbers/
 --- error_code: 201
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -170,7 +170,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -205,7 +205,7 @@ Content-Type: application/x-resty-dbd-stream; charset=utf-8
 GET /numbers/123
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -242,7 +242,7 @@ Content-Length: 0
 PUT /numbers/123
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
@@ -297,7 +297,7 @@ Content-Length: 0
 PUT /numbers/123
 --- error_code: 410
 --- response_headers
-Content-Type: text/html; charset=utf-8
+Content-Type: text/html
 --- response_body_like: 410 Gone
 --- timeout: 10
 --- skip_slave: 3: CentOS
@@ -314,7 +314,7 @@ Content-Type: text/html; charset=utf-8
 GET /numbers/123
 --- error_code: 410
 --- response_headers
-Content-Type: text/html; charset=utf-8
+Content-Type: text/html
 --- response_body_like: 410 Gone
 --- timeout: 10
 
@@ -330,7 +330,7 @@ Content-Type: text/html; charset=utf-8
 DELETE /numbers/123
 --- error_code: 410
 --- response_headers
-Content-Type: text/html; charset=utf-8
+Content-Type: text/html
 --- response_body_like: 410 Gone
 --- timeout: 10
 
@@ -346,7 +346,7 @@ Content-Type: text/html; charset=utf-8
 GET /numbers/
 --- error_code: 200
 --- response_headers
-Content-Type: application/x-resty-dbd-stream; charset=utf-8
+Content-Type: application/x-resty-dbd-stream
 --- response_body eval
 "\x{00}".        # endian
 "\x{03}\x{00}\x{00}\x{00}".  # format version 0.0.3
