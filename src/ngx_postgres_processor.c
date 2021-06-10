@@ -213,6 +213,7 @@ static ngx_int_t ngx_postgres_charset(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_save_t *s = d->save;
+    if (!s->connect->client_encoding) return NGX_OK;
     const char *charset = PQparameterStatus(s->conn, "client_encoding");
     if (!charset) return NGX_OK;
     if (!ngx_strcasecmp((u_char *)charset, (u_char *)"utf8")) {

@@ -20,6 +20,7 @@ typedef SOCKET pgsocket;
 extern ngx_module_t ngx_postgres_module;
 
 typedef struct {
+    const char *client_encoding;
     const char **keywords;
     const char **values;
     ngx_msec_t timeout;
@@ -77,6 +78,7 @@ typedef ngx_int_t (*ngx_postgres_save_handler_pt) (ngx_postgres_save_t *s);
 
 typedef struct ngx_postgres_save_t {
     ngx_connection_t *connection;
+    ngx_postgres_connect_t *connect;
     ngx_postgres_save_handler_pt handler;
     ngx_postgres_upstream_srv_conf_t *usc;
     PGconn *conn;

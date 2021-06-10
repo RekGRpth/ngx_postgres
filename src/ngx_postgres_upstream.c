@@ -359,6 +359,7 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
     if (!(s = d->save = ngx_pcalloc(c->pool, sizeof(*s)))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pcalloc"); goto destroy; }
     queue_init(&s->prepare.queue);
     s->conn = conn;
+    s->connect = connect;
     s->connection = c;
     s->handler = ngx_postgres_connect;
     s->peer.sockaddr = pc->sockaddr;
