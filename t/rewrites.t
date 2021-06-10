@@ -144,10 +144,10 @@ Content-Type: text/html
         postgres_pass       database;
         postgres_query      "select * from cats";
         postgres_output     rds;
-    postgres_rewrite  no_changes 500;
-    postgres_rewrite  changes 500;
-    postgres_rewrite  no_rows 410;
-    postgres_rewrite  rows 206;
+        postgres_rewrite    no_changes 500;
+        postgres_rewrite    changes 500;
+        postgres_rewrite    no_rows 410;
+        postgres_rewrite    rows 206;
     }
 --- request
 GET /postgres
@@ -172,11 +172,10 @@ Content-Type: application/x-resty-dbd-stream
         postgres_pass       database;
         postgres_query      "select * from cats";
         postgres_output     rds;
-    postgres_rewrite  no_changes 500;
-    postgres_rewrite  changes 500;
-    postgres_rewrite  no_rows 410;
-    postgres_rewrite  rows 206;
-#        postgres_rewrite    rows 206;
+        postgres_rewrite    no_changes 500;
+        postgres_rewrite    changes 500;
+        postgres_rewrite    no_rows 410;
+        postgres_rewrite    rows 206;
     }
 --- request
 GET /postgres
