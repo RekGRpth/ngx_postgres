@@ -18,7 +18,7 @@ __DATA__
 --- config
     location /test {
         set                 $test "he'llo";
-        set_quote_sql_str     $escaped $test;
+        set_quote_sql_str   $escaped $test;
         echo                $escaped;
     }
 --- request
@@ -39,7 +39,7 @@ Content-Type: text/plain
 --- config
     location /test {
         set                 $test "he\\llo";
-        set_quote_sql_str     $escaped $test;
+        set_quote_sql_str   $escaped $test;
         echo                $escaped;
     }
 --- request
@@ -60,7 +60,7 @@ Content-Type: text/plain
 --- config
     location /test {
         set                 $test "he\\'llo";
-        set_quote_sql_str     $escaped $test;
+        set_quote_sql_str   $escaped $test;
         echo                $escaped;
     }
 --- request
@@ -80,7 +80,7 @@ Content-Type: text/plain
     load_module /etc/nginx/modules/ngx_http_echo_module.so;
 --- config
     location /test {
-        set_quote_sql_str     $escaped $remote_user;
+        set_quote_sql_str   $escaped $remote_user;
         echo                $escaped;
     }
 --- request
@@ -101,7 +101,7 @@ Content-Type: text/plain
 --- config
     location /test {
         set $empty          "";
-        set_quote_sql_str     $escaped $empty;
+        set_quote_sql_str   $escaped $empty;
         echo                $escaped;
     }
 --- request
@@ -122,7 +122,7 @@ Content-Type: text/plain
 --- config
     location /test {
         set $utf8           "你好";
-        set_quote_sql_str     $escaped $utf8;
+        set_quote_sql_str   $escaped $utf8;
         echo                $escaped;
     }
 --- request
@@ -142,7 +142,7 @@ Content-Type: text/plain
     load_module /etc/nginx/modules/ngx_http_echo_module.so;
 --- config
     location /test {
-        set_quote_sql_str     $escaped $arg_say;
+        set_quote_sql_str   $escaped $arg_say;
         echo                $escaped;
     }
 --- request
@@ -162,7 +162,7 @@ Content-Type: text/plain
     load_module /etc/nginx/modules/ngx_http_echo_module.so;
 --- config
     location /test {
-        set_quote_sql_str     $escaped =$remote_user;
+        set_quote_sql_str   $escaped =$remote_user;
         echo                $escaped;
     }
 --- request
@@ -183,7 +183,7 @@ Content-Type: text/plain
 --- config
     location /test {
         set $empty          "";
-        set_quote_sql_str     $escaped =$empty;
+        set_quote_sql_str   $escaped =$empty;
         echo                $escaped;
     }
 --- request
@@ -204,7 +204,7 @@ Content-Type: text/plain
 --- config
     location /test {
         set                 $test "t'\\est";
-        set_quote_sql_str     $test;
+        set_quote_sql_str   $test;
         echo                $test;
     }
 --- request
@@ -225,12 +225,12 @@ Content-Type: text/plain
 --- config
     location /test1 {
         set                 $a "a";
-        set_quote_sql_str     $escaped $a;
+        set_quote_sql_str   $escaped $a;
         echo                $escaped;
     }
     location /test2 {
         set                 $b "b";
-        set_quote_sql_str     $escaped $b;
+        set_quote_sql_str   $escaped $b;
         echo                $escaped;
     }
 --- request
@@ -251,12 +251,12 @@ Content-Type: text/plain
 --- config
     location /test1 {
         set                 $a "a";
-        set_quote_sql_str     $escaped $a;
+        set_quote_sql_str   $escaped $a;
         echo                $escaped;
     }
     location /test2 {
         set                 $b "b";
-        set_quote_sql_str     $escaped $b;
+        set_quote_sql_str   $escaped $b;
         echo                $escaped;
     }
 --- request
@@ -278,7 +278,7 @@ Content-Type: text/plain
     location /test {
         set                 $test "t'\\est";
         set                 $hello " he'llo";
-        set_quote_sql_str     $escaped "$test$hello world!";
+        set_quote_sql_str   $escaped "$test$hello world!";
         echo                $escaped;
     }
 --- request
@@ -300,7 +300,7 @@ Content-Type: text/plain
     location /test {
         set                 $a "";
         set                 $b "";
-        set_quote_sql_str     $escaped "$a$b";
+        set_quote_sql_str   $escaped "$a$b";
         echo                $escaped;
     }
 --- request
@@ -322,7 +322,7 @@ Content-Type: text/plain
     location /test {
         set                 $a "";
         set                 $b "";
-        set_quote_sql_str     $escaped "=$a$b";
+        set_quote_sql_str   $escaped "=$a$b";
         echo                $escaped;
     }
 --- request
@@ -343,7 +343,7 @@ Content-Type: text/plain
 --- config
     location /test {
         set                 $test "";
-        set_quote_sql_str     $test;
+        set_quote_sql_str   $test;
         echo                $test;
     }
 --- request
@@ -364,7 +364,7 @@ Content-Type: text/plain
 --- config
     location /test {
         set                 $test "";
-        set_quote_sql_str     $test;
+        set_quote_sql_str   $test;
         echo                $test;
     }
 --- request
@@ -384,7 +384,7 @@ Content-Type: text/plain
     load_module /etc/nginx/modules/ngx_http_echo_module.so;
 --- config
     location ~ /(.*) {
-        set_quote_sql_str     $escaped $1;
+        set_quote_sql_str   $escaped $1;
         echo                $escaped;
     }
 --- request
@@ -404,7 +404,7 @@ Content-Type: text/plain
     load_module /etc/nginx/modules/ngx_http_echo_module.so;
 --- config
     location ~ /(?<test>.*) {
-        set_quote_sql_str     $escaped $test;
+        set_quote_sql_str   $escaped $test;
         echo                $escaped;
     }
 --- request
