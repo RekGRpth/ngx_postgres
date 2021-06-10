@@ -371,7 +371,7 @@ X-Affected: 1
         postgres_pass       database;
         postgres_query      "select NULL as echo";
         postgres_output     rds;
-    postgres_set  $test 0 0 required;
+        postgres_set        $test 0 0 required;
         add_header          "X-Test" $test;
     }
 --- request
