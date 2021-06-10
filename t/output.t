@@ -242,7 +242,7 @@ Content-Type: application/x-resty-dbd-stream
     location /postgres {
         postgres_pass       database;
         postgres_query      "select 'test' as echo";
-    postgres_output  value;
+        postgres_output  value;
     }
 --- request
 GET /postgres
