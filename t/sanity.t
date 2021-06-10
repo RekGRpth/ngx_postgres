@@ -29,7 +29,6 @@ __DATA__
     upstream database {
         postgres_server     host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
                             dbname=test user=test password=test sslmode=disable;
-#        postgres_keepalive  off;
     }
 --- config
     location /postgres {
