@@ -42,16 +42,14 @@ __DATA__
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id ASC";
-            postgres_output json;
-#            rds_json             on;
+            postgres_output      json;
         }
 
         location /_query2 {
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id DESC";
-            postgres_output json;
-#            rds_json             on;
+            postgres_output      json;
         }
 --- request
 GET /bigpipe
@@ -87,16 +85,14 @@ GET /bigpipe
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id ASC";
-            postgres_output json;
-#            rds_json             on;
+            postgres_output      json;
         }
 
         location /_query2 {
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id DESC";
-            postgres_output json;
-#            rds_json             on;
+            postgres_output      json;
         }
 --- request
 GET /bigpipe
@@ -133,16 +129,14 @@ GET /bigpipe
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id ASC";
-            postgres_output json;
-#            rds_json             on;
+            postgres_output      json;
         }
 
         location /_query2 {
             internal;
             postgres_pass        database;
             postgres_query       "SELECT * FROM cats ORDER BY id DESC";
-            postgres_output json;
-#            rds_json             on;
+            postgres_output      json;
         }
 --- request
 GET /bigpipe
