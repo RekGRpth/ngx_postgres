@@ -23,9 +23,6 @@ our $config = <<'_EOC_';
     location = /auth {
         internal;
 
-#        postgres_escape     $user $remote_user;
-#        postgres_escape     $pass $remote_passwd;
-
         postgres_pass       database;
         postgres_query      "SELECT login FROM users WHERE login=$remote_user::text AND pass=$remote_passwd::text";
         postgres_rewrite    no_rows 403;
@@ -35,13 +32,12 @@ our $config = <<'_EOC_';
     location = /numbers/ {
         auth_request        /auth;
         postgres_pass       database;
-#        rds_json            on;
 
         postgres_query      HEAD GET  "SELECT * FROM numbers";
-        postgres_output json;
+        postgres_output     json;
 
         postgres_query      POST      "INSERT INTO numbers VALUES($random::int8) RETURNING *";
-        postgres_output json;
+        postgres_output     json;
         postgres_rewrite    POST      changes 201;
 
         postgres_query      DELETE    "DELETE FROM numbers";
@@ -53,18 +49,17 @@ our $config = <<'_EOC_';
     location ~ /numbers/(?<number>\d+) {
         auth_request        /auth;
         postgres_pass       database;
-#        rds_json            on;
 
         postgres_query      HEAD GET  "SELECT * FROM numbers WHERE number=$number::int8";
-        postgres_output json;
+        postgres_output     json;
         postgres_rewrite    HEAD GET  no_rows 410;
 
         postgres_query      PUT       "UPDATE numbers SET number=$number::int8 WHERE number=$number::int8 RETURNING *";
-        postgres_output json;
+        postgres_output     json;
         postgres_rewrite    PUT       no_changes 410;
 
         postgres_query      DELETE    "DELETE FROM numbers WHERE number=$number::int8";
-        postgres_output json;
+        postgres_output     json;
         postgres_rewrite    DELETE    no_changes 410;
         postgres_rewrite    DELETE    changes 204;
     }

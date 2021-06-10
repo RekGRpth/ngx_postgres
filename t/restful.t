@@ -23,9 +23,6 @@ our $config = <<'_EOC_';
     location = /auth {
         internal;
 
-#        postgres_escape     $user $remote_user;
-#        postgres_escape     $pass $remote_passwd;
-
         postgres_pass       database;
         postgres_query      "SELECT login FROM users WHERE login=$remote_user::text AND pass=$remote_passwd::text";
         postgres_rewrite    no_rows 403;
