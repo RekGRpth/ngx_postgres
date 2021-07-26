@@ -721,8 +721,8 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
 
 
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_str_t *args = cf->args->elts;
     ngx_postgres_location_t *location = conf;
+    if (!location->query.nelts && ngx_array_init(&location->query, cf->pool, 1, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
     ngx_postgres_query_t *query = ngx_array_push(&location->query);
     if (!query) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(query, sizeof(*query));
@@ -747,6 +747,7 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         { ngx_string("TRACE"), NGX_HTTP_TRACE },
         { ngx_null_string, 0 }
     };
+    ngx_str_t *args = cf->args->elts;
     ngx_uint_t i, j;
     for (j = 1; j < cf->args->nelts; j++) {
         for (i = 0; b[i].name.len; i++) if (b[i].name.len == args[j].len && !ngx_strncasecmp(b[i].name.data, args[j].data, b[i].name.len)) { query->method |= b[i].mask; break; }

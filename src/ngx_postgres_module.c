@@ -20,8 +20,6 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     usc->save.requests = NGX_CONF_UNSET_UINT;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     usc->request.timeout = NGX_CONF_UNSET_MSEC;
-#else
-    if (ngx_array_init(&usc->connect, cf->pool, 1, sizeof(ngx_postgres_connect_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "ngx_array_init != NGX_OK"); return NULL; }
 #endif
     return usc;
 }
@@ -50,7 +48,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     location->upstream.store = NGX_CONF_UNSET;
     location->upstream.temp_file_write_size_conf = NGX_CONF_UNSET_SIZE;
     ngx_str_set(&location->upstream.module, "postgres");
-    if (ngx_array_init(&location->query, cf->pool, 1, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "ngx_array_init != NGX_OK"); return NULL; }
     return location;
 }
 
@@ -342,6 +339,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_postgres_connect_t *connect = ngx_pcalloc(cf->pool, sizeof(*connect));
     if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
 #else
+    if (!pusc->connect.nelts && ngx_array_init(&pusc->connect, cf->pool, 1, sizeof(ngx_postgres_connect_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "ngx_array_init != NGX_OK"); return NULL; }
     ngx_postgres_connect_t *connect = ngx_array_push(&pusc->connect);
     if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
 #endif
