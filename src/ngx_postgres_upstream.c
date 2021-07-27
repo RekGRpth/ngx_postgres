@@ -310,8 +310,8 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_connect_t *connect = location->connect ? location->connect : usc->connect.elts;
     if (!location->connect) {
         ngx_uint_t i;
-        for (i = 0; i < connect->nelts; i++) for (ngx_uint_t j = 0; j < connect[i].naddrs; j++) if (!ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)connect[i].addrs[j].sockaddr, pc->socklen, connect[i].addrs[j].socklen)) { connect = &connect[i]; break; }
-        if (i == connect->nelts) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "connect not found"); return NGX_BUSY; }
+        for (i = 0; i < usc->connect.nelts; i++) for (ngx_uint_t j = 0; j < connect[i].url.naddrs; j++) if (!ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)connect[i].url.addrs[j].sockaddr, pc->socklen, connect[i].url.addrs[j].socklen)) { connect = &connect[i]; break; }
+        if (i == usc->connect.nelts) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "connect not found"); return NGX_BUSY; }
     }
 #endif
     u->conf->connect_timeout = connect->timeout;
