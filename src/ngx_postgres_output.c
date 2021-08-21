@@ -78,7 +78,9 @@ static const char *PQftypeMy(Oid oid) {
         case PGDEPENDENCIESOID: return "pgdependencies";
         case PGMCVLISTOID: return "pgmcvlist";
         case PGDDLCOMMANDOID: return "pgddlcommand";
+#if (PG_VERSION_NUM >= 130000)
         case XID8OID: return "xid8";
+#endif
         case POINTOID: return "point";
         case LSEGOID: return "lseg";
         case PATHOID: return "path";
@@ -111,7 +113,9 @@ static const char *PQftypeMy(Oid oid) {
         case REGOPEROID: return "regoper";
         case REGOPERATOROID: return "regoperator";
         case REGCLASSOID: return "regclass";
+#if (PG_VERSION_NUM >= 130000)
         case REGCOLLATIONOID: return "regcollation";
+#endif
         case REGTYPEOID: return "regtype";
         case REGROLEOID: return "regrole";
         case REGNAMESPACEOID: return "regnamespace";
@@ -125,7 +129,9 @@ static const char *PQftypeMy(Oid oid) {
         case JSONBOID: return "jsonb";
         case JSONPATHOID: return "jsonpath";
         case TXID_SNAPSHOTOID: return "txid_snapshot";
+#if (PG_VERSION_NUM >= 130000)
         case PG_SNAPSHOTOID: return "pg_snapshot";
+#endif
         case INT4RANGEOID: return "int4range";
         case NUMRANGEOID: return "numrange";
         case TSRANGEOID: return "tsrange";
@@ -154,10 +160,12 @@ static const char *PQftypeMy(Oid oid) {
         case TSM_HANDLEROID: return "tsm_handler";
         case TABLE_AM_HANDLEROID: return "table_am_handler";
         case ANYRANGEOID: return "anyrange";
+#if (PG_VERSION_NUM >= 130000)
         case ANYCOMPATIBLEOID: return "anycompatible";
         case ANYCOMPATIBLEARRAYOID: return "anycompatiblearray";
         case ANYCOMPATIBLENONARRAYOID: return "anycompatiblenonarray";
         case ANYCOMPATIBLERANGEOID: return "anycompatiblerange";
+#endif
         case BOOLARRAYOID: return "boolarray";
         case BYTEAARRAYOID: return "byteaarray";
         case CHARARRAYOID: return "chararray";
@@ -175,7 +183,9 @@ static const char *PQftypeMy(Oid oid) {
         case OIDVECTORARRAYOID: return "oidvectorarray";
         case JSONARRAYOID: return "jsonarray";
         case XMLARRAYOID: return "xmlarray";
+#if (PG_VERSION_NUM >= 130000)
         case XID8ARRAYOID: return "xid8array";
+#endif
         case POINTARRAYOID: return "pointarray";
         case LSEGARRAYOID: return "lsegarray";
         case PATHARRAYOID: return "patharray";
@@ -207,7 +217,9 @@ static const char *PQftypeMy(Oid oid) {
         case REGOPERARRAYOID: return "regoperarray";
         case REGOPERATORARRAYOID: return "regoperatorarray";
         case REGCLASSARRAYOID: return "regclassarray";
+#if (PG_VERSION_NUM >= 130000)
         case REGCOLLATIONARRAYOID: return "regcollationarray";
+#endif
         case REGTYPEARRAYOID: return "regtypearray";
         case REGROLEARRAYOID: return "regrolearray";
         case REGNAMESPACEARRAYOID: return "regnamespacearray";
@@ -221,7 +233,9 @@ static const char *PQftypeMy(Oid oid) {
         case JSONBARRAYOID: return "jsonbarray";
         case JSONPATHARRAYOID: return "jsonpatharray";
         case TXID_SNAPSHOTARRAYOID: return "txid_snapshotarray";
+#if (PG_VERSION_NUM >= 130000)
         case PG_SNAPSHOTARRAYOID: return "pg_snapshotarray";
+#endif
         case INT4RANGEARRAYOID: return "int4rangearray";
         case NUMRANGEARRAYOID: return "numrangearray";
         case TSRANGEARRAYOID: return "tsrangearray";
