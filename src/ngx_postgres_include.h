@@ -5,7 +5,7 @@
 #include <libpq-fe.h>
 #include <ngx_http.h>
 #include <pg_config.h>
-#include <postgresql/server/catalog/pg_type_d.h>
+#include <catalog/pg_type_d.h>
 #include "queue.h"
 #include "resty_dbd_stream.h"
 

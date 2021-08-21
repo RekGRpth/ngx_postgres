@@ -147,6 +147,7 @@ END
    exit 1
 fi
 
+ngx_feature_path="$ngx_feature_path `pg_config --includedir-server`"
 ngx_addon_name=ngx_postgres_module
 NGX_SRCS="$ngx_addon_dir/src/ngx_postgres_handler.c $ngx_addon_dir/src/ngx_postgres_module.c $ngx_addon_dir/src/ngx_postgres_output.c $ngx_addon_dir/src/ngx_postgres_processor.c $ngx_addon_dir/src/ngx_postgres_rewrite.c $ngx_addon_dir/src/ngx_postgres_upstream.c $ngx_addon_dir/src/ngx_postgres_variable.c"
 NGX_DEPS="$ngx_addon_dir/src/ngx_postgres_include.h"
