@@ -25,8 +25,8 @@ static ngx_int_t ngx_postgres_variable_error(ngx_postgres_save_t *s) {
 static ngx_int_t ngx_postgres_error(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     const char *value;
-    if ((value = PQcmdStatus(s->res)) && ngx_strlen(value)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), value, PQresultErrorMessageMy(s->res)); }
-    else { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); }
+    if ((value = PQcmdStatus(s->res)) && ngx_strlen(value)) { ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), value, PQresultErrorMessageMy(s->res)); }
+    else { ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); }
     ngx_postgres_variable_error(s);
     ngx_postgres_rewrite_set(s);
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
