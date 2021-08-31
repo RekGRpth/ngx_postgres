@@ -7,13 +7,9 @@ repeat_each(2);
 
 plan tests => repeat_each() * (blocks() * 3 - 2 * 2);
 
-$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= 'postgres';
-$ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
-
 our $http_config = <<'_EOC_';
     upstream database {
-        postgres_server  host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
-                         dbname=test user=test password=test sslmode=disable;
+        postgres_server  dbname=postgres user=postgres password=postgres sslmode=disable;
     }
 _EOC_
 

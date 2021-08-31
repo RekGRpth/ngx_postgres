@@ -7,13 +7,9 @@ repeat_each(2);
 
 plan tests => repeat_each() * blocks();
 
-$ENV{TEST_NGINX_POSTGRESQL_HOST} ||= 'postgres';
-$ENV{TEST_NGINX_POSTGRESQL_PORT} ||= 5432;
-
 our $http_config = <<'_EOC_';
     upstream database {
-        postgres_server  host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
-                         dbname=test user=test password=test sslmode=disable;
+        postgres_server  dbname=postgres user=postgres password=postgres sslmode=disable;
     }
 _EOC_
 
@@ -42,8 +38,7 @@ GET /postgres
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config
     upstream database {
-        postgres_server     host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT
-                            dbname=ngx_test user=ngx_test password=wrong_pass sslmode=disable;
+        postgres_server     dbname=ngx_test user=ngx_test password=wrong_pass sslmode=disable;
     }
 --- config
     location /postgres {
@@ -62,8 +57,7 @@ GET /postgres
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config
     upstream database {
-        postgres_server     host=$TEST_NGINX_POSTGRESQL_HOST port=$TEST_NGINX_POSTGRESQL_PORT dbname=ngx_test
-                            user=ngx_test password=ngx_test sslmode=disable;
+        postgres_server     dbname=ngx_test user=ngx_test password=ngx_test sslmode=disable;
     }
 --- config
     location /postgres {

@@ -9,7 +9,7 @@ plan tests => repeat_each() * 2 * blocks();
 
 our $http_config = <<'_EOC_';
     upstream database {
-        postgres_server  dbname=test user=test password=test sslmode=disable;
+        postgres_server  dbname=postgres user=postgres password=postgres sslmode=disable;
     }
 _EOC_
 
