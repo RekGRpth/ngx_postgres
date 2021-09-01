@@ -30,7 +30,6 @@ __DATA__
 GET /postgres
 --- error_code: 500
 --- timeout: 10
---- SKIP
 
 
 === TEST 2: wrong credentials
