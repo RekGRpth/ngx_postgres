@@ -42,7 +42,7 @@ ngx_int_t ngx_postgres_result(ngx_postgres_save_t *s) {
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
         if (rc == NGX_OK) rc = s->handler(s);
         PQclear(s->res);
-        switch (ngx_postgres_consume_flush_busy(s)) {
+        if (rc == NGX_OK) switch (ngx_postgres_consume_flush_busy(s)) {
             case NGX_AGAIN: return NGX_AGAIN;
             case NGX_ERROR: return NGX_ERROR;
             default: break;
