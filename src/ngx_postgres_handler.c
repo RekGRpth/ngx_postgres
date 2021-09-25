@@ -121,7 +121,17 @@ static void ngx_postgres_output(ngx_http_request_t *r) {
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return;
     ngx_http_upstream_t *u = r->upstream;
     u->header_sent = 1;
-    if (!u->out_bufs) return;
+    if (!u->out_bufs) {
+        ngx_buf_t *b = ngx_calloc_buf(r->pool);
+        if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_calloc_buf"); return; }
+        if (r == r->main && !r->post_action) b->last_buf = 1; else {
+            b->sync = 1;
+            b->last_in_chain = 1;
+        }
+        ngx_chain_t out = {.buf = b, .next = NULL};
+        ngx_http_output_filter(r, &out);
+        return;
+    }
     u->out_bufs->next = NULL;
     ngx_buf_t *b = u->out_bufs->buf;
     if (r == r->main && !r->post_action) b->last_buf = 1; else {
