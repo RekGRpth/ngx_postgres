@@ -72,7 +72,7 @@ void ngx_postgres_data_handler(ngx_event_t *e) {
         if (rc == NGX_OK) rc = ngx_postgres_result(s);
     }
     if (rc == NGX_ERROR) ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
-    else if (rc != NGX_AGAIN) ngx_http_upstream_finalize_request(r, u, rc == NGX_OK ? NGX_HTTP_OK : rc);
+    else if (rc != NGX_AGAIN) ngx_http_upstream_finalize_request(r, u, rc == NGX_OK && u->out_bufs ? NGX_HTTP_OK : rc);
 run:
     ngx_http_run_posted_requests(co);
 }
@@ -121,17 +121,7 @@ static void ngx_postgres_output(ngx_http_request_t *r) {
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) return;
     ngx_http_upstream_t *u = r->upstream;
     u->header_sent = 1;
-    if (!u->out_bufs) {
-        ngx_buf_t *b = ngx_calloc_buf(r->pool);
-        if (!b) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_calloc_buf"); return; }
-        if (r == r->main && !r->post_action) b->last_buf = 1; else {
-            b->sync = 1;
-            b->last_in_chain = 1;
-        }
-        ngx_chain_t out = {.buf = b, .next = NULL};
-        ngx_http_output_filter(r, &out);
-        return;
-    }
+    if (!u->out_bufs) return;
     u->out_bufs->next = NULL;
     ngx_buf_t *b = u->out_bufs->buf;
     if (r == r->main && !r->post_action) b->last_buf = 1; else {
@@ -147,7 +137,7 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "rc = %i", rc);
     ngx_http_upstream_t *u = r->upstream;
     if (u->peer.get != ngx_postgres_peer_get) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer is not postgres"); return; }
-    if (rc == NGX_HTTP_OK) ngx_postgres_output(r);
+    if (rc == NGX_OK || rc == NGX_HTTP_OK) ngx_postgres_output(r);
     ngx_postgres_data_t *d = u->peer.data;
     ngx_postgres_save_t *s = d->save;
     if (!s) return;
