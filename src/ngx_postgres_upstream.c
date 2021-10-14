@@ -698,6 +698,12 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("XIDARRAYOID"), XIDARRAYOID },
         { ngx_string("CIDARRAYOID"), CIDARRAYOID },
         { ngx_string("OIDVECTORARRAYOID"), OIDVECTORARRAYOID },
+#if (PG_VERSION_NUM >= 140000)
+        { ngx_string("PG_TYPEARRAYOID"), PG_TYPEARRAYOID },
+        { ngx_string("PG_ATTRIBUTEARRAYOID"), PG_ATTRIBUTEARRAYOID },
+        { ngx_string("PG_PROCARRAYOID"), PG_PROCARRAYOID },
+        { ngx_string("PG_CLASSARRAYOID"), PG_CLASSARRAYOID },
+#endif
         { ngx_string("JSONARRAYOID"), JSONARRAYOID },
         { ngx_string("XMLARRAYOID"), XMLARRAYOID },
 #if (PG_VERSION_NUM >= 130000)
