@@ -584,6 +584,9 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("FLOAT8OID"), FLOAT8OID },
         { ngx_string("UNKNOWNOID"), UNKNOWNOID },
         { ngx_string("CIRCLEOID"), CIRCLEOID },
+#if (PG_VERSION_NUM >= 140000)
+        { ngx_string("MONEYOID"), MONEYOID },
+#endif
         { ngx_string("CASHOID"), CASHOID },
         { ngx_string("MACADDROID"), MACADDROID },
         { ngx_string("INETOID"), INETOID },
