@@ -558,11 +558,19 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("OIDVECTOROID"), OIDVECTOROID },
         { ngx_string("JSONOID"), JSONOID },
         { ngx_string("XMLOID"), XMLOID },
+#if (PG_VERSION_NUM >= 140000)
+        { ngx_string("PG_NODE_TREEOID"), PG_NODE_TREEOID },
+        { ngx_string("PG_NDISTINCTOID"), PG_NDISTINCTOID },
+        { ngx_string("PG_DEPENDENCIESOID"), PG_DEPENDENCIESOID },
+        { ngx_string("PG_MCV_LISTOID"), PG_MCV_LISTOID },
+        { ngx_string("PG_DDL_COMMANDOID"), PG_DDL_COMMANDOID },
+#else
         { ngx_string("PGNODETREEOID"), PGNODETREEOID },
         { ngx_string("PGNDISTINCTOID"), PGNDISTINCTOID },
         { ngx_string("PGDEPENDENCIESOID"), PGDEPENDENCIESOID },
         { ngx_string("PGMCVLISTOID"), PGMCVLISTOID },
         { ngx_string("PGDDLCOMMANDOID"), PGDDLCOMMANDOID },
+#endif
 #if (PG_VERSION_NUM >= 130000)
         { ngx_string("XID8OID"), XID8OID },
 #endif
@@ -630,7 +638,10 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("ANYARRAYOID"), ANYARRAYOID },
         { ngx_string("VOIDOID"), VOIDOID },
         { ngx_string("TRIGGEROID"), TRIGGEROID },
+#if (PG_VERSION_NUM >= 140000)
+#else
         { ngx_string("EVTTRIGGEROID"), EVTTRIGGEROID },
+#endif
         { ngx_string("LANGUAGE_HANDLEROID"), LANGUAGE_HANDLEROID },
         { ngx_string("INTERNALOID"), INTERNALOID },
 #if (PG_VERSION_NUM >= 130000)
