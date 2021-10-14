@@ -4,6 +4,7 @@
 #include <avcall.h>
 #include <libpq-fe.h>
 #include <ngx_http.h>
+#undef OPENSSL_API_COMPAT
 #include <pg_config.h>
 #include <catalog/pg_type_d.h>
 #include "queue.h"
