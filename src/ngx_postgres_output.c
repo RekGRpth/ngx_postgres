@@ -73,11 +73,19 @@ static const char *PQftypeMy(Oid oid) {
         case OIDVECTOROID: return "oidvector";
         case JSONOID: return "json";
         case XMLOID: return "xml";
+#if (PG_VERSION_NUM >= 140000)
+        case PG_NODE_TREEOID: return "pg_node_tree";
+        case PG_NDISTINCTOID: return "pg_ndistinct";
+        case PG_DEPENDENCIESOID: return "pg_dependencies";
+        case PG_MCV_LISTOID: return "pg_mcv_list";
+        case PG_DDL_COMMANDOID: return "pg_ddl_command";
+#else
         case PGNODETREEOID: return "pgnodetree";
         case PGNDISTINCTOID: return "pgndistinct";
         case PGDEPENDENCIESOID: return "pgdependencies";
         case PGMCVLISTOID: return "pgmcvlist";
         case PGDDLCOMMANDOID: return "pgddlcommand";
+#endif
 #if (PG_VERSION_NUM >= 130000)
         case XID8OID: return "xid8";
 #endif
@@ -145,7 +153,10 @@ static const char *PQftypeMy(Oid oid) {
         case ANYARRAYOID: return "anyarray";
         case VOIDOID: return "void";
         case TRIGGEROID: return "trigger";
+#if (PG_VERSION_NUM >= 140000)
+#else
         case EVTTRIGGEROID: return "evttrigger";
+#endif
         case LANGUAGE_HANDLEROID: return "language_handler";
         case INTERNALOID: return "internal";
 #if (PG_VERSION_NUM >= 130000)
