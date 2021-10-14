@@ -160,6 +160,7 @@ static const char *PQftypeMy(Oid oid) {
         case VOIDOID: return "void";
         case TRIGGEROID: return "trigger";
 #if (PG_VERSION_NUM >= 140000)
+        case EVENT_TRIGGEROID: return "event_trigger";
 #else
         case EVTTRIGGEROID: return "evttrigger";
 #endif

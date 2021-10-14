@@ -645,6 +645,7 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("VOIDOID"), VOIDOID },
         { ngx_string("TRIGGEROID"), TRIGGEROID },
 #if (PG_VERSION_NUM >= 140000)
+        { ngx_string("EVENT_TRIGGEROID"), EVENT_TRIGGEROID },
 #else
         { ngx_string("EVTTRIGGEROID"), EVTTRIGGEROID },
 #endif
