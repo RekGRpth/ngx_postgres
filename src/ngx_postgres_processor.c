@@ -320,6 +320,9 @@ const char *ngx_postgres_status(PGconn *conn) {
         case CONNECTION_AUTH_OK: return "CONNECTION_AUTH_OK";
         case CONNECTION_AWAITING_RESPONSE: return "CONNECTION_AWAITING_RESPONSE";
         case CONNECTION_BAD: return "CONNECTION_BAD";
+#if (PG_VERSION_NUM >= 140000)
+        case CONNECTION_CHECK_STANDBY: return "CONNECTION_CHECK_STANDBY";
+#endif
 #if (PG_VERSION_NUM >= 130000)
         case CONNECTION_CHECK_TARGET: return "CONNECTION_CHECK_TARGET";
 #endif
