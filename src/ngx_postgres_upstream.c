@@ -677,6 +677,12 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("ANYCOMPATIBLENONARRAYOID"), ANYCOMPATIBLENONARRAYOID },
         { ngx_string("ANYCOMPATIBLERANGEOID"), ANYCOMPATIBLERANGEOID },
 #endif
+#if (PG_VERSION_NUM >= 140000)
+        { ngx_string("ANYMULTIRANGEOID"), ANYMULTIRANGEOID },
+        { ngx_string("ANYCOMPATIBLEMULTIRANGEOID"), ANYCOMPATIBLEMULTIRANGEOID },
+        { ngx_string("PG_BRIN_BLOOM_SUMMARYOID"), PG_BRIN_BLOOM_SUMMARYOID },
+        { ngx_string("PG_BRIN_MINMAX_MULTI_SUMMARYOID"), PG_BRIN_MINMAX_MULTI_SUMMARYOID },
+#endif
         { ngx_string("BOOLARRAYOID"), BOOLARRAYOID },
         { ngx_string("BYTEAARRAYOID"), BYTEAARRAYOID },
         { ngx_string("CHARARRAYOID"), CHARARRAYOID },
