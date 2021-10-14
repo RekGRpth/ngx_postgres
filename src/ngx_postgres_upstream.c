@@ -765,6 +765,14 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("TSTZRANGEARRAYOID"), TSTZRANGEARRAYOID },
         { ngx_string("DATERANGEARRAYOID"), DATERANGEARRAYOID },
         { ngx_string("INT8RANGEARRAYOID"), INT8RANGEARRAYOID },
+#if (PG_VERSION_NUM >= 140000)
+        { ngx_string("INT4MULTIRANGEARRAYOID"), INT4MULTIRANGEARRAYOID },
+        { ngx_string("NUMMULTIRANGEARRAYOID"), NUMMULTIRANGEARRAYOID },
+        { ngx_string("TSMULTIRANGEARRAYOID"), TSMULTIRANGEARRAYOID },
+        { ngx_string("TSTZMULTIRANGEARRAYOID"), TSTZMULTIRANGEARRAYOID },
+        { ngx_string("DATEMULTIRANGEARRAYOID"), DATEMULTIRANGEARRAYOID },
+        { ngx_string("INT8MULTIRANGEARRAYOID"), INT8MULTIRANGEARRAYOID },
+#endif
         { ngx_string("CSTRINGARRAYOID"), CSTRINGARRAYOID },
         { ngx_null_string, 0 }
     };
