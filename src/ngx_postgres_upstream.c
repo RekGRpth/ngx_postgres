@@ -616,6 +616,9 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("REGROLEOID"), REGROLEOID },
         { ngx_string("REGNAMESPACEOID"), REGNAMESPACEOID },
         { ngx_string("UUIDOID"), UUIDOID },
+#if (PG_VERSION_NUM >= 140000)
+        { ngx_string("PG_LSNOID"), PG_LSNOID },
+#endif
         { ngx_string("LSNOID"), LSNOID },
         { ngx_string("TSVECTOROID"), TSVECTOROID },
         { ngx_string("GTSVECTOROID"), GTSVECTOROID },
