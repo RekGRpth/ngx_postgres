@@ -141,9 +141,9 @@ static ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_deallocate_result(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_result_deallocate(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    s->handler = ngx_postgres_deallocate_result;
+    s->handler = ngx_postgres_result_deallocate;
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); return NGX_OK;
         default: return ngx_postgres_error(s);
@@ -174,7 +174,7 @@ static ngx_int_t ngx_postgres_deallocate_prepare(ngx_postgres_save_t *s) {
     *last = '\0';
     if (!PQsendQuery(s->conn, (const char *)sql.data)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendQuery(\"%V\") and %s", &sql, PQerrorMessageMy(s->conn)); goto free; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%V\")", &sql);
-    s->handler = ngx_postgres_deallocate_result;
+    s->handler = ngx_postgres_result_deallocate;
     rc = NGX_AGAIN;
 free:
     PQfreemem(str);
