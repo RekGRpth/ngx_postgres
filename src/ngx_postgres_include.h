@@ -137,6 +137,8 @@ typedef struct {
     ngx_flag_t prepare;
     ngx_msec_t timeout;
     ngx_str_t sql;
+    ngx_str_t stmtName;
+    ngx_uint_t hash;
     ngx_uint_t method;
     ngx_uint_t percent;
     struct {

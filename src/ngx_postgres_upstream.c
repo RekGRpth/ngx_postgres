@@ -833,6 +833,12 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     }
     ngx_pfree(cf->pool, sql.data);
     query->sql.len = p - query->sql.data;
+    if (location->prepare || query->prepare) {
+        if (!(query->stmtName.data = ngx_pnalloc(cf->pool, 31 + 1))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
+        u_char *last = ngx_snprintf(query->stmtName.data, 31, "ngx_%ul", (unsigned long)(query->hash = ngx_hash_key(query->sql.data, query->sql.len)));
+        *last = '\0';
+        query->stmtName.len = last - query->stmtName.data;
+    }
 //    ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "sql = `%V`", &query->sql);
     return NGX_CONF_OK;
 }
