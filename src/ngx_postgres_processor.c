@@ -64,7 +64,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_save_t *s) {
             else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, PQresStatus(PQresultStatus(s->res))); }
             return rc;
     }
-    s->handler = ngx_postgres_send;
+    s->handler = ngx_postgres_send_prepare_or_query;
     if (rc == NGX_OK && d->index < location->query.nelts - 1) {
         for (d->index++; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
         if (d->index < location->query.nelts) return NGX_AGAIN;
@@ -260,8 +260,6 @@ static ngx_int_t ngx_postgres_send_prepare_or_query(ngx_postgres_save_t *s) {
         }
     }
     ngx_postgres_query_t *queryelts = location->query.elts;
-    for (; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
-    if (d->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     ngx_postgres_query_t *query = &queryelts[d->index];
     if (query->timeout) {
         u->conf->connect_timeout = query->timeout;
@@ -345,6 +343,8 @@ ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
         d->variable.nelts = nelts;
     }
     if (!r->headers_out.charset.data && ngx_postgres_charset(d) == NGX_ERROR) return NGX_ERROR;
+    for (; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
+    if (d->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     return ngx_postgres_send_prepare_or_query(s);
 }
 
