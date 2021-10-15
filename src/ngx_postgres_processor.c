@@ -82,7 +82,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_query_prepared_result(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_result_query(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
@@ -104,7 +104,7 @@ static ngx_int_t ngx_postgres_send_query_prepared(ngx_postgres_save_t *s) {
     ngx_postgres_send_t *send = &sendelts[d->index];
     if (!PQsendQueryPrepared(s->conn, (const char *)send->stmtName.data, send->nParams, (const char *const *)send->paramValues, NULL, NULL, send->binary)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendQueryPrepared(\"%V\", \"%V\", %i) and %s", &send->stmtName, &send->sql, send->nParams, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQueryPrepared(\"%V\", \"%V\", %i)", &send->stmtName, &send->sql, send->nParams);
-    return ngx_postgres_query_prepared_result(s);
+    return ngx_postgres_result_query(s);
 }
 
 
@@ -137,7 +137,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s) {
         if (!PQsendQuery(s->conn, (const char *)send->sql.data)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendQuery(\"%V\") and %s", &send->sql, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%V\")", &send->sql);
     }
-    return ngx_postgres_query_prepared_result(s);
+    return ngx_postgres_result_query(s);
 }
 
 
