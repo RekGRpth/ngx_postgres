@@ -2,7 +2,7 @@
 
 
 static ngx_int_t ngx_postgres_prepare(ngx_postgres_save_t *s);
-static ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s);
+static ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s);
 
 
 static ngx_int_t ngx_postgres_variable_error(ngx_postgres_save_t *s) {
@@ -233,7 +233,7 @@ static ngx_int_t ngx_postgres_charset(ngx_postgres_data_t *d) {
 }
 
 
-static ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
@@ -275,7 +275,7 @@ static ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
 }
 
 
-ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
+ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
@@ -345,7 +345,7 @@ ngx_int_t ngx_postgres_prepare_or_query(ngx_postgres_save_t *s) {
         d->variable.nelts = nelts;
     }
     if (!r->headers_out.charset.data && ngx_postgres_charset(d) == NGX_ERROR) return NGX_ERROR;
-    return ngx_postgres_send(s);
+    return ngx_postgres_prepare_or_query(s);
 }
 
 
@@ -394,7 +394,7 @@ ngx_int_t ngx_postgres_connect(ngx_postgres_save_t *s) {
 connected:
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    return ngx_postgres_prepare_or_query(s);
+    return ngx_postgres_send(s);
 }
 
 

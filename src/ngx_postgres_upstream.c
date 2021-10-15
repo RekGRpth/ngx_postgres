@@ -215,7 +215,7 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_save_t *s) {
         ngx_http_upstream_t *u = r->upstream;
         u->peer.connection = s->connection;
         queue_init(q);
-        return ngx_postgres_prepare_or_query(s);
+        return ngx_postgres_send(s);
     }
     return NGX_OK;
 }
@@ -368,7 +368,7 @@ found:
     s->usc = usc;
     pc->connection = c;
     if (usc) queue_insert_head(&usc->data.queue, &s->queue);
-    return connected ? ngx_postgres_prepare_or_query(s) : NGX_AGAIN;
+    return connected ? ngx_postgres_send(s) : NGX_AGAIN;
 declined:
     PQfinish(conn);
     return NGX_DECLINED;
@@ -403,7 +403,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             pc->cached = 1;
             pc->connection = s->connection;
             s->connection->data = d;
-            return ngx_postgres_prepare_or_query(s);
+            return ngx_postgres_send(s);
         }
         if (queue_size(&usc->save.queue) + queue_size(&usc->data.queue) < usc->save.max) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.size = %i, data.size = %i", queue_size(&usc->save.queue), queue_size(&usc->data.queue));
