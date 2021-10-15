@@ -2,7 +2,7 @@
 
 
 static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_save_t *s);
-static ngx_int_t ngx_postgres_send_prepare_or_query(ngx_postgres_save_t *s);
+static ngx_int_t ngx_postgres_send_prepare_or_send_query(ngx_postgres_save_t *s);
 
 
 static ngx_int_t ngx_postgres_variable_error(ngx_postgres_save_t *s) {
@@ -64,7 +64,7 @@ static ngx_int_t ngx_postgres_query_result(ngx_postgres_save_t *s) {
             else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, PQresStatus(PQresultStatus(s->res))); }
             return rc;
     }
-    s->handler = ngx_postgres_send_prepare_or_query;
+    s->handler = ngx_postgres_send_prepare_or_send_query;
     if (rc == NGX_OK && d->index < location->query.nelts - 1) {
         for (d->index++; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
         if (d->index < location->query.nelts) return NGX_AGAIN;
@@ -233,7 +233,7 @@ static ngx_int_t ngx_postgres_charset(ngx_postgres_data_t *d) {
 }
 
 
-static ngx_int_t ngx_postgres_send_prepare_or_query(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_send_prepare_or_send_query(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
@@ -345,7 +345,7 @@ ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
     if (!r->headers_out.charset.data && ngx_postgres_charset(d) == NGX_ERROR) return NGX_ERROR;
     for (; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
     if (d->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
-    return ngx_postgres_send_prepare_or_query(s);
+    return ngx_postgres_send_prepare_or_send_query(s);
 }
 
 
