@@ -96,7 +96,7 @@ static ngx_int_t ngx_postgres_query_prepared_result(ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_query_prepared(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_send_query_prepared(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
@@ -108,14 +108,14 @@ static ngx_int_t ngx_postgres_query_prepared(ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_prepare_result(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_result_prepare(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    s->handler = ngx_postgres_prepare_result;
+    s->handler = ngx_postgres_result_prepare;
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); return NGX_OK;
         default: return ngx_postgres_error(s);
     }
-    return ngx_postgres_query_prepared(s);
+    return ngx_postgres_send_query_prepared(s);
 }
 
 
@@ -195,7 +195,7 @@ static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_save_t *s) {
     ngx_postgres_send_t *send = &sendelts[d->index];
     queue_each(&s->prepare.queue, q) {
         ngx_postgres_prepare_t *prepare = queue_data(q, typeof(*prepare), queue);
-        if (prepare->hash == send->hash) return ngx_postgres_query_prepared(s);
+        if (prepare->hash == send->hash) return ngx_postgres_send_query_prepared(s);
     }
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
     if (usc && usc->prepare.deallocate && queue_size(&s->prepare.queue) >= usc->prepare.max) return ngx_postgres_deallocate(s);
@@ -205,7 +205,7 @@ static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_save_t *s) {
     if (!prepare) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     prepare->hash = send->hash;
     queue_insert_head(&s->prepare.queue, &prepare->queue);
-    s->handler = ngx_postgres_prepare_result;
+    s->handler = ngx_postgres_result_prepare;
     return NGX_AGAIN;
 }
 
