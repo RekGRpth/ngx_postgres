@@ -259,6 +259,7 @@ static ngx_int_t ngx_postgres_send_prepare_or_send_query(ngx_postgres_save_t *s)
             default: break;
         }
     }
+    d->catch = 1;
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[d->index];
     if (query->timeout) {
@@ -266,9 +267,9 @@ static ngx_int_t ngx_postgres_send_prepare_or_send_query(ngx_postgres_save_t *s)
         ngx_add_timer(c->read, query->timeout);
         ngx_add_timer(c->write, query->timeout);
     }
-    ngx_postgres_upstream_srv_conf_t *usc = s->usc;
-    d->catch = 1;
-    if (usc && usc->save.max && usc->prepare.max && (location->prepare || query->prepare)) return ngx_postgres_send_prepare(s);
+    ngx_postgres_send_t *sendelts = d->send.elts;
+    ngx_postgres_send_t *send = &sendelts[d->index];
+    if (send->hash) return ngx_postgres_send_prepare(s);
     return ngx_postgres_send_query(s);
 }
 
@@ -324,8 +325,10 @@ ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
         if (av_call(alist)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "av_call"); return NGX_ERROR; }
         if (last != send->sql.data + send->sql.len) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "ngx_snprintf"); return NGX_ERROR; }
         *last = '\0';
-        send->hash = query->hash;
-        send->stmtName = query->stmtName;
+        if (s->usc && s->usc->save.max && s->usc->prepare.max && (location->prepare || query->prepare)) {
+            send->hash = query->hash;
+            send->stmtName = query->stmtName;
+        }
         if (!query->params.nelts) continue;
         ngx_postgres_param_t *param = query->params.elts;
         send->nParams = query->params.nelts;
