@@ -278,6 +278,7 @@ ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
+    if (!r->headers_out.charset.data && ngx_postgres_charset(d) == NGX_ERROR) return NGX_ERROR;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     if (ngx_array_init(&d->send, r->pool, location->query.nelts, sizeof(ngx_postgres_send_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
     d->send.nelts = location->query.nelts;
@@ -342,9 +343,6 @@ ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
         ngx_memzero(d->variable.elts, nelts * d->variable.size);
         d->variable.nelts = nelts;
     }
-    if (!r->headers_out.charset.data && ngx_postgres_charset(d) == NGX_ERROR) return NGX_ERROR;
-    for (; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
-    if (d->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     return ngx_postgres_send_prepare_or_send_query(s);
 }
 

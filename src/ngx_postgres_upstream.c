@@ -476,6 +476,10 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     d->peer.set_session = u->peer.set_session;
     u->peer.set_session = ngx_postgres_set_session;
 #endif
+    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    ngx_postgres_query_t *queryelts = location->query.elts;
+    for (; d->index < location->query.nelts; d->index++) if (!queryelts[d->index].method || queryelts[d->index].method & r->method) break;
+    if (d->index == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     return NGX_OK;
 }
 
