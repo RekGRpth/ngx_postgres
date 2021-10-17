@@ -269,8 +269,7 @@ static ngx_int_t ngx_postgres_send_prepare_or_send_query(ngx_postgres_save_t *s)
     }
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->index];
-    if (send->hash) return ngx_postgres_send_prepare(s);
-    return ngx_postgres_send_query(s);
+    return send->hash ? ngx_postgres_send_prepare(s) : ngx_postgres_send_query(s);
 }
 
 
