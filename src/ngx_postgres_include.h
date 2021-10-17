@@ -182,13 +182,13 @@ typedef enum {
     type_ntuples,
     type_cmdTuples,
     type_cmdStatus,
-} ngx_postgres_type_t;
+} ngx_postgres_variable_type_t;
 
 typedef struct {
     int col;
     int row;
     ngx_postgres_save_handler_pt handler;
-    ngx_postgres_type_t type;
+    ngx_postgres_variable_type_t type;
     ngx_str_t name;
     ngx_uint_t index;
     ngx_uint_t required;

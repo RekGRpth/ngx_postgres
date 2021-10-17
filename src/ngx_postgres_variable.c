@@ -338,7 +338,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (cf->args->nelts == 3) {
         static const struct {
             ngx_str_t name;
-            ngx_postgres_type_t type;
+            ngx_postgres_variable_type_t type;
             ngx_postgres_save_handler_pt handler;
         } e[] = {
             { ngx_string("ntuples"), type_ntuples, NULL },
