@@ -348,7 +348,7 @@ ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
         d->variable.nelts = nelts;
     }
     s->handler = ngx_postgres_send_deallocate_or_prepare_or_query;
-    return NGX_AGAIN;
+    return ngx_postgres_send_deallocate_or_prepare_or_query(s);
 }
 
 
