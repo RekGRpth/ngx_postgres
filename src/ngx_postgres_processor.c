@@ -105,10 +105,10 @@ static ngx_int_t ngx_postgres_send_query_prepared(ngx_postgres_save_t *s) {
     ngx_postgres_send_t *send = &sendelts[d->query];
     if (!PQsendQueryPrepared(s->conn, (const char *)send->stmtName.data, send->nParams, (const char *const *)send->paramValues, NULL, NULL, send->binary)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendQueryPrepared(\"%V\", \"%V\", %i) and %s", &send->stmtName, &send->sql, send->nParams, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQueryPrepared(\"%V\", \"%V\", %i)", &send->stmtName, &send->sql, send->nParams);
-    ngx_http_request_t *r = d->request;
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *queryelts = location->query.elts;
-    ngx_postgres_query_t *query = &queryelts[d->query];
+//    ngx_http_request_t *r = d->request;
+//    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+//    ngx_postgres_query_t *queryelts = location->query.elts;
+    ngx_postgres_query_t *query = send->query;
     if (query->output.handler == ngx_postgres_output_plain || query->output.handler == ngx_postgres_output_csv) if (query->output.single && !PQsetSingleRowMode(s->conn)) ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(s->conn));
     s->handler = ngx_postgres_query_result;
     s->state = state_prepared;
@@ -146,10 +146,10 @@ static ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s) {
         if (!PQsendQuery(s->conn, (const char *)send->sql.data)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendQuery(\"%V\") and %s", &send->sql, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%V\")", &send->sql);
     }
-    ngx_http_request_t *r = d->request;
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *queryelts = location->query.elts;
-    ngx_postgres_query_t *query = &queryelts[d->query];
+//    ngx_http_request_t *r = d->request;
+//    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+//    ngx_postgres_query_t *queryelts = location->query.elts;
+    ngx_postgres_query_t *query = send->query;
     if (query->output.handler == ngx_postgres_output_plain || query->output.handler == ngx_postgres_output_csv) if (query->output.single && !PQsetSingleRowMode(s->conn)) ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(s->conn));
     s->handler = ngx_postgres_query_result;
     s->state = state_query;
@@ -279,15 +279,15 @@ static ngx_int_t ngx_postgres_send_prepare_or_send_query(ngx_postgres_save_t *s)
         }
     }
     d->catch = 1;
-    ngx_postgres_query_t *queryelts = location->query.elts;
-    ngx_postgres_query_t *query = &queryelts[d->query];
+    ngx_postgres_send_t *sendelts = d->send.elts;
+    ngx_postgres_send_t *send = &sendelts[d->query];
+//    ngx_postgres_query_t *queryelts = location->query.elts;
+    ngx_postgres_query_t *query = send->query;
     if (query->timeout) {
         u->conf->connect_timeout = query->timeout;
         ngx_add_timer(c->read, query->timeout);
         ngx_add_timer(c->write, query->timeout);
     }
-    ngx_postgres_send_t *sendelts = d->send.elts;
-    ngx_postgres_send_t *send = &sendelts[d->query];
     return send->hash ? ngx_postgres_send_prepare(s) : ngx_postgres_send_query(s);
 }
 
