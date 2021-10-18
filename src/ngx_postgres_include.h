@@ -92,9 +92,16 @@ typedef struct {
     } output;
 } ngx_postgres_query_t;
 
+typedef enum {
+    state_deallocate = 1,
+    state_prepare,
+    state_query,
+} ngx_postgres_state_t;
+
 typedef struct {
     ngx_flag_t binary;
     ngx_postgres_query_t *query;
+    ngx_postgres_state_t state;
     ngx_str_t sql;
     ngx_str_t stmtName;
     ngx_uint_t hash;
@@ -120,12 +127,6 @@ typedef struct ngx_postgres_save_t {
     } prepare;
 } ngx_postgres_save_t;
 
-typedef enum {
-    state_deallocate,
-    state_prepare,
-    state_query,
-} ngx_postgres_state_t;
-
 typedef struct {
     ngx_array_t send;
     ngx_array_t variable;
@@ -135,7 +136,6 @@ typedef struct {
     ngx_flag_t catch;
     ngx_http_request_t *request;
     ngx_postgres_save_t *save;
-    ngx_postgres_state_t state;
     ngx_uint_t query;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     queue_t queue;

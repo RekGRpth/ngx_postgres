@@ -94,7 +94,7 @@ static ngx_int_t ngx_postgres_send_query_prepared(ngx_postgres_save_t *s) {
     ngx_postgres_query_t *query = send->query;
     if (query->output.handler == ngx_postgres_output_plain || query->output.handler == ngx_postgres_output_csv) if (query->output.single && !PQsetSingleRowMode(s->conn)) ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(s->conn));
     s->handler = ngx_postgres_result_deallocate_or_prepare_or_query;
-    d->state = state_query;
+    send->state = state_query;
     return NGX_AGAIN;
 }
 
@@ -125,7 +125,7 @@ static ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s) {
     ngx_postgres_query_t *query = send->query;
     if (query->output.handler == ngx_postgres_output_plain || query->output.handler == ngx_postgres_output_csv) if (query->output.single && !PQsetSingleRowMode(s->conn)) ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(s->conn));
     s->handler = ngx_postgres_result_deallocate_or_prepare_or_query;
-    d->state = state_query;
+    send->state = state_query;
     return NGX_AGAIN;
 }
 
@@ -163,7 +163,9 @@ static ngx_int_t ngx_postgres_deallocate_prepare(ngx_postgres_save_t *s) {
     if (!PQsendQuery(s->conn, (const char *)sql.data)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendQuery(\"%V\") and %s", &sql, PQerrorMessageMy(s->conn)); goto free; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%V\")", &sql);
     s->handler = ngx_postgres_result_deallocate_or_prepare_or_query;
-    d->state = state_deallocate;
+    ngx_postgres_send_t *sendelts = d->send.elts;
+    ngx_postgres_send_t *send = &sendelts[d->query];
+    send->state = state_deallocate;
     rc = NGX_AGAIN;
 free:
     PQfreemem(str);
@@ -190,7 +192,7 @@ static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_save_t *s) {
     prepare->hash = send->hash;
     queue_insert_head(&s->prepare.queue, &prepare->queue);
     s->handler = ngx_postgres_result_deallocate_or_prepare_or_query;
-    d->state = state_prepare;
+    send->state = state_prepare;
     return NGX_AGAIN;
 }
 
@@ -199,7 +201,9 @@ static ngx_int_t ngx_postgres_result_deallocate_or_prepare_or_query(ngx_postgres
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
-    switch (d->state) {
+    ngx_postgres_send_t *sendelts = d->send.elts;
+    ngx_postgres_send_t *send = &sendelts[d->query];
+    switch (send->state) {
         case state_deallocate: return ngx_postgres_result_deallocate(s);
         case state_prepare: return ngx_postgres_result_prepare(s);
         case state_query: return ngx_postgres_result_query(s);
