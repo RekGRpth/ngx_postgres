@@ -69,7 +69,7 @@ error:
 static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     if (s->res) switch (PQresultStatus(s->res)) {
-        case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(s->res)); break;
+        case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); break;
         default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res), PQresultErrorMessageMy(s->res)); break;
     }
     return NGX_OK;
@@ -134,7 +134,7 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *s) {
     s->connection->data = s;
     s->handler = ngx_postgres_listen;
     if (s->res) switch (PQresultStatus(s->res)) {
-        case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == PGRES_FATAL_ERROR and %s", PQresultErrorMessageMy(s->res)); return NGX_ERROR;
+        case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); return NGX_ERROR;
         default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res), PQresultErrorMessageMy(s->res)); return NGX_OK;
     }
     static const char *command = "SELECT channel, concat_ws(' ', 'UNLISTEN', quote_ident(channel)) AS unlisten FROM pg_listening_channels() AS channel";
