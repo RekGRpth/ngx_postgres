@@ -94,7 +94,7 @@ static ngx_int_t ngx_postgres_send_query_prepared(ngx_postgres_save_t *s) {
     ngx_postgres_query_t *query = send->query;
     if (query->output.handler == ngx_postgres_output_plain || query->output.handler == ngx_postgres_output_csv) if (query->output.single && !PQsetSingleRowMode(s->conn)) ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(s->conn));
     s->handler = ngx_postgres_result_deallocate_or_prepare_or_query;
-    d->state = state_prepared;
+    d->state = state_query;
     return NGX_AGAIN;
 }
 
@@ -202,9 +202,7 @@ static ngx_int_t ngx_postgres_result_deallocate_or_prepare_or_query(ngx_postgres
     switch (d->state) {
         case state_deallocate: return ngx_postgres_result_deallocate(s);
         case state_prepare: return ngx_postgres_result_prepare(s);
-        case state_prepared: return ngx_postgres_result_query(s);
         case state_query: return ngx_postgres_result_query(s);
-//        case state_idle: return NGX_OK;
     }
     return NGX_ERROR;
 }

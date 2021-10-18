@@ -122,9 +122,7 @@ typedef struct ngx_postgres_save_t {
 
 typedef enum {
     state_deallocate,
-//    state_idle,
     state_prepare,
-    state_prepared,
     state_query,
 } ngx_postgres_state_t;
 
