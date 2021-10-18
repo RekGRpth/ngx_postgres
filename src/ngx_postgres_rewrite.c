@@ -7,8 +7,8 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_save_t *s) {
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "query = %i", d->index);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "query = %i", d->query);
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->query];
     ngx_array_t *rewrite = &query->rewrite;
     if (!rewrite->elts) return NGX_OK;
     ngx_postgres_rewrite_t *rewriteelts = rewrite->elts;

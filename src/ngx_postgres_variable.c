@@ -135,7 +135,7 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_save_t *s) {
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->query];
     d->result.sql = query->sql;
     const char *value;
     d->result.ntuples = d->result.nsingle ? d->result.nsingle : PQntuples(s->res);
@@ -173,8 +173,8 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_save_t *s) {
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "query = %i", d->index);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->index];
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "query = %i", d->query);
+    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->query];
     if (!query->variable.nelts) return NGX_OK;
     ngx_postgres_variable_t *variable = query->variable.elts;
     ngx_str_t *variableelts = d->variable.elts;
