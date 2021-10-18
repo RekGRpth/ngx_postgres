@@ -64,6 +64,9 @@ typedef struct {
     } trace;
 } ngx_postgres_upstream_srv_conf_t;
 
+typedef struct ngx_postgres_save_t ngx_postgres_save_t;
+typedef ngx_int_t (*ngx_postgres_save_handler_pt) (ngx_postgres_save_t *s);
+
 typedef struct {
     ngx_array_t ids;
     ngx_array_t params;
@@ -91,6 +94,7 @@ typedef struct {
 
 typedef struct {
     ngx_flag_t binary;
+    ngx_postgres_query_t *query;
     ngx_str_t sql;
     ngx_str_t stmtName;
     ngx_uint_t hash;
@@ -106,9 +110,6 @@ typedef enum {
     state_prepared,
     state_query,
 } ngx_postgres_state_t;
-
-typedef struct ngx_postgres_save_t ngx_postgres_save_t;
-typedef ngx_int_t (*ngx_postgres_save_handler_pt) (ngx_postgres_save_t *s);
 
 typedef struct ngx_postgres_save_t {
     ngx_connection_t *connection;

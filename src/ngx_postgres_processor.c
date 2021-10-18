@@ -11,7 +11,8 @@ static ngx_int_t ngx_postgres_variable_error(ngx_postgres_save_t *s) {
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *query = &((ngx_postgres_query_t *)location->query.elts)[d->query];
+    ngx_postgres_query_t *queryelts = location->query.elts;
+    ngx_postgres_query_t *query = &queryelts[d->query];
     ngx_memzero(&d->result, sizeof(d->result));
     d->result.sql = query->sql;
     const char *value;
@@ -309,6 +310,7 @@ ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
     for (ngx_uint_t i = 0; i < location->query.nelts; i++) {
         ngx_postgres_query_t *query = &queryelts[i];
         ngx_postgres_send_t *send = &sendelts[i];
+        send->query = query;
         nelts += query->variable.nelts;
         if (!query->method || query->method & r->method); else continue;
         send->binary = query->output.binary;
