@@ -156,20 +156,17 @@ static ngx_int_t ngx_postgres_deallocate_prepare(ngx_postgres_save_t *s) {
     char *str = PQescapeIdentifier(s->conn, (const char *)stmtName.data, stmtName.len);
     if (!str) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQescapeIdentifier(\"%V\") and %s", &stmtName, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
     ngx_str_t sql = {sizeof("DEALLOCATE PREPARE ") - 1 + ngx_strlen(str), NULL};
-    ngx_int_t rc = NGX_ERROR;
-    if (!(sql.data = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_pnalloc"); goto free; }
-    if ((last = ngx_snprintf(sql.data, sql.len, "DEALLOCATE PREPARE %s", str)) != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "ngx_snprintf"); goto free; }
+    if (!(sql.data = ngx_pnalloc(r->pool, sql.len + 1))) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_pnalloc"); PQfreemem(str); return NGX_ERROR; }
+    if ((last = ngx_snprintf(sql.data, sql.len, "DEALLOCATE PREPARE %s", str)) != sql.data + sql.len) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "ngx_snprintf"); PQfreemem(str); return NGX_ERROR; }
     *last = '\0';
-    if (!PQsendQuery(s->conn, (const char *)sql.data)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendQuery(\"%V\") and %s", &sql, PQerrorMessageMy(s->conn)); goto free; }
+    PQfreemem(str);
+    if (!PQsendQuery(s->conn, (const char *)sql.data)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendQuery(\"%V\") and %s", &sql, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%V\")", &sql);
     s->handler = ngx_postgres_result_deallocate_or_prepare_or_query;
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
     send->state = state_deallocate;
-    rc = NGX_AGAIN;
-free:
-    PQfreemem(str);
-    return rc;
+    return NGX_AGAIN;
 }
 
 
