@@ -47,6 +47,10 @@ static ngx_int_t ngx_postgres_result_query(ngx_postgres_save_t *s) {
     ngx_int_t rc = NGX_OK;
     const char *value;
     if (s->res) switch (PQresultStatus(s->res)) {
+#if (PG_VERSION_NUM >= 140000)
+        case PGRES_PIPELINE_SYNC: return NGX_AGAIN;
+        case PGRES_PIPELINE_ABORTED:
+#endif
         case PGRES_FATAL_ERROR: return ngx_postgres_error(s);
         case PGRES_COMMAND_OK:
         case PGRES_TUPLES_OK:
@@ -65,6 +69,11 @@ static ngx_int_t ngx_postgres_result_query(ngx_postgres_save_t *s) {
             else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, PQresStatus(PQresultStatus(s->res))); }
             return rc;
     }
+#if (PG_VERSION_NUM >= 140000)
+    if ((s->res = PQgetResult(s->conn)) && PQresultStatus(s->res) != PGRES_PIPELINE_SYNC) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus != PGRES_PIPELINE_SYNC"); return NGX_ERROR; }
+    if ((s->res = PQgetResult(s->conn))) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQgetResult"); return NGX_ERROR; }
+    if (!PQexitPipelineMode(s->conn)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQexitPipelineMode and %s", PQerrorMessageMy(s->conn)); return NGX_ERROR; }
+#endif
     s->handler = ngx_postgres_send_deallocate_or_prepare_or_query;
     if (rc == NGX_OK && d->query < location->query.nelts - 1) {
         for (d->query++; d->query < location->query.nelts; d->query++) if (!queryelts[d->query].method || queryelts[d->query].method & r->method) break;
@@ -95,6 +104,9 @@ static ngx_int_t ngx_postgres_send_query_prepared(ngx_postgres_save_t *s) {
     if (query->output.handler == ngx_postgres_output_plain || query->output.handler == ngx_postgres_output_csv) if (query->output.single && !PQsetSingleRowMode(s->conn)) ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "!PQsetSingleRowMode and %s", PQerrorMessageMy(s->conn));
     s->handler = ngx_postgres_result_deallocate_or_prepare_or_query;
     if (!send->state) send->state = state_query;
+#if (PG_VERSION_NUM >= 140000)
+    if (!PQpipelineSync(s->conn)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQpipelineSync and %s", PQerrorMessageMy(s->conn)); return NGX_ERROR; }
+#endif
     return NGX_AGAIN;
 }
 
@@ -109,8 +121,13 @@ static ngx_int_t ngx_postgres_result_prepare(ngx_postgres_save_t *s) {
     ngx_postgres_data_t *d = c->data;
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
+#if (PG_VERSION_NUM >= 140000)
+    send->state = state_query;
+    return NGX_AGAIN;
+#else
     send->state = 0;
     return ngx_postgres_send_query_prepared(s);
+#endif
 }
 
 
@@ -145,8 +162,13 @@ static ngx_int_t ngx_postgres_result_deallocate(ngx_postgres_save_t *s) {
     ngx_postgres_data_t *d = c->data;
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
+#if (PG_VERSION_NUM >= 140000)
+    send->state = state_prepare;
+    return NGX_AGAIN;
+#else
     send->state = 0;
     return ngx_postgres_send_prepare(s);
+#endif
 }
 
 
@@ -176,7 +198,11 @@ static ngx_int_t ngx_postgres_deallocate_prepare(ngx_postgres_save_t *s) {
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
     if (!send->state) send->state = state_deallocate;
+#if (PG_VERSION_NUM >= 140000)
+    return ngx_postgres_send_prepare(s);
+#else
     return NGX_AGAIN;
+#endif
 }
 
 
@@ -200,7 +226,11 @@ static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_save_t *s) {
     queue_insert_head(&s->prepare.queue, &prepare->queue);
     s->handler = ngx_postgres_result_deallocate_or_prepare_or_query;
     if (!send->state) send->state = state_prepare;
+#if (PG_VERSION_NUM >= 140000)
+    return ngx_postgres_send_query_prepared(s);
+#else
     return NGX_AGAIN;
+#endif
 }
 
 
@@ -210,6 +240,7 @@ static ngx_int_t ngx_postgres_result_deallocate_or_prepare_or_query(ngx_postgres
     ngx_postgres_data_t *d = c->data;
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
+//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "send->state = %i", send->state);
     switch (send->state) {
         case state_deallocate: return ngx_postgres_result_deallocate(s);
         case state_prepare: return ngx_postgres_result_prepare(s);
@@ -257,6 +288,9 @@ static ngx_int_t ngx_postgres_send_deallocate_or_prepare_or_query(ngx_postgres_s
     }
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
         switch (PQresultStatus(s->res)) {
+#if (PG_VERSION_NUM >= 140000)
+            case PGRES_PIPELINE_ABORTED:
+#endif
             case PGRES_FATAL_ERROR: if (d->catch) { PQclear(s->res); return ngx_postgres_error(s); } ngx_log_debug2(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); break;
             default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); break;
         }
@@ -276,6 +310,9 @@ static ngx_int_t ngx_postgres_send_deallocate_or_prepare_or_query(ngx_postgres_s
         ngx_add_timer(c->read, query->timeout);
         ngx_add_timer(c->write, query->timeout);
     }
+#if (PG_VERSION_NUM >= 140000)
+    if (send->hash && !PQenterPipelineMode(s->conn)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQenterPipelineMode and %s", PQerrorMessageMy(s->conn)); return NGX_ERROR; }
+#endif
     return send->hash ? ngx_postgres_send_prepare(s) : ngx_postgres_send_query(s);
 }
 
