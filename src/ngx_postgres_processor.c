@@ -3,7 +3,7 @@
 
 static ngx_int_t ngx_postgres_result_deallocate_or_prepare_or_query(ngx_postgres_save_t *s);
 static ngx_int_t ngx_postgres_send_deallocate_or_prepare_or_query(ngx_postgres_save_t *s);
-static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_save_t *s);
+static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_data_t *d);
 
 
 static ngx_int_t ngx_postgres_variable_error(ngx_postgres_save_t *s) {
@@ -130,12 +130,12 @@ static ngx_int_t ngx_postgres_result_prepare(ngx_postgres_data_t *d) {
 }
 
 
-static ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    ngx_connection_t *c = s->connection;
-    ngx_postgres_data_t *d = c->data;
+static ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
+    ngx_postgres_save_t *s = d->save;
     if (send->nParams || send->binary) {
         if (!PQsendQueryParams(s->conn, (const char *)send->sql.data, send->nParams, send->paramTypes, (const char *const *)send->paramValues, NULL, NULL, send->binary)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendQueryParams(\"%V\", %i) and %s", &send->sql, send->nParams, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
         ngx_log_debug2(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQueryParams(\"%V\", %i)", &send->sql, send->nParams);
@@ -166,7 +166,7 @@ static ngx_int_t ngx_postgres_result_deallocate(ngx_postgres_data_t *d) {
     return NGX_AGAIN;
 #else
     send->state = 0;
-    return ngx_postgres_send_prepare(s);
+    return ngx_postgres_send_prepare(d);
 #endif
 }
 
@@ -198,19 +198,19 @@ static ngx_int_t ngx_postgres_deallocate_prepare(ngx_postgres_save_t *s) {
     ngx_postgres_send_t *send = &sendelts[d->query];
     if (!send->state) send->state = state_deallocate;
 #if (PG_VERSION_NUM >= 140000)
-    return ngx_postgres_send_prepare(s);
+    return ngx_postgres_send_prepare(d);
 #else
     return NGX_AGAIN;
 #endif
 }
 
 
-static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    ngx_connection_t *c = s->connection;
-    ngx_postgres_data_t *d = c->data;
+static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
+    ngx_postgres_save_t *s = d->save;
     queue_each(&s->prepare.queue, q) {
         ngx_postgres_prepare_t *prepare = queue_data(q, typeof(*prepare), queue);
         if (prepare->hash == send->hash) return ngx_postgres_send_query_prepared(s);
@@ -219,7 +219,7 @@ static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_save_t *s) {
     if (usc && usc->prepare.deallocate && queue_size(&s->prepare.queue) >= usc->prepare.max) return ngx_postgres_deallocate_prepare(s);
     if (!PQsendPrepare(s->conn, (const char *)send->stmtName.data, (const char *)send->sql.data, send->nParams, send->paramTypes)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendPrepare(\"%V\", \"%V\") and %s", &send->stmtName, &send->sql, PQerrorMessageMy(s->conn)); return NGX_ERROR; }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendPrepare(\"%V\", \"%V\")", &send->stmtName, &send->sql);
-    ngx_postgres_prepare_t *prepare = ngx_pcalloc(c->pool, sizeof(*prepare));
+    ngx_postgres_prepare_t *prepare = ngx_pcalloc(s->connection->pool, sizeof(*prepare));
     if (!prepare) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     prepare->hash = send->hash;
     queue_insert_head(&s->prepare.queue, &prepare->queue);
@@ -311,7 +311,7 @@ static ngx_int_t ngx_postgres_send_deallocate_or_prepare_or_query(ngx_postgres_s
 #if (PG_VERSION_NUM >= 140000)
     if (send->hash && !PQenterPipelineMode(s->conn)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQenterPipelineMode and %s", PQerrorMessageMy(s->conn)); return NGX_ERROR; }
 #endif
-    return send->hash ? ngx_postgres_send_prepare(s) : ngx_postgres_send_query(s);
+    return send->hash ? ngx_postgres_send_prepare(d) : ngx_postgres_send_query(d);
 }
 
 
