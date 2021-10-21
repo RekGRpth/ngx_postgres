@@ -314,11 +314,9 @@ static ngx_int_t ngx_postgres_send_deallocate_or_prepare_or_query(ngx_postgres_s
 }
 
 
-ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    ngx_connection_t *c = s->connection;
-    ngx_postgres_data_t *d = c->data;
+ngx_int_t ngx_postgres_send(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (!r->headers_out.charset.data && ngx_postgres_charset(d) == NGX_ERROR) return NGX_ERROR;
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
@@ -328,6 +326,7 @@ ngx_int_t ngx_postgres_send(ngx_postgres_save_t *s) {
     ngx_memzero(d->send.elts, d->send.nelts * d->send.size);
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_uint_t nelts = 0;
+    ngx_postgres_save_t *s = d->save;
     for (ngx_uint_t i = 0; i < location->query.nelts; i++) {
         ngx_postgres_query_t *query = &queryelts[i];
         ngx_postgres_send_t *send = &sendelts[i];
@@ -437,7 +436,8 @@ ngx_int_t ngx_postgres_connect(ngx_postgres_save_t *s) {
 connected:
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    return ngx_postgres_send(s);
+    ngx_postgres_data_t *d = c->data;
+    return ngx_postgres_send(d);
 }
 
 
