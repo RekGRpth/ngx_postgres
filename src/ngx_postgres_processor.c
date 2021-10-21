@@ -36,16 +36,15 @@ static ngx_int_t ngx_postgres_error(ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_result_query(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    ngx_connection_t *c = s->connection;
-    ngx_postgres_data_t *d = c->data;
+static ngx_int_t ngx_postgres_result_query(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[d->query];
     ngx_int_t rc = NGX_OK;
     const char *value;
+    ngx_postgres_save_t *s = d->save;
     if (s->res) switch (PQresultStatus(s->res)) {
 #if (PG_VERSION_NUM >= 140000)
         case PGRES_PIPELINE_SYNC: return NGX_AGAIN;
@@ -111,14 +110,14 @@ static ngx_int_t ngx_postgres_send_query_prepared(ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_result_prepare(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
+static ngx_int_t ngx_postgres_result_prepare(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_postgres_save_t *s = d->save;
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); return NGX_OK;
         default: return ngx_postgres_error(s);
     }
-    ngx_connection_t *c = s->connection;
-    ngx_postgres_data_t *d = c->data;
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
 #if (PG_VERSION_NUM >= 140000)
@@ -152,14 +151,14 @@ static ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_result_deallocate(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
+static ngx_int_t ngx_postgres_result_deallocate(ngx_postgres_data_t *d) {
+    ngx_http_request_t *r = d->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_postgres_save_t *s = d->save;
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); return NGX_OK;
         default: return ngx_postgres_error(s);
     }
-    ngx_connection_t *c = s->connection;
-    ngx_postgres_data_t *d = c->data;
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
 #if (PG_VERSION_NUM >= 140000)
@@ -240,11 +239,10 @@ static ngx_int_t ngx_postgres_result_deallocate_or_prepare_or_query(ngx_postgres
     ngx_postgres_data_t *d = c->data;
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
-//    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "send->state = %i", send->state);
     switch (send->state) {
-        case state_deallocate: return ngx_postgres_result_deallocate(s);
-        case state_prepare: return ngx_postgres_result_prepare(s);
-        case state_query: return ngx_postgres_result_query(s);
+        case state_deallocate: return ngx_postgres_result_deallocate(d);
+        case state_prepare: return ngx_postgres_result_prepare(d);
+        case state_query: return ngx_postgres_result_query(d);
     }
     return NGX_ERROR;
 }
