@@ -64,9 +64,6 @@ typedef struct {
     } trace;
 } ngx_postgres_upstream_srv_conf_t;
 
-typedef struct ngx_postgres_save_t ngx_postgres_save_t;
-typedef ngx_int_t (*ngx_postgres_save_handler_pt) (ngx_postgres_save_t *s);
-
 typedef struct ngx_postgres_data_t ngx_postgres_data_t;
 typedef ngx_int_t (*ngx_postgres_data_handler_pt) (ngx_postgres_data_t *d);
 
@@ -113,10 +110,11 @@ typedef struct {
     u_char **paramValues;
 } ngx_postgres_send_t;
 
+typedef struct ngx_postgres_save_t ngx_postgres_save_t;
 typedef struct ngx_postgres_save_t {
     ngx_connection_t *connection;
     ngx_postgres_connect_t *connect;
-    ngx_postgres_save_handler_pt handler;
+    ngx_int_t (*handler) (ngx_postgres_save_t *s);
     ngx_postgres_upstream_srv_conf_t *usc;
     PGconn *conn;
     PGresult *res;
