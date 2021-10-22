@@ -65,7 +65,6 @@ typedef struct {
 } ngx_postgres_upstream_srv_conf_t;
 
 typedef struct ngx_postgres_data_t ngx_postgres_data_t;
-typedef ngx_int_t (*ngx_postgres_data_handler_pt) (ngx_postgres_data_t *d);
 
 typedef struct {
     ngx_array_t ids;
@@ -84,7 +83,7 @@ typedef struct {
         ngx_flag_t header;
         ngx_flag_t single;
         ngx_flag_t string;
-        ngx_postgres_data_handler_pt handler;
+        ngx_int_t (*handler) (ngx_postgres_data_t *d);
         ngx_str_t null;
         u_char delimiter;
         u_char escape;
@@ -196,7 +195,7 @@ typedef enum {
 typedef struct {
     int col;
     int row;
-    ngx_postgres_data_handler_pt handler;
+    ngx_int_t (*handler) (ngx_postgres_data_t *d);
     ngx_postgres_variable_type_t type;
     ngx_str_t name;
     ngx_uint_t index;
