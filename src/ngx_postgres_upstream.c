@@ -240,7 +240,14 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     switch (PQtransactionStatus(s->conn)) {
         case PQTRANS_UNKNOWN: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus == PQTRANS_UNKNOWN"); return;
         case PQTRANS_IDLE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus == PQTRANS_IDLE"); break;
-        default: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus != PQTRANS_IDLE"); if (!PQrequestCancel(s->conn)) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQrequestCancel and %s", PQerrorMessageMy(s->conn)); goto close; } break;
+        default: {
+            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
+            PGcancel *cancel = PQgetCancel(s->conn);
+            if (!cancel) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQgetCancel and %s", PQerrorMessageMy(s->conn)); goto close; }
+            char errbuf[256];
+            if (!PQcancel(cancel, errbuf, sizeof(errbuf))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQcancel and %s", errbuf); PQfreeCancel(cancel); goto close; }
+            PQfreeCancel(cancel);
+        } break;
     }
     if (c->requests >= usc->save.requests) { ngx_log_error(NGX_LOG_WARN, pc->log, 0, "requests = %i", c->requests); goto close; }
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
