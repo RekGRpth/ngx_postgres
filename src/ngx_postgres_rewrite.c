@@ -22,8 +22,7 @@ ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *d) {
 
 
 static ngx_int_t ngx_postgres_rewrite_changes(ngx_postgres_data_t *d, ngx_uint_t key, ngx_uint_t status) {
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, d->request->connection->log, 0, "%s", __func__);
     ngx_postgres_save_t *s = d->save;
     if (ngx_strncasecmp((u_char *)PQcmdStatus(s->res), (u_char *)"SELECT", sizeof("SELECT") - 1)) {
         char *affected = PQcmdTuples(s->res);
@@ -38,8 +37,7 @@ static ngx_int_t ngx_postgres_rewrite_changes(ngx_postgres_data_t *d, ngx_uint_t
 
 
 static ngx_int_t ngx_postgres_rewrite_rows(ngx_postgres_data_t *d, ngx_uint_t key, ngx_uint_t status) {
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, d->request->connection->log, 0, "%s", __func__);
     ngx_postgres_save_t *s = d->save;
     if (key % 2 == 0 && !PQntuples(s->res)) return status;
     if (key % 2 == 1 && PQntuples(s->res) > 0) return status;
