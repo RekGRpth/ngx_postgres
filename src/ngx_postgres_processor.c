@@ -32,7 +32,7 @@ static ngx_int_t ngx_postgres_error(ngx_postgres_data_t *d) {
     if ((value = PQcmdStatus(s->res)) && ngx_strlen(value)) { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQresultStatus == %s and %s and %s", PQresStatus(PQresultStatus(s->res)), value, PQresultErrorMessageMy(s->res)); }
     else { ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); }
     ngx_postgres_variable_error(d);
-    ngx_postgres_rewrite_set(s);
+    ngx_postgres_rewrite_set(d);
     return NGX_HTTP_INTERNAL_SERVER_ERROR;
 }
 
@@ -55,15 +55,15 @@ static ngx_int_t ngx_postgres_result_query(ngx_postgres_data_t *d) {
         case PGRES_COMMAND_OK:
         case PGRES_TUPLES_OK:
             if (rc == NGX_OK) {
-                rc = ngx_postgres_rewrite_set(s);
+                rc = ngx_postgres_rewrite_set(d);
                 if (rc < NGX_HTTP_SPECIAL_RESPONSE) rc = NGX_OK;
             }
-            if (rc == NGX_OK) rc = ngx_postgres_variable_set(s);
-            if (rc == NGX_OK) rc = ngx_postgres_variable_output(s);
+            if (rc == NGX_OK) rc = ngx_postgres_variable_set(d);
+            if (rc == NGX_OK) rc = ngx_postgres_variable_output(d);
             // fall through
         case PGRES_SINGLE_TUPLE:
             if (PQresultStatus(s->res) == PGRES_SINGLE_TUPLE) d->result.nsingle++;
-            if (rc == NGX_OK && query->output.handler) rc = query->output.handler(s); // fall through
+            if (rc == NGX_OK && query->output.handler) rc = query->output.handler(d); // fall through
         default:
             if ((value = PQcmdStatus(s->res)) && ngx_strlen(value)) { ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s and %s", PQresStatus(PQresultStatus(s->res)), value); }
             else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, PQresStatus(PQresultStatus(s->res))); }
@@ -234,9 +234,10 @@ static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_data_t *d) {
 
 
 static ngx_int_t ngx_postgres_result_deallocate_or_prepare_or_query(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
+    ngx_http_request_t *r = d->request;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
     switch (send->state) {
