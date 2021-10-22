@@ -426,15 +426,13 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_data_t *d, ngx_str_t
 
 
 ngx_int_t ngx_postgres_output_plain(ngx_postgres_data_t *d) {
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, d->request->connection->log, 0, "%s", __func__);
     return ngx_postgres_output_plain_csv(d, (ngx_str_t)ngx_string("text/plain"));
 }
 
 
 ngx_int_t ngx_postgres_output_csv(ngx_postgres_data_t *d) {
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, d->request->connection->log, 0, "%s", __func__);
     return ngx_postgres_output_plain_csv(d, (ngx_str_t)ngx_string("text/csv"));
 }
 

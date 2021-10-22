@@ -112,11 +112,10 @@ static ngx_int_t ngx_postgres_send_query_prepared(ngx_postgres_data_t *d) {
 
 
 static ngx_int_t ngx_postgres_result_prepare(ngx_postgres_data_t *d) {
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, d->request->connection->log, 0, "%s", __func__);
     ngx_postgres_save_t *s = d->save;
     if (s->res) switch (PQresultStatus(s->res)) {
-        case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); return NGX_OK;
+        case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, d->request->connection->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); return NGX_OK;
         default: return ngx_postgres_error(d);
     }
     ngx_postgres_send_t *sendelts = d->send.elts;
@@ -153,11 +152,10 @@ static ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *d) {
 
 
 static ngx_int_t ngx_postgres_result_deallocate(ngx_postgres_data_t *d) {
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, d->request->connection->log, 0, "%s", __func__);
     ngx_postgres_save_t *s = d->save;
     if (s->res) switch (PQresultStatus(s->res)) {
-        case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); return NGX_OK;
+        case PGRES_COMMAND_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, d->request->connection->log, 0, "PQresultStatus == PGRES_COMMAND_OK"); return NGX_OK;
         default: return ngx_postgres_error(d);
     }
     ngx_postgres_send_t *sendelts = d->send.elts;
@@ -236,8 +234,7 @@ static ngx_int_t ngx_postgres_send_prepare(ngx_postgres_data_t *d) {
 static ngx_int_t ngx_postgres_result_deallocate_or_prepare_or_query(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, d->request->connection->log, 0, "%s", __func__);
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
     switch (send->state) {
