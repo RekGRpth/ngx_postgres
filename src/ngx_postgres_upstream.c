@@ -69,7 +69,7 @@ error:
 static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     if (s->res) switch (PQresultStatus(s->res)) {
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
         case PGRES_PIPELINE_ABORTED:
 #endif
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); break;
@@ -137,7 +137,7 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *s) {
     s->connection->data = s;
     s->handler = ngx_postgres_listen;
     if (s->res) switch (PQresultStatus(s->res)) {
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
         case PGRES_PIPELINE_ABORTED:
 #endif
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); return NGX_ERROR;
@@ -537,7 +537,7 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("OIDVECTOROID"), OIDVECTOROID },
         { ngx_string("JSONOID"), JSONOID },
         { ngx_string("XMLOID"), XMLOID },
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
         { ngx_string("PG_NODE_TREEOID"), PG_NODE_TREEOID },
         { ngx_string("PG_NDISTINCTOID"), PG_NDISTINCTOID },
         { ngx_string("PG_DEPENDENCIESOID"), PG_DEPENDENCIESOID },
@@ -550,7 +550,7 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("PGMCVLISTOID"), PGMCVLISTOID },
         { ngx_string("PGDDLCOMMANDOID"), PGDDLCOMMANDOID },
 #endif
-#if (PG_VERSION_NUM >= 130000)
+#if PG_VERSION_NUM >= 130000
         { ngx_string("XID8OID"), XID8OID },
 #endif
         { ngx_string("POINTOID"), POINTOID },
@@ -563,7 +563,7 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("FLOAT8OID"), FLOAT8OID },
         { ngx_string("UNKNOWNOID"), UNKNOWNOID },
         { ngx_string("CIRCLEOID"), CIRCLEOID },
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
         { ngx_string("MONEYOID"), MONEYOID },
 #else
         { ngx_string("CASHOID"), CASHOID },
@@ -589,14 +589,14 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("REGOPEROID"), REGOPEROID },
         { ngx_string("REGOPERATOROID"), REGOPERATOROID },
         { ngx_string("REGCLASSOID"), REGCLASSOID },
-#if (PG_VERSION_NUM >= 130000)
+#if PG_VERSION_NUM >= 130000
         { ngx_string("REGCOLLATIONOID"), REGCOLLATIONOID },
 #endif
         { ngx_string("REGTYPEOID"), REGTYPEOID },
         { ngx_string("REGROLEOID"), REGROLEOID },
         { ngx_string("REGNAMESPACEOID"), REGNAMESPACEOID },
         { ngx_string("UUIDOID"), UUIDOID },
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
         { ngx_string("PG_LSNOID"), PG_LSNOID },
 #else
         { ngx_string("LSNOID"), LSNOID },
@@ -609,7 +609,7 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("JSONBOID"), JSONBOID },
         { ngx_string("JSONPATHOID"), JSONPATHOID },
         { ngx_string("TXID_SNAPSHOTOID"), TXID_SNAPSHOTOID },
-#if (PG_VERSION_NUM >= 130000)
+#if PG_VERSION_NUM >= 130000
         { ngx_string("PG_SNAPSHOTOID"), PG_SNAPSHOTOID },
 #endif
         { ngx_string("INT4RANGEOID"), INT4RANGEOID },
@@ -618,7 +618,7 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("TSTZRANGEOID"), TSTZRANGEOID },
         { ngx_string("DATERANGEOID"), DATERANGEOID },
         { ngx_string("INT8RANGEOID"), INT8RANGEOID },
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
         { ngx_string("INT4MULTIRANGEOID"), INT4MULTIRANGEOID },
         { ngx_string("NUMMULTIRANGEOID"), NUMMULTIRANGEOID },
         { ngx_string("TSMULTIRANGEOID"), TSMULTIRANGEOID },
@@ -633,14 +633,14 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("ANYARRAYOID"), ANYARRAYOID },
         { ngx_string("VOIDOID"), VOIDOID },
         { ngx_string("TRIGGEROID"), TRIGGEROID },
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
         { ngx_string("EVENT_TRIGGEROID"), EVENT_TRIGGEROID },
 #else
         { ngx_string("EVTTRIGGEROID"), EVTTRIGGEROID },
 #endif
         { ngx_string("LANGUAGE_HANDLEROID"), LANGUAGE_HANDLEROID },
         { ngx_string("INTERNALOID"), INTERNALOID },
-#if (PG_VERSION_NUM >= 130000)
+#if PG_VERSION_NUM >= 130000
 #else
         { ngx_string("OPAQUEOID"), OPAQUEOID },
 #endif
@@ -652,13 +652,13 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("TSM_HANDLEROID"), TSM_HANDLEROID },
         { ngx_string("TABLE_AM_HANDLEROID"), TABLE_AM_HANDLEROID },
         { ngx_string("ANYRANGEOID"), ANYRANGEOID },
-#if (PG_VERSION_NUM >= 130000)
+#if PG_VERSION_NUM >= 130000
         { ngx_string("ANYCOMPATIBLEOID"), ANYCOMPATIBLEOID },
         { ngx_string("ANYCOMPATIBLEARRAYOID"), ANYCOMPATIBLEARRAYOID },
         { ngx_string("ANYCOMPATIBLENONARRAYOID"), ANYCOMPATIBLENONARRAYOID },
         { ngx_string("ANYCOMPATIBLERANGEOID"), ANYCOMPATIBLERANGEOID },
 #endif
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
         { ngx_string("ANYMULTIRANGEOID"), ANYMULTIRANGEOID },
         { ngx_string("ANYCOMPATIBLEMULTIRANGEOID"), ANYCOMPATIBLEMULTIRANGEOID },
         { ngx_string("PG_BRIN_BLOOM_SUMMARYOID"), PG_BRIN_BLOOM_SUMMARYOID },
@@ -679,7 +679,7 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("XIDARRAYOID"), XIDARRAYOID },
         { ngx_string("CIDARRAYOID"), CIDARRAYOID },
         { ngx_string("OIDVECTORARRAYOID"), OIDVECTORARRAYOID },
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
         { ngx_string("PG_TYPEARRAYOID"), PG_TYPEARRAYOID },
         { ngx_string("PG_ATTRIBUTEARRAYOID"), PG_ATTRIBUTEARRAYOID },
         { ngx_string("PG_PROCARRAYOID"), PG_PROCARRAYOID },
@@ -687,7 +687,7 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
 #endif
         { ngx_string("JSONARRAYOID"), JSONARRAYOID },
         { ngx_string("XMLARRAYOID"), XMLARRAYOID },
-#if (PG_VERSION_NUM >= 130000)
+#if PG_VERSION_NUM >= 130000
         { ngx_string("XID8ARRAYOID"), XID8ARRAYOID },
 #endif
         { ngx_string("POINTARRAYOID"), POINTARRAYOID },
@@ -721,7 +721,7 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("REGOPERARRAYOID"), REGOPERARRAYOID },
         { ngx_string("REGOPERATORARRAYOID"), REGOPERATORARRAYOID },
         { ngx_string("REGCLASSARRAYOID"), REGCLASSARRAYOID },
-#if (PG_VERSION_NUM >= 130000)
+#if PG_VERSION_NUM >= 130000
         { ngx_string("REGCOLLATIONARRAYOID"), REGCOLLATIONARRAYOID },
 #endif
         { ngx_string("REGTYPEARRAYOID"), REGTYPEARRAYOID },
@@ -737,7 +737,7 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("JSONBARRAYOID"), JSONBARRAYOID },
         { ngx_string("JSONPATHARRAYOID"), JSONPATHARRAYOID },
         { ngx_string("TXID_SNAPSHOTARRAYOID"), TXID_SNAPSHOTARRAYOID },
-#if (PG_VERSION_NUM >= 130000)
+#if PG_VERSION_NUM >= 130000
         { ngx_string("PG_SNAPSHOTARRAYOID"), PG_SNAPSHOTARRAYOID },
 #endif
         { ngx_string("INT4RANGEARRAYOID"), INT4RANGEARRAYOID },
@@ -746,7 +746,7 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
         { ngx_string("TSTZRANGEARRAYOID"), TSTZRANGEARRAYOID },
         { ngx_string("DATERANGEARRAYOID"), DATERANGEARRAYOID },
         { ngx_string("INT8RANGEARRAYOID"), INT8RANGEARRAYOID },
-#if (PG_VERSION_NUM >= 140000)
+#if PG_VERSION_NUM >= 140000
         { ngx_string("INT4MULTIRANGEARRAYOID"), INT4MULTIRANGEARRAYOID },
         { ngx_string("NUMMULTIRANGEARRAYOID"), NUMMULTIRANGEARRAYOID },
         { ngx_string("TSMULTIRANGEARRAYOID"), TSMULTIRANGEARRAYOID },
