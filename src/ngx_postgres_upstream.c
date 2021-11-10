@@ -518,6 +518,8 @@ static ngx_flag_t is_variable_character(u_char p) {
 
 
 static ngx_uint_t type2oid(ngx_str_t *type) {
+    ngx_int_t n = ngx_atoi(type->data, type->len);
+    if (n != NGX_ERROR) return n <= 0 ? 0 : n;
     static const ngx_conf_enum_t e[] = {
         { ngx_string("IDOID"), IDOID },
         { ngx_string("BOOLOID"), BOOLOID },
