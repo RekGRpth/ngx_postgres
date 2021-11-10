@@ -69,7 +69,7 @@ error:
 static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     if (s->res) switch (PQresultStatus(s->res)) {
-#if PG_VERSION_NUM >= 140000
+#ifdef LIBPQ_HAS_PIPELINING
         case PGRES_PIPELINE_ABORTED:
 #endif
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); break;
@@ -137,7 +137,7 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *s) {
     s->connection->data = s;
     s->handler = ngx_postgres_listen;
     if (s->res) switch (PQresultStatus(s->res)) {
-#if PG_VERSION_NUM >= 140000
+#ifdef LIBPQ_HAS_PIPELINING
         case PGRES_PIPELINE_ABORTED:
 #endif
         case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessageMy(s->res)); return NGX_ERROR;
