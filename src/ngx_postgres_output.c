@@ -393,7 +393,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
         { ngx_null_string, 0 }
     };
     ngx_uint_t j;
-    for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
+    for (i = 2; i < cf->args->nelts; i++) {
         if (query->output.handler == ngx_postgres_output_plain || query->output.handler == ngx_postgres_output_csv) {
             if (args[i].len > sizeof("delimiter=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"delimiter=", sizeof("delimiter=") - 1)) {
                 args[i].len = args[i].len - (sizeof("delimiter=") - 1);

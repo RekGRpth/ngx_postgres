@@ -259,8 +259,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
 #endif
     if (queue_size(&usc->save.queue) >= usc->save.max) {
         queue_t *q = queue_last(&usc->save.queue);
-        ngx_postgres_save_t *s = queue_data(q, typeof(*s), queue);
-        ngx_postgres_save_close(s);
+        ngx_postgres_save_close(queue_data(q, typeof(*s), queue));
     }
     ngx_postgres_log_to_save(usc->save.log ? usc->save.log : ngx_cycle->log, s);
     s->connection->data = s;
@@ -425,8 +424,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "request.max = %i, request.size = %i", usc->request.max, queue_size(&usc->request.queue));
             if (queue_size(&usc->request.queue) < usc->request.max) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "d = %p", d);
-                ngx_http_request_t *r = d->request;
-                ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(r->pool, 0);
+                ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(d->request->pool, 0);
                 if (!cln) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
                 cln->handler = ngx_postgres_data_cleanup;
                 cln->data = d;
@@ -799,14 +797,14 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     }
 //    if (query->method) j++;
     ngx_str_t sql = ngx_null_string;
-    for (ngx_uint_t i = j; i < cf->args->nelts; i++) {
+    for (i = j; i < cf->args->nelts; i++) {
         if (i > j) sql.len++;
         sql.len += args[i].len;
     }
     if (!sql.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: empty query", &cmd->name); return NGX_CONF_ERROR; }
     if (!(sql.data = ngx_pnalloc(cf->pool, sql.len))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
     u_char *q = sql.data;
-    for (ngx_uint_t i = j; i < cf->args->nelts; i++) {
+    for (i = j; i < cf->args->nelts; i++) {
         if (i > j) *q++ = ' ';
         q = ngx_copy(q, args[i].data, args[i].len);
     }

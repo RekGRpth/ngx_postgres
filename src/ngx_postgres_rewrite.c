@@ -101,6 +101,6 @@ char *ngx_postgres_rewrite_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) 
         { ngx_string("TRACE"), NGX_HTTP_TRACE },
         { ngx_null_string, 0 }
     };
-    for (ngx_uint_t j = 1; j < cf->args->nelts - 2; j++) for (ngx_uint_t i = 0; b[i].name.len; i++) if (b[i].name.len == args[j].len && !ngx_strncasecmp(b[i].name.data, args[j].data, b[i].name.len)) rewrite->method |= b[i].mask;
+    for (ngx_uint_t j = 1; j < cf->args->nelts - 2; j++) for (i = 0; b[i].name.len; i++) if (b[i].name.len == args[j].len && !ngx_strncasecmp(b[i].name.data, args[j].data, b[i].name.len)) rewrite->method |= b[i].mask;
     return NGX_CONF_OK;
 }

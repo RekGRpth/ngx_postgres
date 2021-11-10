@@ -376,7 +376,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
         if (args[i].len > sizeof("timeout=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
             args[i].len = args[i].len - (sizeof("timeout=") - 1);
             args[i].data = &args[i].data[sizeof("timeout=") - 1];
-            ngx_int_t n = ngx_parse_time(&args[i], 0);
+            n = ngx_parse_time(&args[i], 0);
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             pusc->save.timeout = (ngx_msec_t)n;
@@ -385,7 +385,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
         if (args[i].len > sizeof("requests=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"requests=", sizeof("requests=") - 1)) {
             args[i].len = args[i].len - (sizeof("requests=") - 1);
             args[i].data = &args[i].data[sizeof("requests=") - 1];
-            ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
+            n = ngx_atoi(args[i].data, args[i].len);
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be number", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be positive", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             pusc->save.requests = (ngx_uint_t)n;
@@ -455,7 +455,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
         if (args[i].len > sizeof("timeout=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"timeout=", sizeof("timeout=") - 1)) {
             args[i].len = args[i].len - (sizeof("timeout=") - 1);
             args[i].data = &args[i].data[sizeof("timeout=") - 1];
-            ngx_int_t n = ngx_parse_time(&args[i], 0);
+            n = ngx_parse_time(&args[i], 0);
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             usc->request.timeout = (ngx_msec_t)n;
