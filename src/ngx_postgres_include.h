@@ -3,8 +3,6 @@
 
 #include <libpq-fe.h>
 #include <ngx_http.h>
-#undef OPENSSL_API_COMPAT
-#include <pg_config.h>
 #include "queue.h"
 #include "resty_dbd_stream.h"
 

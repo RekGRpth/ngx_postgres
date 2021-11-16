@@ -1,6 +1,9 @@
 #include "ngx_postgres_include.h"
 
 
+#define DEF_PGPORT 5432
+
+
 static ngx_int_t ngx_postgres_preconfiguration(ngx_conf_t *cf) {
     return ngx_postgres_variable_add(cf);
 }
