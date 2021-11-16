@@ -2,11 +2,11 @@
 #define _NGX_POSTGRES_INCLUDE_H_
 
 #include <avcall.h>
+#include <catalog/pg_type_d.h>
 #include <libpq-fe.h>
 #include <ngx_http.h>
 #undef OPENSSL_API_COMPAT
 #include <pg_config.h>
-#include <catalog/pg_type_d.h>
 #include "queue.h"
 #include "resty_dbd_stream.h"
 
