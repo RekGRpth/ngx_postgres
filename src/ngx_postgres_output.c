@@ -1,3 +1,4 @@
+#include <catalog/pg_type_d.h>
 #include "ngx_postgres_include.h"
 
 

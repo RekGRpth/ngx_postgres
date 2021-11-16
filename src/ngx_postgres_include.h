@@ -1,7 +1,6 @@
 #ifndef _NGX_POSTGRES_INCLUDE_H_
 #define _NGX_POSTGRES_INCLUDE_H_
 
-#include <catalog/pg_type_d.h>
 #include <libpq-fe.h>
 #include <ngx_http.h>
 #undef OPENSSL_API_COMPAT
