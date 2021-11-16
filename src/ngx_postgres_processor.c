@@ -390,31 +390,6 @@ ngx_int_t ngx_postgres_send(ngx_postgres_data_t *d) {
 }
 
 
-const char *ngx_postgres_status(PGconn *conn) {
-    switch (PQstatus(conn)) {
-        case CONNECTION_AUTH_OK: return "CONNECTION_AUTH_OK";
-        case CONNECTION_AWAITING_RESPONSE: return "CONNECTION_AWAITING_RESPONSE";
-        case CONNECTION_BAD: return "CONNECTION_BAD";
-#if PG_VERSION_NUM >= 140000
-        case CONNECTION_CHECK_STANDBY: return "CONNECTION_CHECK_STANDBY";
-#endif
-#if PG_VERSION_NUM >= 130000
-        case CONNECTION_CHECK_TARGET: return "CONNECTION_CHECK_TARGET";
-#endif
-        case CONNECTION_CHECK_WRITABLE: return "CONNECTION_CHECK_WRITABLE";
-        case CONNECTION_CONSUME: return "CONNECTION_CONSUME";
-        case CONNECTION_GSS_STARTUP: return "CONNECTION_GSS_STARTUP";
-        case CONNECTION_MADE: return "CONNECTION_MADE";
-        case CONNECTION_NEEDED: return "CONNECTION_NEEDED";
-        case CONNECTION_OK: return "CONNECTION_OK";
-        case CONNECTION_SETENV: return "CONNECTION_SETENV";
-        case CONNECTION_SSL_STARTUP: return "CONNECTION_SSL_STARTUP";
-        case CONNECTION_STARTED: return "CONNECTION_STARTED";
-    }
-    return "";
-}
-
-
 ngx_int_t ngx_postgres_connect(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
@@ -426,11 +401,11 @@ ngx_int_t ngx_postgres_connect(ngx_postgres_save_t *s) {
         default: break;
     }
     switch (PQconnectPoll(s->conn)) {
-        case PGRES_POLLING_ACTIVE: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_ACTIVE and %s", ngx_postgres_status(s->conn)); break;
-        case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PGRES_POLLING_FAILED and %s and %s", ngx_postgres_status(s->conn), PQerrorMessageMy(s->conn)); return NGX_ERROR;
-        case PGRES_POLLING_OK: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_OK and %s", ngx_postgres_status(s->conn)); goto connected;
-        case PGRES_POLLING_READING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_READING and %s", ngx_postgres_status(s->conn)); break;
-        case PGRES_POLLING_WRITING: ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_WRITING and %s", ngx_postgres_status(s->conn)); break;
+        case PGRES_POLLING_ACTIVE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_ACTIVE"); break;
+        case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "PGRES_POLLING_FAILED and %s", PQerrorMessageMy(s->conn)); return NGX_ERROR;
+        case PGRES_POLLING_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_OK"); goto connected;
+        case PGRES_POLLING_READING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_READING"); break;
+        case PGRES_POLLING_WRITING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_WRITING"); break;
     }
     return NGX_AGAIN;
 connected:
