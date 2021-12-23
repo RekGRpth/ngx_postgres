@@ -10,7 +10,7 @@ ngx_int_t ngx_postgres_busy(ngx_postgres_save_t *s) {
 
 ngx_int_t ngx_postgres_consume(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    if (!PQconsumeInput(s->conn)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQconsumeInput and %s", PQerrorMessageMy(s->conn)); return NGX_ERROR; }
+    if (!PQconsumeInput(s->conn)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQconsumeInput\n%s", PQerrorMessage(s->conn)); return NGX_ERROR; }
     return NGX_OK;
 }
 
@@ -20,7 +20,7 @@ ngx_int_t ngx_postgres_flush(ngx_postgres_save_t *s) {
     switch (PQflush(s->conn)) {
         case 0: break;
         case 1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQflush == 1"); return NGX_AGAIN;
-        case -1: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQflush == -1 and %s", PQerrorMessageMy(s->conn)); return NGX_ERROR;
+        case -1: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQflush == -1\n%s", PQerrorMessage(s->conn)); return NGX_ERROR;
     }
     return NGX_OK;
 }
