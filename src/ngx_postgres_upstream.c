@@ -339,6 +339,7 @@ found:
     PGconn *conn = PQconnectStartParams(connect->keywords, connect->values, 0);
     connect->values[0] = host;
     if (PQstatus(conn) == CONNECTION_BAD) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQstatus == CONNECTION_BAD\n%s", PQerrorMessage(conn)); goto declined; }
+    (void)PQsetErrorVerbosity(conn, usc->save.verbosity);
     if (PQsetnonblocking(conn, 1) == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQsetnonblocking == -1\n%s", PQerrorMessage(conn)); goto declined; }
     if (usc && usc->trace.log) PQtrace(conn, fdopen(usc->trace.log->file->fd, "a+"));
     pgsocket fd;

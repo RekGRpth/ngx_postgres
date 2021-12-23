@@ -511,6 +511,20 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
 
 static char *ngx_postgres_log_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_upstream_srv_conf_t *usc = conf;
+    ngx_str_t *args = cf->args->elts;
+    static const ngx_conf_enum_t e[] = {
+        { ngx_string("default"), PQERRORS_DEFAULT },
+        { ngx_string("sqlstate"), PQERRORS_SQLSTATE },
+        { ngx_string("terse"), PQERRORS_TERSE },
+        { ngx_string("verbose"), PQERRORS_VERBOSE },
+        { ngx_null_string, 0 }
+    };
+    usc->save.verbosity = PQERRORS_DEFAULT;
+    for (ngx_uint_t i = 3; i < cf->args->nelts; i++) {
+        ngx_uint_t j;
+        for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { usc->save.verbosity = e[j].value; cf->args->nelts--; break; }
+        if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"verbosity\" value \"%V\" must be \"default\", \"sqlstate\", \"terse\" or \"verbose\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
+    }
     return ngx_log_set_log(cf, &usc->save.log);
 }
 
