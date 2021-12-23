@@ -24,7 +24,7 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
             case NGX_DECLINED: ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_DECLINED"); {
                 ngx_str_t *command = ngx_array_push(&listen);
                 if (!command) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_array_push"); goto notify; }
-                if (!(escape = PQescapeIdentifier(s->conn, (const char *)id.data, id.len))) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQescapeIdentifier(%V)\n%s", &id, PQerrorMessage(s->conn)); goto notify; }
+                if (!(escape = PQescapeIdentifier(s->conn, (const char *)id.data, id.len))) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQescapeIdentifier(%V)", &id); goto notify; }
                 if (!(command->data = ngx_pnalloc(c->pool, command->len = sizeof("UNLISTEN ;") - 1 + ngx_strlen(escape)))) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_pnalloc"); goto escape; }
                 command->len = ngx_snprintf(command->data, command->len, "UNLISTEN %s;", escape) - command->data;
                 str.len += command->len;
@@ -49,7 +49,7 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
         ngx_pfree(c->pool, command[i].data);
     }
     str.data[str.len] = '\0';
-    if (!PQsendQuery(s->conn, (const char *)str.data)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendQuery(\"%V\")\n%s", &str, PQerrorMessage(s->conn)); goto error; }
+    if (!PQsendQuery(s->conn, (const char *)str.data)) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQuery(\"%V\")", &str); goto error; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%V\")", &str);
 ok:
     ngx_array_destroy(&listen);
@@ -73,8 +73,8 @@ static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *s) {
 #ifdef LIBPQ_HAS_PIPELINING
         case PGRES_PIPELINE_ABORTED:
 #endif
-        case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == %s\n%s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessage(s->res)); break;
-        default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == %s and %s\n%s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res), PQresultErrorMessageMy(s->res)); break;
+        case PGRES_FATAL_ERROR: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s", PQresStatus(PQresultStatus(s->res))); break;
+        default: ngx_postgres_log_error(NGX_LOG_WARN, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); break;
     }
     return NGX_OK;
 }
@@ -101,7 +101,7 @@ static ngx_int_t ngx_postgres_listen_result(ngx_postgres_save_t *s) {
     s->handler = ngx_postgres_listen_result;
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_TUPLES_OK: return ngx_postgres_listen_result_(s);
-        default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == %s and %s\n%s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res), PQresultErrorMessageMy(s->res)); return NGX_ERROR;
+        default: ngx_postgres_log_error(NGX_LOG_WARN, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); return NGX_ERROR;
     }
     ngx_postgres_close(s);
     return NGX_OK;
@@ -141,11 +141,11 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *s) {
 #ifdef LIBPQ_HAS_PIPELINING
         case PGRES_PIPELINE_ABORTED:
 #endif
-        case PGRES_FATAL_ERROR: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "PQresultStatus == %s\n%s", PQresStatus(PQresultStatus(s->res)), PQresultErrorMessage(s->res)); return NGX_ERROR;
-        default: ngx_log_debug3(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQresultStatus == %s and %s\n%s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res), PQresultErrorMessageMy(s->res)); return NGX_OK;
+        case PGRES_FATAL_ERROR: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s", PQresStatus(PQresultStatus(s->res))); return NGX_ERROR;
+        default: ngx_postgres_log_error(NGX_LOG_WARN, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); return NGX_OK;
     }
     static const char *command = "SELECT channel, concat_ws(' ', 'UNLISTEN', quote_ident(channel)) AS unlisten FROM pg_listening_channels() AS channel";
-    if (!PQsendQuery(s->conn, command)) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!PQsendQuery(\"%s\")\n%s", command, PQerrorMessage(s->conn)); return NGX_ERROR; }
+    if (!PQsendQuery(s->conn, command)) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQuery(\"%s\")", command); return NGX_ERROR; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%s\")", command);
     s->handler = ngx_postgres_listen_result;
     return NGX_OK;
@@ -244,7 +244,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
         default: {
             ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
             PGcancel *cancel = PQgetCancel(s->conn);
-            if (!cancel) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQgetCancel\n%s", PQerrorMessage(s->conn)); goto close; }
+            if (!cancel) { ngx_postgres_log_error(NGX_LOG_ERR, pc->log, 0, PQerrorMessageMy(s->conn), "!PQgetCancel"); goto close; }
             char errbuf[256];
             if (!PQcancel(cancel, errbuf, sizeof(errbuf))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQcancel and %s", errbuf); PQfreeCancel(cancel); goto close; }
             PQfreeCancel(cancel);
@@ -338,9 +338,9 @@ found:
     for (int i = 0; connect->keywords[i]; i++) ngx_log_debug3(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%i: %s = %s", i, connect->keywords[i], connect->values[i]);
     PGconn *conn = PQconnectStartParams(connect->keywords, connect->values, 0);
     connect->values[0] = host;
-    if (PQstatus(conn) == CONNECTION_BAD) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQstatus == CONNECTION_BAD\n%s", PQerrorMessage(conn)); goto declined; }
+    if (PQstatus(conn) == CONNECTION_BAD) { ngx_postgres_log_error(NGX_LOG_ERR, pc->log, 0, PQerrorMessageMy(conn), "PQstatus == CONNECTION_BAD"); goto declined; }
     (void)PQsetErrorVerbosity(conn, usc->save.verbosity);
-    if (PQsetnonblocking(conn, 1) == -1) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQsetnonblocking == -1\n%s", PQerrorMessage(conn)); goto declined; }
+    if (PQsetnonblocking(conn, 1) == -1) { ngx_postgres_log_error(NGX_LOG_ERR, pc->log, 0, PQerrorMessageMy(conn), "PQsetnonblocking == -1"); goto declined; }
     if (usc && usc->trace.log) PQtrace(conn, fdopen(usc->trace.log->file->fd, "a+"));
     pgsocket fd;
     if ((fd = PQsocket(conn)) == PGINVALID_SOCKET) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PQsocket == PGINVALID_SOCKET"); goto declined; }
@@ -366,7 +366,7 @@ found:
     ngx_flag_t connected = 0;
     switch (PQconnectPoll(conn)) {
         case PGRES_POLLING_ACTIVE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_ACTIVE"); break;
-        case PGRES_POLLING_FAILED: ngx_log_error(NGX_LOG_ERR, pc->log, 0, "PGRES_POLLING_FAILED\n%s", PQerrorMessage(conn)); goto destroy;
+        case PGRES_POLLING_FAILED: ngx_postgres_log_error(NGX_LOG_ERR, pc->log, 0, PQerrorMessageMy(conn), "PGRES_POLLING_FAILED"); goto destroy;
         case PGRES_POLLING_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_OK"); connected = 1; break;
         case PGRES_POLLING_READING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_READING"); break;
         case PGRES_POLLING_WRITING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_WRITING"); break;

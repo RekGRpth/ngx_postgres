@@ -6,6 +6,23 @@
 #include "queue.h"
 #include "resty_dbd_stream.h"
 
+typedef struct {
+    char *message;
+    ngx_log_handler_pt handler;
+    void *data;
+} ngx_postgres_log_t;
+
+#define ngx_postgres_log_error(level, log, err, msg, fmt, ...) do { \
+    ngx_postgres_log_t ngx_log_original = { \
+        .data = log->data, \
+        .handler = log->handler, \
+        .message = (msg), \
+    }; \
+    (log)->data = &ngx_log_original; \
+    (log)->handler = ngx_postgres_log_error_handler; \
+    ngx_log_error(level, log, err, fmt, ##__VA_ARGS__); \
+} while (0)
+
 #ifndef WIN32
 typedef int pgsocket;
 #define PGINVALID_SOCKET (-1)
@@ -236,6 +253,7 @@ ngx_int_t ngx_postgres_send(ngx_postgres_data_t *d);
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
 ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *d);
 ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *d);
+u_char *ngx_postgres_log_error_handler(ngx_log_t *log, u_char *buf, size_t len);
 void ngx_postgres_close(ngx_postgres_save_t *s);
 void ngx_postgres_data_handler(ngx_event_t *e);
 void ngx_postgres_save_handler(ngx_event_t *e);
