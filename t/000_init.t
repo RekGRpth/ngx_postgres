@@ -5,7 +5,7 @@ use Test::Nginx::Socket;
 
 repeat_each(1);
 
-plan tests => repeat_each() * 2 * blocks();
+plan tests => repeat_each() * 2 * blocks() - 3;
 
 our $http_config = <<'_EOC_';
     upstream database {
@@ -36,7 +36,6 @@ GET /init
 --- error_code: 200
 --- timeout: 10
 --- no_error_log
-[error]
 
 
 
@@ -112,7 +111,6 @@ GET /init
 --- error_code: 200
 --- timeout: 10
 --- no_error_log
-[error]
 
 
 
@@ -152,7 +150,6 @@ GET /init
 --- error_code: 200
 --- timeout: 10
 --- no_error_log
-[error]
 
 
 
