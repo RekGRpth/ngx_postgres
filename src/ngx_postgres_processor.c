@@ -287,7 +287,7 @@ static ngx_int_t ngx_postgres_send_deallocate_or_prepare_or_query(ngx_postgres_s
 #ifdef LIBPQ_HAS_PIPELINING
             case PGRES_PIPELINE_ABORTED:
 #endif
-            case PGRES_FATAL_ERROR: if (d->catch) { PQclear(s->res); return ngx_postgres_error(d); } ngx_postgres_log_error(NGX_LOG_WARN, r->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s\n%s", PQresStatus(PQresultStatus(s->res))); break;
+            case PGRES_FATAL_ERROR: if (d->catch) { PQclear(s->res); return ngx_postgres_error(d); } ngx_postgres_log_error(NGX_LOG_WARN, r->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s", PQresStatus(PQresultStatus(s->res))); break;
             default: ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); break;
         }
         PQclear(s->res);
