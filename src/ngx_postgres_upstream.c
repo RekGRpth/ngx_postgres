@@ -74,7 +74,7 @@ static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *s) {
         case PGRES_PIPELINE_ABORTED:
 #endif
         case PGRES_FATAL_ERROR: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s", PQresStatus(PQresultStatus(s->res))); break;
-        default: ngx_postgres_log_error(NGX_LOG_WARN, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); break;
+        default: ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); break;
     }
     return NGX_OK;
 }
@@ -101,7 +101,8 @@ static ngx_int_t ngx_postgres_listen_result(ngx_postgres_save_t *s) {
     s->handler = ngx_postgres_listen_result;
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_TUPLES_OK: return ngx_postgres_listen_result_(s);
-        default: ngx_postgres_log_error(NGX_LOG_WARN, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); return NGX_ERROR;
+        case PGRES_FATAL_ERROR: ngx_postgres_log_error(NGX_LOG_WARN, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); return NGX_ERROR;
+        default: ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); return NGX_ERROR;
     }
     ngx_postgres_close(s);
     return NGX_OK;
