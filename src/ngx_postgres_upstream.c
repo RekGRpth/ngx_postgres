@@ -143,7 +143,7 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *s) {
             case PGRES_PIPELINE_ABORTED:
 #endif
             case PGRES_FATAL_ERROR: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s", PQresStatus(PQresultStatus(s->res))); return NGX_ERROR;
-            default: ngx_postgres_log_error(NGX_LOG_WARN, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); return NGX_OK;
+            default: ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); break;
         }
         PQclear(s->res);
         switch (ngx_postgres_consume_flush_busy(s)) {
