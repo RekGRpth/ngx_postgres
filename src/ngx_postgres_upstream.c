@@ -2,6 +2,9 @@
 #include "ngx_postgres_include.h"
 
 
+static void ngx_postgres_save_handler(ngx_event_t *e);
+
+
 ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
@@ -172,7 +175,7 @@ static void ngx_postgres_save_close(ngx_postgres_save_t *s) {
 }
 
 
-void ngx_postgres_save_handler(ngx_event_t *e) {
+static void ngx_postgres_save_handler(ngx_event_t *e) {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, e->write ? "write" : "read");
     ngx_connection_t *c = e->data;
     c->log->connection = c->number;

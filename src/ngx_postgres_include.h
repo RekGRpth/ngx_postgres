@@ -256,7 +256,6 @@ ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *d);
 u_char *ngx_postgres_log_error_handler(ngx_log_t *log, u_char *buf, size_t len);
 void ngx_postgres_close(ngx_postgres_save_t *s);
 void ngx_postgres_data_handler(ngx_event_t *e);
-void ngx_postgres_save_handler(ngx_event_t *e);
 
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
 ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);
