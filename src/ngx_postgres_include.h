@@ -39,6 +39,7 @@ typedef struct {
     const char **values;
     ngx_msec_t timeout;
     ngx_url_t url;
+    PGVerbosity verbosity;
 } ngx_postgres_connect_t;
 
 typedef struct {
@@ -70,7 +71,6 @@ typedef struct {
         ngx_msec_t timeout;
         ngx_uint_t max;
         ngx_uint_t requests;
-        PGVerbosity verbosity;
         queue_t queue;
     } save;
     struct {

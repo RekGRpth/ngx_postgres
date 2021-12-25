@@ -351,7 +351,7 @@ found:
     PGconn *conn = PQconnectStartParams(connect->keywords, connect->values, 0);
     connect->values[0] = host;
     if (PQstatus(conn) == CONNECTION_BAD) { ngx_postgres_log_error(NGX_LOG_ERR, pc->log, 0, PQerrorMessageMy(conn), "PQstatus == CONNECTION_BAD"); goto declined; }
-    (void)PQsetErrorVerbosity(conn, usc->save.verbosity);
+    (void)PQsetErrorVerbosity(conn, connect->verbosity);
     if (PQsetnonblocking(conn, 1) == -1) { ngx_postgres_log_error(NGX_LOG_ERR, pc->log, 0, PQerrorMessageMy(conn), "PQsetnonblocking == -1"); goto declined; }
     if (usc && usc->trace.log) PQtrace(conn, fdopen(usc->trace.log->file->fd, "a+"));
     pgsocket fd;

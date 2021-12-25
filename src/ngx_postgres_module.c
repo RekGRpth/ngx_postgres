@@ -150,38 +150,54 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
 static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_postgres_connect_t *connect, ngx_http_upstream_server_t *us) {
     ngx_str_t *args = cf->args->elts;
     ngx_str_t conninfo = ngx_null_string;
+    static const ngx_conf_enum_t e[] = {
+        { ngx_string("default"), PQERRORS_DEFAULT },
+        { ngx_string("sqlstate"), PQERRORS_SQLSTATE },
+        { ngx_string("terse"), PQERRORS_TERSE },
+        { ngx_string("verbose"), PQERRORS_VERBOSE },
+        { ngx_null_string, 0 }
+    };
+    connect->verbosity = PQERRORS_DEFAULT;
     for (ngx_uint_t i = 1; i < cf->args->nelts; i++) {
         if (us) {
             if (args[i].len > sizeof("weight=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"weight=", sizeof("weight=") - 1)) {
-                args[i].len = args[i].len - (sizeof("weight=") - 1);
-                args[i].data = &args[i].data[sizeof("weight=") - 1];
-                ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
-                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be number", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
-                if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be positive", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
+                ngx_str_t str = {
+                    .len = args[i].len - (sizeof("weight=") - 1),
+                    .data = &args[i].data[sizeof("weight=") - 1],
+                };
+                ngx_int_t n = ngx_atoi(str.data, str.len);
+                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be number", &cmd->name, &str); return NGX_CONF_ERROR; }
+                if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"weight\" value \"%V\" must be positive", &cmd->name, &str); return NGX_CONF_ERROR; }
                 us->weight = (ngx_uint_t)n;
                 continue;
             }
             if (args[i].len > sizeof("max_conns=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"max_conns=", sizeof("max_conns=") - 1)) {
-                args[i].len = args[i].len - (sizeof("max_conns=") - 1);
-                args[i].data = &args[i].data[sizeof("max_conns=") - 1];
-                ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
-                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"max_conns\" value \"%V\" must be number", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
+                ngx_str_t str = {
+                    .len = args[i].len - (sizeof("max_conns=") - 1),
+                    .data = &args[i].data[sizeof("max_conns=") - 1],
+                };
+                ngx_int_t n = ngx_atoi(str.data, str.len);
+                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"max_conns\" value \"%V\" must be number", &cmd->name, &str); return NGX_CONF_ERROR; }
                 us->max_conns = (ngx_uint_t)n;
                 continue;
             }
             if (args[i].len > sizeof("max_fails=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"max_fails=", sizeof("max_fails=") - 1)) {
-                args[i].len = args[i].len - (sizeof("max_fails=") - 1);
-                args[i].data = &args[i].data[sizeof("max_fails=") - 1];
-                ngx_int_t n = ngx_atoi(args[i].data, args[i].len);
-                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"max_fails\" value \"%V\" must be number", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
+                ngx_str_t str = {
+                    .len = args[i].len - (sizeof("max_fails=") - 1),
+                    .data = &args[i].data[sizeof("max_fails=") - 1],
+                };
+                ngx_int_t n = ngx_atoi(str.data, str.len);
+                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"max_fails\" value \"%V\" must be number", &cmd->name, &str); return NGX_CONF_ERROR; }
                 us->max_fails = (ngx_uint_t)n;
                 continue;
             }
             if (args[i].len > sizeof("fail_timeout=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"fail_timeout=", sizeof("fail_timeout=") - 1)) {
-                args[i].len = args[i].len - (sizeof("fail_timeout=") - 1);
-                args[i].data = &args[i].data[sizeof("fail_timeout=") - 1];
-                ngx_int_t n = ngx_parse_time(&args[i], 1);
-                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"fail_timeout\" value \"%V\" must be time", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
+                ngx_str_t str = {
+                    .len = args[i].len - (sizeof("fail_timeout=") - 1),
+                    .data = &args[i].data[sizeof("fail_timeout=") - 1],
+                };
+                ngx_int_t n = ngx_parse_time(&str, 1);
+                if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"fail_timeout\" value \"%V\" must be time", &cmd->name, &str); return NGX_CONF_ERROR; }
                 us->fail_timeout = (time_t)n;
                 continue;
             }
@@ -201,6 +217,17 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
             }
 #endif
         }
+        if (args[i].len > sizeof("error_verbosity=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"error_verbosity=", sizeof("error_verbosity=") - 1)) {
+            ngx_str_t str = {
+                .len = args[i].len - (sizeof("error_verbosity=") - 1),
+                .data = &args[i].data[sizeof("error_verbosity=") - 1],
+            };
+            ngx_uint_t j;
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == str.len && !ngx_strncmp(e[j].name.data, str.data, str.len))  break;
+            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"error_verbosity\" value \"%V\" must be \"default\", \"sqlstate\", \"terse\" or \"verbose\"", &cmd->name, &str); return NGX_CONF_ERROR; }
+            connect->verbosity = e[j].value;
+            continue;
+        }
         if (i > 1) conninfo.len++;
         conninfo.len += args[i].len;
     }
@@ -218,6 +245,7 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
             if (args[i].len > sizeof("id=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"id=", sizeof("id=") - 1)) continue;
 #endif
         }
+        if (args[i].len > sizeof("error_verbosity=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"error_verbosity=", sizeof("error_verbosity=") - 1)) continue;
         if (i > 1) *p++ = ' ';
         p = ngx_copy(p, args[i].data, args[i].len);
     }
@@ -229,6 +257,7 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
         if (err && (len = ngx_strlen(err))) {
             err[len - 1] = '\0';
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: %s", &cmd->name, err);
+            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: %s", &cmd->name, conninfo.data);
             PQfreemem(err);
             return NGX_CONF_ERROR;
         }
@@ -511,20 +540,6 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
 
 static char *ngx_postgres_log_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_upstream_srv_conf_t *usc = conf;
-    ngx_str_t *args = cf->args->elts;
-    static const ngx_conf_enum_t e[] = {
-        { ngx_string("default"), PQERRORS_DEFAULT },
-        { ngx_string("sqlstate"), PQERRORS_SQLSTATE },
-        { ngx_string("terse"), PQERRORS_TERSE },
-        { ngx_string("verbose"), PQERRORS_VERBOSE },
-        { ngx_null_string, 0 }
-    };
-    usc->save.verbosity = PQERRORS_DEFAULT;
-    for (ngx_uint_t i = 3; i < cf->args->nelts; i++) {
-        ngx_uint_t j;
-        for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { usc->save.verbosity = e[j].value; cf->args->nelts--; break; }
-        if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"verbosity\" value \"%V\" must be \"default\", \"sqlstate\", \"terse\" or \"verbose\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
-    }
     return ngx_log_set_log(cf, &usc->save.log);
 }
 
