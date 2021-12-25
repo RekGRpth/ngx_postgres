@@ -38,11 +38,11 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
             default: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == %i", rc); goto notify;
         }
         PQfreemem(notify);
-        switch (ngx_postgres_consume_flush_busy(s)) {
+        /*switch (ngx_postgres_consume_flush_busy(s)) {
             case NGX_AGAIN: goto again;
             case NGX_ERROR: goto error;
             default: break;
-        }
+        }*/
     }
     if (!str.len) goto ok;
     if (!(str.data = ngx_pnalloc(c->pool, str.len + 1))) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_pnalloc"); goto error; }
@@ -57,9 +57,9 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
 ok:
     ngx_array_destroy(&listen);
     return NGX_OK;
-again:
-    ngx_array_destroy(&listen);
-    return NGX_AGAIN;
+//again:
+//    ngx_array_destroy(&listen);
+//    return NGX_AGAIN;
 escape:
     PQfreemem(escape);
 notify:
@@ -150,11 +150,11 @@ static ngx_int_t ngx_postgres_listen_send_handler(ngx_postgres_save_t *s) {
             default: ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); break;
         }
         PQclear(s->res);
-        switch (ngx_postgres_consume_flush_busy(s)) {
+        /*switch (ngx_postgres_consume_flush_busy(s)) {
             case NGX_AGAIN: return NGX_AGAIN;
             case NGX_ERROR: return NGX_ERROR;
             default: break;
-        }
+        }*/
     }
     static const char *command = "SELECT channel, concat_ws(' ', 'UNLISTEN', quote_ident(channel)) AS unlisten FROM pg_listening_channels() AS channel";
     if (!PQsendQuery(s->conn, command)) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQuery(\"%s\")", command); return NGX_ERROR; }
@@ -184,7 +184,7 @@ static void ngx_postgres_save_handler(ngx_event_t *e) {
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "read timedout"); c->read->timedout = 0; goto close; }
     if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "write timedout"); c->write->timedout = 0; goto close; }
     ngx_int_t rc = NGX_OK;
-    if (rc == NGX_OK) rc = ngx_postgres_consume_flush_busy(s);
+//    if (rc == NGX_OK) rc = ngx_postgres_consume_flush_busy(s);
     if (rc == NGX_OK) rc = ngx_postgres_notify(s);
 //    if (rc == NGX_OK) rc = ngx_postgres_result(s);
     if (rc != NGX_ERROR) return;
