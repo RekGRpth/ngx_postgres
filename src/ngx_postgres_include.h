@@ -128,7 +128,7 @@ typedef struct ngx_postgres_data_t {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_event_t timeout;
 #endif
-    ngx_flag_t catch;
+//    ngx_flag_t catch;
     ngx_http_request_t *request;
     ngx_postgres_save_t *save;
     ngx_uint_t query;

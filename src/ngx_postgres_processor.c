@@ -126,7 +126,7 @@ static ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s) {
         if (!c->read->timer_set) ngx_add_timer(c->read, location->timeout);
         if (!c->write->timer_set) ngx_add_timer(c->write, location->timeout);
     }
-    while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
+    /*while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
         switch (PQresultStatus(s->res)) {
 //#ifdef LIBPQ_HAS_PIPELINING
 //            case PGRES_PIPELINE_ABORTED:
@@ -141,7 +141,7 @@ static ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s) {
             default: break;
         }
     }
-    d->catch = 1;
+    d->catch = 1;*/
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
     ngx_postgres_query_t *query = send->query;
