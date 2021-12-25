@@ -178,11 +178,11 @@ static void ngx_postgres_log_to_data(ngx_log_t *log, ngx_postgres_save_t *s) {
     c->idle = 0;
     c->log = log;
     c->pool->log = log;
-    c->read->handler = ngx_postgres_read_and_write_event_handler;
+    c->read->handler = ngx_postgres_data_read_and_write_event_handler;
     c->read->log = log;
     c->read->timedout = 0;
     c->sent = 0;
-    c->write->handler = ngx_postgres_read_and_write_event_handler;
+    c->write->handler = ngx_postgres_data_read_and_write_event_handler;
     c->write->log = log;
     c->write->timedout = 0;
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
