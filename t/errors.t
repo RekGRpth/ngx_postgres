@@ -77,7 +77,8 @@ GET /postgres
 --- config
     location /postgres {
         postgres_pass       database;
-        postgres_query      "select * from cats; select * from cats";
+        postgres_query      "select * from cats";
+        postgres_query      "select * from cats";
     }
 --- request
 GET /postgres

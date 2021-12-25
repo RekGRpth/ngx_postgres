@@ -96,13 +96,8 @@ static ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *d) {
     ngx_postgres_send_t *sendelts = d->send.elts;
     ngx_postgres_send_t *send = &sendelts[d->query];
     ngx_postgres_save_t *s = d->save;
-    if (send->nParams || send->binary) {
-        if (!PQsendQueryParams(s->conn, (const char *)send->sql.data, send->nParams, send->paramTypes, (const char *const *)send->paramValues, NULL, NULL, send->binary)) { ngx_postgres_log_error(NGX_LOG_ERR, r->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQueryParams(\"%V\", %i)", &send->sql, send->nParams); return NGX_ERROR; }
-        ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQueryParams(\"%V\", %i)", &send->sql, send->nParams);
-    } else {
-        if (!PQsendQuery(s->conn, (const char *)send->sql.data)) { ngx_postgres_log_error(NGX_LOG_ERR, r->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQuery(\"%V\")", &send->sql); return NGX_ERROR; }
-        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQuery(\"%V\")", &send->sql);
-    }
+    if (!PQsendQueryParams(s->conn, (const char *)send->sql.data, send->nParams, send->paramTypes, (const char *const *)send->paramValues, NULL, NULL, send->binary)) { ngx_postgres_log_error(NGX_LOG_ERR, r->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQueryParams(\"%V\", %i)", &send->sql, send->nParams); return NGX_ERROR; }
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQueryParams(\"%V\", %i)", &send->sql, send->nParams);
     ngx_postgres_query_t *query = send->query;
     if (query->output.handler == ngx_postgres_output_plain || query->output.handler == ngx_postgres_output_csv) if (query->output.single && !PQsetSingleRowMode(s->conn)) ngx_postgres_log_error(NGX_LOG_WARN, r->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsetSingleRowMode");
     s->handler = ngx_postgres_result_query_handler;
