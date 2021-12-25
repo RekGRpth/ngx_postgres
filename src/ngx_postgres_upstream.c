@@ -73,9 +73,9 @@ error:
 static ngx_int_t ngx_postgres_idle(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     if (s->res) switch (PQresultStatus(s->res)) {
-#ifdef LIBPQ_HAS_PIPELINING
-        case PGRES_PIPELINE_ABORTED:
-#endif
+//#ifdef LIBPQ_HAS_PIPELINING
+//        case PGRES_PIPELINE_ABORTED:
+//#endif
         case PGRES_FATAL_ERROR: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s", PQresStatus(PQresultStatus(s->res))); break;
         default: ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); break;
     }
@@ -143,9 +143,9 @@ static ngx_int_t ngx_postgres_listen(ngx_postgres_save_t *s) {
     s->handler = ngx_postgres_listen;
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
         switch (PQresultStatus(s->res)) {
-#ifdef LIBPQ_HAS_PIPELINING
-            case PGRES_PIPELINE_ABORTED:
-#endif
+//#ifdef LIBPQ_HAS_PIPELINING
+//            case PGRES_PIPELINE_ABORTED:
+//#endif
             case PGRES_FATAL_ERROR: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s", PQresStatus(PQresultStatus(s->res))); return NGX_ERROR;
             default: ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); break;
         }
@@ -384,7 +384,6 @@ found:
         case PGRES_POLLING_WRITING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PGRES_POLLING_WRITING"); break;
     }
     if (!(s = d->save = ngx_pcalloc(c->pool, sizeof(*s)))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pcalloc"); goto destroy; }
-    queue_init(&s->prepare.queue);
     s->conn = conn;
     s->connect = connect;
     s->connection = c;
@@ -917,12 +916,6 @@ char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     }
     ngx_pfree(cf->pool, sql.data);
     query->sql.len = p - query->sql.data;
-    if (location->prepare || query->prepare) {
-        if (!(query->stmtName.data = ngx_pnalloc(cf->pool, 31 + 1))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pnalloc", &cmd->name); return NGX_CONF_ERROR; }
-        u_char *last = ngx_snprintf(query->stmtName.data, 31, "ngx_%ul", (unsigned long)(query->hash = ngx_hash_key(query->sql.data, query->sql.len)));
-        *last = '\0';
-        query->stmtName.len = last - query->stmtName.data;
-    }
 //    ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "sql = `%V`", &query->sql);
     return NGX_CONF_OK;
 }

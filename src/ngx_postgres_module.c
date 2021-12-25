@@ -429,36 +429,6 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
 }
 
 
-static char *ngx_postgres_prepare_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_upstream_srv_conf_t *usc = conf;
-    if (!usc->save.max) return "works only with \"postgres_keepalive\"";
-    if (usc->prepare.max) return "duplicate";
-    ngx_str_t *args = cf->args->elts;
-    ngx_int_t n = ngx_atoi(args[1].data, args[1].len);
-    if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be number", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
-    if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
-    usc->prepare.max = (ngx_uint_t)n;
-    for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
-        if (args[i].len > sizeof("overflow=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
-            args[i].len = args[i].len - (sizeof("overflow=") - 1);
-            args[i].data = &args[i].data[sizeof("overflow=") - 1];
-            static const ngx_conf_enum_t e[] = {
-                { ngx_string("ignore"), 0 },
-                { ngx_string("deallocate"), 1 },
-                { ngx_null_string, 0 }
-            };
-            ngx_uint_t j;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { usc->prepare.deallocate = e[j].value; break; }
-            if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"deallocate\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
-            continue;
-        }
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &args[i]);
-        return NGX_CONF_ERROR;
-    }
-    return NGX_CONF_OK;
-}
-
-
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_upstream_srv_conf_t *usc = conf;
@@ -565,32 +535,6 @@ static char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void 
 }
 
 
-static char *ngx_postgres_prepare_conf_(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_location_t *location = conf;
-    ngx_postgres_query_t *queryelts = location->query.elts;
-    ngx_postgres_query_t *query = location->query.nelts ? &queryelts[location->query.nelts - 1] : NULL;
-    ngx_str_t *args = cf->args->elts;
-    static const ngx_conf_enum_t e[] = {
-        { ngx_string("off"), 0 },
-        { ngx_string("no"), 0 },
-        { ngx_string("false"), 0 },
-        { ngx_string("on"), 1 },
-        { ngx_string("yes"), 1 },
-        { ngx_string("true"), 1 },
-        { ngx_null_string, 0 }
-    };
-    ngx_flag_t prepare;
-    ngx_uint_t j;
-    for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[1].len && !ngx_strncmp(e[j].name.data, args[1].data, args[1].len)) { prepare = e[j].value; break; }
-    if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"prepare\" value \"%V\" must be \"off\", \"no\", \"false\", \"on\", \"yes\" or \"true\"", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
-    if (!query) location->prepare = prepare;
-    else if (location->prepare) return "duplicate";
-    else if (query->prepare) return "duplicate";
-    else query->prepare = prepare;
-    return NGX_CONF_OK;
-}
-
-
 static ngx_conf_bitmask_t ngx_postgres_next_upstream_masks[] = {
     { ngx_string("error"), NGX_HTTP_UPSTREAM_FT_ERROR },
     { ngx_string("timeout"), NGX_HTTP_UPSTREAM_FT_TIMEOUT },
@@ -644,12 +588,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
-  { .name = ngx_string("postgres_prepare"),
-    .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12,
-    .set = ngx_postgres_prepare_conf,
-    .conf = NGX_HTTP_SRV_CONF_OFFSET,
-    .offset = 0,
-    .post = NULL },
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
   { .name = ngx_string("postgres_queue"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12|NGX_CONF_TAKE3,
@@ -680,12 +618,6 @@ static ngx_command_t ngx_postgres_commands[] = {
   { .name = ngx_string("postgres_pass"),
     .type = NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_1MORE,
     .set = ngx_postgres_pass_conf,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = 0,
-    .post = NULL },
-  { .name = ngx_string("postgres_prepare"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE1,
-    .set = ngx_postgres_prepare_conf_,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,
     .post = NULL },

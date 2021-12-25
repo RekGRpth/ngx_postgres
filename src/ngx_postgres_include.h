@@ -53,10 +53,6 @@ typedef struct {
         ngx_http_upstream_init_peer_pt init;
         ngx_http_upstream_init_pt init_upstream;
     } peer;
-    struct {
-        ngx_flag_t deallocate;
-        ngx_uint_t max;
-    } prepare;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     struct {
         ngx_flag_t reject;
@@ -85,11 +81,8 @@ typedef struct {
     ngx_array_t params;
     ngx_array_t rewrite;
     ngx_array_t variable;
-    ngx_flag_t prepare;
     ngx_msec_t timeout;
     ngx_str_t sql;
-    ngx_str_t stmtName;
-    ngx_uint_t hash;
     ngx_uint_t method;
     ngx_uint_t percent;
     struct {
@@ -105,19 +98,10 @@ typedef struct {
     } output;
 } ngx_postgres_query_t;
 
-typedef enum {
-    state_deallocate = 1,
-    state_prepare,
-    state_query,
-} ngx_postgres_state_t;
-
 typedef struct {
     ngx_flag_t binary;
     ngx_postgres_query_t *query;
-    ngx_postgres_state_t state;
     ngx_str_t sql;
-    ngx_str_t stmtName;
-    ngx_uint_t hash;
     ngx_uint_t nParams;
     Oid *paramTypes;
     u_char **paramValues;
@@ -136,9 +120,6 @@ typedef struct ngx_postgres_save_t {
         socklen_t socklen;
         struct sockaddr *sockaddr;
     } peer;
-    struct {
-        queue_t queue;
-    } prepare;
 } ngx_postgres_save_t;
 
 typedef struct ngx_postgres_data_t {
@@ -178,7 +159,6 @@ typedef struct ngx_postgres_data_t {
 
 typedef struct {
     ngx_array_t query;
-    ngx_flag_t prepare;
     ngx_http_complex_value_t complex;
     ngx_http_upstream_conf_t upstream;
     ngx_msec_t timeout;
@@ -215,11 +195,6 @@ typedef struct {
     ngx_uint_t required;
     u_char *field;
 } ngx_postgres_variable_t;
-
-typedef struct {
-    ngx_uint_t hash;
-    queue_t queue;
-} ngx_postgres_prepare_t;
 
 typedef struct {
     ngx_uint_t index;
