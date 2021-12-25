@@ -2,7 +2,7 @@
 #include "ngx_postgres_include.h"
 
 
-static void ngx_postgres_save_handler(ngx_event_t *e);
+static void ngx_postgres_save_read_and_write_event_handler(ngx_event_t *e);
 
 
 ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
@@ -107,11 +107,11 @@ static void ngx_postgres_log_to_save(ngx_log_t *log, ngx_postgres_save_t *s) {
     c->idle = 1;
     c->log = log;
     c->pool->log = log;
-    c->read->handler = ngx_postgres_save_handler;
+    c->read->handler = ngx_postgres_save_read_and_write_event_handler;
     c->read->log = log;
     c->read->timedout = 0;
     c->sent = 0;
-    c->write->handler = ngx_postgres_save_handler;
+    c->write->handler = ngx_postgres_save_read_and_write_event_handler;
     c->write->log = log;
     c->write->timedout = 0;
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
@@ -156,7 +156,7 @@ static void ngx_postgres_save_close(ngx_postgres_save_t *s) {
 }
 
 
-static void ngx_postgres_save_handler(ngx_event_t *e) {
+static void ngx_postgres_save_read_and_write_event_handler(ngx_event_t *e) {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, e->write ? "write" : "read");
     ngx_connection_t *c = e->data;
     c->log->connection = c->number;
