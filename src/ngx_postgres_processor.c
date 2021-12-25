@@ -254,7 +254,7 @@ ngx_int_t ngx_postgres_send(ngx_postgres_data_t *d) {
 }
 
 
-ngx_int_t ngx_postgres_connect(ngx_postgres_save_t *s) {
+ngx_int_t ngx_postgres_connect_handler(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
