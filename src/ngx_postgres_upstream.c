@@ -186,7 +186,7 @@ static void ngx_postgres_save_handler(ngx_event_t *e) {
     ngx_int_t rc = NGX_OK;
     if (rc == NGX_OK) rc = ngx_postgres_consume_flush_busy(s);
     if (rc == NGX_OK) rc = ngx_postgres_notify(s);
-    if (rc == NGX_OK) rc = ngx_postgres_result(s);
+//    if (rc == NGX_OK) rc = ngx_postgres_result(s);
     if (rc != NGX_ERROR) return;
 close:
     ngx_postgres_save_close(s);
