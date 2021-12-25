@@ -166,6 +166,12 @@ static void ngx_postgres_save_read_and_write_event_handler(ngx_event_t *e) {
     if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "write timedout"); c->write->timedout = 0; goto close; }
     ngx_int_t rc = NGX_OK;
     if (rc == NGX_OK) rc = ngx_postgres_notify(s);
+    while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
+        if (rc == NGX_OK) rc = s->handler(s);
+        PQclear(s->res);
+    }
+    s->res = NULL;
+    if (rc == NGX_OK) rc = s->handler(s);
     if (rc != NGX_ERROR) return;
 close:
     ngx_postgres_save_close(s);
