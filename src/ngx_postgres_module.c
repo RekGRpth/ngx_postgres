@@ -257,7 +257,6 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
         if (err && (len = ngx_strlen(err))) {
             err[len - 1] = '\0';
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: %s", &cmd->name, err);
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: %s", &cmd->name, conninfo.data);
             PQfreemem(err);
             return NGX_CONF_ERROR;
         }
