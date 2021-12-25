@@ -90,7 +90,7 @@ static ngx_int_t ngx_postgres_result_query(ngx_postgres_data_t *d) {
 }
 
 
-static ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *d) {
+static ngx_int_t ngx_postgres_send_query_(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_send_t *sendelts = d->send.elts;
@@ -176,11 +176,11 @@ static ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s) {
 //#ifdef LIBPQ_HAS_PIPELINING
 //    if (send->hash && !PQenterPipelineMode(s->conn)) { ngx_postgres_log_error(NGX_LOG_ERR, r->connection->log, 0, PQerrorMessageMy(s->conn), "!PQenterPipelineMode"); return NGX_ERROR; }
 //#endif
-    return ngx_postgres_send_query(d);
+    return ngx_postgres_send_query_(d);
 }
 
 
-ngx_int_t ngx_postgres_send(ngx_postgres_data_t *d) {
+ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     if (!r->headers_out.charset.data && ngx_postgres_charset(d) == NGX_ERROR) return NGX_ERROR;
@@ -275,7 +275,7 @@ ngx_int_t ngx_postgres_connect_handler(ngx_postgres_save_t *s) {
 connected:
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    return ngx_postgres_send(d);
+    return ngx_postgres_send_query(d);
 }
 
 
