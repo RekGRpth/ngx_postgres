@@ -1,7 +1,6 @@
 #include <avcall.h>
 #include "ngx_postgres_include.h"
 
-static ngx_int_t ngx_postgres_result_query_handler(ngx_postgres_save_t *s);
 static ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s);
 
 
