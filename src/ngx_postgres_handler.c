@@ -54,7 +54,7 @@ ngx_int_t ngx_postgres_result(ngx_postgres_save_t *s) {
 }
 
 
-void ngx_postgres_data_handler(ngx_event_t *e) {
+void ngx_postgres_read_and_write_event_handler(ngx_event_t *e) {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, e->write ? "write" : "read");
     ngx_connection_t *c = e->data;
     ngx_postgres_data_t *d = c->data;
@@ -107,8 +107,8 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
     ngx_postgres_save_t *s = d->save;
     ngx_connection_t *c = s->connection;
     c->data = d;
-    c->read->handler = ngx_postgres_data_handler;
-    c->write->handler = ngx_postgres_data_handler;
+    c->read->handler = ngx_postgres_read_and_write_event_handler;
+    c->write->handler = ngx_postgres_read_and_write_event_handler;
     r->state = 0;
     return NGX_OK;
 }
