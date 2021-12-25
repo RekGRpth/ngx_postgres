@@ -1,59 +1,6 @@
 #include "ngx_postgres_include.h"
 
 
-/*ngx_int_t ngx_postgres_busy(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    if (PQisBusy(s->conn)) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
-    return NGX_OK;
-}*/
-
-
-/*ngx_int_t ngx_postgres_consume(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    if (!PQconsumeInput(s->conn)) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQconsumeInput"); return NGX_ERROR; }
-    return NGX_OK;
-}*/
-
-
-/*ngx_int_t ngx_postgres_flush(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    switch (PQflush(s->conn)) {
-        case 0: break;
-        case 1: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQflush == 1"); return NGX_AGAIN;
-        case -1: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "PQflush == -1"); return NGX_ERROR;
-    }
-    return NGX_OK;
-}*/
-
-
-/*ngx_int_t ngx_postgres_consume_flush_busy(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    ngx_int_t rc = NGX_OK;
-    if ((rc = ngx_postgres_consume(s)) != NGX_OK) return rc;
-    if ((rc = ngx_postgres_flush(s)) != NGX_OK) return rc;
-    if ((rc = ngx_postgres_busy(s)) != NGX_OK) return rc;
-    return rc;
-}*/
-
-
-/*ngx_int_t ngx_postgres_result(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    ngx_int_t rc = NGX_OK;
-    while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
-        if (rc == NGX_OK) rc = s->handler(s);
-        PQclear(s->res);
-        if (rc == NGX_OK) switch (ngx_postgres_consume_flush_busy(s)) {
-            case NGX_AGAIN: return NGX_AGAIN;
-            case NGX_ERROR: return NGX_ERROR;
-            default: break;
-        }
-    }
-    s->res = NULL;
-    if (rc == NGX_OK) rc = s->handler(s);
-    return rc;
-}*/
-
-
 void ngx_postgres_read_and_write_event_handler(ngx_event_t *e) {
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, e->write ? "write" : "read");
     ngx_connection_t *c = e->data;
@@ -66,19 +13,9 @@ void ngx_postgres_read_and_write_event_handler(ngx_event_t *e) {
     if (c->write->timedout) { c->write->timedout = 0; PQstatus(s->conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); goto run; }
     if (ngx_http_upstream_test_connect(c) != NGX_OK) { ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); goto run; }
     ngx_int_t rc = NGX_OK;
-    /*if (PQstatus(s->conn) != CONNECTION_OK) rc = s->handler(s); else {
-        if (rc == NGX_OK) rc = ngx_postgres_consume_flush_busy(s);
-        if (rc == NGX_OK) rc = ngx_postgres_notify(s);
-        if (rc == NGX_OK) rc = ngx_postgres_result(s);
-    }*/
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
         if (rc == NGX_OK) rc = s->handler(s);
         PQclear(s->res);
-        /*if (rc == NGX_OK) switch (ngx_postgres_consume_flush_busy(s)) {
-            case NGX_AGAIN: return NGX_AGAIN;
-            case NGX_ERROR: return NGX_ERROR;
-            default: break;
-        }*/
     }
     s->res = NULL;
     if (rc == NGX_OK) rc = s->handler(s);

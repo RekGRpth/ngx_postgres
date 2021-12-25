@@ -128,7 +128,6 @@ typedef struct ngx_postgres_data_t {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_event_t timeout;
 #endif
-//    ngx_flag_t catch;
     ngx_http_request_t *request;
     ngx_postgres_save_t *save;
     ngx_uint_t query;
@@ -209,11 +208,7 @@ char *PQerrorMessageMy(const PGconn *conn);
 char *PQresultErrorMessageMy(const PGresult *res);
 extern ngx_int_t ngx_http_push_stream_add_msg_to_channel_my(ngx_log_t *log, ngx_str_t *id, ngx_str_t *text, ngx_str_t *event_id, ngx_str_t *event_type, ngx_flag_t store_messages, ngx_pool_t *temp_pool) __attribute__((weak));
 extern ngx_int_t ngx_http_push_stream_delete_channel_my(ngx_log_t *log, ngx_str_t *id, u_char *text, size_t len, ngx_pool_t *temp_pool) __attribute__((weak));
-//ngx_int_t ngx_postgres_busy(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_connect_handler(ngx_postgres_save_t *s);
-//ngx_int_t ngx_postgres_consume_flush_busy(ngx_postgres_save_t *s);
-//ngx_int_t ngx_postgres_consume(ngx_postgres_save_t *s);
-//ngx_int_t ngx_postgres_flush(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_output_csv_handler(ngx_postgres_data_t *d);
@@ -222,7 +217,6 @@ ngx_int_t ngx_postgres_output_plain_handler(ngx_postgres_data_t *d);
 ngx_int_t ngx_postgres_output_value_handler(ngx_postgres_data_t *d);
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *usc);
-//ngx_int_t ngx_postgres_result(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *d);
 ngx_int_t ngx_postgres_send_all_queries(ngx_postgres_data_t *d);
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
