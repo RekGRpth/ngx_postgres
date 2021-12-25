@@ -346,8 +346,8 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
             { ngx_string("nfields"), type_nfields, NULL },
             { ngx_string("cmdTuples"), type_cmdTuples, NULL },
             { ngx_string("cmdStatus"), type_cmdStatus, NULL },
-            { ngx_string("value"), 0, ngx_postgres_output_value },
-            { ngx_string("json"), 0, ngx_postgres_output_json },
+            { ngx_string("value"), 0, ngx_postgres_output_value_handler },
+            { ngx_string("json"), 0, ngx_postgres_output_json_handler },
             { ngx_null_string, 0, NULL }
         };
         ngx_uint_t i;
