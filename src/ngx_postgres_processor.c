@@ -155,10 +155,11 @@ static ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s) {
 }
 
 
-ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *d) {
+ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
+    ngx_connection_t *c = s->connection;
+    ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_save_t *s = d->save;
     if (s->connect->client_encoding) {
         const char *charset = PQparameterStatus(s->conn, "client_encoding");
         if (charset) {
@@ -169,7 +170,7 @@ ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *d) {
             } else if (!ngx_strcasecmp((u_char *)charset, (u_char *)"koi8r")) {
                 ngx_str_set(&r->headers_out.charset, "koi8-r");
             } else if (!(r->headers_out.charset.data = ngx_pnalloc(r->pool, r->headers_out.charset.len = ngx_strlen(charset)))) {
-                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pnalloc");
+                ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_pnalloc");
                 return NGX_ERROR;
             } else {
                 ngx_memcpy(r->headers_out.charset.data, charset, r->headers_out.charset.len);
@@ -182,7 +183,7 @@ ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *d) {
     ngx_uint_t nelts = 0;
     for (ngx_uint_t i = 0; i < location->query.nelts; i++) nelts += queryelts[i].variable.nelts;
     if (nelts) {
-        if (ngx_array_init(&d->variable, r->pool, nelts, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
+        if (ngx_array_init(&d->variable, r->pool, nelts, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
         ngx_memzero(d->variable.elts, nelts * d->variable.size);
         d->variable.nelts = nelts;
     }
@@ -192,26 +193,24 @@ ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *d) {
 
 ngx_int_t ngx_postgres_connect_handler(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
-    ngx_postgres_data_t *d = c->data;
-    ngx_http_request_t *r = d->request;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     switch (PQstatus(s->conn)) {
-        case CONNECTION_BAD: ngx_postgres_log_error(NGX_LOG_ERR, r->connection->log, 0, PQerrorMessageMy(s->conn), "PQstatus == CONNECTION_BAD"); return NGX_ERROR;
-        case CONNECTION_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQstatus == CONNECTION_OK"); goto connected;
+        case CONNECTION_BAD: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "PQstatus == CONNECTION_BAD"); return NGX_ERROR;
+        case CONNECTION_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQstatus == CONNECTION_OK"); goto connected;
         default: break;
     }
     switch (PQconnectPoll(s->conn)) {
-        case PGRES_POLLING_ACTIVE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_ACTIVE"); break;
-        case PGRES_POLLING_FAILED: ngx_postgres_log_error(NGX_LOG_ERR, r->connection->log, 0, PQerrorMessageMy(s->conn), "PGRES_POLLING_FAILED"); return NGX_ERROR;
-        case PGRES_POLLING_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_OK"); goto connected;
-        case PGRES_POLLING_READING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_READING"); break;
-        case PGRES_POLLING_WRITING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PGRES_POLLING_WRITING"); break;
+        case PGRES_POLLING_ACTIVE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PGRES_POLLING_ACTIVE"); break;
+        case PGRES_POLLING_FAILED: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "PGRES_POLLING_FAILED"); return NGX_ERROR;
+        case PGRES_POLLING_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PGRES_POLLING_OK"); goto connected;
+        case PGRES_POLLING_READING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PGRES_POLLING_READING"); break;
+        case PGRES_POLLING_WRITING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PGRES_POLLING_WRITING"); break;
     }
     return NGX_AGAIN;
 connected:
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    return ngx_postgres_send_query(d);
+    return ngx_postgres_send_query(s);
 }
 
 
