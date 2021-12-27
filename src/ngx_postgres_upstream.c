@@ -131,7 +131,6 @@ static ngx_int_t ngx_postgres_send_listen_handler(ngx_postgres_save_t *s) {
     s->connection->data = s;
     s->read_handler = NULL;
     s->write_handler = ngx_postgres_send_listen_handler;
-//    if (PQisBusy(s->conn)) return NGX_OK;
     static const char *command = "SELECT channel, concat_ws(' ', 'UNLISTEN', quote_ident(channel)) AS unlisten FROM pg_listening_channels() AS channel";
     if (!PQsendQuery(s->conn, command)) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQuery(\"%s\")", command); return NGX_ERROR; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%s\")", command);
@@ -160,8 +159,10 @@ static void ngx_postgres_save_read_or_write_handler(ngx_event_t *e) {
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "read timedout"); c->read->timedout = 0; goto close; }
     if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "write timedout"); c->write->timedout = 0; goto close; }
     ngx_int_t rc = NGX_OK;
+    if (rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
     if (PQstatus(s->conn) == CONNECTION_OK && rc == NGX_OK) rc = ngx_postgres_notify(s);
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
+        if (rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
         if (e->write) {
             if (rc == NGX_OK && s->write_handler) rc = s->write_handler(s);
         } else {
@@ -170,6 +171,7 @@ static void ngx_postgres_save_read_or_write_handler(ngx_event_t *e) {
         PQclear(s->res);
     }
     s->res = NULL;
+    if (rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
     if (e->write) {
         if (rc == NGX_OK && s->write_handler) rc = s->write_handler(s);
     } else {
