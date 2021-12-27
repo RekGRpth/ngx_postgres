@@ -2,6 +2,9 @@
 #include "ngx_postgres_include.h"
 
 
+static ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s);
+
+
 static ngx_int_t ngx_postgres_variable_error(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
@@ -77,7 +80,7 @@ static ngx_int_t ngx_postgres_result_query_handler(ngx_postgres_save_t *s) {
 }
 
 
-ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
@@ -184,7 +187,9 @@ ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s) {
         ngx_memzero(d->variable.elts, nelts * d->variable.size);
         d->variable.nelts = nelts;
     }
-    return NGX_OK;
+    s->read_handler = NULL;
+    s->write_handler = ngx_postgres_send_query_handler;
+    return s->write_handler(s);
 }
 
 
