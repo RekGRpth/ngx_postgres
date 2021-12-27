@@ -185,6 +185,7 @@ ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s) {
         ngx_memzero(d->variable.elts, nelts * d->variable.size);
         d->variable.nelts = nelts;
     }
+    s->handler = ngx_postgres_send_query_handler;
     return ngx_postgres_send_query_handler(s);
 }
 
