@@ -151,6 +151,8 @@ static ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s) {
     if (query->output.handler == ngx_postgres_output_plain_handler || query->output.handler == ngx_postgres_output_csv_handler) if (query->output.single && !PQsetSingleRowMode(s->conn)) ngx_postgres_log_error(NGX_LOG_WARN, r->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsetSingleRowMode");
     s->read_handler = ngx_postgres_result_query_handler;
     s->write_handler = NULL;
+    c->read->active = 1;
+    c->write->active = 0;
     return NGX_AGAIN;
 }
 
