@@ -12,10 +12,8 @@ static void ngx_postgres_data_read_or_write_handler(ngx_event_t *e) {
     if (c->write->timedout) { c->write->timedout = 0; PQstatus(s->conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); goto run; }
     if (ngx_http_upstream_test_connect(c) != NGX_OK) { ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); goto run; }
     ngx_int_t rc = NGX_OK;
-    if (e->write && rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
     if (PQstatus(s->conn) == CONNECTION_OK && rc == NGX_OK) rc = ngx_postgres_notify(s);
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
-        if (e->write && rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
         if (e->write) {
             if (rc == NGX_OK && s->write_handler) rc = s->write_handler(s);
         } else {
@@ -24,7 +22,6 @@ static void ngx_postgres_data_read_or_write_handler(ngx_event_t *e) {
         PQclear(s->res);
     }
     s->res = NULL;
-    if (e->write && rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
     if (e->write) {
         if (rc == NGX_OK && s->write_handler) rc = s->write_handler(s);
     } else {
