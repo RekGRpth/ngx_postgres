@@ -389,12 +389,12 @@ found:
     if (!(c->pool = ngx_create_pool(128, pc->log))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_create_pool"); goto close; }
     if (ngx_event_flags & NGX_USE_RTSIG_EVENT) {
         if (ngx_add_conn(c) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_add_conn != NGX_OK"); goto destroy; }
-        else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ngx_add_conn"); }
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ngx_add_conn");
     } else {
         if (ngx_add_event(c->read, NGX_READ_EVENT, ngx_event_flags & NGX_USE_CLEAR_EVENT ? NGX_CLEAR_EVENT : NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_add_event != NGX_OK"); goto destroy; }
-        else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ngx_add_event(read)"); }
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ngx_add_event(read)");
         if (ngx_add_event(c->write, NGX_WRITE_EVENT, ngx_event_flags & NGX_USE_CLEAR_EVENT ? NGX_CLEAR_EVENT : NGX_LEVEL_EVENT) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "ngx_add_event != NGX_OK"); goto destroy; }
-        else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ngx_add_event(write)"); }
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "ngx_add_event(write)");
     }
     ngx_postgres_save_t *s;
     ngx_flag_t connected = 0;
