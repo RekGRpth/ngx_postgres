@@ -5,6 +5,7 @@
 #include <ngx_http.h>
 #include "queue.h"
 #include "resty_dbd_stream.h"
+#include <stdbool.h>
 
 typedef struct {
     char *message;
@@ -215,7 +216,7 @@ ngx_int_t ngx_postgres_output_value_handler(ngx_postgres_data_t *d);
 ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data);
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *usc);
 ngx_int_t ngx_postgres_rewrite_set(ngx_postgres_data_t *d);
-ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s);
+ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s, bool call);
 ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
 ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *d);
 ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *d);
