@@ -186,10 +186,7 @@ ngx_int_t ngx_postgres_send_all_queries(ngx_postgres_data_t *d) {
     ngx_postgres_query_t *queryelts = location->query.elts;
     for (; d->query < location->query.nelts; d->query++) if (!queryelts[d->query].method || queryelts[d->query].method & r->method) break;
     ngx_uint_t nelts = 0;
-    for (ngx_uint_t i = 0; i < location->query.nelts; i++) {
-        ngx_postgres_query_t *query = &queryelts[i];
-        nelts += query->variable.nelts;
-    }
+    for (ngx_uint_t i = 0; i < location->query.nelts; i++) nelts += queryelts[i].variable.nelts;
     if (nelts) {
         if (ngx_array_init(&d->variable, r->pool, nelts, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
         ngx_memzero(d->variable.elts, nelts * d->variable.size);
