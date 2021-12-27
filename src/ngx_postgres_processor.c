@@ -65,7 +65,8 @@ static ngx_int_t ngx_postgres_result_query_handler(ngx_postgres_save_t *s) {
     }
     if (rc != NGX_OK) return rc;
     for (d->query++; d->query < location->query.nelts; d->query++) if (!queryelts[d->query].method || queryelts[d->query].method & r->method) break;
-    s->handler = ngx_postgres_send_query_handler;
+    s->read_handler = NULL;
+    s->write_handler = ngx_postgres_send_query_handler;
     if (d->query < location->query.nelts) return NGX_AGAIN;
     if (PQtransactionStatus(s->conn) == PQTRANS_IDLE) return NGX_OK;
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
@@ -148,7 +149,8 @@ static ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s) {
     if (!PQsendQueryParams(s->conn, (const char *)send->sql.data, send->nParams, send->paramTypes, (const char *const *)send->paramValues, NULL, NULL, query->output.binary)) { ngx_postgres_log_error(NGX_LOG_ERR, r->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQueryParams(\"%V\", %i)", &send->sql, send->nParams); return NGX_ERROR; }
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQsendQueryParams(\"%V\", %i)", &send->sql, send->nParams);
     if (query->output.handler == ngx_postgres_output_plain_handler || query->output.handler == ngx_postgres_output_csv_handler) if (query->output.single && !PQsetSingleRowMode(s->conn)) ngx_postgres_log_error(NGX_LOG_WARN, r->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsetSingleRowMode");
-    s->handler = ngx_postgres_result_query_handler;
+    s->read_handler = ngx_postgres_result_query_handler;
+    s->write_handler = NULL;
     return NGX_AGAIN;
 }
 
@@ -185,8 +187,9 @@ ngx_int_t ngx_postgres_send_query(ngx_postgres_save_t *s) {
         ngx_memzero(d->variable.elts, nelts * d->variable.size);
         d->variable.nelts = nelts;
     }
-    s->handler = ngx_postgres_send_query_handler;
-    return ngx_postgres_send_query_handler(s);
+    s->read_handler = NULL;
+    s->write_handler = ngx_postgres_send_query_handler;
+    return NGX_AGAIN;
 }
 
 

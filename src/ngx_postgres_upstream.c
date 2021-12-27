@@ -63,7 +63,7 @@ error:
 }
 
 
-static ngx_int_t ngx_postgres_idle_handler(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_result_idle_handler(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_FATAL_ERROR: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s", PQresStatus(PQresultStatus(s->res))); break;
@@ -89,7 +89,7 @@ static ngx_int_t ngx_postgres_listen_result_(ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_listen_result_handler(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_result_listen_handler(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_TUPLES_OK: return ngx_postgres_listen_result_(s);
@@ -124,17 +124,19 @@ static void ngx_postgres_log_to_save(ngx_log_t *log, ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_listen_send_handler(ngx_postgres_save_t *s) {
+static ngx_int_t ngx_postgres_send_listen_handler(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
     ngx_postgres_log_to_save(usc->save.log ? usc->save.log : ngx_cycle->log, s);
     s->connection->data = s;
-    s->handler = ngx_postgres_listen_send_handler;
+    s->read_handler = NULL;
+    s->write_handler = ngx_postgres_send_listen_handler;
     if (PQisBusy(s->conn)) return NGX_OK;
     static const char *command = "SELECT channel, concat_ws(' ', 'UNLISTEN', quote_ident(channel)) AS unlisten FROM pg_listening_channels() AS channel";
     if (!PQsendQuery(s->conn, command)) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQuery(\"%s\")", command); return NGX_ERROR; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%s\")", command);
-    s->handler = ngx_postgres_listen_result_handler;
+    s->read_handler = ngx_postgres_result_listen_handler;
+    s->write_handler = NULL;
     return NGX_OK;
 }
 
@@ -145,7 +147,7 @@ static void ngx_postgres_save_close(ngx_postgres_save_t *s) {
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
-    if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && usc && usc->save.max && PQstatus(s->conn) == CONNECTION_OK && ngx_postgres_listen_send_handler(s) != NGX_ERROR) return;
+    if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && usc && usc->save.max && PQstatus(s->conn) == CONNECTION_OK && ngx_postgres_send_listen_handler(s) != NGX_ERROR) return;
     ngx_postgres_close(s);
 }
 
@@ -161,11 +163,11 @@ static void ngx_postgres_save_read_handler(ngx_event_t *e) {
     ngx_int_t rc = NGX_OK;
     if (PQstatus(s->conn) == CONNECTION_OK && rc == NGX_OK) rc = ngx_postgres_notify(s);
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
-        if (rc == NGX_OK) rc = s->handler(s);
+        if (rc == NGX_OK && s->read_handler) rc = s->read_handler(s);
         PQclear(s->res);
     }
     s->res = NULL;
-    if (rc == NGX_OK) rc = s->handler(s);
+    if (rc == NGX_OK && s->read_handler) rc = s->read_handler(s);
     if (rc != NGX_ERROR) return;
 close:
     ngx_postgres_save_close(s);
@@ -183,11 +185,11 @@ static void ngx_postgres_save_write_handler(ngx_event_t *e) {
     ngx_int_t rc = NGX_OK;
 //    if (PQstatus(s->conn) == CONNECTION_OK && rc == NGX_OK) rc = ngx_postgres_notify(s);
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
-        if (rc == NGX_OK) rc = s->handler(s);
+        if (rc == NGX_OK && s->write_handler) rc = s->write_handler(s);
         PQclear(s->res);
     }
     s->res = NULL;
-    if (rc == NGX_OK) rc = s->handler(s);
+    if (rc == NGX_OK && s->write_handler) rc = s->write_handler(s);
     if (rc != NGX_ERROR) return;
 close:
     ngx_postgres_save_close(s);
@@ -277,7 +279,8 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     }
     ngx_postgres_log_to_save(usc->save.log ? usc->save.log : ngx_cycle->log, s);
     s->connection->data = s;
-    s->handler = ngx_postgres_idle_handler;
+    s->read_handler = ngx_postgres_result_idle_handler;
+    s->write_handler = NULL;
     goto null;
 close:
     ngx_postgres_save_close(s);
@@ -411,10 +414,11 @@ found:
     s->conn = conn;
     s->connect = connect;
     s->connection = c;
-    s->handler = ngx_postgres_connect_handler;
     s->peer.sockaddr = pc->sockaddr;
     s->peer.socklen = pc->socklen;
+    s->read_handler = ngx_postgres_connect_handler;
     s->usc = usc;
+    s->write_handler = ngx_postgres_connect_handler;
     pc->connection = c;
     if (usc) queue_insert_head(&usc->data.queue, &s->queue);
     return connected ? ngx_postgres_send_query(s) : NGX_AGAIN;

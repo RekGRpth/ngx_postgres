@@ -108,7 +108,8 @@ typedef struct {
 typedef struct ngx_postgres_save_t ngx_postgres_save_t;
 typedef struct ngx_postgres_save_t {
     ngx_connection_t *connection;
-    ngx_int_t (*handler) (ngx_postgres_save_t *s);
+    ngx_int_t (*read_handler) (ngx_postgres_save_t *s);
+    ngx_int_t (*write_handler) (ngx_postgres_save_t *s);
     ngx_postgres_connect_t *connect;
     ngx_postgres_upstream_srv_conf_t *usc;
     PGconn *conn;
