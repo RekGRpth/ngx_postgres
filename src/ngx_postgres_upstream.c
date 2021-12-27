@@ -159,10 +159,10 @@ static void ngx_postgres_save_read_or_write_handler(ngx_event_t *e) {
     if (c->read->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "read timedout"); c->read->timedout = 0; goto close; }
     if (c->write->timedout) { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, "write timedout"); c->write->timedout = 0; goto close; }
     ngx_int_t rc = NGX_OK;
-    if (rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
+    if (e->write && rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
     if (PQstatus(s->conn) == CONNECTION_OK && rc == NGX_OK) rc = ngx_postgres_notify(s);
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
-        if (rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
+        if (e->write && rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
         if (e->write) {
             if (rc == NGX_OK && s->write_handler) rc = s->write_handler(s);
         } else {
@@ -171,7 +171,7 @@ static void ngx_postgres_save_read_or_write_handler(ngx_event_t *e) {
         PQclear(s->res);
     }
     s->res = NULL;
-    if (rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
+    if (e->write && rc == NGX_OK && PQisBusy(s->conn)) rc = NGX_AGAIN;
     if (e->write) {
         if (rc == NGX_OK && s->write_handler) rc = s->write_handler(s);
     } else {
@@ -236,7 +236,10 @@ static ngx_int_t ngx_postgres_next(ngx_postgres_save_t *s) {
         ngx_http_upstream_t *u = r->upstream;
         u->peer.connection = s->connection;
         queue_init(q);
-        return ngx_postgres_send_query(s, 1);
+        if (ngx_postgres_send_query(s) != NGX_OK) return NGX_ERROR;
+        s->read_handler = NULL;
+        s->write_handler = ngx_postgres_send_query_handler;
+        return NGX_AGAIN;
     }
     return NGX_OK;
 }
@@ -344,7 +347,10 @@ static ngx_int_t ngx_postgres_connect_handler(ngx_postgres_save_t *s) {
 connected:
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    return ngx_postgres_send_query(s, 0);
+    if (ngx_postgres_send_query(s) != NGX_OK) return NGX_ERROR;
+    s->read_handler = NULL;
+    s->write_handler = ngx_postgres_send_query_handler;
+    return NGX_AGAIN;
 }
 
 
@@ -420,7 +426,12 @@ found:
     s->write_handler = ngx_postgres_connect_handler;
     pc->connection = c;
     if (usc) queue_insert_head(&usc->data.queue, &s->queue);
-    return connected ? ngx_postgres_send_query(s, 0) : NGX_AGAIN;
+    if (connected) {
+        if (ngx_postgres_send_query(s) != NGX_OK) return NGX_ERROR;
+        s->read_handler = NULL;
+        s->write_handler = ngx_postgres_send_query_handler;
+    }
+    return NGX_AGAIN;
 declined:
     PQfinish(conn);
     return NGX_DECLINED;
@@ -455,7 +466,10 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             pc->cached = 1;
             pc->connection = s->connection;
             s->connection->data = d;
-            return ngx_postgres_send_query(s, 1);
+            if (ngx_postgres_send_query(s) != NGX_OK) return NGX_ERROR;
+            s->read_handler = NULL;
+            s->write_handler = ngx_postgres_send_query_handler;
+            return NGX_AGAIN;
         }
         if (queue_size(&usc->save.queue) + queue_size(&usc->data.queue) < usc->save.max) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.size = %i, data.size = %i", queue_size(&usc->save.queue), queue_size(&usc->data.queue));
