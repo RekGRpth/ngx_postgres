@@ -300,6 +300,29 @@ static void ngx_postgres_data_timeout_handler(ngx_event_t *e) {
 #endif
 
 
+static ngx_int_t ngx_postgres_connect_handler(ngx_postgres_save_t *s) {
+    ngx_connection_t *c = s->connection;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
+    switch (PQstatus(s->conn)) {
+        case CONNECTION_BAD: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "PQstatus == CONNECTION_BAD"); return NGX_ERROR;
+        case CONNECTION_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQstatus == CONNECTION_OK"); goto connected;
+        default: break;
+    }
+    switch (PQconnectPoll(s->conn)) {
+        case PGRES_POLLING_ACTIVE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PGRES_POLLING_ACTIVE"); break;
+        case PGRES_POLLING_FAILED: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "PGRES_POLLING_FAILED"); return NGX_ERROR;
+        case PGRES_POLLING_OK: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PGRES_POLLING_OK"); goto connected;
+        case PGRES_POLLING_READING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PGRES_POLLING_READING"); break;
+        case PGRES_POLLING_WRITING: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PGRES_POLLING_WRITING"); break;
+    }
+    return NGX_AGAIN;
+connected:
+    if (c->read->timer_set) ngx_del_timer(c->read);
+    if (c->write->timer_set) ngx_del_timer(c->write);
+    return ngx_postgres_send_query(s);
+}
+
+
 static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
     ngx_postgres_data_t *d = data;
