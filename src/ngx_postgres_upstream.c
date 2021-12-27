@@ -231,11 +231,11 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
         case PQTRANS_UNKNOWN: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus == PQTRANS_UNKNOWN"); return;
         case PQTRANS_IDLE: ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus == PQTRANS_IDLE"); break;
         default: {
-            ngx_log_debug0(NGX_LOG_DEBUG_HTTP, pc->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
+            ngx_log_error(NGX_LOG_WARN, pc->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
             PGcancel *cancel = PQgetCancel(s->conn);
             if (!cancel) { ngx_postgres_log_error(NGX_LOG_ERR, pc->log, 0, PQerrorMessageMy(s->conn), "!PQgetCancel"); goto close; }
             char errbuf[256];
-            if (!PQcancel(cancel, errbuf, sizeof(errbuf))) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!PQcancel and %s", errbuf); PQfreeCancel(cancel); goto close; }
+            if (!PQcancel(cancel, errbuf, sizeof(errbuf))) { ngx_postgres_log_error(NGX_LOG_ERR, pc->log, 0, errbuf, "!PQcancel"); PQfreeCancel(cancel); goto close; }
             PQfreeCancel(cancel);
         } break;
     }
