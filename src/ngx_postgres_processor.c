@@ -63,21 +63,18 @@ static ngx_int_t ngx_postgres_result_query_handler(ngx_postgres_save_t *s) {
             else { ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, PQresStatus(PQresultStatus(s->res))); }
             return rc;
     }
+    if (rc != NGX_OK) return rc;
+    for (d->query++; d->query < location->query.nelts; d->query++) if (!queryelts[d->query].method || queryelts[d->query].method & r->method) break;
     s->handler = ngx_postgres_send_query_handler;
-    if (rc == NGX_OK && d->query < location->query.nelts - 1) {
-        for (d->query++; d->query < location->query.nelts; d->query++) if (!queryelts[d->query].method || queryelts[d->query].method & r->method) break;
-        if (d->query < location->query.nelts) return NGX_AGAIN;
-    }
-    if (rc == NGX_OK && PQtransactionStatus(s->conn) != PQTRANS_IDLE) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
-        ngx_postgres_query_t *query = ngx_array_push(&location->query);
-        if (!query) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_push"); return NGX_ERROR; }
-        ngx_memzero(query, sizeof(*query));
-        ngx_str_set(&query->sql, "COMMIT");
-        d->query++;
-        return NGX_AGAIN;
-    }
-    return rc;
+    if (d->query < location->query.nelts) return NGX_AGAIN;
+    if (PQtransactionStatus(s->conn) == PQTRANS_IDLE) return NGX_OK;
+    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
+    ngx_postgres_query_t *query = ngx_array_push(&location->query);
+    if (!query) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_array_push"); return NGX_ERROR; }
+    ngx_memzero(query, sizeof(*query));
+    ngx_str_set(&query->sql, "COMMIT");
+    d->query++;
+    return NGX_AGAIN;
 }
 
 
