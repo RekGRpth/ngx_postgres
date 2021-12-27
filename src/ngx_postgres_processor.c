@@ -155,7 +155,7 @@ static ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s) {
 }
 
 
-ngx_int_t ngx_postgres_send_all_queries(ngx_postgres_data_t *d) {
+ngx_int_t ngx_postgres_send_query(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_save_t *s = d->save;
@@ -211,7 +211,7 @@ ngx_int_t ngx_postgres_connect_handler(ngx_postgres_save_t *s) {
 connected:
     if (c->read->timer_set) ngx_del_timer(c->read);
     if (c->write->timer_set) ngx_del_timer(c->write);
-    return ngx_postgres_send_all_queries(d);
+    return ngx_postgres_send_query(d);
 }
 
 
