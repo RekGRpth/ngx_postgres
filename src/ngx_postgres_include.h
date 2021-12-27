@@ -99,8 +99,6 @@ typedef struct {
 } ngx_postgres_query_t;
 
 typedef struct {
-    ngx_flag_t binary;
-    ngx_postgres_query_t *query;
     ngx_str_t sql;
     ngx_uint_t nParams;
     Oid *paramTypes;
@@ -123,7 +121,6 @@ typedef struct ngx_postgres_save_t {
 } ngx_postgres_save_t;
 
 typedef struct ngx_postgres_data_t {
-    ngx_array_t send;
     ngx_array_t variable;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_event_t timeout;
