@@ -68,6 +68,8 @@ static ngx_int_t ngx_postgres_result_query_handler(ngx_postgres_save_t *s) {
     for (d->query++; d->query < location->query.nelts; d->query++) if (!queryelts[d->query].method || queryelts[d->query].method & r->method) break;
     s->read_handler = NULL;
     s->write_handler = ngx_postgres_send_query_handler;
+    c->read->active = 0;
+    c->write->active = 1;
     if (d->query < location->query.nelts) return NGX_AGAIN;
     if (PQtransactionStatus(s->conn) == PQTRANS_IDLE) return NGX_OK;
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "PQtransactionStatus != PQTRANS_IDLE");
