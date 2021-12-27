@@ -131,7 +131,7 @@ static ngx_int_t ngx_postgres_send_listen_handler(ngx_postgres_save_t *s) {
     s->connection->data = s;
     s->read_handler = NULL;
     s->write_handler = ngx_postgres_send_listen_handler;
-    if (PQisBusy(s->conn)) return NGX_OK;
+//    if (PQisBusy(s->conn)) return NGX_OK;
     static const char *command = "SELECT channel, concat_ws(' ', 'UNLISTEN', quote_ident(channel)) AS unlisten FROM pg_listening_channels() AS channel";
     if (!PQsendQuery(s->conn, command)) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQuery(\"%s\")", command); return NGX_ERROR; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%s\")", command);
