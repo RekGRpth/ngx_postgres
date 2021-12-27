@@ -1,8 +1,33 @@
 #include "ngx_postgres_include.h"
 
 
-void ngx_postgres_data_read_and_write_event_handler(ngx_event_t *e) {
-    ngx_log_debug0(NGX_LOG_DEBUG_HTTP, e->log, 0, e->write ? "write" : "read");
+void ngx_postgres_data_read_handler(ngx_event_t *e) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->log, 0, "%s", __func__);
+    ngx_connection_t *c = e->data;
+    ngx_postgres_data_t *d = c->data;
+    ngx_postgres_save_t *s = d->save;
+    ngx_http_request_t *r = d->request;
+    ngx_http_upstream_t *u = r->upstream;
+    ngx_connection_t *co = r->connection;
+    if (c->read->timedout) { c->read->timedout = 0; PQstatus(s->conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); goto run; }
+    if (c->write->timedout) { c->write->timedout = 0; PQstatus(s->conn) == CONNECTION_OK ? ngx_http_upstream_finalize_request(r, u, NGX_HTTP_GATEWAY_TIME_OUT) : ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_TIMEOUT); goto run; }
+    if (ngx_http_upstream_test_connect(c) != NGX_OK) { ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); goto run; }
+    ngx_int_t rc = ngx_postgres_notify(s);
+    while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
+        if (rc == NGX_OK) rc = s->handler(s);
+        PQclear(s->res);
+    }
+    s->res = NULL;
+    if (rc == NGX_OK) rc = s->handler(s);
+    if (rc == NGX_ERROR) ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
+    else if (rc != NGX_AGAIN) ngx_http_upstream_finalize_request(r, u, rc == NGX_OK && u->out_bufs ? NGX_HTTP_OK : rc);
+run:
+    ngx_http_run_posted_requests(co);
+}
+
+
+void ngx_postgres_data_write_handler(ngx_event_t *e) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, e->log, 0, "%s", __func__);
     ngx_connection_t *c = e->data;
     ngx_postgres_data_t *d = c->data;
     ngx_postgres_save_t *s = d->save;
@@ -55,8 +80,8 @@ static ngx_int_t ngx_postgres_reinit_request(ngx_http_request_t *r) {
     ngx_postgres_save_t *s = d->save;
     ngx_connection_t *c = s->connection;
     c->data = d;
-    c->read->handler = ngx_postgres_data_read_and_write_event_handler;
-    c->write->handler = ngx_postgres_data_read_and_write_event_handler;
+    c->read->handler = ngx_postgres_data_read_handler;
+    c->write->handler = ngx_postgres_data_write_handler;
     r->state = 0;
     return NGX_OK;
 }
