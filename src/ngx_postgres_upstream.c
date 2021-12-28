@@ -67,26 +67,19 @@ static ngx_int_t ngx_postgres_result_idle_handler(ngx_postgres_save_t *s) {
 }
 
 
-static ngx_int_t ngx_postgres_listen_result_(ngx_postgres_save_t *s) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    ngx_connection_t *c = s->connection;
-    if (!PQntuples(s->res)) return NGX_OK;
-    for (int row = 0; row < PQntuples(s->res); row++) {
-        const char *schannel = PQgetvalue(s->res, row, PQfnumber(s->res, "channel"));
-        const char *sunlisten = PQgetvalue(s->res, row, PQfnumber(s->res, "unlisten"));
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "row = %i, channel = %s, unlisten = %s", row, schannel, sunlisten);
-        ngx_str_t channel = {ngx_strlen(schannel), (u_char *)schannel};
-        ngx_str_t unlisten = {ngx_strlen(sunlisten), (u_char *)sunlisten};
-        ngx_http_push_stream_delete_channel_my(s->connection->log, &channel, unlisten.data, unlisten.len, c->pool);
-    }
-    return NGX_OK;
-}
-
-
 static ngx_int_t ngx_postgres_result_listen_handler(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     if (s->res) switch (PQresultStatus(s->res)) {
-        case PGRES_TUPLES_OK: return ngx_postgres_listen_result_(s);
+        case PGRES_TUPLES_OK: {
+            for (int row = 0; row < PQntuples(s->res); row++) {
+                const char *schannel = PQgetvalue(s->res, row, PQfnumber(s->res, "channel"));
+                const char *sunlisten = PQgetvalue(s->res, row, PQfnumber(s->res, "unlisten"));
+                ngx_log_debug3(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "row = %i, channel = %s, unlisten = %s", row, schannel, sunlisten);
+                ngx_str_t channel = {ngx_strlen(schannel), (u_char *)schannel};
+                ngx_str_t unlisten = {ngx_strlen(sunlisten), (u_char *)sunlisten};
+                ngx_http_push_stream_delete_channel_my(s->connection->log, &channel, unlisten.data, unlisten.len, s->connection->pool);
+            }
+        } break;
         case PGRES_FATAL_ERROR: ngx_postgres_log_error(NGX_LOG_WARN, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); return NGX_ERROR;
         default: ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); return NGX_ERROR;
     }
