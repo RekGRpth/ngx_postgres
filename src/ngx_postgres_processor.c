@@ -83,6 +83,7 @@ static ngx_int_t ngx_postgres_result_query_handler(ngx_postgres_save_t *s) {
 
 
 static ngx_int_t ngx_postgres_send_query_handler(ngx_postgres_save_t *s) {
+    if (PQisBusy(s->conn)) { ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQisBusy"); return NGX_AGAIN; }
     ngx_connection_t *c = s->connection;
     ngx_postgres_data_t *d = c->data;
     ngx_http_request_t *r = d->request;
