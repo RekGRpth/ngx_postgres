@@ -159,7 +159,7 @@ static void ngx_postgres_save_read_or_write_handler(ngx_event_t *e) {
     if (c->write->timedout) { ngx_log_error(NGX_LOG_WARN, e->log, 0, "write timedout"); c->write->timedout = 0; goto close; }
     if (PQstatus(s->conn) == CONNECTION_OK && !PQconsumeInput(s->conn)) { ngx_postgres_log_error(NGX_LOG_ERR, e->log, 0, PQerrorMessageMy(s->conn), "!PQconsumeInput"); goto close; }
     ngx_int_t rc = NGX_OK;
-    if (PQstatus(s->conn) == CONNECTION_OK && rc == NGX_OK) rc = ngx_postgres_notify(s);
+    if (!e->write && PQstatus(s->conn) == CONNECTION_OK && rc == NGX_OK) rc = ngx_postgres_notify(s);
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
         if (e->write) {
             if (rc == NGX_OK && s->write_handler) rc = s->write_handler(s);

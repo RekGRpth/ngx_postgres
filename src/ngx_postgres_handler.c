@@ -13,7 +13,7 @@ static void ngx_postgres_data_read_or_write_handler(ngx_event_t *e) {
     if (ngx_http_upstream_test_connect(c) != NGX_OK) { ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); goto run; }
     if (PQstatus(s->conn) == CONNECTION_OK && !PQconsumeInput(s->conn)) { ngx_postgres_log_error(NGX_LOG_ERR, e->log, 0, PQerrorMessageMy(s->conn), "!PQconsumeInput"); ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR); goto run; }
     ngx_int_t rc = NGX_OK;
-    if (PQstatus(s->conn) == CONNECTION_OK && rc == NGX_OK) rc = ngx_postgres_notify(s);
+    if (!e->write && PQstatus(s->conn) == CONNECTION_OK && rc == NGX_OK) rc = ngx_postgres_notify(s);
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
         if (e->write) {
             if (rc == NGX_OK && s->write_handler) rc = s->write_handler(s);
