@@ -8,9 +8,7 @@ static void ngx_postgres_save_write_handler(ngx_event_t *e);
 
 ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    ngx_connection_t *c = s->connection;
-    ngx_array_t listen;
-    if (ngx_array_init(&listen, c->pool, 1, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "ngx_array_init != NGX_OK"); return NGX_ERROR; }
+    ngx_array_t listen = {0};
     ngx_int_t rc = NGX_OK;
     ngx_str_t str = ngx_null_string;
     for (PGnotify *notify; PQstatus(s->conn) == CONNECTION_OK && (notify = PQnotifies(s->conn)); PQfreemem(notify)) {
@@ -23,11 +21,12 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
         switch ((rc = ngx_http_push_stream_add_msg_to_channel_my(s->connection->log, &id, &text, NULL, NULL, 1, temp_pool))) {
             case NGX_ERROR: ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_ERROR"); break;
             case NGX_DECLINED: ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "ngx_http_push_stream_add_msg_to_channel_my == NGX_DECLINED"); {
+                if (!listen.nelts && ngx_array_init(&listen, s->connection->pool, 1, sizeof(ngx_str_t)) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "ngx_array_init != NGX_OK"); break; }
                 ngx_str_t *command = ngx_array_push(&listen);
                 if (!command) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_array_push"); break; }
                 char *escape = PQescapeIdentifier(s->conn, (const char *)id.data, id.len);
                 if (!escape) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQescapeIdentifier(%V)", &id); break; }
-                if (!(command->data = ngx_pnalloc(c->pool, command->len = sizeof("UNLISTEN ;") - 1 + ngx_strlen(escape)))) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_pnalloc"); } else {
+                if (!(command->data = ngx_pnalloc(s->connection->pool, command->len = sizeof("UNLISTEN ;") - 1 + ngx_strlen(escape)))) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_pnalloc"); } else {
                     command->len = ngx_snprintf(command->data, command->len, "UNLISTEN %s;", escape) - command->data;
                     str.len += command->len;
                 }
@@ -40,19 +39,20 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
         ngx_destroy_pool(temp_pool);
     }
     if (str.len) {
-        if (!(str.data = ngx_pnalloc(c->pool, str.len + 1))) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_pnalloc"); rc = NGX_ERROR; } else {
+        if (!(str.data = ngx_pnalloc(s->connection->pool, str.len + 1))) { ngx_log_error(NGX_LOG_ERR, s->connection->log, 0, "!ngx_pnalloc"); rc = NGX_ERROR; } else {
             ngx_str_t *command = listen.elts;
+            u_char *p = str.data;
             for (ngx_uint_t i = 0; i < listen.nelts; i++) {
-                ngx_memcpy(str.data, command[i].data, command[i].len);
-                ngx_pfree(c->pool, command[i].data);
+                p = ngx_copy(p, command[i].data, command[i].len);
+                ngx_pfree(s->connection->pool, command[i].data);
             }
-            str.data[str.len] = '\0';
+            *p = '\0';
             if (!PQsendQuery(s->conn, (const char *)str.data)) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQuery(\"%V\")", &str); rc = NGX_ERROR; } else {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%V\")", &str);
             }
         }
     }
-    ngx_array_destroy(&listen);
+    if (listen.nelts) ngx_array_destroy(&listen);
     return rc;
 }
 
