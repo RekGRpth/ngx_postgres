@@ -440,7 +440,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_postgres_upstream_srv_conf_t *usc = u->conf->upstream->srv_conf ? ngx_http_conf_upstream_srv_conf(u->conf->upstream, ngx_postgres_module) : NULL;
     if (usc && usc->keep.max) {
-        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.max = %i, save.size = %i, data.size = %i", usc->keep.max, queue_size(&usc->keep.queue), queue_size(&usc->work.queue));
+        ngx_log_debug3(NGX_LOG_DEBUG_HTTP, pc->log, 0, "keep.max = %i, keep.size = %i, work.size = %i", usc->keep.max, queue_size(&usc->keep.queue), queue_size(&usc->work.queue));
         queue_each(&usc->keep.queue, q) {
             ngx_postgres_save_t *s = queue_data(q, typeof(*s), queue);
             if (ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)s->peer.sockaddr, pc->socklen, s->peer.socklen)) continue;
@@ -452,7 +452,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             return ngx_postgres_send_query(s);
         }
         if (queue_size(&usc->keep.queue) + queue_size(&usc->work.queue) < usc->keep.max) {
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "save.size = %i, data.size = %i", queue_size(&usc->keep.queue), queue_size(&usc->work.queue));
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "keep.size = %i, work.size = %i", queue_size(&usc->keep.queue), queue_size(&usc->work.queue));
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
         } else if (usc->request.max) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "request.max = %i, request.size = %i", usc->request.max, queue_size(&usc->request.queue));
@@ -476,7 +476,7 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
             }
 #endif
         } else if (usc->keep.reject) {
-            ngx_log_error(NGX_LOG_WARN, pc->log, 0, "save.size = %i, data.size = %i", queue_size(&usc->keep.queue), queue_size(&usc->work.queue));
+            ngx_log_error(NGX_LOG_WARN, pc->log, 0, "keep.size = %i, work.size = %i", queue_size(&usc->keep.queue), queue_size(&usc->work.queue));
             return NGX_BUSY;
         }
     }
