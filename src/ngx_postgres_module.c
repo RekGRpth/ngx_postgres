@@ -19,11 +19,6 @@ static void ngx_postgres_srv_conf_cleanup_handler(void *data) {
 static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_upstream_srv_conf_t *usc = ngx_pcalloc(cf->pool, sizeof(*usc));
     if (!usc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    usc->data.timeout = NGX_CONF_UNSET_MSEC;
-#endif
-    usc->keep.requests = NGX_CONF_UNSET_UINT;
-    usc->keep.timeout = NGX_CONF_UNSET_MSEC;
     return usc;
 }
 
@@ -135,11 +130,6 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
 #endif
     queue_init(&pusc->keep.queue);
     queue_init(&pusc->work.queue);
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_conf_init_msec_value(pusc->data.timeout, 60 * 1000);
-#endif
-    ngx_conf_init_msec_value(pusc->keep.timeout, 60 * 60 * 1000);
-    ngx_conf_init_uint_value(pusc->keep.requests, 1000);
     if (!pusc->keep.max) return NGX_OK;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
