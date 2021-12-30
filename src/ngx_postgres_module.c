@@ -22,7 +22,7 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     usc->keep.timeout = NGX_CONF_UNSET_MSEC;
     usc->keep.requests = NGX_CONF_UNSET_UINT;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    usc->request.timeout = NGX_CONF_UNSET_MSEC;
+    usc->data.timeout = NGX_CONF_UNSET_MSEC;
 #endif
     return usc;
 }
@@ -133,8 +133,8 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     queue_init(&pusc->work.queue);
     queue_init(&pusc->keep.queue);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    queue_init(&pusc->request.queue);
-    ngx_conf_init_msec_value(pusc->request.timeout, 60 * 1000);
+    queue_init(&pusc->data.queue);
+    ngx_conf_init_msec_value(pusc->data.timeout, 60 * 1000);
 #endif
     ngx_conf_init_msec_value(pusc->keep.timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(pusc->keep.requests, 1000);
@@ -433,12 +433,12 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
 static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_upstream_srv_conf_t *usc = conf;
     if (!usc->keep.max) return "works only with \"postgres_keepalive\"";
-    if (usc->request.max) return "duplicate";
+    if (usc->data.max) return "duplicate";
     ngx_str_t *args = cf->args->elts;
     ngx_int_t n = ngx_atoi(args[1].data, args[1].len);
     if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be number", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
-    usc->request.max = (ngx_uint_t)n;
+    usc->data.max = (ngx_uint_t)n;
     for (ngx_uint_t i = 2; i < cf->args->nelts; i++) {
         if (args[i].len > sizeof("overflow=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"overflow=", sizeof("overflow=") - 1)) {
             args[i].len = args[i].len - (sizeof("overflow=") - 1);
@@ -449,7 +449,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
                 { ngx_null_string, 0 }
             };
             ngx_uint_t j;
-            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { usc->request.reject = e[j].value; break; }
+            for (j = 0; e[j].name.len; j++) if (e[j].name.len == args[i].len && !ngx_strncmp(e[j].name.data, args[i].data, args[i].len)) { usc->data.reject = e[j].value; break; }
             if (!e[j].name.len) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"overflow\" value \"%V\" must be \"ignore\" or \"reject\"", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             continue;
         }
@@ -459,7 +459,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
             n = ngx_parse_time(&args[i], 0);
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
-            usc->request.timeout = (ngx_msec_t)n;
+            usc->data.timeout = (ngx_msec_t)n;
             continue;
         }
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: invalid additional parameter \"%V\"", &cmd->name, &args[i]);

@@ -46,6 +46,14 @@ typedef struct {
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_array_t connect;
 #endif
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    struct {
+        ngx_flag_t reject;
+        ngx_msec_t timeout;
+        ngx_uint_t max;
+        queue_t queue;
+    } data;
+#endif
     struct {
         ngx_flag_t reject;
         ngx_log_t *log;
@@ -58,14 +66,6 @@ typedef struct {
         ngx_http_upstream_init_peer_pt init;
         ngx_http_upstream_init_pt init_upstream;
     } peer;
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    struct {
-        ngx_flag_t reject;
-        ngx_msec_t timeout;
-        ngx_uint_t max;
-        queue_t queue;
-    } request;
-#endif
     struct {
         ngx_log_t *log;
     } trace;

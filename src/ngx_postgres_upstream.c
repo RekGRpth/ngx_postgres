@@ -213,7 +213,7 @@ static void ngx_postgres_log_to_data(ngx_log_t *log, ngx_postgres_save_t *s) {
 static ngx_int_t ngx_postgres_next(ngx_postgres_save_t *s) {
     ngx_postgres_upstream_srv_conf_t *usc = s->usc;
     if (!usc) return NGX_OK;
-    queue_each(&usc->request.queue, q) {
+    queue_each(&usc->data.queue, q) {
         queue_remove(q);
         ngx_postgres_data_t *d = queue_data(q, typeof(*d), queue);
         if (d->timeout.timer_set) ngx_del_timer(&d->timeout);
@@ -454,24 +454,24 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
         if (queue_size(&usc->keep.queue) + queue_size(&usc->work.queue) < usc->keep.max) {
             ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "keep.size = %i, work.size = %i", queue_size(&usc->keep.queue), queue_size(&usc->work.queue));
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-        } else if (usc->request.max) {
-            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "request.max = %i, request.size = %i", usc->request.max, queue_size(&usc->request.queue));
-            if (queue_size(&usc->request.queue) < usc->request.max) {
+        } else if (usc->data.max) {
+            ngx_log_debug2(NGX_LOG_DEBUG_HTTP, pc->log, 0, "data.max = %i, data.size = %i", usc->data.max, queue_size(&usc->data.queue));
+            if (queue_size(&usc->data.queue) < usc->data.max) {
                 ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "d = %p", d);
                 ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(d->request->pool, 0);
                 if (!cln) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
                 cln->handler = ngx_postgres_data_cleanup_handler;
                 cln->data = d;
-                queue_insert_tail(&usc->request.queue, &d->queue);
+                queue_insert_tail(&usc->data.queue, &d->queue);
                 d->timeout.handler = ngx_postgres_data_timeout_handler;
                 d->timeout.log = pc->log;
                 d->timeout.data = r;
-                ngx_add_timer(&d->timeout, usc->request.timeout);
-                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "request.size = %i", queue_size(&usc->request.queue));
+                ngx_add_timer(&d->timeout, usc->data.timeout);
+                ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "data.size = %i", queue_size(&usc->data.queue));
                 return NGX_YIELD;
             }
-            if (usc->request.reject) {
-                ngx_log_error(NGX_LOG_WARN, pc->log, 0, "request.size = %i", queue_size(&usc->request.queue));
+            if (usc->data.reject) {
+                ngx_log_error(NGX_LOG_WARN, pc->log, 0, "data.size = %i", queue_size(&usc->data.queue));
                 return NGX_BUSY;
             }
 #endif
