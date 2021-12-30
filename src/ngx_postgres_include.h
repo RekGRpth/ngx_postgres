@@ -47,8 +47,13 @@ typedef struct {
     ngx_array_t connect;
 #endif
     struct {
+        ngx_flag_t reject;
+        ngx_log_t *log;
+        ngx_msec_t timeout;
+        ngx_uint_t max;
+        ngx_uint_t requests;
         queue_t queue;
-    } data;
+    } keep;
     struct {
         ngx_http_upstream_init_peer_pt init;
         ngx_http_upstream_init_pt init_upstream;
@@ -62,16 +67,11 @@ typedef struct {
     } request;
 #endif
     struct {
-        ngx_flag_t reject;
-        ngx_log_t *log;
-        ngx_msec_t timeout;
-        ngx_uint_t max;
-        ngx_uint_t requests;
-        queue_t queue;
-    } save;
-    struct {
         ngx_log_t *log;
     } trace;
+    struct {
+        queue_t queue;
+    } work;
 } ngx_postgres_upstream_srv_conf_t;
 
 typedef struct ngx_postgres_data_t ngx_postgres_data_t;
