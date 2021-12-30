@@ -19,11 +19,11 @@ static void ngx_postgres_srv_conf_cleanup_handler(void *data) {
 static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_upstream_srv_conf_t *usc = ngx_pcalloc(cf->pool, sizeof(*usc));
     if (!usc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
-    usc->keep.timeout = NGX_CONF_UNSET_MSEC;
-    usc->keep.requests = NGX_CONF_UNSET_UINT;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     usc->data.timeout = NGX_CONF_UNSET_MSEC;
 #endif
+    usc->keep.requests = NGX_CONF_UNSET_UINT;
+    usc->keep.timeout = NGX_CONF_UNSET_MSEC;
     return usc;
 }
 
@@ -130,10 +130,12 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     if (pusc) pusc->peer.init = usc->peer.init;
     usc->peer.init = ngx_postgres_peer_init;
     if (!pusc) return NGX_OK;
-    queue_init(&pusc->work.queue);
-    queue_init(&pusc->keep.queue);
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     queue_init(&pusc->data.queue);
+#endif
+    queue_init(&pusc->keep.queue);
+    queue_init(&pusc->work.queue);
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_conf_init_msec_value(pusc->data.timeout, 60 * 1000);
 #endif
     ngx_conf_init_msec_value(pusc->keep.timeout, 60 * 60 * 1000);
