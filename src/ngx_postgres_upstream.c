@@ -354,9 +354,9 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_postgres_connect_t *connect = pc->peer_data;
 #else
-    ngx_postgres_loc_conf_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_connect_t *connect = location->connect ? location->connect : usc->connect.elts;
-    if (!location->connect) {
+    ngx_postgres_loc_conf_t *plc = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    ngx_postgres_connect_t *connect = plc->connect ? plc->connect : usc->connect.elts;
+    if (!plc->connect) {
         ngx_uint_t i;
         for (i = 0; i < usc->connect.nelts; i++) for (ngx_uint_t j = 0; j < connect[i].url.naddrs; j++) if (!ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)connect[i].url.addrs[j].sockaddr, pc->socklen, connect[i].url.addrs[j].socklen)) { connect = &connect[i]; goto found; }
 found:
@@ -858,9 +858,9 @@ static ngx_uint_t type2oid(ngx_str_t *type) {
 
 
 char *ngx_postgres_query_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_loc_conf_t *location = conf;
-    if (!location->query.nelts && ngx_array_init(&location->query, cf->pool, 1, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_postgres_query_t *query = ngx_array_push(&location->query);
+    ngx_postgres_loc_conf_t *plc = conf;
+    if (!plc->query.nelts && ngx_array_init(&plc->query, cf->pool, 1, sizeof(ngx_postgres_query_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_postgres_query_t *query = ngx_array_push(&plc->query);
     if (!query) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(query, sizeof(*query));
     if (ngx_array_init(&query->rewrite, cf->pool, 1, sizeof(ngx_postgres_rewrite_t)) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_array_init != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }

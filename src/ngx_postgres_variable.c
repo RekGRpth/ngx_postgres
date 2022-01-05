@@ -132,8 +132,8 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
 ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_loc_conf_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *queryelts = location->query.elts;
+    ngx_postgres_loc_conf_t *plc = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    ngx_postgres_query_t *queryelts = plc->query.elts;
     ngx_postgres_query_t *query = &queryelts[d->query];
     d->result.sql = query->sql;
     const char *value;
@@ -170,8 +170,8 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *d) {
 ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_loc_conf_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    ngx_postgres_query_t *queryelts = location->query.elts;
+    ngx_postgres_loc_conf_t *plc = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    ngx_postgres_query_t *queryelts = plc->query.elts;
     ngx_postgres_query_t *query = &queryelts[d->query];
     if (!query->variable.nelts) return NGX_OK;
     ngx_postgres_variable_t *variable = query->variable.elts;
@@ -314,10 +314,10 @@ ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf) {
 
 
 char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_loc_conf_t *location = conf;
-    if (!location->query.nelts) return "must defined after \"postgres_query\" directive";
-    ngx_postgres_query_t *queryelts = location->query.elts;
-    ngx_postgres_query_t *query = &queryelts[location->query.nelts - 1];
+    ngx_postgres_loc_conf_t *plc = conf;
+    if (!plc->query.nelts) return "must defined after \"postgres_query\" directive";
+    ngx_postgres_query_t *queryelts = plc->query.elts;
+    ngx_postgres_query_t *query = &queryelts[plc->query.nelts - 1];
     ngx_str_t *args = cf->args->elts;
     if (args[1].len < 2) return "error: empty variable name";
     if (args[1].data[0] != '$') return "error: invalid variable name";
@@ -326,7 +326,7 @@ char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_variable_t *variable = ngx_array_push(&query->variable);
     if (!variable) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
     ngx_memzero(variable, sizeof(*variable));
-    variable->index = location->variable++;
+    variable->index = plc->variable++;
     variable->name = args[1];
     ngx_http_variable_t *var = ngx_http_add_variable(cf, &variable->name, NGX_HTTP_VAR_CHANGEABLE);
     if (!var) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_add_variable", &cmd->name); return NGX_CONF_ERROR; }

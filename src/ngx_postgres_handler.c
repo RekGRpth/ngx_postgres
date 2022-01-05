@@ -53,13 +53,13 @@ void ngx_postgres_data_write_handler(ngx_event_t *e) {
 static ngx_int_t ngx_postgres_create_request(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_loc_conf_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (location->complex.value.data) { // use complex value
+    ngx_postgres_loc_conf_t *plc = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    if (plc->complex.value.data) { // use complex value
         ngx_str_t host;
-        if (ngx_http_complex_value(r, &location->complex, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_complex_value != NGX_OK"); return NGX_ERROR; }
+        if (ngx_http_complex_value(r, &plc->complex, &host) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_complex_value != NGX_OK"); return NGX_ERROR; }
         if (!host.len) {
             ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &location->complex.value, &core->name);
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "empty \"postgres_pass\" (was: \"%V\") in location \"%V\"", &plc->complex.value, &core->name);
             return NGX_ERROR;
         }
         if (!(u->resolved = ngx_pcalloc(r->pool, sizeof(*u->resolved)))) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
@@ -123,29 +123,29 @@ static void ngx_postgres_finalize_request(ngx_http_request_t *r, ngx_int_t rc) {
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
 //    if (r->subrequest_in_memory) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "subrequest_in_memory"); return NGX_HTTP_INTERNAL_SERVER_ERROR; } // TODO: add support for subrequest in memory by emitting output into u->buffer instead
-    ngx_postgres_loc_conf_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
-    if (!location->query.nelts) {
+    ngx_postgres_loc_conf_t *plc = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    if (!plc->query.nelts) {
         ngx_http_core_loc_conf_t *core = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "missing \"postgres_query\" in location \"%V\"", &core->name);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-    ngx_postgres_query_t *queryelts = location->query.elts;
+    ngx_postgres_query_t *queryelts = plc->query.elts;
     ngx_uint_t i;
-    for (i = 0; i < location->query.nelts; i++) if (!queryelts[i].method || queryelts[i].method & r->method) break;
-    if (i == location->query.nelts) return NGX_HTTP_NOT_ALLOWED;
+    for (i = 0; i < plc->query.nelts; i++) if (!queryelts[i].method || queryelts[i].method & r->method) break;
+    if (i == plc->query.nelts) return NGX_HTTP_NOT_ALLOWED;
     ngx_int_t rc = ngx_http_discard_request_body(r);
     if (rc != NGX_OK) return rc;
     if (ngx_http_upstream_create(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_upstream_create != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
     ngx_str_set(&u->schema, "postgres://");
     u->output.tag = (ngx_buf_tag_t)&ngx_postgres_module;
-    u->conf = &location->upstream;
+    u->conf = &plc->upstream;
     u->create_request = ngx_postgres_create_request;
     u->finalize_request = ngx_postgres_finalize_request;
     u->reinit_request = ngx_postgres_reinit_request;
     r->state = 0;
-    u->buffering = location->upstream.buffering;
-    if (!location->upstream.request_buffering && location->upstream.pass_request_body && !r->headers_in.chunked) r->request_body_no_buffering = 1;
+    u->buffering = plc->upstream.buffering;
+    if (!plc->upstream.request_buffering && plc->upstream.pass_request_body && !r->headers_in.chunked) r->request_body_no_buffering = 1;
     if ((rc = ngx_http_read_client_request_body(r, ngx_http_upstream_init)) >= NGX_HTTP_SPECIAL_RESPONSE) return rc;
     return NGX_DONE;
 }

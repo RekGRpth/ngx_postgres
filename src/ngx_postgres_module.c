@@ -24,29 +24,29 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
 
 
 static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
-    ngx_postgres_loc_conf_t *location = ngx_pcalloc(cf->pool, sizeof(*location));
-    if (!location) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
-    location->upstream.buffering = NGX_CONF_UNSET;
-    location->upstream.buffer_size = NGX_CONF_UNSET_SIZE;
-    location->upstream.busy_buffers_size_conf = NGX_CONF_UNSET_SIZE;
-    location->upstream.hide_headers = NGX_CONF_UNSET_PTR;
-    location->upstream.ignore_client_abort = NGX_CONF_UNSET;
-    location->upstream.intercept_errors = NGX_CONF_UNSET;
-    location->upstream.limit_rate = NGX_CONF_UNSET_SIZE;
-    location->upstream.local = NGX_CONF_UNSET_PTR;
-    location->upstream.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE;
-    location->upstream.next_upstream_timeout = NGX_CONF_UNSET_MSEC;
-    location->upstream.next_upstream_tries = NGX_CONF_UNSET_UINT;
-    location->upstream.pass_headers = NGX_CONF_UNSET_PTR;
-    location->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
-    location->upstream.request_buffering = NGX_CONF_UNSET;
-    location->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
-    location->upstream.socket_keepalive = NGX_CONF_UNSET;
-    location->upstream.store_access = NGX_CONF_UNSET_UINT;
-    location->upstream.store = NGX_CONF_UNSET;
-    location->upstream.temp_file_write_size_conf = NGX_CONF_UNSET_SIZE;
-    ngx_str_set(&location->upstream.module, "postgres");
-    return location;
+    ngx_postgres_loc_conf_t *plc = ngx_pcalloc(cf->pool, sizeof(*plc));
+    if (!plc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
+    plc->upstream.buffering = NGX_CONF_UNSET;
+    plc->upstream.buffer_size = NGX_CONF_UNSET_SIZE;
+    plc->upstream.busy_buffers_size_conf = NGX_CONF_UNSET_SIZE;
+    plc->upstream.hide_headers = NGX_CONF_UNSET_PTR;
+    plc->upstream.ignore_client_abort = NGX_CONF_UNSET;
+    plc->upstream.intercept_errors = NGX_CONF_UNSET;
+    plc->upstream.limit_rate = NGX_CONF_UNSET_SIZE;
+    plc->upstream.local = NGX_CONF_UNSET_PTR;
+    plc->upstream.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE;
+    plc->upstream.next_upstream_timeout = NGX_CONF_UNSET_MSEC;
+    plc->upstream.next_upstream_tries = NGX_CONF_UNSET_UINT;
+    plc->upstream.pass_headers = NGX_CONF_UNSET_PTR;
+    plc->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
+    plc->upstream.request_buffering = NGX_CONF_UNSET;
+    plc->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
+    plc->upstream.socket_keepalive = NGX_CONF_UNSET;
+    plc->upstream.store_access = NGX_CONF_UNSET_UINT;
+    plc->upstream.store = NGX_CONF_UNSET;
+    plc->upstream.temp_file_write_size_conf = NGX_CONF_UNSET_SIZE;
+    ngx_str_set(&plc->upstream.module, "postgres");
+    return plc;
 }
 
 
@@ -463,8 +463,8 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 
 
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_loc_conf_t *location = conf;
-    if (location->upstream.upstream || location->complex.value.data) return "duplicate";
+    ngx_postgres_loc_conf_t *plc = conf;
+    if (plc->upstream.upstream || plc->complex.value.data) return "duplicate";
     ngx_http_core_loc_conf_t *core = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     core->handler = ngx_postgres_handler;
     if (core->name.data[core->name.len - 1] == '/') core->auto_redirect = 1;
@@ -477,7 +477,7 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
         url.url = elts[1];
         if (!url.url.len) return "error: empty upstream name";
         if (ngx_http_script_variables_count(&url.url)) {
-            ngx_http_compile_complex_value_t ccv = {cf, &url.url, &location->complex, 0, 0, 0};
+            ngx_http_compile_complex_value_t ccv = {cf, &url.url, &plc->complex, 0, 0, 0};
             if (ngx_http_compile_complex_value(&ccv) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_http_compile_complex_value != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
             return NGX_CONF_OK;
         }
@@ -486,14 +486,14 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
         if (ngx_postgres_connect_conf(cf, cmd, connect, NULL) == NGX_CONF_ERROR) return NGX_CONF_ERROR;
         url = connect->url;
     }
-    if (!(location->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_upstream_add", &cmd->name); return NGX_CONF_ERROR; }
+    if (!(plc->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_upstream_add", &cmd->name); return NGX_CONF_ERROR; }
     if (cf->args->nelts == 2) return NGX_CONF_OK;
-    ngx_http_upstream_srv_conf_t *usc = location->upstream.upstream;
+    ngx_http_upstream_srv_conf_t *usc = plc->upstream.upstream;
     usc->peer.init_upstream = ngx_postgres_peer_init_upstream;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     usc->peer_data = connect;
 #else
-    location->connect = connect;
+    plc->connect = connect;
 #endif
     return NGX_CONF_OK;
 }
@@ -512,15 +512,15 @@ static char *ngx_postgres_trace_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 
 
 static char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_loc_conf_t *location = conf;
-    ngx_postgres_query_t *queryelts = location->query.elts;
-    ngx_postgres_query_t *query = location->query.nelts ? &queryelts[location->query.nelts - 1] : NULL;
+    ngx_postgres_loc_conf_t *plc = conf;
+    ngx_postgres_query_t *queryelts = plc->query.elts;
+    ngx_postgres_query_t *query = plc->query.nelts ? &queryelts[plc->query.nelts - 1] : NULL;
     ngx_str_t *args = cf->args->elts;
     ngx_int_t n = ngx_parse_time(&args[1], 0);
     if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be time", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
-    if (!query) location->timeout = (ngx_msec_t)n;
-    else if (location->timeout) return "duplicate";
+    if (!query) plc->timeout = (ngx_msec_t)n;
+    else if (plc->timeout) return "duplicate";
     else if (query->timeout) return "duplicate";
     else query->timeout = (ngx_msec_t)n;
     return NGX_CONF_OK;
@@ -546,19 +546,19 @@ static ngx_conf_bitmask_t ngx_postgres_next_upstream_masks[] = {
 
 
 static char *ngx_postgres_store_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_loc_conf_t *location = conf;
-    if (location->upstream.store != NGX_CONF_UNSET) return "is duplicate";
+    ngx_postgres_loc_conf_t *plc = conf;
+    if (plc->upstream.store != NGX_CONF_UNSET) return "is duplicate";
     ngx_str_t *args = cf->args->elts;
-    if (args[1].len == sizeof("off") - 1 && !ngx_strncmp(args[1].data, (u_char *)"off", sizeof("off") - 1)) { location->upstream.store = 0; return NGX_CONF_OK; }
-    location->upstream.store = 1;
+    if (args[1].len == sizeof("off") - 1 && !ngx_strncmp(args[1].data, (u_char *)"off", sizeof("off") - 1)) { plc->upstream.store = 0; return NGX_CONF_OK; }
+    plc->upstream.store = 1;
     if (args[1].len == sizeof("on") - 1 && !ngx_strncmp(args[1].data, (u_char *)"on", sizeof("on") - 1)) return NGX_CONF_OK;
     args[1].len++;
     ngx_http_script_compile_t sc;
     ngx_memzero(&sc, sizeof(sc));
     sc.cf = cf;
     sc.source = &args[1];
-    sc.lengths = &location->upstream.store_lengths;
-    sc.values = &location->upstream.store_values;
+    sc.lengths = &plc->upstream.store_lengths;
+    sc.values = &plc->upstream.store_values;
     sc.variables = ngx_http_script_variables_count(&args[1]);
     sc.complete_lengths = 1;
     sc.complete_values = 1;
