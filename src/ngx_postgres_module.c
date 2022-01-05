@@ -17,9 +17,9 @@ static void ngx_postgres_upstream_srv_conf_cln_handler(void *data) {
 
 
 static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
-    ngx_postgres_upstream_srv_conf_t *usc = ngx_pcalloc(cf->pool, sizeof(*usc));
-    if (!usc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
-    return usc;
+    ngx_postgres_upstream_srv_conf_t *pusc = ngx_pcalloc(cf->pool, sizeof(*pusc));
+    if (!pusc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
+    return pusc;
 }
 
 
@@ -119,11 +119,11 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
 }
 
 
-static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *usc) {
-    ngx_postgres_upstream_srv_conf_t *pusc = usc->srv_conf ? ngx_http_conf_upstream_srv_conf(usc, ngx_postgres_module) : NULL;
-    if (((pusc && pusc->peer.init_upstream) ? pusc->peer.init_upstream : ngx_http_upstream_init_round_robin)(cf, usc) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "peer.init_upstream != NGX_OK"); return NGX_ERROR; }
-    if (pusc) pusc->peer.init = usc->peer.init;
-    usc->peer.init = ngx_postgres_peer_init;
+static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *husc) {
+    ngx_postgres_upstream_srv_conf_t *pusc = husc->srv_conf ? ngx_http_conf_upstream_srv_conf(husc, ngx_postgres_module) : NULL;
+    if (((pusc && pusc->peer.init_upstream) ? pusc->peer.init_upstream : ngx_http_upstream_init_round_robin)(cf, husc) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "peer.init_upstream != NGX_OK"); return NGX_ERROR; }
+    if (pusc) pusc->peer.init = husc->peer.init;
+    husc->peer.init = ngx_postgres_peer_init;
     if (!pusc) return NGX_OK;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     queue_init(&pusc->data.queue);
