@@ -140,7 +140,8 @@ static void ngx_postgres_save_close(ngx_postgres_save_t *s) {
     s->write_handler = ngx_postgres_send_listen_handler;
     c->read->active = 0;
     c->write->active = 1;
-    if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && s->conf && s->conf->keep.max && PQstatus(s->conn) == CONNECTION_OK && s->write_handler(s) != NGX_ERROR) return;
+    ngx_postgres_upstream_srv_conf_t *pusc = s->conf;
+    if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && pusc && pusc->keep.max && PQstatus(s->conn) == CONNECTION_OK && s->write_handler(s) != NGX_ERROR) return;
     ngx_postgres_close(s);
 }
 
