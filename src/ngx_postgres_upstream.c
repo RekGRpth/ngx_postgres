@@ -351,7 +351,8 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
     ngx_postgres_data_t *d = data;
     ngx_http_request_t *r = d->request;
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_upstream_srv_conf_t *pusc = u->conf->upstream->srv_conf ? ngx_http_conf_upstream_srv_conf(u->conf->upstream, ngx_postgres_module) : NULL;
+    ngx_http_upstream_srv_conf_t *husc = u->upstream;
+    ngx_postgres_upstream_srv_conf_t *pusc = husc->srv_conf ? ngx_http_conf_upstream_srv_conf(husc, ngx_postgres_module) : NULL;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_postgres_connect_t *connect = pc->peer_data;
 #else
@@ -441,7 +442,8 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "rc = %i", rc);
     ngx_http_request_t *r = d->request;
     ngx_http_upstream_t *u = r->upstream;
-    ngx_postgres_upstream_srv_conf_t *pusc = u->conf->upstream->srv_conf ? ngx_http_conf_upstream_srv_conf(u->conf->upstream, ngx_postgres_module) : NULL;
+    ngx_http_upstream_srv_conf_t *husc = u->upstream;
+    ngx_postgres_upstream_srv_conf_t *pusc = husc->srv_conf ? ngx_http_conf_upstream_srv_conf(husc, ngx_postgres_module) : NULL;
     if (pusc && pusc->keep.max) {
         ngx_log_debug3(NGX_LOG_DEBUG_HTTP, pc->log, 0, "keep.max = %i, keep.size = %i, work.size = %i", pusc->keep.max, queue_size(&pusc->keep.queue), queue_size(&pusc->work.queue));
         queue_each(&pusc->keep.queue, q) {
@@ -513,6 +515,7 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     ngx_postgres_data_t *d = ngx_pcalloc(r->pool, sizeof(*d));
     if (!d) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
     u->conf->upstream = husc;
+    u->upstream = husc;
     d->request = r;
     d->peer.data = u->peer.data;
     u->peer.data = d;
