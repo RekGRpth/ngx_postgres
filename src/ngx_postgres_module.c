@@ -488,10 +488,10 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
     }
     if (!(plc->upstream.upstream = ngx_http_upstream_add(cf, &url, 0))) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_http_upstream_add", &cmd->name); return NGX_CONF_ERROR; }
     if (cf->args->nelts == 2) return NGX_CONF_OK;
-    ngx_http_upstream_srv_conf_t *usc = plc->upstream.upstream;
-    usc->peer.init_upstream = ngx_postgres_peer_init_upstream;
+    ngx_http_upstream_srv_conf_t *husc = plc->upstream.upstream;
+    husc->peer.init_upstream = ngx_postgres_peer_init_upstream;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    usc->peer_data = connect;
+    husc->peer_data = connect;
 #else
     plc->connect = connect;
 #endif
@@ -500,14 +500,14 @@ static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *co
 
 
 static char *ngx_postgres_log_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_upstream_srv_conf_t *usc = conf;
-    return ngx_log_set_log(cf, &usc->keep.log);
+    ngx_postgres_upstream_srv_conf_t *pusc = conf;
+    return ngx_log_set_log(cf, &pusc->keep.log);
 }
 
 
 static char *ngx_postgres_trace_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_upstream_srv_conf_t *usc = conf;
-    return ngx_log_set_log(cf, &usc->trace.log);
+    ngx_postgres_upstream_srv_conf_t *pusc = conf;
+    return ngx_log_set_log(cf, &pusc->trace.log);
 }
 
 
