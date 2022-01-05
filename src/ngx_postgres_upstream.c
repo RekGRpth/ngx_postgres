@@ -514,8 +514,6 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     if ((pusc && pusc->peer.init ? pusc->peer.init : ngx_http_upstream_init_round_robin_peer)(r, husc) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "peer.init != NGX_OK"); return NGX_ERROR; }
     ngx_postgres_data_t *d = ngx_pcalloc(r->pool, sizeof(*d));
     if (!d) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "!ngx_pcalloc"); return NGX_ERROR; }
-    u->conf->upstream = husc;
-    u->upstream = husc;
     d->request = r;
     d->peer.data = u->peer.data;
     u->peer.data = d;
