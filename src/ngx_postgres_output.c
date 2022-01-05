@@ -82,7 +82,7 @@ static ngx_int_t ngx_postgres_output_plain_csv(ngx_postgres_data_t *d, ngx_str_t
     ngx_postgres_save_t *s = d->save;
     if (!PQntuples(s->res) || !PQnfields(s->res)) return NGX_OK;
     size_t size = 0;
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    ngx_postgres_loc_conf_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[d->query];
     ngx_http_upstream_t *u = r->upstream;
@@ -349,7 +349,7 @@ static ngx_int_t ngx_postgres_output_rds_handler(ngx_postgres_data_t *d) {
 
 
 char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_location_t *location = conf;
+    ngx_postgres_loc_conf_t *location = conf;
     if (!location->query.nelts) return "must defined after \"postgres_query\" directive";
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[location->query.nelts - 1];

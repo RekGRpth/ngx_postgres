@@ -132,7 +132,7 @@ static ngx_int_t ngx_postgres_variable_get(ngx_http_request_t *r, ngx_http_varia
 ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    ngx_postgres_loc_conf_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[d->query];
     d->result.sql = query->sql;
@@ -170,7 +170,7 @@ ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *d) {
 ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *d) {
     ngx_http_request_t *r = d->request;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
-    ngx_postgres_location_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
+    ngx_postgres_loc_conf_t *location = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[d->query];
     if (!query->variable.nelts) return NGX_OK;
@@ -314,7 +314,7 @@ ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf) {
 
 
 char *ngx_postgres_set_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_location_t *location = conf;
+    ngx_postgres_loc_conf_t *location = conf;
     if (!location->query.nelts) return "must defined after \"postgres_query\" directive";
     ngx_postgres_query_t *queryelts = location->query.elts;
     ngx_postgres_query_t *query = &queryelts[location->query.nelts - 1];

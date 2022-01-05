@@ -163,7 +163,7 @@ typedef struct {
     ngx_postgres_connect_t *connect;
 #endif
     ngx_uint_t variable;
-} ngx_postgres_location_t;
+} ngx_postgres_loc_conf_t;
 
 typedef ngx_int_t (*ngx_postgres_rewrite_handler_pt) (ngx_postgres_data_t *d, ngx_uint_t key, ngx_uint_t status);
 
