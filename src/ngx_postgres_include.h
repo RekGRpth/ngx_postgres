@@ -111,7 +111,7 @@ typedef struct ngx_postgres_save_t {
     ngx_int_t (*read_handler) (ngx_postgres_save_t *s);
     ngx_int_t (*write_handler) (ngx_postgres_save_t *s);
     ngx_postgres_connect_t *connect;
-    ngx_postgres_upstream_srv_conf_t *usc;
+    ngx_postgres_upstream_srv_conf_t *conf;
     PGconn *conn;
     PGresult *res;
     queue_t queue;
