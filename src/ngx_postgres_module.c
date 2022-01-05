@@ -351,13 +351,13 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
 
 
 static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_http_upstream_srv_conf_t *usc = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
+    ngx_http_upstream_srv_conf_t *husc = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
     ngx_postgres_upstream_srv_conf_t *pusc = conf;
-    pusc->peer.init_upstream = usc->peer.init_upstream;
-    usc->peer.init_upstream = ngx_postgres_peer_init_upstream;
-    ngx_http_upstream_server_t *us = ngx_array_push(usc->servers);
-    if (!us) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
-    ngx_memzero(us, sizeof(*us));
+    pusc->peer.init_upstream = husc->peer.init_upstream;
+    husc->peer.init_upstream = ngx_postgres_peer_init_upstream;
+    ngx_http_upstream_server_t *hus = ngx_array_push(husc->servers);
+    if (!hus) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
+    ngx_memzero(hus, sizeof(*hus));
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_postgres_connect_t *connect = ngx_pcalloc(cf->pool, sizeof(*connect));
     if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_pcalloc", &cmd->name); return NGX_CONF_ERROR; }
@@ -366,10 +366,10 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
     ngx_postgres_connect_t *connect = ngx_array_push(&pusc->connect);
     if (!connect) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: !ngx_array_push", &cmd->name); return NGX_CONF_ERROR; }
 #endif
-    us->fail_timeout = 10;
-    us->max_fails = 1;
-    us->weight = 1;
-    return ngx_postgres_connect_conf(cf, cmd, connect, us);
+    hus->fail_timeout = 10;
+    hus->max_fails = 1;
+    hus->weight = 1;
+    return ngx_postgres_connect_conf(cf, cmd, connect, hus);
 }
 
 
