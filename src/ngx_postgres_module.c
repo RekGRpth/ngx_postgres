@@ -19,6 +19,11 @@ static void ngx_postgres_upstream_srv_conf_cln_handler(void *data) {
 static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_upstream_srv_conf_t *pusc = ngx_pcalloc(cf->pool, sizeof(*pusc));
     if (!pusc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    pusc->data.timeout = NGX_CONF_UNSET_MSEC;
+#endif
+    pusc->keep.requests = NGX_CONF_UNSET_UINT;
+    pusc->keep.timeout = NGX_CONF_UNSET_MSEC;
     return pusc;
 }
 
@@ -130,6 +135,11 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
 #endif
     queue_init(&pusc->keep.queue);
     queue_init(&pusc->work.queue);
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    ngx_conf_init_msec_value(pusc->data.timeout, 60 * 1000);
+#endif
+    ngx_conf_init_msec_value(pusc->keep.timeout, 60 * 60 * 1000);
+    ngx_conf_init_uint_value(pusc->keep.requests, 1000);
     if (!pusc->keep.max) return NGX_OK;
     ngx_pool_cleanup_t *cln = ngx_pool_cleanup_add(cf->pool, 0);
     if (!cln) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pool_cleanup_add"); return NGX_ERROR; }
@@ -401,7 +411,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             args[i].data = &args[i].data[sizeof("timeout=") - 1];
             n = ngx_parse_time(&args[i], 0);
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be time", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
-            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be positive", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
+            if (n < 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"timeout\" value \"%V\" must be non-negative", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             pusc->keep.timeout = (ngx_msec_t)n;
             continue;
         }
@@ -410,7 +420,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
             args[i].data = &args[i].data[sizeof("requests=") - 1];
             n = ngx_atoi(args[i].data, args[i].len);
             if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be number", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
-            if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be positive", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
+            if (n < 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"requests\" value \"%V\" must be non-negative", &cmd->name, &args[i]); return NGX_CONF_ERROR; }
             pusc->keep.requests = (ngx_uint_t)n;
             continue;
         }
