@@ -353,18 +353,13 @@ static ngx_int_t ngx_postgres_open(ngx_peer_connection_t *pc, void *data) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_http_upstream_srv_conf_t *husc = u->upstream;
     ngx_postgres_upstream_srv_conf_t *pusc = husc->srv_conf ? ngx_http_conf_upstream_srv_conf(husc, ngx_postgres_module) : NULL;
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_postgres_connect_t *connect = pc->peer_data;
-#else
     ngx_postgres_loc_conf_t *plc = ngx_http_get_module_loc_conf(r, ngx_postgres_module);
     ngx_postgres_connect_t *connect = plc->connect ? plc->connect : pusc->connect.elts;
     if (!plc->connect) {
         ngx_uint_t i;
-        for (i = 0; i < pusc->connect.nelts; i++) for (ngx_uint_t j = 0; j < connect[i].url.naddrs; j++) if (!ngx_memn2cmp((u_char *)pc->sockaddr, (u_char *)connect[i].url.addrs[j].sockaddr, pc->socklen, connect[i].url.addrs[j].socklen)) { connect = &connect[i]; goto found; }
-found:
+        for (i = 0; i < pusc->connect.nelts; i++) if (connect[i].url.url.data == pc->name->data) { connect = &connect[i]; break; }
         if (i == pusc->connect.nelts) { ngx_log_error(NGX_LOG_ERR, pc->log, 0, "connect not found"); return NGX_BUSY; }
     }
-#endif
     u->conf->connect_timeout = connect->timeout;
     const char *host = connect->values[0];
     if (host) { ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "host = %s", host); }
