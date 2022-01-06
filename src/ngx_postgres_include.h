@@ -6,6 +6,10 @@
 #include "queue.h"
 #include "resty_dbd_stream.h"
 
+#ifndef NGX_YIELD
+#define NGX_YIELD -7
+#endif
+
 typedef struct {
     char *message;
     ngx_log_handler_pt handler;
@@ -44,14 +48,12 @@ typedef struct {
 
 typedef struct {
     ngx_array_t connect;
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     struct {
         ngx_flag_t reject;
         ngx_msec_t timeout;
         ngx_uint_t max;
         queue_t queue;
     } data;
-#endif
     struct {
         ngx_flag_t reject;
         ngx_log_t *log;
@@ -121,15 +123,11 @@ typedef struct ngx_postgres_save_t {
 
 typedef struct ngx_postgres_data_t {
     ngx_array_t variable;
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_event_t timeout;
-#endif
     ngx_http_request_t *request;
     ngx_postgres_save_t *save;
     ngx_uint_t query;
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     queue_t queue;
-#endif
     struct {
         ngx_event_free_peer_pt free;
         ngx_event_get_peer_pt get;

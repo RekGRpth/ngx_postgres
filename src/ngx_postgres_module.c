@@ -19,9 +19,7 @@ static void ngx_postgres_upstream_srv_conf_cln_handler(void *data) {
 static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
     ngx_postgres_upstream_srv_conf_t *pusc = ngx_pcalloc(cf->pool, sizeof(*pusc));
     if (!pusc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     pusc->data.timeout = NGX_CONF_UNSET_MSEC;
-#endif
     pusc->keep.requests = NGX_CONF_UNSET_UINT;
     pusc->keep.timeout = NGX_CONF_UNSET_MSEC;
     return pusc;
@@ -130,14 +128,10 @@ static ngx_int_t ngx_postgres_peer_init_upstream(ngx_conf_t *cf, ngx_http_upstre
     if (pusc) pusc->peer.init = husc->peer.init;
     husc->peer.init = ngx_postgres_peer_init;
     if (!pusc) return NGX_OK;
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     queue_init(&pusc->data.queue);
-#endif
     queue_init(&pusc->keep.queue);
     queue_init(&pusc->work.queue);
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_conf_init_msec_value(pusc->data.timeout, 60 * 1000);
-#endif
     ngx_conf_init_msec_value(pusc->keep.timeout, 60 * 60 * 1000);
     ngx_conf_init_uint_value(pusc->keep.requests, 1000);
     if (!pusc->keep.max) return NGX_OK;
@@ -422,7 +416,6 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
 }
 
 
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_upstream_srv_conf_t *pusc = conf;
     if (!pusc->keep.max) return "works only with \"postgres_keepalive\"";
@@ -460,7 +453,6 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
     }
     return NGX_CONF_OK;
 }
-#endif
 
 
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
@@ -575,14 +567,12 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
   { .name = ngx_string("postgres_queue"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_TAKE12|NGX_CONF_TAKE3,
     .set = ngx_postgres_queue_conf,
     .conf = NGX_HTTP_SRV_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
-#endif
   { .name = ngx_string("postgres_server"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
     .set = ngx_postgres_server_conf,
