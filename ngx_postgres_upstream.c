@@ -148,10 +148,11 @@ static void ngx_postgres_save_read_or_write_handler(ngx_event_t *e) {
     ngx_connection_t *c = e->data;
     c->log->connection = c->number;
     ngx_postgres_save_t *s = c->data;
-    if (c->close) { ngx_log_error(NGX_LOG_WARN, e->log, 0, "close"); goto close; }
-    if (c->read->timedout) { ngx_log_error(NGX_LOG_WARN, e->log, 0, "read timedout"); c->read->timedout = 0; goto close; }
-    if (c->write->timedout) { ngx_log_error(NGX_LOG_WARN, e->log, 0, "write timedout"); c->write->timedout = 0; goto close; }
-    if (!e->write && PQstatus(s->conn) == CONNECTION_OK && !PQconsumeInput(s->conn)) { ngx_postgres_log_error(NGX_LOG_ERR, e->log, 0, PQerrorMessageMy(s->conn), "!PQconsumeInput"); goto close; }
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
+    if (c->close) { ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "close"); goto close; }
+    if (c->read->timedout) { ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "read timedout"); c->read->timedout = 0; goto close; }
+    if (c->write->timedout) { ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "write timedout"); c->write->timedout = 0; goto close; }
+    if (!e->write && PQstatus(s->conn) == CONNECTION_OK && !PQconsumeInput(s->conn)) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQconsumeInput"); goto close; }
     ngx_int_t rc = NGX_OK;
     if (!e->write && PQstatus(s->conn) == CONNECTION_OK && rc == NGX_OK) rc = ngx_postgres_notify(s);
     while (PQstatus(s->conn) == CONNECTION_OK && (s->res = PQgetResult(s->conn))) {
@@ -170,7 +171,6 @@ static void ngx_postgres_save_read_or_write_handler(ngx_event_t *e) {
     }
     if (rc != NGX_ERROR) return;
 close:
-    ngx_log_error(NGX_LOG_WARN, e->log, 0, "close");
     ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "close");
     ngx_postgres_save_close(s);
 }
