@@ -1,15 +1,13 @@
-name: Merge
+name: License
 on:
   schedule:
-    - cron: '0 19 * * *'
+    - cron: '0 19 1 1 *'
   workflow_dispatch:
 jobs:
-  merge:
+  license:
     env:
       GITHUB_TOKEN: ${{ secrets.PUBLIC_REPO_ACCESS_TOKEN }}
     runs-on: ubuntu-latest
     steps:
       - uses: rekgrpth/git-clone-shell-action@v1
-      - env:
-          INPUTS_REPOSITORY: FRiCKLE/ngx_postgres
-        uses: rekgrpth/git-fetch-upstream-merge-push-shell-action@v1
+      - uses: rekgrpth/update-license-year-shell-action@v1
