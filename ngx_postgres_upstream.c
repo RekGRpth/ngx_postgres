@@ -157,6 +157,7 @@ static void ngx_postgres_save_write_handler(ngx_event_t *e) {
 
 
 static void ngx_postgres_log_to_keep(ngx_log_t *log, ngx_postgres_save_t *s) {
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
     if (log != ngx_cycle->log) log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "%s", __func__);
