@@ -27,6 +27,7 @@ and `paramspec` is: `name=value[&...]`
 
 The URI scheme designator can be either `postgresql://` or `postgres://`. Each of the remaining URI parts is optional.
 
+
 postgres_keepalive
 ------------------
 * **syntax**: `postgres_keepalive count [overflow=ignore|reject] [timeout=1h] [requests=1000]`
@@ -39,6 +40,19 @@ Configure keepalive parameters:
 - `overflow`   - either `ignore` the fact that keepalive connection pool is full and allow request, but close connection afterwards or `reject` request with `503 Service Unavailable` response,
 - `timeout`    - sets a timeout during which an idle keepalive connection to an upstream server will stay open,
 - `requests`   - sets the maximum number of requests that can be served through one keepalive connection. After the maximum number of requests is made, the connection is closed. Closing connections periodically is necessary to free per-connection memory allocations. Therefore, using too high maximum number of requests could result in excessive memory usage and not recommended.
+
+
+postgres_queue
+------------------
+* **syntax**: `postgres_queue count [overflow=ignore|reject] [timeout=60s]`
+* **default**: `none`
+* **context**: `upstream`
+
+Configure queue parameters:
+
+- `count`      - maximum number of queue requests (per connection),
+- `overflow`   - either `ignore` the fact that queue request pool is full and allow request or `reject` request with `503 Service Unavailable` response,
+- `timeout`    - sets a timeout during which a request to an upstream server will be in queue.
 
 
 postgres_pass
