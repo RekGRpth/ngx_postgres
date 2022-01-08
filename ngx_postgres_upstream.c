@@ -281,6 +281,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
     }
     if (queue_size(&pusc->keep.queue) >= pusc->keep.max) {
         queue_t *q = queue_last(&pusc->keep.queue);
+        queue_remove(q);
         ngx_log_error(NGX_LOG_WARN, pc->log, 0, "close");
         ngx_postgres_save_t *s = queue_data(q, typeof(*s), queue);
         ngx_atomic_uint_t number = s->connection->log->connection;
@@ -288,6 +289,7 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
         ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "close");
         ngx_postgres_save_close(s);
         s->connection->log->connection = number;
+        queue_insert_head(&pusc->keep.queue, q);
     }
     ngx_postgres_log_to_keep(pusc->keep.log ? pusc->keep.log : ngx_cycle->log, s);
     s->connection->data = s;
