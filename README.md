@@ -29,18 +29,16 @@ The URI scheme designator can be either `postgresql://` or `postgres://`. Each o
 
 postgres_keepalive
 ------------------
-* **syntax**: `postgres_keepalive off|no|false | save=count [mode=single|multi] [overflow=ignore|reject] [prepare=on|yes|true|off|no|false]`
-* **default**: `off`
+* **syntax**: `postgres_keepalive count [overflow=ignore|reject] [timeout=1h] [requests=1000]`
+* **default**: `none`
 * **context**: `upstream`
 
 Configure keepalive parameters:
 
-- `save`       - maximum number of keepalive connections (per worker process),
-- `prepare`    - use or not prepared statements,
-- `mode`       - backend matching mode,
-- `overflow`   - either `ignore` the fact that keepalive connection pool is full
-  and allow request, but close connection afterwards or `reject` request with
-  `503 Service Unavailable` response.
+- `count`      - maximum number of keepalive connections (per worker process),
+- `overflow`   - either `ignore` the fact that keepalive connection pool is full and allow request, but close connection afterwards or `reject` request with `503 Service Unavailable` response,
+- `timeout`    - sets a timeout during which an idle keepalive connection to an upstream server will stay open,
+- `requests`   - sets the maximum number of requests that can be served through one keepalive connection. After the maximum number of requests is made, the connection is closed. Closing connections periodically is necessary to free per-connection memory allocations. Therefore, using too high maximum number of requests could result in excessive memory usage and not recommended.
 
 
 postgres_pass
