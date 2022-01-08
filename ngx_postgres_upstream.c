@@ -116,6 +116,7 @@ static void ngx_postgres_save_close(ngx_postgres_save_t *s) {
 
 static void ngx_postgres_save_read_or_write_handler(ngx_event_t *e) {
     ngx_connection_t *c = e->data;
+    ngx_atomic_uint_t number = c->log->connection;
     c->log->connection = c->number;
     ngx_postgres_save_t *s = c->data;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", e->write ? "write" : "read");
@@ -139,10 +140,12 @@ static void ngx_postgres_save_read_or_write_handler(ngx_event_t *e) {
     } else {
         if (rc == NGX_OK && s->read_handler) rc = s->read_handler(s);
     }
-    if (rc != NGX_ERROR) return;
+    if (rc != NGX_ERROR) goto ret;
 close:
     ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "close");
     ngx_postgres_save_close(s);
+ret:
+    c->log->connection = number;
 }
 
 
@@ -159,7 +162,7 @@ static void ngx_postgres_save_write_handler(ngx_event_t *e) {
 static void ngx_postgres_log_to_keep(ngx_log_t *log, ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
-    if (log != ngx_cycle->log) log->connection = c->number;
+    log->connection = c->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "%s", __func__);
     c->idle = 1;
     c->log = log;
