@@ -88,11 +88,9 @@ Rewrite response `status_code` when given condition is met (first one wins!):
 - `no_rows`    - no rows were returned in the result-set,
 - `rows`       - at least one row was returned in the result-set.
 
-When `status_code` is prefixed with `=` sign then original response body is
-send to the client instead of the default error page for given `status_code`.
+When `status_code` is prefixed with `=` sign then original response body is send to the client instead of the default error page for given `status_code`.
 
-By design both `no_changes` and `changes` apply only to `INSERT`,
-`UPDATE`, `DELETE`, `MOVE`, `FETCH` and `COPY` SQL queries.
+By design both `no_changes` and `changes` apply only to `INSERT`, `UPDATE`, `DELETE`, `MOVE`, `FETCH` and `COPY` SQL queries.
 
 This directive can be used more than once within same context.
 
@@ -105,19 +103,12 @@ postgres_output
 
 Set output format:
 
-- `json`         - return all values from the result-set in `json` format
-  (with appropriate `Content-Type`),
-- `text`         - return all values from the result-set in `text` format
-  (with appropriate `Content-Type`), values are separated by new line,
-- `csv`          - return all values from the result-set in `csv` format
-  (with appropriate `Content-Type`), values are separated by new line,
-- `value`        - return single value from the result-set in `text` format
-  (with default `Content-Type`),
-- `binary`       - return single value from the result-set in `binary` format
-  (with default `Content-Type`),
-- `none`         - don't return anything, this should be used only when
-  extracting values with `postgres_set` for use with other modules (without
-  `Content-Type`).
+- `json`         - return all values from the result-set in `json` format (with appropriate `Content-Type`),
+- `text`         - return all values from the result-set in `text` format (with appropriate `Content-Type`), values are separated by new line,
+- `csv`          - return all values from the result-set in `csv` format (with appropriate `Content-Type`), values are separated by new line,
+- `value`        - return single value from the result-set in `text` format (with default `Content-Type`),
+- `binary`       - return single value from the result-set in `binary` format (with default `Content-Type`),
+- `none`         - don't return anything, this should be used only when extracting values with `postgres_set` for use with other modules (without `Content-Type`).
 
 
 postgres_set
@@ -128,43 +119,17 @@ postgres_set
 
 Get single value from the result-set and keep it in $variable.
 
-When requirement level is set to `required` and value is either out-of-range,
-`NULL` or zero-length, then nginx returns `500 Internal Server Error` response.
-Such condition is silently ignored when requirement level is set to `optional`
-(default).
+When requirement level is set to `required` and value is either out-of-range, `NULL` or zero-length, then nginx returns `500 Internal Server Error` response.
+Such condition is silently ignored when requirement level is set to `optional` (default).
 
-Row and column numbers start at 0. Column name can be used instead of column
-number.
+Row and column numbers start at 0. Column name can be used instead of column number.
 
 This directive can be used more than once within same context.
 
 
-postgres_escape
----------------
-* **syntax**: `postgres_escape $escaped [[=]$unescaped]`
-* **default**: `none`
-* **context**: `http`, `server`, `location`
-
-Escape and quote `$unescaped` string. Result is stored in `$escaped` variable
-which can be safely used in SQL queries.
-
-Because nginx cannot tell the difference between empty and non-existing strings,
-all empty strings are by default escaped to `NULL` value. This behavior can be
-disabled by prefixing `$unescaped` string with `=` sign.
-
-
-postgres_connect_timeout
-------------------------
-* **syntax**: `postgres_connect_timeout timeout`
-* **default**: `60s`
-* **context**: `http`, `server`, `location`
-
-Set timeout for connecting to the database.
-
-
-postgres_result_timeout
+postgres_timeout
 -----------------------
-* **syntax**: `postgres_result_timeout timeout`
+* **syntax**: `postgres_timeout timeout`
 * **default**: `60s`
 * **context**: `http`, `server`, `location`
 
@@ -185,8 +150,7 @@ Number of rows in received result-set.
 
 $postgres_affected
 ------------------
-Number of rows affected by `INSERT`, `UPDATE`, `DELETE`, `MOVE`, `FETCH`
-or `COPY` SQL query.
+Number of rows affected by `INSERT`, `UPDATE`, `DELETE`, `MOVE`, `FETCH` or `COPY` SQL query.
 
 
 $postgres_query
@@ -386,47 +350,3 @@ You can also test interoperability with following modules:
 by running:
 
 `$ prove`
-
-
-License
-=======
-    Copyright (c) 2010, FRiCKLE Piotr Sikora <info@frickle.com>
-    Copyright (c) 2009-2010, Xiaozhe Wang <chaoslawful@gmail.com>
-    Copyright (c) 2009-2010, Yichun Zhang <agentzh@gmail.com>
-    All rights reserved.
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-    1. Redistributions of source code must retain the above copyright
-       notice, this list of conditions and the following disclaimer.
-    2. Redistributions in binary form must reproduce the above copyright
-       notice, this list of conditions and the following disclaimer in the
-       documentation and/or other materials provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-    "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-    LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-    A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-    HOLDERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-    SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-    LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-    DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
-This software includes also parts of the code from:
-
-- `nginx` (copyrighted by **Igor Sysoev** under BSD license),
-- `ngx_http_upstream_keepalive` module (copyrighted by **Maxim Dounin**
-  under BSD license).
-
-
-See also
-========
-- [ngx_rds_json](http://github.com/agentzh/rds-json-nginx-module),
-- [ngx_drizzle](http://github.com/chaoslawful/drizzle-nginx-module),
-- [ngx_lua](http://github.com/chaoslawful/lua-nginx-module),
-- [nginx-eval-module (agentzh's fork)](http://github.com/agentzh/nginx-eval-module).
