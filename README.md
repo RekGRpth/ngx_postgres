@@ -57,12 +57,11 @@ Configure queue parameters:
 
 postgres_pass
 -------------
-* **syntax**: `postgres_pass upstream`
+* **syntax**: `postgres_pass upstream|connection_string`
 * **default**: `none`
 * **context**: `location`, `if location`
 
-Set name of an upstream block that will be used for the database connections
-(it can include variables).
+Set name of an upstream block that will be used for the database connections (it can include variables) or set connection_string as abow if not used explicit upstream.
 
 
 postgres_query
@@ -71,8 +70,7 @@ postgres_query
 * **default**: `none`
 * **context**: `http`, `server`, `location`, `if location`
 
-Set query string (it can include variables). When methods are specified then
-query is used only for them, otherwise it's used for all methods.
+Set query string (it can include variables, but after them ::type must be specified). When methods are specified then query is used only for them, otherwise it's used for all methods.
 
 This directive can be used more than once within same context.
 
