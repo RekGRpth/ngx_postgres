@@ -521,7 +521,11 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 
 void ngx_postgres_close(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
+    s->read_handler = NULL;
+    s->write_handler = NULL;
     ngx_connection_t *c = s->connection;
+    c->read->active = 0;
+    c->write->active = 0;
     if (s->conf) queue_remove(&s->queue);
     PQfinish(s->conn);
     if (ngx_del_conn) {
