@@ -2,10 +2,6 @@
 #include "ngx_postgres_include.h"
 
 
-static void ngx_postgres_save_read_handler(ngx_event_t *e);
-static void ngx_postgres_save_write_handler(ngx_event_t *e);
-
-
 ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_array_t listen = {0};
@@ -88,32 +84,6 @@ static ngx_int_t ngx_postgres_result_listen_handler(ngx_postgres_save_t *s) {
 }
 
 
-static void ngx_postgres_log_to_keep(ngx_log_t *log, ngx_postgres_save_t *s) {
-    ngx_connection_t *c = s->connection;
-    if (log != ngx_cycle->log) log->connection = c->number;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "%s", __func__);
-    c->idle = 1;
-    c->log = log;
-    c->pool->log = log;
-    c->read->handler = ngx_postgres_save_read_handler;
-    c->read->log = log;
-    c->read->timedout = 0;
-    c->sent = 0;
-    c->write->handler = ngx_postgres_save_write_handler;
-    c->write->log = log;
-    c->write->timedout = 0;
-    ngx_postgres_upstream_srv_conf_t *pusc = s->conf;
-    if (pusc) {
-        if (pusc->keep.timeout) {
-            ngx_add_timer(c->read, pusc->keep.timeout);
-            ngx_add_timer(c->write, pusc->keep.timeout);
-        }
-        queue_remove(&s->queue);
-        queue_insert_head(&pusc->keep.queue, &s->queue);
-    }
-}
-
-
 static ngx_int_t ngx_postgres_send_listen_handler(ngx_postgres_save_t *s) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     if (PQisBusy(s->conn)) { ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQisBusy"); return NGX_OK; }
@@ -183,6 +153,32 @@ static void ngx_postgres_save_read_handler(ngx_event_t *e) {
 
 static void ngx_postgres_save_write_handler(ngx_event_t *e) {
     ngx_postgres_save_read_or_write_handler(e);
+}
+
+
+static void ngx_postgres_log_to_keep(ngx_log_t *log, ngx_postgres_save_t *s) {
+    ngx_connection_t *c = s->connection;
+    if (log != ngx_cycle->log) log->connection = c->number;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, log, 0, "%s", __func__);
+    c->idle = 1;
+    c->log = log;
+    c->pool->log = log;
+    c->read->handler = ngx_postgres_save_read_handler;
+    c->read->log = log;
+    c->read->timedout = 0;
+    c->sent = 0;
+    c->write->handler = ngx_postgres_save_write_handler;
+    c->write->log = log;
+    c->write->timedout = 0;
+    ngx_postgres_upstream_srv_conf_t *pusc = s->conf;
+    if (pusc) {
+        if (pusc->keep.timeout) {
+            ngx_add_timer(c->read, pusc->keep.timeout);
+            ngx_add_timer(c->write, pusc->keep.timeout);
+        }
+        queue_remove(&s->queue);
+        queue_insert_head(&pusc->keep.queue, &s->queue);
+    }
 }
 
 
