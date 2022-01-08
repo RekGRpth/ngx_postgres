@@ -540,12 +540,12 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 
 
 void ngx_postgres_close(ngx_postgres_save_t *s) {
-    ngx_atomic_uint_t number = s->connection->log->connection;
-    s->connection->log->connection = s->connection->number;
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     s->read_handler = NULL;
     s->write_handler = NULL;
     ngx_connection_t *c = s->connection;
+    ngx_atomic_uint_t number = c->log->connection;
+    c->log->connection = c->number;
+    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     c->read->active = 0;
     c->write->active = 0;
     if (s->conf) queue_remove(&s->queue);
@@ -558,7 +558,7 @@ void ngx_postgres_close(ngx_postgres_save_t *s) {
     }
     ngx_destroy_pool(c->pool);
     ngx_close_connection(c);
-    s->connection->log->connection = number;
+    c->log->connection = number;
 }
 
 
