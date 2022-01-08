@@ -3,34 +3,6 @@ About
 `ngx_postgres` is an upstream module that allows `nginx` to communicate directly
 with `PostgreSQL` database.
 
-Community fork
-==============
-
-This is a fork that adds a bunch of new features:
-
-Postgres additions (by @Inviz)
-* **prepared statements** (bound directly to nginx variables). For each connection in pool it keeps its own set of prepared statements.
-* **json output** option to format rows as json arrays
-* postgres_rewrite can now make **redirects** (with interpolations)
-* **`errors`** and **`no_errors`** rewrite conditions that look for `error:` or `errors:` in json response
-
-Server additions (by @cryptofuture) 
-* backported **socket** support for pg connection
-* **dynamic module** loading support
-
-Status
-======
-This is a **fork** which is less battle-tested that mainline project. Original version of the module is production-ready and it's compatible with following nginx
-releases:
-
-- 0.7.x (tested with 0.7.60 to 0.7.69),
-- 0.8.x (tested with 0.8.0 to 0.8.55),
-- 0.9.x (tested with 0.9.0 to 0.9.7),
-- 1.0.x (tested with 1.0.0 to 1.0.11),
-- 1.1.x (tested with 1.1.0 to 1.1.12).
-- 1.2.x (tested with 1.2.3 to 1.2.3).
-- 1.3.x (tested with 1.3.4 to 1.3.4).
-
 
 Configuration directives
 ========================
