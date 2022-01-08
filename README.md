@@ -136,26 +136,36 @@ postgres_timeout
 Set timeout for receiving result from the database.
 
 
-Configuration variables
+Build-in variables
 =======================
-$postgres_columns
+$postgres_nfields
 -----------------
 Number of columns in received result-set.
 
 
-$postgres_rows
+$postgres_ntuples
 --------------
 Number of rows in received result-set.
 
 
-$postgres_affected
+$postgres_cmdtuples
 ------------------
 Number of rows affected by `INSERT`, `UPDATE`, `DELETE`, `MOVE`, `FETCH` or `COPY` SQL query.
+
+
+$postgres_cmdstatus
+------------------
+Status of SQL query.
 
 
 $postgres_query
 ---------------
 SQL query, as seen by `PostgreSQL` database.
+
+
+$postgres_error
+---------------
+SQL error, as seen by `PostgreSQL` database.
 
 
 Sample configurations
