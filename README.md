@@ -1,19 +1,31 @@
 About
 =====
-`ngx_postgres` is an upstream module that allows `nginx` to communicate directly
-with `PostgreSQL` database.
+`ngx_postgres` is an upstream module that allows `nginx` to communicate directly with `PostgreSQL` database.
 
 
 Configuration directives
 ========================
 postgres_server
 ---------------
-* **syntax**: `postgres_server {ip[:portnum]|unix:/socket/dir} [port=portnum] [dbname=dbname] [user=user] [password=pass]`
+* **syntax**: `postgres_server connection_string`
 * **default**: `none`
 * **context**: `upstream`
 
-Set details about the database server. Additional port parameter is offered to connect to unix socket with alternative port numbers.
+Set user-specified string to obtain connection parameters. There are two accepted formats for these strings: plain keyword/value strings and URIs.
 
+In the keyword/value format, each parameter setting is in the form `keyword=value`, with space(s) between settings.
+
+The general form for a connection URI is:
+
+`postgresql://[userspec@][hostspec][/dbname][?paramspec]`
+
+where `userspec` is: `user[:password]`
+
+and `hostspec` is: `[host][:port][,...]`
+
+and `paramspec` is: `name=value[&...]`
+
+The URI scheme designator can be either `postgresql://` or `postgres://`. Each of the remaining URI parts is optional.
 
 postgres_keepalive
 ------------------
