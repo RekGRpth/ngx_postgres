@@ -270,7 +270,8 @@ static void ngx_postgres_free_peer(ngx_peer_connection_t *pc, void *data) {
         ngx_postgres_save_t *s = queue_data(q, typeof(*s), queue);
         ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "close");
         ngx_postgres_save_close(s);
-    } else ngx_postgres_log_to_keep(pusc->keep.log ? pusc->keep.log : ngx_cycle->log, s);
+    }
+    ngx_postgres_log_to_keep(pusc->keep.log ? pusc->keep.log : ngx_cycle->log, s);
     s->connection->data = s;
     s->read_handler = ngx_postgres_result_idle_handler;
     s->write_handler = NULL;
