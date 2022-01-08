@@ -4,7 +4,7 @@
 
 ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
     ngx_atomic_uint_t number = s->connection->log->connection;
-    s->connection->log->connection = s->connection->number;
+    if (s->connection->data == s) s->connection->log->connection = s->connection->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_array_t listen = {0};
     ngx_int_t rc = NGX_OK;
@@ -51,7 +51,7 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
         }
     }
     if (listen.nelts) ngx_array_destroy(&listen);
-    s->connection->log->connection = number;
+    if (s->connection->data == s) s->connection->log->connection = number;
     return rc;
 }
 
