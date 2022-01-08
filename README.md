@@ -172,18 +172,17 @@ Sample configurations
 =====================
 Sample configuration #1
 -----------------------
-Return content of table `cats` (in `rds` format).
+Return content of table `cats` (in `plain` format).
 
     http {
         upstream database {
-            postgres_server  127.0.0.1 dbname=test
-                             user=test password=test;
+            postgres_server host=127.0.0.1 dbname=test user=test password=test;
         }
-
         server {
             location / {
-                postgres_pass   database;
-                postgres_query  "SELECT * FROM cats";
+                postgres_pass database;
+                postgres_query "SELECT * FROM cats";
+                postgres_output plain;
             }
         }
     }
@@ -191,19 +190,17 @@ Return content of table `cats` (in `rds` format).
 
 Sample configuration #2
 -----------------------
-Return only those rows from table `sites` that match `host` filter which
-is evaluated for each request based on its `$http_host` variable.
+Return only those rows from table `sites` that match `host` filter which is evaluated for each request based on its `$http_host` variable.
 
     http {
         upstream database {
-            postgres_server  127.0.0.1 dbname=test
-                             user=test password=test;
+            postgres_server host=127.0.0.1 dbname=test user=test password=test;
         }
-
         server {
             location / {
-                postgres_pass   database;
-                postgres_query  SELECT * FROM sites WHERE host='$http_host'";
+                postgres_pass database;
+                postgres_query "SELECT * FROM sites WHERE host=$http_host::text";
+                postgres_output plain;
             }
         }
     }
@@ -215,28 +212,24 @@ Pass request to the backend selected from the database (traffic router).
 
     http {
         upstream database {
-            postgres_server  127.0.0.1 dbname=test
-                             user=test password=test;
+            postgres_server host=127.0.0.1 dbname=test user=test password=test;
         }
-
         server {
             location / {
-                eval_subrequest_in_memory  off;
-
+                eval_subrequest_in_memory off;
                 eval $backend {
-                    postgres_pass    database;
-                    postgres_query   "SELECT * FROM backends LIMIT 1";
-                    postgres_output  value 0 0;
+                    postgres_pass database;
+                    postgres_query "SELECT * FROM backends LIMIT 1";
+                    postgres_output value 0 0;
                 }
-
-                proxy_pass  $backend;
+                proxy_pass $backend;
             }
         }
     }
 
 Required modules (other than `ngx_postgres`):
 
-- [nginx-eval-module (agentzh's fork)](http://github.com/agentzh/nginx-eval-module),
+- [nginx-eval-module (agentzh's fork)](http://github.com/agentzh/nginx-eval-module).
 
 
 Sample configuration #4
@@ -245,77 +238,58 @@ Restrict access to local files by authenticating against `PostgreSQL` database.
 
     http {
         upstream database {
-            postgres_server  127.0.0.1 dbname=test
-                             user=test password=test;
+            postgres_server host=127.0.0.1 dbname=test user=test password=test;
         }
-
         server {
             location = /auth {
                 internal;
-
-                postgres_escape   $user $remote_user;
-                postgres_escape   $pass $remote_passwd;
-
-                postgres_pass     database;
-                postgres_query    "SELECT login FROM users WHERE login=$user AND pass=$pass";
-                postgres_rewrite  no_rows 403;
-                postgres_output   none;
+                postgres_pass database;
+                postgres_query "SELECT login FROM users WHERE login=$remote_user::text AND pass=$remote_passwd::text";
+                postgres_rewrite no_rows 403;
+                postgres_output none;
             }
-
             location / {
-                auth_request      /auth;
-                root              /files;
+                auth_request /auth;
+                root /files;
             }
         }
     }
 
 Required modules (other than `ngx_postgres`):
 
-- [ngx_http_auth_request_module](http://mdounin.ru/hg/ngx_http_auth_request_module/),
+- [ngx_http_auth_request_module](http://mdounin.ru/hg/ngx_http_auth_request_module/)
 - [ngx_coolkit](http://github.com/FRiCKLE/ngx_coolkit).
 
 
 Sample configuration #5
 -----------------------
-Simple RESTful webservice returning JSON responses with appropriate HTTP status
-codes.
+Simple RESTful webservice returning JSON responses with appropriate HTTP status codes.
 
     http {
         upstream database {
-            postgres_server  127.0.0.1 dbname=test
-                             user=test password=test;
+            postgres_server host=127.0.0.1 dbname=test user=test password=test;
         }
-
         server {
-            set $random  123;
-
+            set $random 123;
             location = /numbers/ {
-                postgres_pass     database;
-                rds_json          on;
-
-                postgres_query    HEAD GET  "SELECT * FROM numbers";
-
-                postgres_query    POST      "INSERT INTO numbers VALUES('$random') RETURNING *";
-                postgres_rewrite  POST      changes 201;
-
-                postgres_query    DELETE    "DELETE FROM numbers";
-                postgres_rewrite  DELETE    no_changes 204;
-                postgres_rewrite  DELETE    changes 204;
+                postgres_pass database;
+                postgres_query HEAD GET "SELECT * FROM numbers";
+                postgres_query POST "INSERT INTO numbers VALUES($random::integer) RETURNING *";
+                postgres_rewrite POST changes 201;
+                postgres_query DELETE "DELETE FROM numbers";
+                postgres_rewrite DELETE no_changes 204;
+                postgres_rewrite DELETE changes 204;
             }
 
-            location ~ /numbers/(?<num>\d+) {
-                postgres_pass     database;
-                rds_json          on;
-
-                postgres_query    HEAD GET  "SELECT * FROM numbers WHERE number='$num'";
-                postgres_rewrite  HEAD GET  no_rows 410;
-
-                postgres_query    PUT       "UPDATE numbers SET number='$num' WHERE number='$num' RETURNING *";
-                postgres_rewrite  PUT       no_changes 410;
-
-                postgres_query    DELETE    "DELETE FROM numbers WHERE number='$num'";
-                postgres_rewrite  DELETE    no_changes 410;
-                postgres_rewrite  DELETE    changes 204;
+            location ~/numbers/(?<num>\d+) {
+                postgres_pass database;
+                postgres_query HEAD GET "SELECT * FROM numbers WHERE number=$num::integer";
+                postgres_rewrite HEAD GET no_rows 410;
+                postgres_query PUT "UPDATE numbers SET number=$num::integer WHERE number=$num::integer RETURNING *";
+                postgres_rewrite PUT no_changes 410;
+                postgres_query DELETE "DELETE FROM numbers WHERE number=$num::integer";
+                postgres_rewrite DELETE no_changes 410;
+                postgres_rewrite DELETE changes 204;
             }
         }
     }
@@ -329,10 +303,9 @@ Sample configuration #6
 Use GET parameter in SQL query.
 
     location /quotes {
-        set_unescape_uri  $txt $arg_txt;
-        postgres_escape   $txt;
-        postgres_pass     database;
-        postgres_query    "SELECT * FROM quotes WHERE quote=$txt";
+        set_unescape_uri $txt $arg_txt;
+        postgres_pass database;
+        postgres_query "SELECT * FROM quotes WHERE quote=$txt::text";
     }
 
 Required modules (other than `ngx_postgres`):
