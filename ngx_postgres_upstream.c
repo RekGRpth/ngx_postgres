@@ -3,6 +3,8 @@
 
 
 ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
+    ngx_atomic_uint_t number = s->connection->log->connection;
+    s->connection->log->connection = s->connection->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_array_t listen = {0};
     ngx_int_t rc = NGX_OK;
@@ -49,21 +51,27 @@ ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s) {
         }
     }
     if (listen.nelts) ngx_array_destroy(&listen);
+    s->connection->log->connection = number;
     return rc;
 }
 
 
 static ngx_int_t ngx_postgres_result_idle_handler(ngx_postgres_save_t *s) {
+    ngx_atomic_uint_t number = s->connection->log->connection;
+    s->connection->log->connection = s->connection->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_FATAL_ERROR: ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQresultErrorMessageMy(s->res), "PQresultStatus == %s", PQresStatus(PQresultStatus(s->res))); break;
         default: ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); break;
     }
+    s->connection->log->connection = number;
     return NGX_OK;
 }
 
 
 static ngx_int_t ngx_postgres_result_listen_handler(ngx_postgres_save_t *s) {
+    ngx_atomic_uint_t number = s->connection->log->connection;
+    s->connection->log->connection = s->connection->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     if (s->res) switch (PQresultStatus(s->res)) {
         case PGRES_TUPLES_OK: {
@@ -80,13 +88,16 @@ static ngx_int_t ngx_postgres_result_listen_handler(ngx_postgres_save_t *s) {
         default: ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQresultStatus == %s and %s", PQresStatus(PQresultStatus(s->res)), PQcmdStatus(s->res)); return NGX_ERROR;
     }
     ngx_postgres_close(s);
+    s->connection->log->connection = number;
     return NGX_OK;
 }
 
 
 static ngx_int_t ngx_postgres_send_listen_handler(ngx_postgres_save_t *s) {
+    ngx_atomic_uint_t number = s->connection->log->connection;
+    s->connection->log->connection = s->connection->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
-    if (PQisBusy(s->conn)) { ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQisBusy"); return NGX_OK; }
+    if (PQisBusy(s->conn)) { ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "PQisBusy"); goto ret; }
     static const char *command = "SELECT channel, concat_ws(' ', 'UNLISTEN', quote_ident(channel)) AS unlisten FROM pg_listening_channels() AS channel";
     if (!PQsendQuery(s->conn, command)) { ngx_postgres_log_error(NGX_LOG_ERR, s->connection->log, 0, PQerrorMessageMy(s->conn), "!PQsendQuery(\"%s\")", command); return NGX_ERROR; }
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "PQsendQuery(\"%s\")", command);
@@ -95,11 +106,15 @@ static ngx_int_t ngx_postgres_send_listen_handler(ngx_postgres_save_t *s) {
     ngx_connection_t *c = s->connection;
     c->read->active = 1;
     c->write->active = 0;
+ret:
+    s->connection->log->connection = number;
     return NGX_OK;
 }
 
 
 static void ngx_postgres_save_close(ngx_postgres_save_t *s) {
+    ngx_atomic_uint_t number = s->connection->log->connection;
+    s->connection->log->connection = s->connection->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     ngx_connection_t *c = s->connection;
     if (c->read->timer_set) ngx_del_timer(c->read);
@@ -109,16 +124,18 @@ static void ngx_postgres_save_close(ngx_postgres_save_t *s) {
     c->read->active = 0;
     c->write->active = 1;
     ngx_postgres_upstream_srv_conf_t *pusc = s->conf;
-    if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && pusc && pusc->keep.max && PQstatus(s->conn) == CONNECTION_OK && s->write_handler(s) != NGX_ERROR) return;
+    if (!ngx_terminate && !ngx_exiting && ngx_http_push_stream_delete_channel_my && pusc && pusc->keep.max && PQstatus(s->conn) == CONNECTION_OK && s->write_handler(s) != NGX_ERROR) goto ret;
     ngx_postgres_close(s);
+ret:
+    s->connection->log->connection = number;
 }
 
 
 static void ngx_postgres_save_read_or_write_handler(ngx_event_t *e) {
     ngx_connection_t *c = e->data;
-    ngx_atomic_uint_t number = c->log->connection;
-    c->log->connection = c->number;
     ngx_postgres_save_t *s = c->data;
+    ngx_atomic_uint_t number = s->connection->log->connection;
+    s->connection->log->connection = s->connection->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", e->write ? "write" : "read");
     if (c->close) { ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "close"); goto close; }
     if (c->read->timedout) { ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "read timedout"); c->read->timedout = 0; goto close; }
@@ -145,7 +162,7 @@ close:
     ngx_log_error(NGX_LOG_WARN, s->connection->log, 0, "close");
     ngx_postgres_save_close(s);
 ret:
-    c->log->connection = number;
+    s->connection->log->connection = number;
 }
 
 
@@ -523,6 +540,8 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
 
 
 void ngx_postgres_close(ngx_postgres_save_t *s) {
+    ngx_atomic_uint_t number = s->connection->log->connection;
+    s->connection->log->connection = s->connection->number;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, s->connection->log, 0, "%s", __func__);
     s->read_handler = NULL;
     s->write_handler = NULL;
@@ -539,6 +558,7 @@ void ngx_postgres_close(ngx_postgres_save_t *s) {
     }
     ngx_destroy_pool(c->pool);
     ngx_close_connection(c);
+    s->connection->log->connection = number;
 }
 
 
