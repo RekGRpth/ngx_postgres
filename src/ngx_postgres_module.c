@@ -29,6 +29,7 @@ static void *ngx_postgres_create_srv_conf(ngx_conf_t *cf) {
 static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_postgres_loc_conf_t *plc = ngx_pcalloc(cf->pool, sizeof(*plc));
     if (!plc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
+    plc->read_request_body = NGX_CONF_UNSET;
     plc->upstream.buffering = NGX_CONF_UNSET;
     plc->upstream.buffer_size = NGX_CONF_UNSET_SIZE;
     plc->upstream.busy_buffers_size_conf = NGX_CONF_UNSET_SIZE;
@@ -71,6 +72,7 @@ static ngx_str_t ngx_postgres_hide_headers[] = {
 static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
     ngx_postgres_loc_conf_t *prev = parent;
     ngx_postgres_loc_conf_t *conf = child;
+    ngx_conf_merge_value(conf->read_request_body, prev->read_request_body, 0);
     if (!conf->complex.value.data) conf->complex = prev->complex;
     if (!conf->query.nelts) conf->query = prev->query;
     if (!conf->upstream.upstream) conf->upstream = prev->upstream;
@@ -604,6 +606,12 @@ static ngx_command_t ngx_postgres_commands[] = {
     .set = ngx_postgres_query_conf,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,
+    .post = NULL },
+  { .name = ngx_string("postgres_read_request_body"),
+    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+    .set = ngx_conf_set_flag_slot,
+    .conf = NGX_HTTP_LOC_CONF_OFFSET,
+    .offset = offsetof(ngx_postgres_loc_conf_t, read_request_body),
     .post = NULL },
   { .name = ngx_string("postgres_rewrite"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_2MORE,

@@ -133,8 +133,8 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     ngx_uint_t i;
     for (i = 0; i < plc->query.nelts; i++) if (!queryelts[i].method || queryelts[i].method & r->method) break;
     if (i == plc->query.nelts) return NGX_HTTP_NOT_ALLOWED;
-    ngx_int_t rc = ngx_http_discard_request_body(r);
-    if (rc != NGX_OK) return rc;
+    ngx_int_t rc;
+    if (!plc->read_request_body && (rc = ngx_http_discard_request_body(r)) != NGX_OK) return rc;
     if (ngx_http_upstream_create(r) != NGX_OK) { ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_http_upstream_create != NGX_OK"); return NGX_HTTP_INTERNAL_SERVER_ERROR; }
     ngx_http_upstream_t *u = r->upstream;
     ngx_str_set(&u->schema, "postgres://");
