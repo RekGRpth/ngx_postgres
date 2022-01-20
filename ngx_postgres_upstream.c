@@ -478,22 +478,6 @@ ngx_int_t ngx_postgres_peer_get(ngx_peer_connection_t *pc, void *data) {
 }
 
 
-#if (NGX_HTTP_SSL)
-static ngx_int_t ngx_postgres_set_session(ngx_peer_connection_t *pc, void *data) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
-    ngx_postgres_data_t *d = data;
-    return d->peer.set_session(pc, d->peer.data);
-}
-
-
-static void ngx_postgres_save_session(ngx_peer_connection_t *pc, void *data) {
-    ngx_log_debug1(NGX_LOG_DEBUG_HTTP, pc->log, 0, "%s", __func__);
-    ngx_postgres_data_t *d = data;
-    d->peer.save_session(pc, d->peer.data);
-}
-#endif
-
-
 ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *husc) {
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "%s", __func__);
     ngx_postgres_upstream_srv_conf_t *pusc = husc->srv_conf ? ngx_http_conf_upstream_srv_conf(husc, ngx_postgres_module) : NULL;
@@ -508,12 +492,6 @@ ngx_int_t ngx_postgres_peer_init(ngx_http_request_t *r, ngx_http_upstream_srv_co
     u->peer.get = ngx_postgres_peer_get;
     d->peer.free = u->peer.free;
     u->peer.free = ngx_postgres_peer_free;
-#if (NGX_HTTP_SSL)
-    d->peer.save_session = u->peer.save_session;
-    u->peer.save_session = ngx_postgres_save_session;
-    d->peer.set_session = u->peer.set_session;
-    u->peer.set_session = ngx_postgres_set_session;
-#endif
     return NGX_OK;
 }
 

@@ -131,10 +131,6 @@ typedef struct ngx_postgres_data_t {
     struct {
         ngx_event_free_peer_pt free;
         ngx_event_get_peer_pt get;
-#if (NGX_SSL || NGX_COMPAT)
-        ngx_event_save_peer_session_pt save_session;
-        ngx_event_set_peer_session_pt set_session;
-#endif
         void *data;
     } peer;
     struct {
