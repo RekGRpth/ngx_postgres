@@ -30,7 +30,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_postgres_loc_conf_t *plc = ngx_pcalloc(cf->pool, sizeof(*plc));
     if (!plc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
     plc->read_request_body = NGX_CONF_UNSET;
-    plc->upstream.hide_headers = NGX_CONF_UNSET_PTR;
     plc->upstream.ignore_client_abort = NGX_CONF_UNSET;
     plc->upstream.intercept_errors = NGX_CONF_UNSET;
     plc->upstream.limit_rate = NGX_CONF_UNSET_SIZE;
@@ -44,16 +43,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_str_set(&plc->upstream.module, "postgres");
     return plc;
 }
-
-
-static ngx_str_t ngx_postgres_hide_headers[] = {
-    ngx_string("X-Accel-Expires"),
-    ngx_string("X-Accel-Redirect"),
-    ngx_string("X-Accel-Limit-Rate"),
-    ngx_string("X-Accel-Buffering"),
-    ngx_string("X-Accel-Charset"),
-    ngx_null_string
-};
 
 
 static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child) {
@@ -75,11 +64,6 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_conf_merge_value(conf->upstream.intercept_errors, prev->upstream.intercept_errors, 0);
     ngx_conf_merge_value(conf->upstream.socket_keepalive, prev->upstream.socket_keepalive, 0);
     if (conf->upstream.next_upstream & NGX_HTTP_UPSTREAM_FT_OFF) conf->upstream.next_upstream = NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_OFF;
-    ngx_hash_init_t hash;
-    hash.max_size = 512;
-    hash.bucket_size = ngx_align(64, ngx_cacheline_size);
-    hash.name = "postgres_hide_headers_hash";
-    if (ngx_http_upstream_hide_headers_hash(cf, &conf->upstream, &prev->upstream, ngx_postgres_hide_headers, &hash) != NGX_OK) return NGX_CONF_ERROR;
     return NGX_CONF_OK;
 }
 
@@ -575,12 +559,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .set = ngx_http_upstream_bind_set_slot,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_loc_conf_t, upstream.local),
-    .post = NULL },
-  { .name = ngx_string("postgres_hide_header"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-    .set = ngx_conf_set_str_array_slot,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_loc_conf_t, upstream.hide_headers),
     .post = NULL },
   { .name = ngx_string("postgres_ignore_client_abort"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
