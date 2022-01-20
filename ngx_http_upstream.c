@@ -1,15 +1,18 @@
 #include "ngx_postgres_include.h"
 
-
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
-static ngx_int_t ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u);
-static void ngx_http_upstream_check_broken_connection(ngx_http_request_t *r, ngx_event_t *ev);
-static void ngx_http_upstream_cleanup(void *data);
-static void ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u);
 static void ngx_http_upstream_init_request(ngx_http_request_t *r);
-static void ngx_http_upstream_rd_check_broken_connection(ngx_http_request_t *r);
 static void ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx);
+static void ngx_http_upstream_rd_check_broken_connection(ngx_http_request_t *r);
 static void ngx_http_upstream_wr_check_broken_connection(ngx_http_request_t *r);
+static void ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
+    ngx_event_t *ev);
+static
+void ngx_http_upstream_connect(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
+static ngx_int_t ngx_http_upstream_reinit(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
+static void ngx_http_upstream_cleanup(void *data);
 
 
 void
@@ -535,7 +538,8 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
 }
 
 
-static void
+static
+void
 ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_int_t                  rc;
