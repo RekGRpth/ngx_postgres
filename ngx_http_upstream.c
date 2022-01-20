@@ -111,10 +111,13 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
 #endif
 
+#if 0
     u->store = u->conf->store;
 
     if (!u->store && !r->post_action && !u->conf->ignore_client_abort) {
-
+#else
+    if (!r->post_action && !u->conf->ignore_client_abort) {
+#endif
         if (r->connection->read->ready) {
             ngx_post_event(r->connection->read, &ngx_posted_events);
 
@@ -1178,6 +1181,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
                        u->pipe->temp_file->file.fd);
     }
 
+#if 0
     if (u->store && u->pipe && u->pipe->temp_file
         && u->pipe->temp_file->file.fd != NGX_INVALID_FILE)
     {
@@ -1189,6 +1193,7 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
                           u->pipe->temp_file->file.name.data);
         }
     }
+#endif
 
 #if (NGX_HTTP_CACHE)
 

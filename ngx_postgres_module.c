@@ -46,8 +46,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     plc->upstream.request_buffering = NGX_CONF_UNSET;
     plc->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
     plc->upstream.socket_keepalive = NGX_CONF_UNSET;
-    plc->upstream.store_access = NGX_CONF_UNSET_UINT;
-    plc->upstream.store = NGX_CONF_UNSET;
     plc->upstream.temp_file_write_size_conf = NGX_CONF_UNSET_SIZE;
     ngx_str_set(&plc->upstream.module, "postgres");
     return plc;
@@ -76,11 +74,6 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     if (!conf->complex.value.data) conf->complex = prev->complex;
     if (!conf->query.nelts) conf->query = prev->query;
     if (!conf->upstream.upstream) conf->upstream = prev->upstream;
-    if (conf->upstream.store == NGX_CONF_UNSET) {
-        ngx_conf_merge_value(conf->upstream.store, prev->upstream.store, 0);
-        conf->upstream.store_lengths = prev->upstream.store_lengths;
-        conf->upstream.store_values = prev->upstream.store_values;
-    }
     ngx_conf_merge_bitmask_value(conf->upstream.ignore_headers, prev->upstream.ignore_headers, NGX_CONF_BITMASK_SET);
     ngx_conf_merge_bitmask_value(conf->upstream.next_upstream, prev->upstream.next_upstream, NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_ERROR|NGX_HTTP_UPSTREAM_FT_TIMEOUT);
     ngx_conf_merge_bufs_value(conf->upstream.bufs, prev->upstream.bufs, 8, ngx_pagesize);
@@ -94,7 +87,6 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_conf_merge_size_value(conf->upstream.max_temp_file_size_conf, prev->upstream.max_temp_file_size_conf, NGX_CONF_UNSET_SIZE);
     ngx_conf_merge_size_value(conf->upstream.temp_file_write_size_conf, prev->upstream.temp_file_write_size_conf, NGX_CONF_UNSET_SIZE);
     ngx_conf_merge_uint_value(conf->upstream.next_upstream_tries, prev->upstream.next_upstream_tries, 0);
-    ngx_conf_merge_uint_value(conf->upstream.store_access, prev->upstream.store_access, 0600);
     ngx_conf_merge_value(conf->upstream.buffering, prev->upstream.buffering, 1);
     ngx_conf_merge_value(conf->upstream.ignore_client_abort, prev->upstream.ignore_client_abort, 0);
     ngx_conf_merge_value(conf->upstream.intercept_errors, prev->upstream.intercept_errors, 0);
@@ -535,28 +527,6 @@ static ngx_conf_bitmask_t ngx_postgres_next_upstream_masks[] = {
 };
 
 
-static char *ngx_postgres_store_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
-    ngx_postgres_loc_conf_t *plc = conf;
-    if (plc->upstream.store != NGX_CONF_UNSET) return "is duplicate";
-    ngx_str_t *args = cf->args->elts;
-    if (args[1].len == sizeof("off") - 1 && !ngx_strncmp(args[1].data, (u_char *)"off", sizeof("off") - 1)) { plc->upstream.store = 0; return NGX_CONF_OK; }
-    plc->upstream.store = 1;
-    if (args[1].len == sizeof("on") - 1 && !ngx_strncmp(args[1].data, (u_char *)"on", sizeof("on") - 1)) return NGX_CONF_OK;
-    args[1].len++;
-    ngx_http_script_compile_t sc;
-    ngx_memzero(&sc, sizeof(sc));
-    sc.cf = cf;
-    sc.source = &args[1];
-    sc.lengths = &plc->upstream.store_lengths;
-    sc.values = &plc->upstream.store_values;
-    sc.variables = ngx_http_script_variables_count(&args[1]);
-    sc.complete_lengths = 1;
-    sc.complete_values = 1;
-    if (ngx_http_script_compile(&sc) != NGX_OK) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "\"%V\" directive error: ngx_http_script_compile != NGX_OK", &cmd->name); return NGX_CONF_ERROR; }
-    return NGX_CONF_OK;
-}
-
-
 static ngx_command_t ngx_postgres_commands[] = {
   { .name = ngx_string("postgres_log"),
     .type = NGX_HTTP_UPS_CONF|NGX_CONF_1MORE,
@@ -622,12 +592,6 @@ static ngx_command_t ngx_postgres_commands[] = {
   { .name = ngx_string("postgres_set"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LIF_CONF|NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4,
     .set = ngx_postgres_set_conf,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = 0,
-    .post = NULL },
-  { .name = ngx_string("postgres_store"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-    .set = ngx_postgres_store_conf,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = 0,
     .post = NULL },
@@ -751,12 +715,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .set = ngx_conf_set_flag_slot,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_loc_conf_t, upstream.socket_keepalive),
-    .post = NULL },
-  { .name = ngx_string("postgres_store_access"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE123,
-    .set = ngx_conf_set_access_slot,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_loc_conf_t, upstream.store_access),
     .post = NULL },
   { .name = ngx_string("postgres_temp_file_write_size"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
