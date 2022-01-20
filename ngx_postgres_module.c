@@ -34,7 +34,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     plc->upstream.next_upstream_tries = NGX_CONF_UNSET_UINT;
     plc->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
     plc->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
-    plc->upstream.socket_keepalive = NGX_CONF_UNSET;
     ngx_str_set(&plc->upstream.module, "postgres");
     return plc;
 }
@@ -53,7 +52,6 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_conf_merge_msec_value(conf->upstream.read_timeout, prev->upstream.read_timeout, 60000);
     ngx_conf_merge_msec_value(conf->upstream.send_timeout, prev->upstream.send_timeout, 60000);
     ngx_conf_merge_uint_value(conf->upstream.next_upstream_tries, prev->upstream.next_upstream_tries, 0);
-    ngx_conf_merge_value(conf->upstream.socket_keepalive, prev->upstream.socket_keepalive, 0);
     if (conf->upstream.next_upstream & NGX_HTTP_UPSTREAM_FT_OFF) conf->upstream.next_upstream = NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_OFF;
     return NGX_CONF_OK;
 }
@@ -580,12 +578,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .set = ngx_conf_set_msec_slot,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_loc_conf_t, upstream.send_timeout),
-    .post = NULL },
-  { .name = ngx_string("postgres_socket_keepalive"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-    .set = ngx_conf_set_flag_slot,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_loc_conf_t, upstream.socket_keepalive),
     .post = NULL },
 
     ngx_null_command
