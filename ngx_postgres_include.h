@@ -150,11 +150,25 @@ typedef struct ngx_postgres_data_t {
     } result;
 } ngx_postgres_data_t;
 
+#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
+typedef struct {
+    ngx_http_upstream_srv_conf_t *upstream;
+    ngx_msec_t connect_timeout;
+    ngx_msec_t next_upstream_timeout;
+    ngx_str_t module;
+    ngx_uint_t next_upstream;
+} ngx_http_upstream_conf_t_my;
+#endif
+
 typedef struct {
     ngx_array_t query;
     ngx_flag_t read_request_body;
     ngx_http_complex_value_t complex;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_http_upstream_conf_t upstream;
+#else
+    ngx_http_upstream_conf_t_my upstream;
+#endif
     ngx_msec_t timeout;
     ngx_postgres_connect_t *connect;
     ngx_uint_t variable;

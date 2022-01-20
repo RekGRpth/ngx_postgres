@@ -139,7 +139,7 @@ ngx_int_t ngx_postgres_handler(ngx_http_request_t *r) {
     ngx_http_upstream_t *u = r->upstream;
     ngx_str_set(&u->schema, "postgres://");
     u->output.tag = (ngx_buf_tag_t)&ngx_postgres_module;
-    u->conf = &plc->upstream;
+    u->conf = (ngx_http_upstream_conf_t *)&plc->upstream;
     u->create_request = ngx_postgres_create_request;
     u->finalize_request = ngx_postgres_finalize_request;
     u->reinit_request = ngx_postgres_reinit_request;
