@@ -30,7 +30,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_postgres_loc_conf_t *plc = ngx_pcalloc(cf->pool, sizeof(*plc));
     if (!plc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
     plc->read_request_body = NGX_CONF_UNSET;
-    plc->upstream.ignore_client_abort = NGX_CONF_UNSET;
     plc->upstream.intercept_errors = NGX_CONF_UNSET;
     plc->upstream.limit_rate = NGX_CONF_UNSET_SIZE;
     plc->upstream.local = NGX_CONF_UNSET_PTR;
@@ -60,7 +59,6 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_conf_merge_ptr_value(conf->upstream.local, prev->upstream.local, NULL);
     ngx_conf_merge_size_value(conf->upstream.limit_rate, prev->upstream.limit_rate, 0);
     ngx_conf_merge_uint_value(conf->upstream.next_upstream_tries, prev->upstream.next_upstream_tries, 0);
-    ngx_conf_merge_value(conf->upstream.ignore_client_abort, prev->upstream.ignore_client_abort, 0);
     ngx_conf_merge_value(conf->upstream.intercept_errors, prev->upstream.intercept_errors, 0);
     ngx_conf_merge_value(conf->upstream.socket_keepalive, prev->upstream.socket_keepalive, 0);
     if (conf->upstream.next_upstream & NGX_HTTP_UPSTREAM_FT_OFF) conf->upstream.next_upstream = NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_OFF;
@@ -559,12 +557,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .set = ngx_http_upstream_bind_set_slot,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_loc_conf_t, upstream.local),
-    .post = NULL },
-  { .name = ngx_string("postgres_ignore_client_abort"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-    .set = ngx_conf_set_flag_slot,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_loc_conf_t, upstream.ignore_client_abort),
     .post = NULL },
   { .name = ngx_string("postgres_ignore_headers"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_1MORE,
