@@ -55,7 +55,7 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
 
 
 static ngx_path_init_t ngx_postgres_temp_path = {
-    ngx_string("/var/cache/nginx/postgres_temp"), { 1, 2, 0 }
+    ngx_string("/var/tmp/nginx/postgres"), { 1, 2, 0 }
 };
 
 
