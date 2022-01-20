@@ -32,7 +32,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     plc->read_request_body = NGX_CONF_UNSET;
     plc->upstream.next_upstream_timeout = NGX_CONF_UNSET_MSEC;
     plc->upstream.next_upstream_tries = NGX_CONF_UNSET_UINT;
-    plc->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
     ngx_str_set(&plc->upstream.module, "postgres");
     return plc;
 }
@@ -48,7 +47,6 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_conf_merge_bitmask_value(conf->upstream.ignore_headers, prev->upstream.ignore_headers, NGX_CONF_BITMASK_SET);
     ngx_conf_merge_bitmask_value(conf->upstream.next_upstream, prev->upstream.next_upstream, NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_ERROR|NGX_HTTP_UPSTREAM_FT_TIMEOUT);
     ngx_conf_merge_msec_value(conf->upstream.next_upstream_timeout, prev->upstream.next_upstream_timeout, 0);
-    ngx_conf_merge_msec_value(conf->upstream.send_timeout, prev->upstream.send_timeout, 60000);
     ngx_conf_merge_uint_value(conf->upstream.next_upstream_tries, prev->upstream.next_upstream_tries, 0);
     if (conf->upstream.next_upstream & NGX_HTTP_UPSTREAM_FT_OFF) conf->upstream.next_upstream = NGX_CONF_BITMASK_SET|NGX_HTTP_UPSTREAM_FT_OFF;
     return NGX_CONF_OK;
@@ -564,12 +562,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .set = ngx_conf_set_num_slot,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_loc_conf_t, upstream.next_upstream_tries),
-    .post = NULL },
-  { .name = ngx_string("postgres_send_timeout"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-    .set = ngx_conf_set_msec_slot,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_loc_conf_t, upstream.send_timeout),
     .post = NULL },
 
     ngx_null_command
