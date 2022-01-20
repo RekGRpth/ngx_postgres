@@ -30,7 +30,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     ngx_postgres_loc_conf_t *plc = ngx_pcalloc(cf->pool, sizeof(*plc));
     if (!plc) { ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "!ngx_pcalloc"); return NULL; }
     plc->read_request_body = NGX_CONF_UNSET;
-    plc->upstream.buffering = NGX_CONF_UNSET;
     plc->upstream.buffer_size = NGX_CONF_UNSET_SIZE;
     plc->upstream.busy_buffers_size_conf = NGX_CONF_UNSET_SIZE;
     plc->upstream.hide_headers = NGX_CONF_UNSET_PTR;
@@ -43,7 +42,6 @@ static void *ngx_postgres_create_loc_conf(ngx_conf_t *cf) {
     plc->upstream.next_upstream_tries = NGX_CONF_UNSET_UINT;
     plc->upstream.pass_headers = NGX_CONF_UNSET_PTR;
     plc->upstream.read_timeout = NGX_CONF_UNSET_MSEC;
-    plc->upstream.request_buffering = NGX_CONF_UNSET;
     plc->upstream.send_timeout = NGX_CONF_UNSET_MSEC;
     plc->upstream.socket_keepalive = NGX_CONF_UNSET;
     plc->upstream.temp_file_write_size_conf = NGX_CONF_UNSET_SIZE;
@@ -87,10 +85,8 @@ static char *ngx_postgres_merge_loc_conf(ngx_conf_t *cf, void *parent, void *chi
     ngx_conf_merge_size_value(conf->upstream.max_temp_file_size_conf, prev->upstream.max_temp_file_size_conf, NGX_CONF_UNSET_SIZE);
     ngx_conf_merge_size_value(conf->upstream.temp_file_write_size_conf, prev->upstream.temp_file_write_size_conf, NGX_CONF_UNSET_SIZE);
     ngx_conf_merge_uint_value(conf->upstream.next_upstream_tries, prev->upstream.next_upstream_tries, 0);
-    ngx_conf_merge_value(conf->upstream.buffering, prev->upstream.buffering, 1);
     ngx_conf_merge_value(conf->upstream.ignore_client_abort, prev->upstream.ignore_client_abort, 0);
     ngx_conf_merge_value(conf->upstream.intercept_errors, prev->upstream.intercept_errors, 0);
-    ngx_conf_merge_value(conf->upstream.request_buffering, prev->upstream.request_buffering, 1);
     ngx_conf_merge_value(conf->upstream.socket_keepalive, prev->upstream.socket_keepalive, 0);
     if (conf->upstream.bufs.num < 2) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "there must be at least 2 \"postgres_buffers\""); return NGX_CONF_ERROR; }
     size_t size = conf->upstream.buffer_size;
@@ -608,12 +604,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_loc_conf_t, upstream.local),
     .post = NULL },
-  { .name = ngx_string("postgres_buffering"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-    .set = ngx_conf_set_flag_slot,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_loc_conf_t, upstream.buffering),
-    .post = NULL },
   { .name = ngx_string("postgres_buffers"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE2,
     .set = ngx_conf_set_bufs_slot,
@@ -697,12 +687,6 @@ static ngx_command_t ngx_postgres_commands[] = {
     .set = ngx_conf_set_msec_slot,
     .conf = NGX_HTTP_LOC_CONF_OFFSET,
     .offset = offsetof(ngx_postgres_loc_conf_t, upstream.read_timeout),
-    .post = NULL },
-  { .name = ngx_string("postgres_request_buffering"),
-    .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-    .set = ngx_conf_set_flag_slot,
-    .conf = NGX_HTTP_LOC_CONF_OFFSET,
-    .offset = offsetof(ngx_postgres_loc_conf_t, upstream.request_buffering),
     .post = NULL },
   { .name = ngx_string("postgres_send_timeout"),
     .type = NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
