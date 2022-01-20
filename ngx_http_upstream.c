@@ -3,7 +3,6 @@
 
 #if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
 static ngx_int_t ngx_http_upstream_reinit(ngx_http_request_t *r, ngx_http_upstream_t *u);
-static ngx_int_t ngx_http_upstream_set_local(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_http_upstream_local_t *local);
 static void ngx_http_upstream_check_broken_connection(ngx_http_request_t *r, ngx_event_t *ev);
 static void ngx_http_upstream_cleanup(void *data);
 static void ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u);
@@ -68,56 +67,8 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
 
     u = r->upstream;
 
-#if (NGX_HTTP_CACHE & 0)
+    if (!r->post_action) {
 
-    if (u->conf->cache) {
-        ngx_int_t  rc;
-
-        rc = ngx_http_upstream_cache(r, u);
-
-        if (rc == NGX_BUSY) {
-            r->write_event_handler = ngx_http_upstream_init_request;
-            return;
-        }
-
-        r->write_event_handler = ngx_http_request_empty_handler;
-
-        if (rc == NGX_ERROR) {
-            ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-            return;
-        }
-
-        if (rc == NGX_OK) {
-            rc = ngx_http_upstream_cache_send(r, u);
-
-            if (rc == NGX_DONE) {
-                return;
-            }
-
-            if (rc == NGX_HTTP_UPSTREAM_INVALID_HEADER) {
-                rc = NGX_DECLINED;
-                r->cached = 0;
-                u->buffer.start = NULL;
-                u->cache_status = NGX_HTTP_CACHE_MISS;
-                u->request_sent = 1;
-            }
-        }
-
-        if (rc != NGX_DECLINED) {
-            ngx_http_finalize_request(r, rc);
-            return;
-        }
-    }
-
-#endif
-
-#if 0
-    u->store = u->conf->store;
-
-    if (!u->store && !r->post_action && !u->conf->ignore_client_abort) {
-#else
-    if (!r->post_action && !u->conf->ignore_client_abort) {
-#endif
         if (r->connection->read->ready) {
             ngx_post_event(r->connection->read, &ngx_posted_events);
 
@@ -139,15 +90,6 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
     if (u->create_request(r) != NGX_OK) {
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
         return;
-    }
-
-    if (ngx_http_upstream_set_local(r, u, u->conf->local) != NGX_OK) {
-        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-        return;
-    }
-
-    if (u->conf->socket_keepalive) {
-        u->peer.so_keepalive = 1;
     }
 
     clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
@@ -200,10 +142,6 @@ ngx_http_upstream_init_request(ngx_http_request_t *r)
         uscf = u->conf->upstream;
 
     } else {
-
-#if (NGX_HTTP_SSL)
-        u->ssl_name = u->resolved->host;
-#endif
 
         host = &u->resolved->host;
 
@@ -303,10 +241,6 @@ found:
 
     u->upstream = uscf;
 
-#if (NGX_HTTP_SSL)
-    u->ssl_name = uscf->host;
-#endif
-
     if (uscf->peer.init(r, uscf) != NGX_OK) {
         ngx_http_upstream_finalize_request(r, u,
                                            NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -314,12 +248,6 @@ found:
     }
 
     u->peer.start_time = ngx_current_msec;
-
-    if (u->conf->next_upstream_tries
-        && u->peer.tries > u->conf->next_upstream_tries)
-    {
-        u->peer.tries = u->conf->next_upstream_tries;
-    }
 
     ngx_http_upstream_connect(r, u);
 }
@@ -388,12 +316,6 @@ ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx)
     ur->ctx = NULL;
 
     u->peer.start_time = ngx_current_msec;
-
-    if (u->conf->next_upstream_tries
-        && u->peer.tries > u->conf->next_upstream_tries)
-    {
-        u->peer.tries = u->conf->next_upstream_tries;
-    }
 
     ngx_http_upstream_connect(r, u);
 
@@ -681,14 +603,6 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 
     c->data = r;
 
-#if 0
-    c->write->handler = ngx_http_upstream_handler;
-    c->read->handler = ngx_http_upstream_handler;
-
-    u->write_event_handler = ngx_http_upstream_send_request_handler;
-    u->read_event_handler = ngx_http_upstream_process_header;
-#endif
-
     c->sendfile &= r->connection->sendfile;
     u->output.sendfile = c->sendfile;
 
@@ -764,19 +678,6 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
         ngx_add_timer(c->write, u->conf->connect_timeout);
         return;
     }
-
-#if (NGX_HTTP_SSL & 0)
-
-    if (u->ssl && c->ssl == NULL) {
-        ngx_http_upstream_ssl_init_connection(r, u, c);
-        return;
-    }
-
-#endif
-
-#if 0
-    ngx_http_upstream_send_request(r, u, 1);
-#endif
 }
 
 
@@ -1026,36 +927,6 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         || (u->request_sent && r->request_body_no_buffering)
         || (timeout && ngx_current_msec - u->peer.start_time >= timeout))
     {
-#if (NGX_HTTP_CACHE && 0)
-
-        if (u->cache_status == NGX_HTTP_CACHE_EXPIRED
-            && ((u->conf->cache_use_stale & ft_type) || r->cache->stale_error))
-        {
-            ngx_int_t  rc;
-
-            rc = u->reinit_request(r);
-
-            if (rc != NGX_OK) {
-                ngx_http_upstream_finalize_request(r, u, rc);
-                return;
-            }
-
-            u->cache_status = NGX_HTTP_CACHE_STALE;
-            rc = ngx_http_upstream_cache_send(r, u);
-
-            if (rc == NGX_DONE) {
-                return;
-            }
-
-            if (rc == NGX_HTTP_UPSTREAM_INVALID_HEADER) {
-                rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-            }
-
-            ngx_http_upstream_finalize_request(r, u, rc);
-            return;
-        }
-#endif
-
         ngx_http_upstream_finalize_request(r, u, status);
         return;
     }
@@ -1064,15 +935,6 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "close http upstream connection: %d",
                        u->peer.connection->fd);
-#if (NGX_HTTP_SSL)
-
-        if (u->peer.connection->ssl) {
-            u->peer.connection->ssl->no_wait_shutdown = 1;
-            u->peer.connection->ssl->no_send_shutdown = 1;
-
-            (void) ngx_ssl_shutdown(u->peer.connection);
-        }
-#endif
 
         if (u->peer.connection->pool) {
             ngx_destroy_pool(u->peer.connection->pool);
@@ -1143,25 +1005,6 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     }
 
     if (u->peer.connection) {
-
-#if (NGX_HTTP_SSL)
-
-        /* TODO: do not shutdown persistent connection */
-
-        if (u->peer.connection->ssl) {
-
-            /*
-             * We send the "close notify" shutdown alert to the upstream only
-             * and do not wait its "close notify" shutdown alert.
-             * It is acceptable according to the TLS standard.
-             */
-
-            u->peer.connection->ssl->no_wait_shutdown = 1;
-
-            (void) ngx_ssl_shutdown(u->peer.connection);
-        }
-#endif
-
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "close http upstream connection: %d",
                        u->peer.connection->fd);
@@ -1180,43 +1023,6 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
                        "http upstream temp fd: %d",
                        u->pipe->temp_file->file.fd);
     }
-
-#if 0
-    if (u->store && u->pipe && u->pipe->temp_file
-        && u->pipe->temp_file->file.fd != NGX_INVALID_FILE)
-    {
-        if (ngx_delete_file(u->pipe->temp_file->file.name.data)
-            == NGX_FILE_ERROR)
-        {
-            ngx_log_error(NGX_LOG_CRIT, r->connection->log, ngx_errno,
-                          ngx_delete_file_n " \"%s\" failed",
-                          u->pipe->temp_file->file.name.data);
-        }
-    }
-#endif
-
-#if (NGX_HTTP_CACHE)
-
-    if (r->cache) {
-
-        if (u->cacheable) {
-
-            if (rc == NGX_HTTP_BAD_GATEWAY || rc == NGX_HTTP_GATEWAY_TIME_OUT) {
-                time_t  valid;
-
-                valid = ngx_http_file_cache_valid(u->conf->cache_valid, rc);
-
-                if (valid) {
-                    r->cache->valid_sec = ngx_time() + valid;
-                    r->cache->error = rc;
-                }
-            }
-        }
-
-        ngx_http_file_cache_free(r->cache, u->pipe->temp_file);
-    }
-
-#endif
 
     r->read_event_handler = ngx_http_block_reading;
 
@@ -1250,13 +1056,6 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     if (rc == 0) {
 
-#if 0
-        if (ngx_http_upstream_process_trailers(r, u) != NGX_OK) {
-            ngx_http_finalize_request(r, NGX_ERROR);
-            return;
-        }
-#endif
-
         rc = ngx_http_send_special(r, NGX_HTTP_LAST);
 
     } else if (flush) {
@@ -1265,58 +1064,5 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     }
 
     ngx_http_finalize_request(r, rc);
-}
-
-
-static ngx_int_t
-ngx_http_upstream_set_local(ngx_http_request_t *r, ngx_http_upstream_t *u,
-    ngx_http_upstream_local_t *local)
-{
-    ngx_int_t    rc;
-    ngx_str_t    val;
-    ngx_addr_t  *addr;
-
-    if (local == NULL) {
-        u->peer.local = NULL;
-        return NGX_OK;
-    }
-
-#if (NGX_HAVE_TRANSPARENT_PROXY)
-    u->peer.transparent = local->transparent;
-#endif
-
-    if (local->value == NULL) {
-        u->peer.local = local->addr;
-        return NGX_OK;
-    }
-
-    if (ngx_http_complex_value(r, local->value, &val) != NGX_OK) {
-        return NGX_ERROR;
-    }
-
-    if (val.len == 0) {
-        return NGX_OK;
-    }
-
-    addr = ngx_palloc(r->pool, sizeof(ngx_addr_t));
-    if (addr == NULL) {
-        return NGX_ERROR;
-    }
-
-    rc = ngx_parse_addr_port(r->pool, addr, val.data, val.len);
-    if (rc == NGX_ERROR) {
-        return NGX_ERROR;
-    }
-
-    if (rc != NGX_OK) {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "invalid local address \"%V\"", &val);
-        return NGX_OK;
-    }
-
-    addr->name = val;
-    u->peer.local = addr;
-
-    return NGX_OK;
 }
 #endif
