@@ -500,6 +500,7 @@ void ngx_postgres_close(ngx_postgres_save_t *s) {
     s->read_handler = NULL;
     s->write_handler = NULL;
     ngx_connection_t *c = s->connection;
+    s->connection = NULL;
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, c->log, 0, "%s", __func__);
     c->read->active = 0;
     c->write->active = 0;
@@ -513,7 +514,6 @@ void ngx_postgres_close(ngx_postgres_save_t *s) {
     }
     ngx_destroy_pool(c->pool);
     ngx_close_connection(c);
-    s->connection = NULL;
 }
 
 
