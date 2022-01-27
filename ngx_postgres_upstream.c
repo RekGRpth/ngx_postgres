@@ -513,6 +513,7 @@ void ngx_postgres_close(ngx_postgres_save_t *s) {
     }
     ngx_destroy_pool(c->pool);
     ngx_close_connection(c);
+    s->connection = NULL;
 }
 
 
