@@ -296,6 +296,7 @@ close:;
     ngx_postgres_data_t *d = data;
     if (pc->connection) { ngx_postgres_close(d->save); pc->connection = NULL; }
     d->peer.free(pc, d->peer.data, state);
+    d->save = NULL;
 }
 
 
