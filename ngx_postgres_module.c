@@ -133,13 +133,6 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
                 hus->down = 1;
                 continue;
             }
-#if (T_NGX_HTTP_UPSTREAM_ID)
-            if (args[i].len > sizeof("id=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"id=", sizeof("id=") - 1)) {
-                hus->id.len = args[i].len - 3;
-                hus->id.data = &args[i].data[3];
-                continue;
-            }
-#endif
         }
         if (args[i].len > sizeof("error_verbosity=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"error_verbosity=", sizeof("error_verbosity=") - 1)) {
             ngx_str_t str = {
@@ -165,9 +158,6 @@ static char *ngx_postgres_connect_conf(ngx_conf_t *cf, ngx_command_t *cmd, ngx_p
             if (args[i].len > sizeof("fail_timeout=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"fail_timeout=", sizeof("fail_timeout=") - 1)) continue;
             if (args[i].len == sizeof("backup") - 1 && !ngx_strncmp(args[i].data, (u_char *)"backup", sizeof("backup") - 1)) continue;
             if (args[i].len == sizeof("down") - 1 && !ngx_strncmp(args[i].data, (u_char *)"down", sizeof("down") - 1)) continue;
-#if (T_NGX_HTTP_UPSTREAM_ID)
-            if (args[i].len > sizeof("id=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"id=", sizeof("id=") - 1)) continue;
-#endif
         }
         if (args[i].len > sizeof("error_verbosity=") - 1 && !ngx_strncmp(args[i].data, (u_char *)"error_verbosity=", sizeof("error_verbosity=") - 1)) continue;
         if (i > 1) *p++ = ' ';
