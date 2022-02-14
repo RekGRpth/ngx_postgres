@@ -6,8 +6,7 @@ static void ngx_http_upstream_rd_check_broken_connection(ngx_http_request_t *r);
 static void ngx_http_upstream_wr_check_broken_connection(ngx_http_request_t *r);
 static void ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     ngx_event_t *ev);
-static
-void ngx_http_upstream_connect(ngx_http_request_t *r,
+static void ngx_http_upstream_connect(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static ngx_int_t ngx_http_upstream_reinit(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
@@ -537,8 +536,7 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
 }
 
 
-static
-void
+static void
 ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_int_t                  rc;
@@ -580,10 +578,10 @@ ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
         return;
     }
 
-    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+    /*if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
         ngx_http_upstream_finalize_request(r, u, rc);
         return;
-    }
+    }*/
 
     u->state->peer = u->peer.name;
 
@@ -828,10 +826,6 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
     ngx_msec_t  timeout;
     ngx_uint_t  status, state;
 
-#if (T_NGX_HTTP_UPSTREAM_RETRY_CC)
-    ngx_http_core_loc_conf_t  *clcf;
-#endif
-
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http next upstream, %xi", ft_type);
 
@@ -859,16 +853,7 @@ ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u,
                       "upstream timed out");
     }
 
-#if (T_NGX_HTTP_UPSTREAM_RETRY_CC)
-    clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
-#endif
-
-    if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR
-#if (T_NGX_HTTP_UPSTREAM_RETRY_CC)
-        && clcf->retry_cached_connection
-#endif
-       )
-    {
+    if (u->peer.cached && ft_type == NGX_HTTP_UPSTREAM_FT_ERROR) {
         /* TODO: inform balancer instead */
         u->peer.tries++;
     }
