@@ -1,6 +1,5 @@
 #include "ngx_postgres_include.h"
 
-#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
 static void ngx_http_upstream_init_request(ngx_http_request_t *r);
 static void ngx_http_upstream_resolve_handler(ngx_resolver_ctx_t *ctx);
 static void ngx_http_upstream_rd_check_broken_connection(ngx_http_request_t *r);
@@ -1069,4 +1068,3 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     ngx_http_finalize_request(r, rc);
 }
-#endif

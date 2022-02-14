@@ -146,7 +146,6 @@ typedef struct ngx_postgres_data_t {
     } result;
 } ngx_postgres_data_t;
 
-#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
 typedef struct {
     ngx_http_upstream_srv_conf_t *upstream;
     ngx_msec_t connect_timeout;
@@ -154,17 +153,12 @@ typedef struct {
     ngx_str_t module;
     ngx_uint_t next_upstream;
 } ngx_http_upstream_conf_t_my;
-#endif
 
 typedef struct {
     ngx_array_t query;
     ngx_flag_t read_request_body;
     ngx_http_complex_value_t complex;
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_http_upstream_conf_t upstream;
-#else
     ngx_http_upstream_conf_t_my upstream;
-#endif
     ngx_msec_t timeout;
     ngx_postgres_connect_t *connect;
     ngx_uint_t variable;
@@ -211,6 +205,7 @@ char *PQerrorMessageMy(const PGconn *conn);
 char *PQresultErrorMessageMy(const PGresult *res);
 extern ngx_int_t ngx_http_push_stream_add_msg_to_channel_my(ngx_log_t *log, ngx_str_t *id, ngx_str_t *text, ngx_str_t *event_id, ngx_str_t *event_type, ngx_flag_t store_messages, ngx_pool_t *temp_pool) __attribute__((weak));
 extern ngx_int_t ngx_http_push_stream_delete_channel_my(ngx_log_t *log, ngx_str_t *id, u_char *text, size_t len, ngx_pool_t *temp_pool) __attribute__((weak));
+ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);
 ngx_int_t ngx_postgres_handler(ngx_http_request_t *r);
 ngx_int_t ngx_postgres_notify(ngx_postgres_save_t *s);
 ngx_int_t ngx_postgres_output_csv_handler(ngx_postgres_data_t *d);
@@ -225,15 +220,11 @@ ngx_int_t ngx_postgres_variable_add(ngx_conf_t *cf);
 ngx_int_t ngx_postgres_variable_output(ngx_postgres_data_t *d);
 ngx_int_t ngx_postgres_variable_set(ngx_postgres_data_t *d);
 u_char *ngx_postgres_log_error_handler(ngx_log_t *log, u_char *buf, size_t len);
-void ngx_postgres_close(ngx_postgres_save_t *s);
-void ngx_postgres_data_read_handler(ngx_event_t *e);
-void ngx_postgres_data_write_handler(ngx_event_t *e);
-
-#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
-ngx_int_t ngx_http_upstream_test_connect(ngx_connection_t *c);
 void ngx_http_upstream_finalize_request(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_int_t rc);
 void ngx_http_upstream_init_my(ngx_http_request_t *r);
 void ngx_http_upstream_next(ngx_http_request_t *r, ngx_http_upstream_t *u, ngx_uint_t ft_type);
-#endif
+void ngx_postgres_close(ngx_postgres_save_t *s);
+void ngx_postgres_data_read_handler(ngx_event_t *e);
+void ngx_postgres_data_write_handler(ngx_event_t *e);
 
 #endif /* _NGX_POSTGRES_INCLUDE_H_ */
