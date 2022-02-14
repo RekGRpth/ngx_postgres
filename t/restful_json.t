@@ -72,6 +72,7 @@ __DATA__
 
 === TEST 1: clean collection
 --- main_config
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
@@ -89,6 +90,7 @@ DELETE /numbers/
 
 === TEST 2: list empty collection
 --- main_config
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
@@ -106,6 +108,7 @@ Content-Type: application/json
 
 === TEST 3: insert resource into collection
 --- main_config
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
@@ -124,6 +127,7 @@ Content-Type: application/json
 
 === TEST 4: list collection
 --- main_config
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
@@ -142,6 +146,7 @@ Content-Type: application/json
 
 === TEST 5: get resource
 --- main_config
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
@@ -160,6 +165,7 @@ Content-Type: application/json
 
 === TEST 6: update resource
 --- main_config
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
@@ -180,6 +186,7 @@ Content-Type: application/json
 
 === TEST 7: remove resource
 --- main_config
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
@@ -198,6 +205,7 @@ DELETE /numbers/123
 
 === TEST 8: update non-existing resource
 --- main_config
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
@@ -217,6 +225,7 @@ Content-Type: text/html
 
 === TEST 9: get non-existing resource
 --- main_config
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
@@ -233,6 +242,7 @@ Content-Type: text/html
 
 === TEST 10: remove non-existing resource
 --- main_config
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config
@@ -249,6 +259,7 @@ Content-Type: text/html
 
 === TEST 11: list empty collection (done)
 --- main_config
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config eval: $::config

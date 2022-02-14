@@ -19,6 +19,7 @@ __DATA__
 
 === TEST 1: sanity
 --- main_config
+    load_module /etc/nginx/modules/ndk_http_module.so;
     load_module /etc/nginx/modules/ngx_http_form_input_module.so;
     load_module /etc/nginx/modules/ngx_http_set_misc_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;

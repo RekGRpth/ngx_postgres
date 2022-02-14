@@ -20,6 +20,7 @@ __DATA__
 === TEST 1: authorized (auth basic)
 --- main_config
     load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
@@ -53,6 +54,7 @@ hi, ngx_test!
 === TEST 2: unauthorized (auth basic)
 --- main_config
     load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
@@ -84,6 +86,7 @@ Content-Type: text/html
 === TEST 3: unauthorized (no authorization header)
 --- main_config
     load_module /etc/nginx/modules/ngx_http_echo_module.so;
+    load_module /etc/nginx/modules/ngx_http_remote_passwd_module.so;
     load_module /etc/nginx/modules/ngx_postgres_module.so;
 --- http_config eval: $::http_config
 --- config
