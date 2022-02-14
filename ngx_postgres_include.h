@@ -1,8 +1,8 @@
 #ifndef _NGX_POSTGRES_INCLUDE_H_
 #define _NGX_POSTGRES_INCLUDE_H_
 
-#include <libpq-fe.h>
 #include <ngx_http.h>
+#include <libpq-fe.h>
 #include "queue.h"
 #include "resty_dbd_stream.h"
 
