@@ -1,3 +1,5 @@
+deprecated, use https://github.com/RekGRpth/ngx_pg_module instead
+
 About
 =====
 `ngx_postgres` is an upstream module that allows `nginx` to communicate directly with `PostgreSQL` database.
