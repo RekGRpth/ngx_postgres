@@ -289,7 +289,7 @@ static char *ngx_postgres_server_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *
 
 static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_upstream_srv_conf_t *pusc = conf;
-    if (pusc->keep.max) return "duplicate";
+    if (pusc->keep.max) return "is duplicate";
     ngx_str_t *args = cf->args->elts;
     ngx_int_t n = ngx_atoi(args[1].data, args[1].len);
     if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be number", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
@@ -338,7 +338,7 @@ static char *ngx_postgres_keepalive_conf(ngx_conf_t *cf, ngx_command_t *cmd, voi
 static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_upstream_srv_conf_t *pusc = conf;
     if (!pusc->keep.max) return "works only with \"postgres_keepalive\"";
-    if (pusc->data.max) return "duplicate";
+    if (pusc->data.max) return "is duplicate";
     ngx_str_t *args = cf->args->elts;
     ngx_int_t n = ngx_atoi(args[1].data, args[1].len);
     if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be number", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
@@ -376,7 +376,7 @@ static char *ngx_postgres_queue_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *c
 
 static char *ngx_postgres_pass_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     ngx_postgres_loc_conf_t *plc = conf;
-    if (plc->upstream.upstream || plc->complex.value.data) return "duplicate";
+    if (plc->upstream.upstream || plc->complex.value.data) return "is duplicate";
     ngx_http_core_loc_conf_t *core = ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module);
     core->handler = ngx_postgres_handler;
     if (core->name.data[core->name.len - 1] == '/') core->auto_redirect = 1;
@@ -426,8 +426,8 @@ static char *ngx_postgres_timeout_conf(ngx_conf_t *cf, ngx_command_t *cmd, void 
     if (n == NGX_ERROR) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be time", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     if (n <= 0) { ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "\"%V\" directive error: \"%V\" must be positive", &cmd->name, &args[1]); return NGX_CONF_ERROR; }
     if (!query) plc->timeout = (ngx_msec_t)n;
-    else if (plc->timeout) return "duplicate";
-    else if (query->timeout) return "duplicate";
+    else if (plc->timeout) return "is duplicate";
+    else if (query->timeout) return "is duplicate";
     else query->timeout = (ngx_msec_t)n;
     return NGX_CONF_OK;
 }

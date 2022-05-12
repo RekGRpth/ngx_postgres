@@ -336,7 +336,7 @@ char *ngx_postgres_output_conf(ngx_conf_t *cf, ngx_command_t *cmd, void *conf) {
     if (!plc->query.nelts) return "must defined after \"postgres_query\" directive";
     ngx_postgres_query_t *queryelts = plc->query.elts;
     ngx_postgres_query_t *query = &queryelts[plc->query.nelts - 1];
-    if (query->output.handler) return "duplicate";
+    if (query->output.handler) return "is duplicate";
     ngx_str_t *args = cf->args->elts;
     static const struct {
         ngx_str_t name;
