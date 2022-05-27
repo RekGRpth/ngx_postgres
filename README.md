@@ -1,4 +1,4 @@
-deprecated, use https://github.com/RekGRpth/ngx_pg_module instead
+deprecated, use https://github.com/RekGRpth/ngx_pq_module instead
 
 About
 =====
